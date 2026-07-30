@@ -784,6 +784,19 @@ ipcMain.handle('sync-offline', async (): Promise<number> => {
   return result.synced;
 });
 
+// FK-071 FR-3: egy pending tranzakció célzott, azonnali újraküldése a
+// Tranzakciólista "Újraküldés" gombjáról (az abandoned-setet megkerülve).
+ipcMain.handle(
+  'retry-pending-transaction',
+  async (_event, id: number): Promise<{ success: boolean; error?: string | null }> => {
+    const localId = Number(id);
+    if (!Number.isInteger(localId) || localId <= 0) {
+      return { success: false, error: 'Érvénytelen tétel-azonosító' };
+    }
+    return syncEngine.retryPendingTransaction(localId);
+  },
+);
+
 ipcMain.handle('get-sync-status', async (): Promise<string> => {
   return JSON.stringify(syncEngine.getStatus());
 });

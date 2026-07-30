@@ -410,6 +410,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   syncOffline: (): Promise<IpcResponse<'sync-offline'>> => ipcRenderer.invoke('sync-offline'),
 
+  // FK-071 FR-3: egy pending tranzakció célzott, azonnali újraküldése a
+  // Tranzakciólista "Újraküldés" gombjáról (kliens-újraindítás nélkül).
+  retryPendingTransaction: (id: number): Promise<{ success: boolean; error?: string | null }> =>
+    ipcRenderer.invoke('retry-pending-transaction', id),
+
   getSyncStatus: (): Promise<string> => ipcRenderer.invoke('get-sync-status'),
 
   // 2026-04-29 v2.3.11 (E-B6.2 Page Visibility API):

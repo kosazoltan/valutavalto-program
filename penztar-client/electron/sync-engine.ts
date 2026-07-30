@@ -227,10 +227,38 @@ export function selectBootstrapRoleCode(
 
 class HttpStatusError extends Error {
   readonly status: number;
+  /** FK-071 FR-1: a szerver ErrorResponse.message mezője (ha kiolvasható volt). */
+  readonly serverMessage: string | null;
 
-  constructor(status: number, statusText: string) {
-    super(`HTTP ${status}: ${statusText}`);
+  constructor(status: number, statusText: string, serverMessage?: string | null) {
+    super(
+      serverMessage
+        ? `HTTP ${status}: ${statusText} — ${serverMessage}`
+        : `HTTP ${status}: ${statusText}`,
+    );
     this.status = status;
+    this.serverMessage = serverMessage ?? null;
+  }
+}
+
+/**
+ * FK-071 FR-1: nem-OK válasznál kiolvassa a backend GlobalExceptionHandler
+ * egységes ErrorResponse body-jának `message` mezőjét ({ timestamp, status,
+ * error, message [, fieldErrors] }), hogy az elutasítás érdemi oka (pl.
+ * árfolyam-eltérés, fedezethiány) tartósan tárolható legyen a pending soron.
+ * Nem-JSON vagy olvashatatlan body esetén null — a hívó a
+ * "HTTP {status}: {statusText}" fallbacket használja.
+ */
+async function readServerErrorMessage(response: Response): Promise<string | null> {
+  try {
+    const text = await response.text();
+    if (!text.trim()) {
+      return null;
+    }
+    const parsed = JSON.parse(text) as { message?: unknown };
+    return typeof parsed.message === 'string' && parsed.message.trim() ? parsed.message : null;
+  } catch {
+    return null;
   }
 }
 
@@ -363,7 +391,13 @@ async function httpPost<T>(
     });
 
     if (!response.ok) {
-      throw new HttpStatusError(response.status, response.statusText);
+      // FK-071 FR-1: a szerver érdemi hibaüzenetét (ErrorResponse.message) is
+      // továbbvisszük, nem csak a státuszsort — a pending soron ez tárolódik.
+      throw new HttpStatusError(
+        response.status,
+        response.statusText,
+        await readServerErrorMessage(response),
+      );
     }
 
     if (allowEmptyResponse) {
@@ -958,6 +992,69 @@ export class SyncEngine {
       remainingMs,
       consecutiveFailures: this.consecutiveFailures,
     };
+  }
+
+  /**
+   * FK-071 FR-3: EGY pending tranzakció azonnali, explicit újraküldése (kézi
+   * "Újraküldés" gomb a Tranzakciólistán). A PR #116 abandoned-set-et szándékosan
+   * megkerüli (a kézi retry épp az abandonolt, üzleti hibás tételekre való),
+   * sikeres feltöltésnél ki is veszi a tételt az abandoned-setből. Az eredmény
+   * (siker/hiba + üzenet) a pending soron tartósan rögzül (markTransaction*).
+   */
+  async retryPendingTransaction(id: number): Promise<{ success: boolean; error?: string | null }> {
+    const tx = getPendingTransactions().find((row) => row.id === id);
+    if (!tx) {
+      return { success: false, error: 'A tétel nem található, vagy már szinkronizálva van' };
+    }
+
+    const serverUrl = this.getActiveServerUrl();
+    if (!serverUrl) {
+      return { success: false, error: 'Offline mód — szerver URL nincs beállítva' };
+    }
+
+    const sessionCompanyCode = getConfig('bootstrap_company_code');
+    const mismatchMessage = standaloneCompanyMismatchMessage(
+      'TX',
+      tx.id,
+      tx.company_code,
+      sessionCompanyCode,
+    );
+    if (mismatchMessage) {
+      try {
+        markTransactionSyncError(tx.id, mismatchMessage, new Date().toISOString());
+      } catch {
+        /* best-effort */
+      }
+      return { success: false, error: mismatchMessage };
+    }
+
+    let token = this.getAuthToken();
+    if (!token) {
+      token = await this.bootstrapAuthSession(serverUrl);
+    }
+    if (!token) {
+      return { success: false, error: 'Nincs auth token — bejelentkezés szükséges' };
+    }
+
+    try {
+      await this.syncTransaction(serverUrl, token, tx);
+      markTransactionSynced(tx.id);
+      this.abandonedTxIds.delete(tx.id);
+      log.info(`[SyncEngine] TX #${tx.id} kézi újraküldés sikeres`);
+      return { success: true, error: null };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      try {
+        markTransactionSyncError(tx.id, errorMsg, new Date().toISOString());
+      } catch {
+        /* best-effort */
+      }
+      if (this.isBusinessValidationError(errorMsg)) {
+        this.abandonedTxIds.add(tx.id);
+      }
+      log.warn(`[SyncEngine] TX #${tx.id} kézi újraküldés sikertelen: ${errorMsg}`);
+      return { success: false, error: errorMsg };
+    }
   }
 
   /**

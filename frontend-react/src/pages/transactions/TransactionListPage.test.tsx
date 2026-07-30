@@ -294,12 +294,16 @@ describe('TransactionListPage', () => {
     expect(sztornozottRow).toHaveClass('opacity-50')
   })
 
-  it('teljesítve státusz zöld szín', async () => {
+  it('teljesítve státusz zöld szín (web-mód: a COMPLETED felirat "Teljesítve" marad)', async () => {
+    // FK-071 Döntés 2 kiegészítés: a "Feltöltve" felirat csak Electron-módban
+    // jelenik meg; ebben a fájlban nincs window.electronAPI (web-mód), így a
+    // COMPLETED sorok a korábbi "Teljesítve" feliratot kapják.
     renderTransactionListPage()
     await waitFor(() => {
       const completedBadges = screen.getAllByText('Teljesítve')
       expect(completedBadges.length).toBeGreaterThan(0)
     })
+    expect(screen.queryByText('Feltöltve')).not.toBeInTheDocument()
   })
 
   it('sztornózva státusz piros szín', async () => {

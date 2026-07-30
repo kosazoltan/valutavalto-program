@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import TransactionReadOnlyView from './TransactionReadOnlyView'
 import { ArrowLeftRight, Calculator, Printer, X, AlertCircle } from 'lucide-react'
 import { NumberInput } from '../../components/NumberInput'
 import { formatDecimal } from '../../utils/numberFormat'
@@ -32,6 +33,17 @@ import {
 import RateAuthDialog from './components/RateAuthDialog'
 
 export default function TransactionPage() {
+  // FK-071 FR-4: a /transactions/:id route READ-ONLY nézetet ad (a 👁 gomb célja),
+  // a felviteli űrlap csak a paraméter nélküli /transactions/new route-on nyílik.
+  // Külön al-komponensek: a hook-sorrend így route-váltásnál is stabil marad.
+  const { id: routeId } = useParams<{ id: string }>()
+  if (routeId) {
+    return <TransactionReadOnlyView transactionId={routeId} />
+  }
+  return <TransactionEntryPage />
+}
+
+function TransactionEntryPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { currencyRates, rawExchangeRates, electronQueueAvailable } = useTransactionRates()
