@@ -435,6 +435,45 @@ describe('FK-071 MEDIUM-E — maszkolt tárolás + nyers detektor a sync-engine-
     expect(logged).not.toContain(PII_PHONE);
   });
 
+  it('Bugbot#2: kézi retry futó háttér-szinkron alatt megvárja a ciklus végét — nincs párhuzamos HTTP-hívás ugyanarra a tételre', async () => {
+    mockedGetPendingTransactions.mockReturnValue([makeTx(1)]);
+
+    // Az 1. (háttér-) feltöltés kézzel feloldható deferred-en függ.
+    let resolveFirstUpload: (value: unknown) => void = () => undefined;
+    const firstUpload = new Promise((resolve) => {
+      resolveFirstUpload = resolve;
+    });
+    const mockFetch = vi.fn().mockImplementation(() => firstUpload);
+    vi.stubGlobal('fetch', mockFetch);
+
+    // Háttér-szinkron elindul, és a deferred miatt in-flight marad.
+    const backgroundSync = engine.syncAll('test-token');
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    // Kézi retry a futó ciklus ALATT: nem indíthat második HTTP-hívást.
+    const manualRetry = engine.retryPendingTransaction(1);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    // A háttér-ciklus sikeresen befejeződik, a tétel synced lesz (kikerül a pendingből).
+    mockedGetPendingTransactions.mockReturnValue([]);
+    resolveFirstUpload({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: () => Promise.resolve({}),
+      text: () => Promise.resolve('{}'),
+    });
+    await backgroundSync;
+    const retryResult = await manualRetry;
+
+    // A retry a várakozás UTÁN frissen nézte meg a tételt: már nincs pending
+    // sor, ezért nem indított új feltöltést — összesen 1 HTTP-hívás történt.
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(retryResult.success).toBe(false);
+    expect(String(retryResult.error)).toContain('már szinkronizálva');
+  });
+
   it('kézi újraküldés: a visszaadott error és a perzisztált érték is maszkolt', async () => {
     mockedGetPendingTransactions.mockReturnValue([makeTx(42)]);
     const mockFetch = vi.fn().mockResolvedValue(make4xxWithPiiResponse());

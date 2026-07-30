@@ -65,6 +65,10 @@ export default function TransactionReadOnlyView({ transactionId }: { transaction
 
   useEffect(() => {
     let cancelled = false
+    // FK-071 Bugbot#3: transactionId-váltásnál a KORÁBBI tranzakció adatai nem
+    // maradhatnak láthatók — sem a betöltés alatt, sem az új lekérés hibájakor
+    // (első betöltésnél a state amúgy is null, ott nincs viselkedés-változás).
+    setTransaction(null)
     setLoading(true)
     setError(null)
     transactionApi

@@ -26,6 +26,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import TransactionPage from './TransactionPage'
+import TransactionReadOnlyView from './TransactionReadOnlyView'
 import type { Transaction } from '../../services/api/transactions'
 
 const mocks = vi.hoisted(() => ({
@@ -238,5 +239,35 @@ describe('FK-071 FR-4 — Megtekintés (👁): read-only tranzakció-nézet a /t
     expect(await screen.findByText('Request failed with status code 403')).toBeInTheDocument()
     expect(screen.queryByTestId('tx-view-panel')).not.toBeInTheDocument()
     expect(screen.getByTestId('tx-view-back')).toBeInTheDocument()
+  })
+
+  // FK-071 Bugbot#3 utókövetés: transactionId-váltásnál a KORÁBBI tranzakció
+  // adatai nem maradhatnak láthatók — sem a betöltés alatt, sem hibázó új
+  // lekérésnél (a pénztáros különben téves bizonylat-adatot láthatna a
+  // hibaüzenet mellett).
+  it('Bugbot#3: id-váltás + hibázó új lekérés → hibapanel, a korábbi tranzakció adatai nélkül', async () => {
+    mocks.transactionApiGetById
+      .mockResolvedValueOnce(viewedTransaction)
+      .mockRejectedValueOnce(new Error('Request failed with status code 404'))
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <TransactionReadOnlyView transactionId="E001000777" />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByTestId('tx-view-panel')).toBeInTheDocument()
+    expect(pageShows('E001000777')).toBe(true)
+
+    rerender(
+      <MemoryRouter>
+        <TransactionReadOnlyView transactionId="E001000888" />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Request failed with status code 404')).toBeInTheDocument()
+    // A korábbi (E001000777) tranzakció adat-panelje nem maradhat a hibaüzenet mellett.
+    expect(screen.queryByTestId('tx-view-panel')).not.toBeInTheDocument()
+    expect(pageShows('E001000777')).toBe(false)
   })
 })

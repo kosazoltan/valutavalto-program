@@ -1020,6 +1020,20 @@ export class SyncEngine {
    * (siker/hiba + üzenet) a pending soron tartósan rögzül (markTransaction*).
    */
   async retryPendingTransaction(id: number): Promise<{ success: boolean; error?: string | null }> {
+    // FK-071 Bugbot#2: ha éppen fut a háttér-szinkron, megvárjuk a ciklus végét
+    // (a syncAllAfterInFlight várakozási mintája szerint) — így nem futhat
+    // párhuzamos feltöltés ugyanarra a tételre. A várakozás után FRISSEN nézzük
+    // meg a pending sort: ha a háttér-ciklus időközben feltöltötte, nem indítunk
+    // újabb HTTP-hívást (a lenti not-found ág fut, a lista-frissítés pedig már
+    // a synced állapotot mutatja).
+    while (this.syncAllInFlight) {
+      try {
+        await this.syncAllInFlight;
+      } catch {
+        // A háttér-futás hibája itt nem releváns — a kézi retry ettől még indulhat.
+      }
+    }
+
     const tx = getPendingTransactions().find((row) => row.id === id);
     if (!tx) {
       return { success: false, error: 'A tétel nem található, vagy már szinkronizálva van' };
