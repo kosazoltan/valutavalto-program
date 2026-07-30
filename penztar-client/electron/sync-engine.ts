@@ -947,7 +947,12 @@ export class SyncEngine {
         try {
           await this.reassertRecentSynced(serverUrl, token);
         } catch (reassertErr) {
-          log.warn('[SyncEngine] Re-assert hiba (nem blokkolo):', reassertErr);
+          // FK-071 MEDIUM-E 3. kör: defenzív maszkolás — a reassert-lánc hibája
+          // szerver-üzenetet hordozhat.
+          log.warn(
+            '[SyncEngine] Re-assert hiba (nem blokkolo):',
+            splitSyncError(reassertErr).masked,
+          );
         }
       }
     } catch (err) {
@@ -1130,9 +1135,11 @@ export class SyncEngine {
     try {
       await inFlight;
     } catch (error) {
+      // FK-071 MEDIUM-E 3. kör: a nyers Error-objektum message-e szerver-üzenetet
+      // hordozhat — maszkolva logolunk.
       log.warn(
         '[SyncEngine] Az előző syncAll futás hibával zárult, az új auth kontextusú futás mégis indul',
-        error,
+        splitSyncError(error).masked,
       );
     }
 
@@ -1668,7 +1675,12 @@ export class SyncEngine {
         await tryOne(`BANK#${b.id}`, () => this.syncBankTransaction(serverUrl, token, b));
       }
     } catch (netErr) {
-      log.warn('[Reassert] halozati hiba — megszakitva, kovetkezo recovery folytatja:', netErr);
+      // FK-071 MEDIUM-E 3. kör: a tryOne a NYERS err-t dobja tovább (az osztályozás
+      // már lefutott rajta) — a terminális log itt is maszkolt kell legyen.
+      log.warn(
+        '[Reassert] halozati hiba — megszakitva, kovetkezo recovery folytatja:',
+        splitSyncError(netErr).masked,
+      );
     }
     if (count > 0) {
       log.info(`[SyncEngine] Re-assert: ${count} synced rekord ujra-asszertalva (RPO-vedohalo).`);

@@ -54,6 +54,10 @@ vi.mock('../sqlite', () => ({
   getPendingCollections: vi.fn(() => []),
   getPendingHandoverOperations: vi.fn(() => []),
   getPendingShipmentReceipts: vi.fn(() => []),
+  getReassertableTransactions: vi.fn(() => []),
+  getReassertableConversions: vi.fn(() => []),
+  getReassertableStornos: vi.fn(() => []),
+  getReassertableBankTransactions: vi.fn(() => []),
   markTransactionSynced: vi.fn(),
   markTransactionSyncError: vi.fn(),
   markConversionSynced: vi.fn(),
@@ -79,6 +83,7 @@ import {
   getPendingDistributions,
   getPendingTransactions,
   getPendingTransfers,
+  getReassertableTransactions,
   markTransactionSyncError,
 } from '../sqlite';
 
@@ -87,7 +92,34 @@ const mockedGetPendingTransactions = vi.mocked(getPendingTransactions);
 const mockedGetPendingDistributions = vi.mocked(getPendingDistributions);
 const mockedGetPendingTransfers = vi.mocked(getPendingTransfers);
 const mockedGetPendingCollections = vi.mocked(getPendingCollections);
+const mockedGetReassertableTransactions = vi.mocked(getReassertableTransactions);
 const mockedMarkTransactionSyncError = vi.mocked(markTransactionSyncError);
+
+/**
+ * Egy log-argumentum teljes szöveges reprezentációja — Error-TUDATOSAN.
+ *
+ * FK-071 MEDIUM-E 3. kör (Codex teszt-vakfolt): a natív JSON.stringify az
+ * Error-objektumot üres `{}`-ként írja ki (a .message/.stack nem saját
+ * enumerable property), így a korábbi, JSON.stringify-alapú szkennelés a
+ * NYERS Error-objektumként logolt PII-t nem látta volna. A javított változat
+ * az Error-t (közvetlen argumentumként ÉS beágyazott property-ként is)
+ * name+message+stack formában bontja ki.
+ */
+function logArgToText(a: unknown): string {
+  if (typeof a === 'string') return a;
+  if (a instanceof Error) {
+    return `${a.name}: ${a.message}\n${a.stack ?? ''}`;
+  }
+  try {
+    return (
+      JSON.stringify(a, (_key, value: unknown) =>
+        value instanceof Error ? `${value.name}: ${value.message} ${value.stack ?? ''}` : value,
+      ) ?? String(a)
+    );
+  } catch {
+    return String(a);
+  }
+}
 
 /**
  * Az ÖSSZES electron-log hívás (warn/error/info/debug) minden argumentuma,
@@ -98,9 +130,7 @@ const mockedMarkTransactionSyncError = vi.mocked(markTransactionSyncError);
 function allLoggedText(): string {
   return [log.warn, log.error, log.info, log.debug]
     .flatMap((fn) => vi.mocked(fn).mock.calls)
-    .map((args) =>
-      args.map((a) => (typeof a === 'string' ? a : (JSON.stringify(a) ?? String(a)))).join(' '),
-    )
+    .map((args) => args.map(logArgToText).join(' '))
     .join('\n');
 }
 
@@ -321,6 +351,64 @@ describe('FK-071 MEDIUM-E — maszkolt tárolás + nyers detektor a sync-engine-
     expect(logged).toContain(EMAIL_MASK);
     expect(logged).not.toContain(PII_EMAIL);
     expect(logged).not.toContain(PII_PHONE);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // MEDIUM-E 3. kör (Codex): reassert hálózati-újradobás ág + szkenner-vakfolt.
+  // ───────────────────────────────────────────────────────────────────────
+
+  it('log-szkenner vakfolt-bizonyíték: a nyers Error-objektum message-ét a javított szkenner látja', () => {
+    const rawError = new Error(`HTTP 400: Bad Request — ${SERVER_MESSAGE_WITH_PII}`);
+
+    // A dokumentált vakfolt oka: a natív JSON.stringify az Error-t üres
+    // objektummá írja (a .message nem saját enumerable property) — a korábbi,
+    // JSON.stringify-alapú szkennelés ezért NEM látta volna a PII-t.
+    expect(JSON.stringify(rawError)).toBe('{}');
+
+    // Szimulált, javítás ELŐTTI production-hibák: nyers Error közvetlen
+    // argumentumként (reassert 1671-es sor mintája) és beágyazva ({ url, err }).
+    log.warn('szimulált nyers Error-log', rawError);
+    log.error('szimulált beágyazott nyers Error-log', { url: 'http://x', err: rawError });
+
+    // A javított szkenner MINDKÉT formában látja a PII-t — tehát ha a
+    // production-kód bárhol nyers Error-t logolna, a többi teszt
+    // not.toContain(PII) assertje ténylegesen elbukna.
+    const logged = allLoggedText();
+    const emailOccurrences = logged.split(PII_EMAIL).length - 1;
+    expect(emailOccurrences).toBeGreaterThanOrEqual(2);
+  });
+
+  it('reassertRecentSynced: hálózati-kulcsszavas 4xx+PII válasznál az újradobási ág logja is maszkolt', async () => {
+    // A tryOne a 'timeout' kulcsszó miatt a NYERS err-t dobja tovább — a külső
+    // catch (netErr) terminális logjának maszkoltnak kell lennie.
+    const body = {
+      timestamp: '2026-07-30T10:00:01',
+      status: 400,
+      error: 'BAD_REQUEST',
+      message: `Átjáró timeout a feldolgozás közben — értesítés küldve: ${PII_EMAIL}`,
+    };
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      json: () => Promise.resolve(body),
+      text: () => Promise.resolve(JSON.stringify(body)),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+    mockedGetReassertableTransactions.mockReturnValue([makeTx(5)]);
+
+    const reassert = (
+      engine as unknown as {
+        reassertRecentSynced(serverUrl: string, token: string): Promise<number>;
+      }
+    ).reassertRecentSynced.bind(engine);
+    const count = await reassert('http://localhost:8080/api/v1', 'test-token');
+
+    expect(count).toBe(0);
+    const logged = allLoggedText();
+    expect(logged).toContain('[Reassert] halozati hiba');
+    expect(logged).toContain(EMAIL_MASK);
+    expect(logged).not.toContain(PII_EMAIL);
   });
 
   it('bootstrapAuthSession + httpPost-réteg: 4xx+PII login-válasznál a teljes log-felület maszkolt', async () => {
