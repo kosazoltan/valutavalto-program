@@ -48,6 +48,10 @@ export function isMenuItemVisible(
   if (item.modes && !item.modes.includes(ctx.appMode)) return false
   if (item.minRole && !ctx.hasRole(item.minRole)) return false
   if (isSupervisoryMenuBypass(ctx)) return true
+  // FKH-026 v3: a `hidden` bejegyzés a standard menüből rejtett — a felügyeleti
+  // bypass szándékosan ELŐBB fut (Főértéktáros/helyettes oversightként látja, §3
+  // mátrix), a szerepkör-alapú láthatóság viszont itt megáll.
+  if (item.hidden) return false
   const roles = item.canonicalRoles ?? group.canonicalRoles
   return !roles || roles.some((r) => ctx.hasCanonicalRole(r))
 }

@@ -952,7 +952,9 @@ export default function TransferPage() {
         </button>
         <Link to="/transfers/new" className="form-button-primary flex items-center gap-1">
           <Send size={16} />
-          {t('transfers.ujAtadas')}
+          {/* FKH-026 v3 FR-7: a felirat-kontraktus "+ Új átadás" — a "+ " prefix a
+              fordítási kulcson kívül, az i18n-kulcs (transfers.ujAtadas) változatlan. */}
+          {`+ ${t('transfers.ujAtadas')}`}
         </Link>
       </div>
 

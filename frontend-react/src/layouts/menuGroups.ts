@@ -52,6 +52,14 @@ export interface MenuItem {
   modes?: readonly AppMode[]
   canonicalRoles?: readonly string[]
   minRole?: string
+  /**
+   * FKH-026 v3: a bejegyzés a standard (szerepkör-alapú) menüből rejtett; a
+   * felügyeleti (SZERVER_ROLES) lokál-módú oversight-bypass szándékosan
+   * TOVÁBBRA IS látja (isMenuItemVisible, a bypass utáni ág). A bejegyzés
+   * megtartása (törlés helyett) őrzi a MenuRoleGate szerepkör-unióját
+   * (effectiveCanonicalRolesForPath) — a route-hozzáférés nem változik.
+   */
+  hidden?: boolean
 }
 
 export type FeatureFlagKey = 'camera' | 'yearOpeningScheduler' | 'navIntegration'
@@ -120,11 +128,14 @@ export const menuGroups: MenuGroup[] = [
       // FS-9 S3: aktív címletképek read-only nézegetője (hamis bankjegy ellenőrzés).
       { path: '/denomination-images', label: 'Címletképek (valuta)', icon: Banknote },
       { path: '/customers', label: 'Ügyfelek', icon: Users },
+      // FKH-026 v3 FR-3: a pénztáros elől rejtve; a felügyeleti bypass (foertektar/
+      // helyettes) továbbra is látja — a badge-láthatóság is ehhez kötött (MainLayout).
       {
         path: '/transit',
         label: 'Úton lévő csomagok',
         icon: ArrowLeftRight,
         canonicalRoles: ['penztar'],
+        hidden: true,
       },
       // 2026-07-14 (transfers-relabel-split): a régi egybemosott "Átadás-átvétel aláírás"
       // bejegyzés kettébontva — a címke pontosan azt ígéri, amit a felület csinál.
@@ -135,11 +146,14 @@ export const menuGroups: MenuGroup[] = [
         icon: ClipboardCheck,
         canonicalRoles: ['penztar'],
       },
+      // FKH-026 v3 FR-6: önálló menüpont helyett a /transfers fejléc-gombja
+      // ("+ Új átadás") a belépési pont; a felügyeleti bypass továbbra is látja.
       {
         path: '/transfers/new',
         label: 'Új átadás-átvétel rögzítése',
         icon: ArrowLeftRight,
         canonicalRoles: ['penztar'],
+        hidden: true,
       },
       { path: '/closing/wizard', label: 'Napzárás', icon: FileText },
       { path: '/rates', label: 'Árfolyamok (nézet)', icon: TrendingUp },
@@ -170,30 +184,39 @@ export const menuGroups: MenuGroup[] = [
       // EGY egységes menüpontba. A "Cél iroda" dropdown 3 csoportos (saját terület
       // pénztárai + társ értéktárak + 10 fix banki/speciális partner).
       { path: '/shipments', label: 'Átadás-átvétel', icon: ArrowLeftRight },
-      { path: '/trades', label: 'Irodaközi trade', icon: ArrowLeftRight },
+      // FKH-026 v3 FR-1: az értéktáros elől rejtve — a Pénztár-módú bejegyzés (fent)
+      // VÁLTOZATLAN; a felügyeleti bypass (foertektar/helyettes) itt is látja.
+      { path: '/trades', label: 'Irodaközi trade', icon: ArrowLeftRight, hidden: true },
       {
         path: '/transfers',
         label: 'Átadás-átvétel visszaigazolás (aláírás)',
         icon: ClipboardCheck,
         canonicalRoles: ['ertektar'],
       },
+      // FKH-026 v3 FR-6: önálló menüpont helyett a /transfers fejléc-gombja
+      // ("+ Új átadás") a belépési pont; a felügyeleti bypass továbbra is látja.
       {
         path: '/transfers/new',
         label: 'Új átadás-átvétel rögzítése',
         icon: ArrowLeftRight,
         canonicalRoles: ['ertektar'],
+        hidden: true,
       },
+      // FKH-026 v3 FR-5: az értéktáros elől rejtve (felügyeleti bypass látja).
       {
         path: '/transfer-documents',
         label: 'Szállítólevelek',
         icon: FileText,
         canonicalRoles: ['ertektar'],
+        hidden: true,
       },
+      // FKH-026 v3 FR-3: az értéktáros elől rejtve; a badge-láthatóság is ehhez kötött.
       {
         path: '/transit',
         label: 'Úton lévő csomagok',
         icon: ArrowLeftRight,
         canonicalRoles: ['ertektar'],
+        hidden: true,
       },
       { path: '/inventory', label: 'Értéktári készlet', icon: Wallet },
       { path: '/cashier-stocks', label: 'Pénztári készletek', icon: Wallet },

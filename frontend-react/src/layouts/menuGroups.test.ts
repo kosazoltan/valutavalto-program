@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getDefaultRouteForRoles, menuGroups } from './menuGroups'
+import { isMenuGroupVisible, isMenuItemVisible } from './menuVisibility'
+import type { MenuVisibilityContext } from './menuVisibility'
 import type { AppMode } from '../types/appMode'
 
 function visibleMenuLabels(appMode: AppMode): string[] {
@@ -98,5 +100,181 @@ describe('transfers menü-szétválasztás (2026-07-14)', () => {
       g.items.filter((i) => (i.canonicalRoles ?? []).includes('ertekszallito')),
     )
     expect(offenders.map((i) => i.path)).toEqual([])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FKH-026 — Menürendszer egyszerűsítése (RED-fázis, 2026-07-30; v3-ra frissítve
+// a 2. körben — dokumentált spec-változás: fejlesztesi-keres-...-v2.md, v3 tartalom).
+//
+// A tesztek az ELVÁRT (még nem implementált) menü-állapotot rögzítik, ezért az
+// elrejtés-tesztek a jelenlegi kód ellenében szándékosan buknak. Implementáció-
+// agnosztikusak: a VALÓS láthatósági logikán (isMenuGroupVisible/isMenuItemVisible)
+// keresztül nézik a menüt, így bejegyzés-törlés ÉS szűrés-alapú elrejtés esetén
+// is helyesen ítélnek.
+//
+// v3 (TBD-3 + kritikai review 1. kör): a Főértéktáros(-helyettes) a meglévő
+// SZERVER_ROLES bypass (menuVisibility.ts:50) révén VÁLTOZATLANUL lát mindent —
+// az 1. körös foertektar-elrejtés variánsok ŐR-tesztekké fordultak (ma is
+// zöldek), amelyek kizárják a naiv teljes-törlés implementációt (FK v3 §9.2 F1:
+// "explicit tesztben is rögzíteni, ne csak a bypass-ra hagyatkozva").
+//
+// "Helyettes" szerepkörök: a frontend menü-rétegben NINCS külön helyettes
+// role-kód — az Értéktáros/Főértéktáros helyettes ugyanazzal a kanonikus
+// ('ertektar'/'foertektar') szerepkörrel fut, így a tesztek ezt fedik le.
+// ─────────────────────────────────────────────────────────────────────────────
+function fkh026VisibleItemLabels(appMode: AppMode, canonicalRoles: readonly string[]): string[] {
+  const ctx: MenuVisibilityContext = {
+    appMode,
+    hasCanonicalRole: (role) => canonicalRoles.includes(role),
+    hasRole: () => false,
+    featureFlags: {},
+  }
+  return menuGroups
+    .filter((group) => isMenuGroupVisible(group, ctx))
+    .flatMap((group) =>
+      group.items.filter((item) => isMenuItemVisible(item, group, ctx)).map((item) => item.label),
+    )
+}
+
+describe('FKH-026 v3 — menü-egyszerűsítés az érintett szerepköröknél (FR-1, FR-2, FR-3, FR-5, FR-6)', () => {
+  it('FR-1: ertektar módban (ertektar szerepkör, helyettesre is érvényes) az "Irodaközi trade" NEM jelenik meg', () => {
+    expect(fkh026VisibleItemLabels('ertektar', ['ertektar'])).not.toContain('Irodaközi trade')
+  })
+
+  it('FR-2: penztar módban az "Irodaközi trade" VÁLTOZATLANUL megjelenik', () => {
+    expect(fkh026VisibleItemLabels('penztar', ['penztar'])).toContain('Irodaközi trade')
+  })
+
+  it.each([
+    ['penztar', 'penztar'],
+    ['ertektar', 'ertektar'],
+  ])('FR-3: %s módban (%s szerepkör) az "Úton lévő csomagok" NEM jelenik meg', (mode, role) => {
+    expect(fkh026VisibleItemLabels(mode as AppMode, [role])).not.toContain('Úton lévő csomagok')
+  })
+
+  it('FR-5: ertektar módban (ertektar szerepkör) a "Szállítólevelek" NEM jelenik meg', () => {
+    expect(fkh026VisibleItemLabels('ertektar', ['ertektar'])).not.toContain('Szállítólevelek')
+  })
+
+  it.each([
+    ['penztar', 'penztar'],
+    ['ertektar', 'ertektar'],
+  ])(
+    'FR-6: %s módban (%s szerepkör) az "Új átadás-átvétel rögzítése" önálló menüpontként NEM jelenik meg',
+    (mode, role) => {
+      expect(fkh026VisibleItemLabels(mode as AppMode, [role])).not.toContain(
+        'Új átadás-átvétel rögzítése',
+      )
+    },
+  )
+})
+
+describe('FKH-026 v3 — Főértéktáros(-helyettes) kivétel: a 4 érintett menüpont VÁLTOZATLANUL látszik (őr, ma is zöld)', () => {
+  // FK v3 §3 + §8: a SZERVER_ROLES bypass (menuVisibility.ts:50) szándékosan marad.
+  // Ezek a tesztek MA IS zöldek; céljuk, hogy a GREEN-fázisban kizárják a naiv
+  // teljes-törlés implementációt (annál a foertektar sem látná a bejegyzéseket).
+  it.each([
+    ['ertektar', 'Irodaközi trade'],
+    ['ertektar', 'Úton lévő csomagok'],
+    ['ertektar', 'Szállítólevelek'],
+    ['ertektar', 'Új átadás-átvétel rögzítése'],
+    ['penztar', 'Irodaközi trade'],
+    ['penztar', 'Úton lévő csomagok'],
+    ['penztar', 'Új átadás-átvétel rögzítése'],
+    // "Szállítólevelek" penztar módban eddig sem volt (FK §3: "– (eddig sem volt)").
+  ])('FR-kiegészítés: %s módban a foertektar látja: "%s"', (mode, label) => {
+    expect(fkh026VisibleItemLabels(mode as AppMode, ['foertektar'])).toContain(label)
+  })
+})
+
+describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változatlan sorrendben', () => {
+  // A várt listák a Fázis 0-ban felderített TÉNYLEGES menüGroups-ból származnak
+  // (nem az FK példálózó felsorolásából — "Készlet Mátrix"/"Mozgások"/"Jelentések"
+  // nevű menüpont NEM létezik), a 4 érintett bejegyzés elhagyásával, sorrendtartóan.
+  it('NFR-1: penztar módban PONTOSAN a nem érintett menüpontok maradnak, változatlan sorrendben', () => {
+    expect(fkh026VisibleItemLabels('penztar', ['penztar'])).toEqual([
+      'Pénztáros főmenü',
+      'Napnyitás',
+      'Valuta vétel / eladás',
+      'Konverzió',
+      'Irodaközi trade',
+      'Kassza / készlet',
+      'Címletezés',
+      'Címletezés – zárások',
+      'Címletképek (valuta)',
+      'Ügyfelek',
+      'Átadás-átvétel visszaigazolás (aláírás)',
+      'Napzárás',
+      'Árfolyamok (nézet)',
+      'Tranzakciólista',
+      'Egyéb feladatok',
+      'Kezelési költség beállítások',
+    ])
+  })
+
+  it('NFR-1: ertektar módban PONTOSAN a nem érintett menüpontok maradnak, változatlan sorrendben', () => {
+    expect(fkh026VisibleItemLabels('ertektar', ['ertektar'])).toEqual([
+      'Értéktári dashboard',
+      'Átadás-átvétel',
+      'Átadás-átvétel visszaigazolás (aláírás)',
+      'Értéktári készlet',
+      'Pénztári készletek',
+      'Új pénztár felrögzítése',
+      'Új munkatárs felvétele',
+      'Naplókönyv',
+      'Napi zárás',
+      'Napzárás',
+      'Havi zárás',
+      'Ügyfelek',
+      'Árfolyamok (nézet)',
+    ])
+  })
+
+  // v3: a foertektar(-helyettes) TELJES listája változatlan — a 4 érintett
+  // bejegyzés a "változatlan" oldalon szerepel (ma is zöld őr-tesztek).
+  it('NFR-1 (v3, foertektar): penztar módban a TELJES lista változatlan, sorrendtartóan', () => {
+    expect(fkh026VisibleItemLabels('penztar', ['foertektar'])).toEqual([
+      'Pénztáros főmenü',
+      'Napnyitás',
+      'Valuta vétel / eladás',
+      'Konverzió',
+      'Irodaközi trade',
+      'Kassza / készlet',
+      'Címletezés',
+      'Címletezés – zárások',
+      'Címletképek (valuta)',
+      'Ügyfelek',
+      'Úton lévő csomagok',
+      'Átadás-átvétel visszaigazolás (aláírás)',
+      'Új átadás-átvétel rögzítése',
+      'Napzárás',
+      'Árfolyamok (nézet)',
+      'Tranzakciólista',
+      'Egyéb feladatok',
+      'Kezelési költség beállítások',
+    ])
+  })
+
+  it('NFR-1 (v3, foertektar): ertektar módban a TELJES lista változatlan, sorrendtartóan', () => {
+    expect(fkh026VisibleItemLabels('ertektar', ['foertektar'])).toEqual([
+      'Értéktári dashboard',
+      'Átadás-átvétel',
+      'Irodaközi trade',
+      'Átadás-átvétel visszaigazolás (aláírás)',
+      'Új átadás-átvétel rögzítése',
+      'Szállítólevelek',
+      'Úton lévő csomagok',
+      'Értéktári készlet',
+      'Pénztári készletek',
+      'Új pénztár felrögzítése',
+      'Új munkatárs felvétele',
+      'Naplókönyv',
+      'Napi zárás',
+      'Napzárás',
+      'Havi zárás',
+      'Ügyfelek',
+      'Árfolyamok (nézet)',
+    ])
   })
 })
