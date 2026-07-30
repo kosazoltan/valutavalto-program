@@ -51,10 +51,15 @@ import static org.assertj.core.api.Assertions.fail;
  * <p>A migráció a BR035 (EBC) fiók EUR/USD egyenlegét korrigálja egész értékre,
  * KIZÁRÓLAG ha az ismert hibás érték (EUR 14334.45 / USD 5797.57) áll benne.
  * A teszt a migráció előtti/utáni állapotot hasonlítja össze a két érintett sorra,
- * és igazolja a nem érintett fiók/valuta/cég változatlanságát (FR-1/FR-2), az
- * őrfeltétel-védelmet (FR-3), az idempotenciát (NFR-1) és a RAISE NOTICE
- * jelzéseket (FR-6). A migrációs fájlt NÉV-MINTA alapján keresi (fk070 +
- * cash_balance), így a V-szám esetleges átszámozása nem töri a tesztet.</p>
+ * és igazolja a nem érintett fiók/valuta változatlanságát (FR-1/FR-2), a lookup
+ * {@code is_active=TRUE} szűrését, az őrfeltétel-védelmet (FR-3), az idempotenciát
+ * (NFR-1) és a RAISE NOTICE jelzéseket (FR-6). A migrációs fájlt NÉV-MINTA alapján
+ * keresi (fk070 + cash_balance), így a V-szám esetleges átszámozása nem töri a tesztet.</p>
+ *
+ * <p>Megjegyzés (Codex-review): "másik cég azonos BR035 kódú fiókja" teszt-eset
+ * SZÁNDÉKOSAN nincs — a {@code branch.code} GLOBÁLISAN egyedi ({@code uk_branch_code},
+ * V0_1 + Branch entitás {@code unique=true}, l. V277 kommentár), így ez a forgatókönyv
+ * sémailag előállíthatatlan; a migráció company-szűrője e mellett defense-in-depth.</p>
  */
 @Testcontainers
 @SpringBootTest(
@@ -106,14 +111,12 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
     // FR-1/FR-2 + scope-védelem: pontosan a két hibás sor korrigálódik
     // =====================================================================
     @Test
-    @DisplayName("FR-1/FR-2: az EBC/BR035 EUR és USD hibás sora korrigálódik; más valuta, más fiók és más cég azonos kódú fiókja érintetlen")
+    @DisplayName("FR-1/FR-2: az EBC/BR035 EUR és USD hibás sora korrigálódik; más valuta és más fiók érintetlen")
     void korrigaljaAKetHibasSortEsMastNemErint() {
         transactionTemplate.executeWithoutResult(status -> {
             Company ebc = seedCompany("EBC");
             Branch br035 = seedBranch(ebc, "BR035", true);
             Branch br099 = seedBranch(ebc, "BR099", true);
-            Company other = seedCompany("MASIK");
-            Branch otherBr035 = seedBranch(other, "BR035", true);
 
             Currency eur = currency("EUR");
             Currency usd = currency("USD");
@@ -125,8 +128,6 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
             seedBalance(ebc, br035, gbp, new BigDecimal("500.00"));
             // Nem érintett fiók ugyanazzal a hibás értékkel (branch-scope bizonyíték):
             seedBalance(ebc, br099, eur, EUR_BAD);
-            // Másik cég azonos BR035 kódú fiókja (company-scope bizonyíték):
-            seedBalance(other, otherBr035, eur, EUR_BAD);
         });
 
         List<String> notices = runMigration();
@@ -142,9 +143,6 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
                 .isEqualByComparingTo("500.00");
         assertThat(balance("EBC", "BR099", "EUR"))
                 .as("Másik fiók azonos hibás EUR értéke változatlan (branch-scope)")
-                .isEqualByComparingTo(EUR_BAD);
-        assertThat(balance("MASIK", "BR035", "EUR"))
-                .as("Másik cég BR035 kódú fiókja változatlan (company-scope)")
                 .isEqualByComparingTo(EUR_BAD);
 
         assertThat(notices)
@@ -207,6 +205,33 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
         assertThat(notices)
                 .as("Az elmaradt EUR-korrekciót a NOTICE explicit jelzi (nem csendes)")
                 .anySatisfy(n -> assertThat(n).contains("EUR korrekcio NEM futott le (0"));
+    }
+
+    // =====================================================================
+    // Lookup-szűrés: INAKTÍV BR035 fiókhoz a migráció nem nyúl (is_active=TRUE
+    // a feloldásban — a történelmi deaktivált duplikátum, l. V244, elleni védelem)
+    // =====================================================================
+    @Test
+    @DisplayName("Lookup-szűrés: inaktív (is_active=FALSE) BR035 fiók hibás egyenlegéhez a migráció nem nyúl, és NOTICE jelzi a no-opot")
+    void inaktivBr035EsetenNoOp() {
+        transactionTemplate.executeWithoutResult(status -> {
+            Company ebc = seedCompany("EBC");
+            Branch inactiveBr035 = seedBranch(ebc, "BR035", false);
+            seedBalance(ebc, inactiveBr035, currency("EUR"), EUR_BAD);
+            seedBalance(ebc, inactiveBr035, currency("USD"), USD_BAD);
+        });
+
+        List<String> notices = runMigration();
+
+        assertThat(balance("EBC", "BR035", "EUR"))
+                .as("Az inaktív BR035 EUR egyenlege változatlan (a lookup is_active=TRUE-ra szűr)")
+                .isEqualByComparingTo(EUR_BAD);
+        assertThat(balance("EBC", "BR035", "USD"))
+                .as("Az inaktív BR035 USD egyenlege változatlan")
+                .isEqualByComparingTo(USD_BAD);
+        assertThat(notices)
+                .as("A NOTICE jelzi, hogy aktív BR035 nem található")
+                .anySatisfy(n -> assertThat(n).contains("BR035 branch (EBC ceg) nem talalhato"));
     }
 
     // =====================================================================
