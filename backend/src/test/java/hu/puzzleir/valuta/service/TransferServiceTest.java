@@ -740,12 +740,15 @@ class TransferServiceTest {
         }
     }
 
+    // 13.6 szerződés-változás: a PENDING bizonylat mostantól a stornoPending útvonalra kerül
+    // (ld. TransferPendingStornoPostgresTest); ez a teszt az IN_TRANSIT esetre szűkült, hogy
+    // továbbra is igazolja a stornoCompleted guard státusz-ellenőrzését nem-COMPLETED bizonylatokra.
     @Test
-    @DisplayName("Sztornó: nem véglegesített (PENDING) bizonylat → ValidationException (a /cancel kezeli)")
+    @DisplayName("Sztornó: nem véglegesített (IN_TRANSIT) bizonylat → ValidationException")
     void testStorno_pending_rejected() {
         UUID companyId = UUID.randomUUID();
         Transfer transfer = buildStornoTarget(companyId);
-        transfer.setStatus(Transfer.TransferStatus.PENDING);
+        transfer.setStatus(Transfer.TransferStatus.IN_TRANSIT);
         when(transferRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(transfer));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
