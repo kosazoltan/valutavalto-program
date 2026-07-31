@@ -21,6 +21,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTextReasonModal } from '../../components/TextReasonModal'
+import { toast } from '../../components/ui/toaster'
 
 const STATUS_LABELS: Record<BankOrderStatus, string> = {
   PENDING: 'Függőben',
@@ -184,7 +185,7 @@ export default function BankOrderPage() {
       await bankOrdersApi.approve(id)
       await load()
     } catch (err) {
-      alert('Hiba a jóváhagyásnál: ' + (err instanceof Error ? err.message : ''))
+      toast.error('Hiba a jóváhagyásnál', err instanceof Error ? err.message : '')
     } finally {
       setActionInProgress(null)
     }
@@ -200,7 +201,7 @@ export default function BankOrderPage() {
       await bankOrdersApi.execute(id, ref || undefined)
       await load()
     } catch (err) {
-      alert('Hiba a teljesítésnél: ' + (err instanceof Error ? err.message : ''))
+      toast.error('Hiba a teljesítésnél', err instanceof Error ? err.message : '')
     } finally {
       setActionInProgress(null)
     }
@@ -214,7 +215,7 @@ export default function BankOrderPage() {
       await bankOrdersApi.cancel(id, reason)
       await load()
     } catch (err) {
-      alert('Hiba a visszavonásnál: ' + (err instanceof Error ? err.message : ''))
+      toast.error('Hiba a visszavonásnál', err instanceof Error ? err.message : '')
     } finally {
       setActionInProgress(null)
     }
