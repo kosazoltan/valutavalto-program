@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '../../utils/downloadBlob'
+import { useTextReasonModal } from '../../components/TextReasonModal'
 
 // A backend ReservationDto részleges leképezése (a UI által használt mezők) —
 // backend/.../dto/reservation/ReservationDto.java.
@@ -66,6 +67,8 @@ export default function ReservationPage() {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null)
   const workerBranchId = useAuthStore((state) => state.worker?.branchId ?? '')
+  // FKH-027 B-csoport: a natív window.prompt() kiváltása (Electronban silent no-op)
+  const { modal: reasonModal, requestReason } = useTextReasonModal()
 
   const loadReservations = useCallback(async () => {
     setLoading(true)
@@ -171,7 +174,9 @@ export default function ReservationPage() {
 
   const handleCancelByCustomer = useCallback(
     async (id: number) => {
-      const reason = prompt('Lemondás oka (ügyfél miatt — a letét nem jár vissza):')
+      const reason = await requestReason({
+        title: 'Lemondás oka (ügyfél miatt — a letét nem jár vissza):',
+      })
       if (reason === null || !reason.trim()) return
       try {
         await reservationsApi.cancel(id, reason.trim())
@@ -180,14 +185,14 @@ export default function ReservationPage() {
         // noop
       }
     },
-    [loadReservations],
+    [loadReservations, requestReason],
   )
 
   const handleCancelByCompany = useCallback(
     async (id: number) => {
-      const reason = prompt(
-        'Lemondás oka (EBC miatt — dupla letét-visszafizetés, supervisor jóváhagyás):',
-      )
+      const reason = await requestReason({
+        title: 'Lemondás oka (EBC miatt — dupla letét-visszafizetés, supervisor jóváhagyás):',
+      })
       if (reason === null || !reason.trim()) return
       const supervisorWorkerId = Number(localStorage.getItem('workerId')) || undefined
       if (!supervisorWorkerId) {
@@ -202,7 +207,7 @@ export default function ReservationPage() {
         // noop
       }
     },
-    [loadReservations],
+    [loadReservations, requestReason],
   )
 
   const filteredReservations = safeArray<Reservation>(reservations).filter((r) => {
@@ -477,6 +482,7 @@ export default function ReservationPage() {
           </div>
         </div>
       )}
+      {reasonModal}
     </div>
   )
 }
