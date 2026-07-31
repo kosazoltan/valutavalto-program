@@ -4,10 +4,27 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ReservationPage from './ReservationPage'
 
-// FKH-027 PR B (RED) — FR-B4..FR-B5: a handleCancelByCompany a natív prompt() helyett
-// a közös TextReasonModal-lal kéri be a lemondás okát. A supervisor-azonosító
-// feloldása és a jóváhagyási logika EBBEN A KÖRBEN NEM változik — a teszt ezt
-// változatlan localStorage('workerId') mockkal pinneli.
+// B-csoport (RED) — FR-T8: a natív window.alert() kiváltása a közös toast-tal
+// (components/ui/toaster) a hiányzó supervisor-azonosító ágon.
+//
+// Variáns: toast.warning — a művelet ELUTASÍTVA (nem rendszerhiba, nem kivétel),
+// és a szöveg konkrét teendőt ad a felhasználónak. Precedens ugyanerre a mintára:
+// ReceiptPrint.tsx:101 `toast.warning('Nyomtatás sikertelen', 'Engedélyezze ...')`.
+//
+// Szöveg-szerződés (Tomi jóváhagyása, 2026-07-31): a mai szövegben VAN natural
+// elválasztó — 'Hiányzó supervisor azonosító — jelentkezzen be újra a jóváhagyáshoz.' —,
+// a gondolatjel egy állapot-címet és egy teendő-mondatot választ el. Ezért cím/részlet
+// bontás, ugyanúgy, mint a catch-ágaknál. Egyetlen karakter-szintű eltérés: a részlet
+// önálló mondatként nagy kezdőbetűt kap ('Jelentkezzen'), a ReceiptPrint.tsx:101
+// precedens stílusával egyezően. Más szó nem változik.
+//
+// FIGYELEM (tudatos, jóváhagyott spec-bővülés): a meglévő
+// ReservationPage.cancelByCompanyReason.test.tsx teszt eddig a `window.alert`
+// hívását pinnelte ugyanezen az ágon; az az assert EBBEN a körben át lett írva
+// toast.warning-ra (nem törlés, nem gyengítés — dokumentált spec-változás).
+//
+// A kör KIZÁRÓLAG az alert()-hívást cseréli: a `requestReason()` (TextReasonModal),
+// a reason-guard és a supervisorWorkerId feloldása VÁLTOZATLAN.
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -74,13 +91,15 @@ const activeReservation = {
   expired: false,
 }
 
-describe('ReservationPage — FR-B4..B5: EBC-lemondás oka a TextReasonModal-lal', () => {
+// A mai alert-szöveg bontása: cím (a gondolatjel előtti állapot) + teendő-mondat.
+const MISSING_SUPERVISOR_TITLE = 'Hiányzó supervisor azonosító'
+const MISSING_SUPERVISOR_DETAIL = 'Jelentkezzen be újra a jóváhagyáshoz.'
+
+describe('ReservationPage — FR-T8: a natív alert() helyett toast', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
     localStorage.setItem('branchId', 'b-uuid')
-    // supervisor-mock: változatlan út (localStorage workerId), a kör NEM nyúl hozzá
-    localStorage.setItem('workerId', '99')
     mocks.get.mockResolvedValue({ data: [] })
     mocks.reservationList.mockResolvedValue([activeReservation])
     mocks.reservationReservedStock.mockResolvedValue([])
@@ -88,8 +107,8 @@ describe('ReservationPage — FR-B4..B5: EBC-lemondás oka a TextReasonModal-lal
       ...activeReservation,
       status: 'CANCELLED_BY_COMPANY',
     })
-    vi.spyOn(window, 'prompt').mockReturnValue(null)
     vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(window, 'prompt').mockReturnValue(null)
   })
 
   afterEach(() => {
@@ -104,7 +123,7 @@ describe('ReservationPage — FR-B4..B5: EBC-lemondás oka a TextReasonModal-lal
     )
     await user.click(await screen.findByRole('button', { name: 'EBC lemondás' }))
     const dialog = await screen.findByRole('alertdialog')
-    // FR-B4: a title szó szerint az eddigi prompt-szöveg
+    // FKH-027 marad: az ok a TextReasonModal-ból jön, nem natív prompt()-ból.
     expect(dialog).toHaveAccessibleName(
       'Lemondás oka (EBC miatt — dupla letét-visszafizetés, supervisor jóváhagyás):',
     )
@@ -112,57 +131,49 @@ describe('ReservationPage — FR-B4..B5: EBC-lemondás oka a TextReasonModal-lal
     return dialog
   }
 
-  it('FR-B5 string-ág: változatlan payload-dal hívódik a reservationsApi.cancelByCompany', async () => {
+  it('FR-T8 (ReservationPage.tsx:200) — hiányzó supervisor-azonosítónál toast.warning, natív alert nélkül', async () => {
+    // Nincs workerId a localStorage-ban → a supervisor-guard fog megszólalni.
     const user = userEvent.setup()
     const dialog = await openCancelModal(user)
     await user.type(within(dialog).getByRole('textbox'), 'Árfolyamhiba az EBC oldalán')
     await user.click(within(dialog).getByRole('button', { name: 'OK' }))
+
+    await waitFor(() =>
+      expect(mocks.toast.warning).toHaveBeenCalledWith(
+        MISSING_SUPERVISOR_TITLE,
+        MISSING_SUPERVISOR_DETAIL,
+      ),
+    )
+    expect(mocks.toast.warning).toHaveBeenCalledTimes(1)
+    expect(window.alert).not.toHaveBeenCalled()
+    // A guard változatlan: a művelet megszakad, nincs API-hívás.
+    expect(mocks.reservationCancelByCompany).not.toHaveBeenCalled()
+  })
+
+  it('meglévő supervisor-azonosítónál semmilyen toast nem fut, a payload változatlan', async () => {
+    localStorage.setItem('workerId', '99')
+    const user = userEvent.setup()
+    const dialog = await openCancelModal(user)
+    await user.type(within(dialog).getByRole('textbox'), 'Árfolyamhiba az EBC oldalán')
+    await user.click(within(dialog).getByRole('button', { name: 'OK' }))
+
     await waitFor(() =>
       expect(mocks.reservationCancelByCompany).toHaveBeenCalledWith(42, {
         reason: 'Árfolyamhiba az EBC oldalán',
         supervisorWorkerId: 99,
       }),
     )
-    expect(mocks.reservationCancelByCompany).toHaveBeenCalledTimes(1)
+    expect(mocks.toast.warning).not.toHaveBeenCalled()
     expect(window.alert).not.toHaveBeenCalled()
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(window.prompt).not.toHaveBeenCalled()
   })
 
-  it('FR-B5 null-ág: Mégse után nem hívódik a reservationsApi.cancelByCompany', async () => {
+  it('guard-sorrend változatlan: Mégse után se toast, se API-hívás (a reason-guard előbb fut)', async () => {
     const user = userEvent.setup()
     const dialog = await openCancelModal(user)
     await user.click(within(dialog).getByRole('button', { name: 'Mégse' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(mocks.reservationCancelByCompany).not.toHaveBeenCalled()
-    expect(window.prompt).not.toHaveBeenCalled()
-  })
 
-  it('üres string: a hívó-oldali validáció megmarad — üres okkal nincs API-hívás', async () => {
-    const user = userEvent.setup()
-    const dialog = await openCancelModal(user)
-    await user.click(within(dialog).getByRole('button', { name: 'OK' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(mocks.reservationCancelByCompany).not.toHaveBeenCalled()
-  })
-
-  // Spec-változás (Tomi jóváhagyása, 2026-07-31 — B-csoport, alert→toast kör):
-  // ez az ág a natív window.alert() helyett a közös toast-ot használja. A guard-logika
-  // (hiányzó workerId → nincs API-hívás) VÁLTOZATLAN, csak a visszajelzés csatornája
-  // és a szöveg cím/részlet bontása változik. Részletes szerződés + indoklás:
-  // ReservationPage.supervisorToast.test.tsx.
-  it('supervisor-logika változatlan: hiányzó workerId-nél toast és nincs API-hívás', async () => {
-    localStorage.removeItem('workerId')
-    const user = userEvent.setup()
-    const dialog = await openCancelModal(user)
-    await user.type(within(dialog).getByRole('textbox'), 'Árfolyamhiba az EBC oldalán')
-    await user.click(within(dialog).getByRole('button', { name: 'OK' }))
-    await waitFor(() =>
-      expect(mocks.toast.warning).toHaveBeenCalledWith(
-        'Hiányzó supervisor azonosító',
-        'Jelentkezzen be újra a jóváhagyáshoz.',
-      ),
-    )
+    expect(mocks.toast.warning).not.toHaveBeenCalled()
     expect(window.alert).not.toHaveBeenCalled()
     expect(mocks.reservationCancelByCompany).not.toHaveBeenCalled()
   })

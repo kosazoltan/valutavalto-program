@@ -6,6 +6,7 @@ import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '../../utils/downloadBlob'
 import { useTextReasonModal } from '../../components/TextReasonModal'
+import { toast } from '../../components/ui/toaster'
 
 // A backend ReservationDto részleges leképezése (a UI által használt mezők) —
 // backend/.../dto/reservation/ReservationDto.java.
@@ -197,7 +198,7 @@ export default function ReservationPage() {
       const supervisorWorkerId = Number(localStorage.getItem('workerId')) || undefined
       if (!supervisorWorkerId) {
         // A backend kötelezővé teszi a supervisorWorkerId-t az EBC-stornóhoz.
-        alert('Hiányzó supervisor azonosító — jelentkezzen be újra a jóváhagyáshoz.')
+        toast.warning('Hiányzó supervisor azonosító', 'Jelentkezzen be újra a jóváhagyáshoz.')
         return
       }
       try {
