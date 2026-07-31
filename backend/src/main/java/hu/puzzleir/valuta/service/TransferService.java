@@ -391,8 +391,22 @@ public class TransferService {
         if (Boolean.TRUE.equals(transfer.getIsCancelled())) {
             throw new ConflictException("VV-TX-003: Ez a bizonylat már sztornózva van: " + transfer.getTransferNumber());
         }
-        // Csak véglegesített (COMPLETED) bizonylat sztornózható — a PENDING/IN_TRANSIT-et a /cancel kezeli
-        // (API-megkerülés elleni védelem; a UI is csak COMPLETED-en mutatja a sztornó gombot).
+        // Státusz-diszpécser: a PENDING bizonylat KÜLÖN útvonalon (stornoPending) szűnik meg —
+        // ott a create-kori könyvelést kell visszafordítani, és csak a küldő fiók jogosult.
+        // A COMPLETED-ág változatlan. A két út szándékosan külön metódus, közös helperekkel.
+        if (transfer.getStatus() == Transfer.TransferStatus.PENDING) {
+            return stornoPending(transfer, reason);
+        }
+        return stornoCompleted(transfer, reason);
+    }
+
+    /**
+     * COMPLETED átadás-átvétel sztornója — a korábbi {@code storno} törzse, VÁLTOZATLAN
+     * viselkedéssel. A tenant- és {@code isCancelled}-guardot a hívó {@link #storno} futtatta le.
+     */
+    private TransferDto stornoCompleted(Transfer transfer, String reason) {
+        // Csak véglegesített (COMPLETED) bizonylat sztornózható ezen az ágon — az IN_TRANSIT/
+        // REJECTED/CANCELLED továbbra is elutasított (API-megkerülés elleni védelem).
         if (transfer.getStatus() != Transfer.TransferStatus.COMPLETED) {
             throw new ValidationException(
                     "Csak véglegesített (lezárt) átadás-átvétel bizonylat sztornózható. Függőben lévő bizonylatot a törlés (cancel) kezel.");
@@ -434,6 +448,136 @@ public class TransferService {
                 transfer.getId());
 
         return toDto(transfer);
+    }
+
+    /**
+     * PENDING átadás-átvétel sztornója — a korábbi {@code cancel} útvonal helyett.
+     *
+     * <p>A régi {@code cancel} csak státuszt váltott: a create-kor lekönyvelt összeg NEM került
+     * vissza, bizonylat és audit-nyom sem keletkezett — a küldő fiók kasszájából a pénz némán
+     * elveszett. Ez az útvonal ugyanazt a szerződést adja, mint a COMPLETED-sztornó: kötelező
+     * indoklás, fizikai visszapótlás, ellentételező bizonylat és {@code STORNO} audit.
+     *
+     * <p>Guard-sorrend: az {@code isCancelled}-ellenőrzést a hívó {@link #storno} futtatta
+     * (idempotencia), itt a fiók-jogosultság, majd az indoklás következik — ebben a sorrendben,
+     * hogy idegen fiókból érkező kísérlet indoklás nélkül is elutasításra kerüljön.
+     *
+     * <p>A COMPLETED-ágtól eltérően a státusz {@code CANCELLED}-re vált: a {@code receive} és a
+     * pending-listák a STÁTUSZRA szűrnek ({@code isCancelled}-re nem), ezért enélkül a visszavont
+     * tétel átvehető maradna — az pedig a visszapótolt összeg újbóli jóváírását jelentené.
+     */
+    private TransferDto stornoPending(Transfer transfer, String reason) {
+        // Fiók-guard: kizárólag a küldő fiók dolgozója — a mai cancel jogosultsági köre marad.
+        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
+        if (!transfer.getFromBranch().getId().equals(currentBranchId)) {
+            throw new ValidationException("Csak a küldő fiók dolgozói törölhetik az átadást!");
+        }
+        String normalizedReason = normalizeStornoReason(reason);
+
+        Worker actor = workerRepository.findById(SecurityUtils.getCurrentWorkerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található"));
+
+        transfer.setIsCancelled(true);
+        transfer.setCancelledAt(LocalDateTime.now());
+        // Az indoklás a reversal-generálás ELŐTT áll be: a createReversalTransaction
+        // notes-sablonja ezt olvassa (a COMPLETED-ág azonos sorrendje).
+        transfer.setCancellationReason(normalizedReason);
+        transfer.setCancelledBy(actor.getId());
+        transfer.setStatus(Transfer.TransferStatus.CANCELLED);
+
+        // FKH-022 FR-K2/3: a sztornó-sor SAJÁT naplókönyv-sorszáma HUF-os bizonylatnál.
+        // A megjelenítést a TransferRepository naplókönyv-lekérdezéseinek PENDING-sztornó
+        // bővítése biztosítja (isCancelled + kitöltött cancellationReason) — enélkül a
+        // kiosztott sorszám némán elveszne, lyukat ütve a naplókönyv számozásában.
+        if (transfer.getCompanyId() != null && isHufDaybookNumber(transfer.getTransferNumber())) {
+            transfer.setStornoJournalSequence(hufDaybookSequenceService.next(
+                    transfer.getCompanyId(), transfer.getCancelledAt().getYear()));
+        }
+
+        Transfer.TransferDirection dir = transfer.getDirection() != null
+                ? transfer.getDirection() : Transfer.TransferDirection.UF;
+        reversePendingCounterTransactions(transfer, actor, dir);
+
+        transferRepository.save(transfer);
+
+        auditLogService.log("STORNO",
+                String.format("VV-TX-002: Átadás-átvétel sztornózva: %s, indoklás: %s",
+                        transfer.getTransferNumber(), normalizedReason),
+                transfer.getId());
+
+        return toDto(transfer);
+    }
+
+    /**
+     * A PENDING bizonylat CREATE-KORI könyvelésének visszafordítása, irány szerint.
+     *
+     * <p>Eltér a {@link #reverseCounterTransactions} COMPLETED-változatától: PENDING-ben a
+     * FOGADÁS SOSEM történt meg, ezért az F irány kizárólag a küldő oldalt fordítja vissza
+     * (a COMPLETED-ág ott a fogadó kasszáját is csökkentené, ami itt nem létező mozgás volna).
+     * <ul>
+     *   <li>F  (create: from −) → from +</li>
+     *   <li>U  (create: from +) → from −  (fordított előjel)</li>
+     *   <li>FF (create: from −, to −) → from +, to +</li>
+     *   <li>UF — a create azonnal COMPLETED-re vált, ide nem juthat</li>
+     * </ul>
+     * A {@code receivedAmount} definíció szerint {@code null}, ezért mindenhol a kiküldött
+     * sor-összeg a visszafordítandó érték. Elő-lock ugyanabban a globális
+     * {@code (branchId, currencyId)} sorrendben, mint a create és a COMPLETED-sztornó.
+     */
+    private void reversePendingCounterTransactions(Transfer transfer, Worker actor,
+                                                   Transfer.TransferDirection direction) {
+        if (direction == Transfer.TransferDirection.UF) {
+            // Fail-fast, még a zárolás és bármely mutáció előtt.
+            throw new IllegalStateException(
+                    "UF irányú átadás nem lehet PENDING állapotban: " + transfer.getTransferNumber());
+        }
+        final java.util.List<TransferLine> bookLines = effectiveLines(transfer);
+        // A create FF-nél MINDKÉT oldalt csökkentette; F és U csak a fromBranch-et mozgatta.
+        final boolean touchesToBranch = direction == Transfer.TransferDirection.FF;
+        final java.util.List<hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey> lockKeys =
+                new java.util.ArrayList<>();
+        for (TransferLine ln : bookLines) {
+            Long cid = ln.getCurrency().getId();
+            lockKeys.add(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey(
+                    transfer.getFromBranch().getId(), cid));
+            if (touchesToBranch) {
+                lockKeys.add(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey(
+                        transfer.getToBranch().getId(), cid));
+            }
+        }
+        UUID cbCompanyId = requireBranchCompanyId(transfer.getFromBranch());
+        hu.puzzleir.valuta.util.CashLockOrdering.lockBranchCurrencyPairsInGlobalOrder(
+                (bid, c) -> cashBalanceRepository
+                        .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(bid, c, cbCompanyId),
+                lockKeys.toArray(new hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey[0]));
+
+        for (TransferLine ln : bookLines) {
+            BigDecimal sent = ln.getAmount();
+            switch (direction) {
+                case F -> {
+                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), sent);
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(),
+                            ln.getCurrency(), sent, TransactionType.TRANSFER_IN);
+                }
+                case U -> {
+                    decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), sent);
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(),
+                            ln.getCurrency(), sent, TransactionType.TRANSFER_OUT);
+                }
+                case FF -> {
+                    increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), sent);
+                    increaseCashBalance(transfer.getToBranch(), ln.getCurrency(), sent);
+                    createReversalTransaction(transfer, actor, transfer.getFromBranch(),
+                            ln.getCurrency(), sent, TransactionType.TRANSFER_IN);
+                    createReversalTransaction(transfer, actor, transfer.getToBranch(),
+                            ln.getCurrency(), sent, TransactionType.TRANSFER_IN);
+                }
+                default -> throw new IllegalStateException(
+                        "Nem kezelt irány a PENDING sztornóban: " + direction);
+            }
+        }
+        log.info("PENDING sztornó visszafordítás kész: {} ({} sor, irány {})",
+                transfer.getTransferNumber(), bookLines.size(), direction);
     }
 
     @Transactional(readOnly = true)
