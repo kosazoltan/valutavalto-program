@@ -335,6 +335,28 @@ public class Transaction {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * {@code created_at} védőháló: a mező {@code nullable = false}, de az értéket kizárólag a
+     * {@code @CreatedDate} auditing tölti — a {@link Transaction}-t építő service-ek (pl.
+     * {@code TransferService.createReversalTransaction}) szándékosan nem állítják be kézzel.
+     * Ha az auditing egy adott kontextusban nincs bekapcsolva, az INSERT NOT NULL-sértéssel
+     * elhasal, holott a mentendő adat maga hibátlan.
+     *
+     * <p><b>Élesben ez sosem sül el.</b> A {@code ValutaBackendApplication} hordozza az
+     * {@code @EnableJpaAuditing}-et, és a JPA-specifikáció szerint az {@code @EntityListeners}
+     * callbackjei (itt: {@code AuditingEntityListener}) az entitás SAJÁT callbackjei ELŐTT
+     * futnak — mire ide jutunk, a {@code createdAt} már ki van töltve, és a null-check no-op.
+     *
+     * <p>Kizárólag null-check + kitöltés: meglévő értéket — akár auditing állította be, akár
+     * a hívó adta meg expliciten — SOHA nem ír felül.
+     */
+    @PrePersist
+    void applyCreatedAtFallback() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
+
     // ============ MULTI-LINE SUPPORT ============
 
     /**
