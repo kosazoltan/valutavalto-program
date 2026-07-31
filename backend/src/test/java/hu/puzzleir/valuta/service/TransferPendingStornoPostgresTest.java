@@ -30,7 +30,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
@@ -100,11 +99,21 @@ import static org.mockito.Mockito.verify;
  * A {@code Transfer.createdAt} és a {@code Transaction.createdAt} egyaránt
  * {@code @CreatedDate} + {@code nullable = false}, és a {@code TransferService} egyiket sem
  * tölti kézzel. Auditing nélkül a valós {@code create()} útvonal már az első mentésnél
- * NOT NULL-sértéssel elhasalna — vagyis infrastruktúra miatt, NEM a mért hiba miatt, ami
- * értéktelen RED. Az auditingot ezért egy beágyazott {@code @TestConfiguration} kapcsolja
- * be, ami KIZÁRÓLAG ennek az osztálynak a Spring-kontextusára hat (a context-cache kulcsa
- * tartalmazza a konfigurációs osztályokat) — a {@code TestApplication} maga változatlan,
- * így a suite többi, kézi {@code createdAt}-seedelésre épülő tesztje nem sérül.
+ * NOT NULL-sértéssel elhasal — vagyis infrastruktúra miatt, NEM a mért hiba miatt, ami
+ * értéktelen RED.
+ *
+ * <p>Az annotáció OSZTÁLY-SZINTEN áll, a {@code ShipmentHandlingFeeIsolationPostgresIT}
+ * bevált mintája szerint. Egy korábbi kísérlet beágyazott {@code @TestConfiguration}-be
+ * tette — az NEM lépett életbe (CI-futás 30641621482: mind a 11 metódus
+ * {@code null value in column "created_at" of relation "transfer"} hibával halt el a
+ * {@code create()}-nél, még a mérendő pont előtt). A {@code @EnableJpaAuditing} által
+ * regisztrált infrastruktúrának az {@code EntityManagerFactory} felépítése ELŐTT kell
+ * feldolgozódnia, amihez a beágyazott konfiguráció túl későn kerül sorra.
+ *
+ * <p>A {@code TestApplication} maga változatlan; az auditing csak ennek az osztálynak a
+ * kontextusára hat, így a suite többi, kézi {@code createdAt}-seedelésre épülő tesztje nem
+ * sérül (ugyanezt a mintát a {@code ShipmentHandlingFeeIsolationPostgresIT} már ma is
+ * használja a közös suite-ban).
  *
  * <p>Külső határfelületek mockolva: {@code AuditLogService} (egyben az FR-P2 megfigyelője),
  * {@code ReceiptSequenceService}, {@code VaultStockFlowService} (nem-vault fiókoknál
@@ -112,6 +121,7 @@ import static org.mockito.Mockito.verify;
  * szolgáltatások, cash-lock, Postgres — valós.
  */
 @Testcontainers
+@EnableJpaAuditing
 @Import({
         TransferService.class,
         TransferSerialSequenceService.class,
@@ -127,16 +137,6 @@ import static org.mockito.Mockito.verify;
                 "spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect"
         })
 class TransferPendingStornoPostgresTest {
-
-    /**
-     * Csak ennek az osztálynak a kontextusára hat (ld. osztály-javadoc). {@code AuditorAware}
-     * bean nem kell: az érintett entitásokon csak {@code @CreatedDate}/{@code @LastModifiedDate}
-     * van, {@code @CreatedBy}/{@code @LastModifiedBy} nincs.
-     */
-    @TestConfiguration
-    @EnableJpaAuditing
-    static class JpaAuditingTestConfig {
-    }
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
