@@ -32,7 +32,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -95,25 +94,23 @@ import static org.mockito.Mockito.verify;
  * sztornózható. Függőben lévő bizonylatot a törlés (cancel) kezel."</pre>
  * Ez a hiba maga. Tesztet a bukás elfedésére módosítani TILOS.
  *
- * <h3>Infrastruktúra-megjegyzés — miért kell itt {@code @EnableJpaAuditing}</h3>
+ * <h3>Infrastruktúra-megjegyzés — miért NINCS itt {@code @EnableJpaAuditing}</h3>
  * A {@code Transfer.createdAt} és a {@code Transaction.createdAt} egyaránt
  * {@code @CreatedDate} + {@code nullable = false}, és a {@code TransferService} egyiket sem
- * tölti kézzel. Auditing nélkül a valós {@code create()} útvonal már az első mentésnél
- * NOT NULL-sértéssel elhasal — vagyis infrastruktúra miatt, NEM a mért hiba miatt, ami
- * értéktelen RED.
+ * tölti kézzel — a {@code TestApplication}-kontextusokban pedig szándékosan nincs auditing.
+ * Ezt a rést a {@code Transfer}/{@code Transaction} entitásokra felvett
+ * {@code @PrePersist applyCreatedAtFallback()} védőháló zárja be (PR #1532), így ez az osztály
+ * auditing NÉLKÜL is végig tudja futtatni a valós {@code create()} → {@code storno()} utat.
  *
- * <p>Az annotáció OSZTÁLY-SZINTEN áll, a {@code ShipmentHandlingFeeIsolationPostgresIT}
- * bevált mintája szerint. Egy korábbi kísérlet beágyazott {@code @TestConfiguration}-be
- * tette — az NEM lépett életbe (CI-futás 30641621482: mind a 11 metódus
- * {@code null value in column "created_at" of relation "transfer"} hibával halt el a
- * {@code create()}-nél, még a mérendő pont előtt). A {@code @EnableJpaAuditing} által
- * regisztrált infrastruktúrának az {@code EntityManagerFactory} felépítése ELŐTT kell
- * feldolgozódnia, amihez a beágyazott konfiguráció túl későn kerül sorra.
- *
- * <p>A {@code TestApplication} maga változatlan; az auditing csak ennek az osztálynak a
- * kontextusára hat, így a suite többi, kézi {@code createdAt}-seedelésre épülő tesztje nem
- * sérül (ugyanezt a mintát a {@code ShipmentHandlingFeeIsolationPostgresIT} már ma is
- * használja a közös suite-ban).
+ * <p><b>Auditingot bekapcsolni itt TILOS.</b> A Surefire alapértelmezetten
+ * {@code forkCount=1, reuseForks=true} mellett fut, tehát minden tesztosztály egy JVM-en
+ * osztozik: egy {@code @EnableJpaAuditing}-et hordozó {@code *Test} JVM-szinten aktiválja az
+ * auditingot és felülírja a suite kézzel seedelt {@code createdAt} értékeit. Ez mérhetően
+ * 7 idegen teszt bukását okozta 3 osztályban ({@code ShipmentHandlingFeeRepositoryTest},
+ * {@code HufDaybookUnifiedListFrK6PostgresTest},
+ * {@code HufDaybookAnnualSequenceBackfillFrK2PostgresTest}) a PR #1531 egy korábbi futásán.
+ * A {@code ShipmentHandlingFeeIsolationPostgresIT} azért élhet vele, mert {@code *IT} — a CI
+ * kizárólag {@code *Test}-et futtat, tehát az soha nem fut együtt a suite-tal.
  *
  * <p>Külső határfelületek mockolva: {@code AuditLogService} (egyben az FR-P2 megfigyelője),
  * {@code ReceiptSequenceService}, {@code VaultStockFlowService} (nem-vault fiókoknál
@@ -121,7 +118,6 @@ import static org.mockito.Mockito.verify;
  * szolgáltatások, cash-lock, Postgres — valós.
  */
 @Testcontainers
-@EnableJpaAuditing
 @Import({
         TransferService.class,
         TransferSerialSequenceService.class,
@@ -324,7 +320,7 @@ class TransferPendingStornoPostgresTest {
         assertThatCode(() -> transferService.storno(transferId, REASON))
                 .doesNotThrowAnyException();
 
-        assertThat(countTransactionsByReference(transferNumber + "-SZ"))
+        assertThat(countTransactionsByReference(fx.companyId(), transferNumber + "-SZ"))
                 .as("a createReversalTransaction mintája szerint <sorszám>-SZ referenciájú bizonylat keletkezik")
                 .isGreaterThanOrEqualTo(1L);
 
@@ -377,7 +373,7 @@ class TransferPendingStornoPostgresTest {
         assertThat(balanceOf(fx.companyId(), fx.fromBranchId(), fx.eurId()))
                 .as("elutasított sztornó NEM pótolhat vissza kasszát")
                 .isEqualByComparingTo(OPENING.subtract(AMOUNT));
-        assertThat(countTransactionsByReference(transferNumber + "-SZ"))
+        assertThat(countTransactionsByReference(fx.companyId(), transferNumber + "-SZ"))
                 .as("elutasított sztornó NEM generálhat ellentételező bizonylatot")
                 .isZero();
         verify(auditLogService, never()).log(eq("STORNO"), contains("VV-TX-002"), eq(created.getId()));
@@ -414,7 +410,7 @@ class TransferPendingStornoPostgresTest {
         assertThat(balanceOf(fx.companyId(), fx.fromBranchId(), fx.eurId()))
                 .as("nincs dupla visszapótlás")
                 .isEqualByComparingTo(balanceBefore);
-        assertThat(countTransactionsByReference(created.getTransferNumber() + "-SZ"))
+        assertThat(countTransactionsByReference(fx.companyId(), created.getTransferNumber() + "-SZ"))
                 .as("nincs dupla ellentételező bizonylat")
                 .isZero();
     }
@@ -542,10 +538,22 @@ class TransferPendingStornoPostgresTest {
                 .getCurrentBalance());
     }
 
-    /** JPQL-lel (nem natív SQL-lel) — a {@code transaction} táblanév SQL-kulcsszó-ütközését elkerülve. */
-    private long countTransactionsByReference(String referenceNumber) {
+    /**
+     * JPQL-lel (nem natív SQL-lel) — a {@code transaction} táblanév SQL-kulcsszó-ütközését elkerülve.
+     *
+     * <p><b>CÉG-SZKÓPOLT, és ez nem opcionális.</b> A bizonylatszám cégenként újraindul
+     * ({@code transfer_serial_sequence} kulcsa {@code (company_id, prefix)}), minden teszt pedig
+     * friss céget seedel — így MINDEN teszt első EUR-átadása {@code AT-000001}, a referencia
+     * {@code AT-000001-SZ} tehát ütközik a tesztmetódusok között. Cég-szűrés nélkül az FR-P5
+     * {@code isZero()} assertje 2-t látott az FR-P6 sikeres sztornójának ellentételező
+     * bizonylataiból (CI-futás 30644512648). Közös helper hibája volt, ezért mindhárom hívóhely
+     * (FR-P2, FR-P4, FR-P5) egyszerre kapta meg a szűrést.
+     */
+    private long countTransactionsByReference(UUID companyId, String referenceNumber) {
         return transactionTemplate.execute(status -> entityManager.createQuery(
-                        "SELECT COUNT(t) FROM Transaction t WHERE t.referenceNumber = :ref", Long.class)
+                        "SELECT COUNT(t) FROM Transaction t "
+                                + "WHERE t.referenceNumber = :ref AND t.company.id = :companyId", Long.class)
+                .setParameter("companyId", companyId)
                 .setParameter("ref", referenceNumber)
                 .getSingleResult());
     }
