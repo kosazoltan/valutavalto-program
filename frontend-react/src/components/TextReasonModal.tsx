@@ -104,7 +104,7 @@ export default function TextReasonModal({ open, title, placeholder, onClose }: P
             ref={cancelRef}
             type="button"
             onClick={() => onClose(null)}
-            className="btn-secondary text-sm"
+            className="form-button-secondary text-sm"
           >
             Mégse
           </button>
@@ -112,7 +112,7 @@ export default function TextReasonModal({ open, title, placeholder, onClose }: P
             ref={okRef}
             type="button"
             onClick={() => onClose(value)}
-            className="btn-primary text-sm"
+            className="form-button-primary text-sm"
           >
             OK
           </button>
