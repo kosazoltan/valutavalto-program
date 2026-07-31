@@ -51,6 +51,25 @@ import static org.assertj.core.api.Assertions.assertThat;
  * SOSEM volt valós pénzmozgás — sem eredeti, sem sztornó sorként nem jelenhet meg,
  * különben a napi összesen ellentételezés nélkül torzul. A kizárási minta a repo saját
  * {@code TransferRepository.findForReconciliation} precedensét követi.</p>
+ *
+ * <h3>Bővítés a PENDING-sztornó bevezetésekor (tudatos, jóváhagyott szerződés-változás)</h3>
+ * Az eredeti FR-K13 premissza — „{@code CANCELLED} = nem volt pénzmozgás" — KIZÁRÓLAG a régi,
+ * hibás {@code cancel()} útra volt igaz: az csak státuszt váltott, semmit nem könyvelt.
+ * A PENDING-sztornó bevezetésével a {@code CANCELLED} jelentése megváltozik: az új
+ * {@code stornoPending()} úton a bizonylat a create-kor MÁR könyvelt, a sztornó pedig
+ * VISSZAFORDÍTOTTA — két valós {@code cash_balance}-mozgás történt. Az ilyen tétel ezért
+ * eredeti + sztornó sorpárként MEGJELENIK a naplókönyvben (nettó nulla), pontosan úgy,
+ * ahogy a COMPLETED-sztornó.
+ *
+ * <p><b>Megkülönböztető jel:</b> {@code isCancelled = true AND cancellationReason IS NOT NULL}.
+ * A régi {@code cancel()} soha nem állított indoklást ({@code TransferService:336}), a
+ * {@code reject()} a {@code notes}-ba ír, és a {@code Transfer.cancellationReason}-t a teljes
+ * backendben egyetlen hely tölti: a storno-út. Így a két állapot élesen elválik.
+ *
+ * <p>Az alábbi {@link #voidedTransfersAreExcludedFromDaybook()} eset — beleértve az
+ * {@code FF-000804} defenzív esetet ({@code isCancelled=true} + {@code CANCELLED}, DE
+ * indoklás NÉLKÜL) — VÁLTOZATLAN, és továbbra is a kizárást igazolja. Az új viselkedést
+ * külön eset fedi: {@link #stornoPendingCancelledTransferAppearsInDaybook()}.</p>
  */
 @Testcontainers
 @Import(HufDaybookService.class)
@@ -128,6 +147,35 @@ class HufDaybookVoidedTransferExclusionFrK13PostgresTest {
                 .containsExactly("FF-000803");
     }
 
+    @Test
+    @DisplayName("FR-K13 bővítés: a stornoPending-alapú CANCELLED tétel (kitöltött indoklással) eredeti ÉS sztornó sorként megjelenik — a régi, cancel-alapú továbbra sem")
+    void stornoPendingCancelledTransferAppearsInDaybook() {
+        Seed seed = transactionTemplate.execute(status -> seedBase("K13S"));
+        assertThat(seed).isNotNull();
+
+        transactionTemplate.executeWithoutResult(status -> {
+            // ÚJ útvonal (stornoPending): a PENDING tétel a create-kor MÁR könyvelt, a sztornó
+            // VISSZAFORDÍTOTTA → két valós cash_balance-mozgás. status=CANCELLED,
+            // is_cancelled=true ÉS kitöltött cancellationReason (normalizeStornoReason kötelező).
+            saveTransfer(seed, "FF-000901", Transfer.TransferStatus.CANCELLED,
+                    DAY.atTime(9, 0, 0), true, DAY.atTime(11, 0, 0), "Beragadt tétel visszavonása");
+            // RÉGI útvonal (cancel): status=CANCELLED, is_cancelled=false, indoklás nélkül —
+            // sosem volt pénzmozgás, változatlanul kizárva. A kontraszt maga a bizonyíték,
+            // hogy a megkülönböztető jel mindkét irányban helyesen szűr.
+            saveTransfer(seed, "FF-000902", Transfer.TransferStatus.CANCELLED,
+                    DAY.atTime(9, 30, 0), false, null);
+        });
+
+        authenticate(seed.company().getId(), seed.branchA().getId());
+        HufDaybookDto daybook = hufDaybookService.getDaybook(seed.branchA().getId(), DAY);
+
+        assertThat(daybook.getRows())
+                .as("a stornoPending-elt tétel eredeti ÉS sztornó sorként megjelenik (nettó nulla); "
+                        + "a régi, cancel-alapú CANCELLED tétel egyik sorként sem")
+                .extracting(HufDaybookRowDto::getReceiptNumber)
+                .containsExactlyInAnyOrder("FF-000901", "FF-000901-SZ");
+    }
+
     // ============================ HELPEREK ============================
 
     private void authenticate(UUID companyId, UUID branchId) {
@@ -137,9 +185,17 @@ class HufDaybookVoidedTransferExclusionFrK13PostgresTest {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
+    /** Indoklás nélküli változat — a RÉGI, cancel/reject-alapú esetek változatlan hívási formája. */
     private void saveTransfer(Seed seed, String transferNumber, Transfer.TransferStatus status,
                               LocalDateTime createdAt, boolean isCancelled, LocalDateTime cancelledAt) {
+        saveTransfer(seed, transferNumber, status, createdAt, isCancelled, cancelledAt, null);
+    }
+
+    private void saveTransfer(Seed seed, String transferNumber, Transfer.TransferStatus status,
+                              LocalDateTime createdAt, boolean isCancelled, LocalDateTime cancelledAt,
+                              String cancellationReason) {
         transferRepository.save(Transfer.builder()
+                .cancellationReason(cancellationReason)
                 .transferNumber(transferNumber)
                 .companyId(seed.company().getId())
                 .fromBranch(transferNumber.startsWith("FF-") ? seed.branchA() : seed.branchB())
