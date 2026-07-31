@@ -20,6 +20,7 @@ import { api } from '../../services/api'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
+import { useTextReasonModal } from '../../components/TextReasonModal'
 
 const STATUS_LABELS: Record<BankOrderStatus, string> = {
   PENDING: 'Függőben',
@@ -96,6 +97,8 @@ export default function BankOrderPage() {
   const [wuLimitUseAmount, setWuLimitUseAmount] = useState('')
   const [wuLimitUseSaving, setWuLimitUseSaving] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
+  // FKH-027 B-csoport: a natív window.prompt() kiváltása (Electronban silent no-op)
+  const { modal: reasonModal, requestReason } = useTextReasonModal()
 
   // E-B8 (#279): a Készlet pillanatkép „Sürgősségi banki kivét" gombja
   // ?create=1&urgency=EMERGENCY paraméterekkel nyitja elő a formot.
@@ -188,7 +191,9 @@ export default function BankOrderPage() {
   }
 
   const handleExecute = async (id: string) => {
-    const ref = prompt('Bank hivatkozási szám (opcionális):')
+    const ref = await requestReason({ title: 'Bank hivatkozási szám (opcionális):' })
+    // A null (Mégse) és az üres string (OK üresen) itt szándékosan KÜLÖNBÖZIK:
+    // üres referenciával is végrehajtható a rendelés (ref || undefined lent).
     if (ref === null) return
     setActionInProgress(id)
     try {
@@ -202,7 +207,7 @@ export default function BankOrderPage() {
   }
 
   const handleCancel = async (id: string) => {
-    const reason = prompt('Visszavonás indoklása:')
+    const reason = await requestReason({ title: 'Visszavonás indoklása:' })
     if (!reason) return
     setActionInProgress(id)
     try {
@@ -695,6 +700,7 @@ export default function BankOrderPage() {
           </form>
         </div>
       )}
+      {reasonModal}
     </div>
   )
 }

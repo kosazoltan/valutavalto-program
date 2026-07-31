@@ -43,6 +43,7 @@ import { localIsoDate } from '../../utils/dateFormat'
 import TransferReceiptModal from './TransferReceiptModal'
 import { buildVaultLabel, loadOwnVaultContact } from './transferPageShared'
 import StaleShipmentConfirmDialog from '../../components/shipments/StaleShipmentConfirmDialog'
+import { useTextReasonModal } from '../../components/TextReasonModal'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -193,6 +194,9 @@ export default function TransferPage() {
   const [stornoTarget, setStornoTarget] = useState<Transfer | null>(null)
   const [stornoReason, setStornoReason] = useState('')
   const stornoPreviewRequestRef = useRef(0)
+
+  // FKH-027 B-csoport: a natív window.prompt() kiváltása (Electronban silent no-op)
+  const { modal: reasonModal, requestReason } = useTextReasonModal()
 
   // Load data
   const loadData = useCallback(async () => {
@@ -410,7 +414,7 @@ export default function TransferPage() {
 
   // Reject transfer
   const handleReject = async (transfer: Transfer) => {
-    const reason = prompt('Visszautasítás oka:')
+    const reason = await requestReason({ title: 'Visszautasítás oka:' })
     if (!reason) return
 
     try {
@@ -1256,6 +1260,7 @@ export default function TransferPage() {
           }}
         />
       )}
+      {reasonModal}
     </div>
   )
 }
