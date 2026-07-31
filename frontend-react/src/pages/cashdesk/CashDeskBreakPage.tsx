@@ -4,6 +4,7 @@ import { cashDeskBreakApi, CashDeskBreak, cashDeskApi, CashDesk } from '../../se
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import { useTextReasonModal } from '../../components/TextReasonModal'
 
 export default function CashDeskBreakPage() {
   const { t } = useTranslation()
@@ -13,6 +14,9 @@ export default function CashDeskBreakPage() {
   const [selectedCashDeskId, setSelectedCashDeskId] = useState<string>('')
   const [activeBreak, setActiveBreak] = useState<CashDeskBreak | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // FKH-027 C-csoport: a natív window.prompt() kiváltása (Electronban silent no-op)
+  const { modal: reasonModal, requestReason } = useTextReasonModal()
 
   const loadBreaks = useCallback(async () => {
     if (!selectedCashDeskId) return
@@ -61,9 +65,15 @@ export default function CashDeskBreakPage() {
       toast.warning('Hiányzó adat', 'Kérjük, válasszon pénztárat')
       return
     }
-    const breakType = prompt('Szünet típusa (pl: LUNCH, BREAK):')
+    // Szigorúan szekvenciális: a hook egyszerre egy aktív kérést kezel, ezért a
+    // második kérdés csak az első teljesülése után indulhat.
+    const breakType = await requestReason({ title: 'Szünet típusa (pl: LUNCH, BREAK):' })
+    // Kötelező mező: a null (Mégse) ÉS az üres string egyaránt teljes megszakítás,
+    // a második kérdésig el sem jut a művelet.
     if (!breakType) return
-    const reason = prompt('Ok (opcionális):') || undefined
+    // Opcionális: a null és az üres string egyaránt undefined-ként megy tovább,
+    // a szünet indítása ettől függetlenül megtörténik.
+    const reason = (await requestReason({ title: 'Ok (opcionális):' })) || undefined
     try {
       setError(null)
       await cashDeskBreakApi.start(selectedCashDeskId, breakType, reason)
@@ -198,6 +208,7 @@ export default function CashDeskBreakPage() {
           </tbody>
         </table>
       </div>
+      {reasonModal}
     </div>
   )
 }

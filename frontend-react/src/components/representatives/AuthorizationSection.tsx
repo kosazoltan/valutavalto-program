@@ -9,6 +9,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import { useTextReasonModal } from '../TextReasonModal'
 
 interface Props {
   representativeId: string
@@ -36,6 +37,9 @@ export default function AuthorizationSection({ representativeId }: Props) {
     operationDid: 'CURRENCY_EXCHANGE',
     startDate: new Date().toISOString().split('T')[0]!,
   })
+
+  // FKH-027 C-csoport: a natív window.prompt() kiváltása (Electronban silent no-op)
+  const { modal: reasonModal, requestReason } = useTextReasonModal()
 
   const loadAuthorizations = useCallback(async () => {
     try {
@@ -78,8 +82,12 @@ export default function AuthorizationSection({ representativeId }: Props) {
   ) => {
     const reason =
       action === 'suspend' || action === 'revoke'
-        ? prompt(`${action === 'suspend' ? 'Felfüggesztés' : 'Visszavonás'} oka:`)
+        ? await requestReason({
+            title: `${action === 'suspend' ? 'Felfüggesztés' : 'Visszavonás'} oka:`,
+          })
         : undefined
+    // Az őr változatlan: trim nélküli falsy-vizsgálat, tehát a null (Mégse) ÉS az
+    // üres string (OK üresen) egyaránt a "nincs API-hívás" ágba tartozik.
     if ((action === 'suspend' || action === 'revoke') && !reason) return
 
     try {
@@ -314,6 +322,7 @@ export default function AuthorizationSection({ representativeId }: Props) {
           </tbody>
         </table>
       )}
+      {reasonModal}
     </div>
   )
 }
