@@ -27758,7 +27758,11 @@ export interface operations {
       }
       cookie?: never
     }
-    requestBody?: never
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StornoRequestDto']
+      }
+    }
     responses: {
       /** @description OK */
       200: {

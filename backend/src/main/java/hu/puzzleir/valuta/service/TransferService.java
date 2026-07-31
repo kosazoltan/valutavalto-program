@@ -344,22 +344,10 @@ public class TransferService {
         return toDto(transfer);
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public void cancel(Long id) {
-        Transfer transfer = findOrThrow(id);
-        if (transfer.getStatus() != Transfer.TransferStatus.PENDING) {
-            throw new ValidationException("Csak függőben lévő átadás törölhető!");
-        }
-
-        // IDOR védelem: csak a küldő fiók dolgozói törölhetik
-        UUID currentBranchId = SecurityUtils.getCurrentBranchId();
-        if (!transfer.getFromBranch().getId().equals(currentBranchId)) {
-            throw new ValidationException("Csak a küldő fiók dolgozói törölhetik az átadást!");
-        }
-
-        transfer.setStatus(Transfer.TransferStatus.CANCELLED);
-        transferRepository.save(transfer);
-    }
+    // A korábbi cancel(Long) metódus TÖRÖLVE: csak státuszt váltott, a create-kori könyvelést
+    // nem fordította vissza, bizonylatot és auditot sem generált — a küldő fiók kasszájából a
+    // pénz némán elveszett. Az egyetlen hívója a /cancel végpont volt, ami mostantól a
+    // storno(id, reason) diszpécserre irányít (PENDING → stornoPending). Teszt sem hivatkozta.
 
     /**
      * Értéktári átadás-átvétel bizonylat SZTORNÓZÁSA indoklással (FR-12..16, FR-20).
