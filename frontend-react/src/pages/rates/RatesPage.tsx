@@ -46,6 +46,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useAppMode } from '../../hooks/useAppMode'
 import { useTranslation } from 'react-i18next'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { toast } from '../../components/ui/toaster'
 
 // 2026-04-29 B2 fix: a /rates oldalt a penztaros (mode='penztar') NEM
 // szerkesztheti — csak a foertektar/ugyvezeto az ARFOLYAM/Arfolyam.exe legacy
@@ -353,7 +354,7 @@ export default function RatesPage() {
     if (!rate) return
 
     if (editValues.buyRate >= editValues.sellRate) {
-      alert('A vételi árfolyamnak kisebbnek kell lennie az eladásinál!')
+      toast.warning('A vételi árfolyamnak kisebbnek kell lennie az eladásinál!')
       return
     }
 
@@ -388,7 +389,7 @@ export default function RatesPage() {
       void loadRates()
     } catch (err) {
       logger.error('RatesPage', 'Árfolyam mentési hiba:', err)
-      alert('Hiba az árfolyam mentésekor!')
+      toast.error('Hiba az árfolyam mentésekor!')
     }
   }
 
@@ -397,7 +398,7 @@ export default function RatesPage() {
     if (!rate) return
 
     if (editValues.buyRate >= editValues.sellRate) {
-      alert('A vételi árfolyamnak kisebbnek kell lennie az eladásinál!')
+      toast.warning('A vételi árfolyamnak kisebbnek kell lennie az eladásinál!')
       return
     }
 
