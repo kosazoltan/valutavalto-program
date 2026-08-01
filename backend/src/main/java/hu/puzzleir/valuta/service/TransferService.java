@@ -336,11 +336,47 @@ public class TransferService {
         if (transfer.getStatus() != Transfer.TransferStatus.PENDING) {
             throw new ValidationException("Csak függőben lévő átadás utasítható el!");
         }
+        // Kötelezően nem-üres indoklás — a mai frontend-viselkedés szerveroldali kikényszerítése.
+        // Enélkül üres indoklású sor kerülhetne a HUF naplókönyvbe (a megjelenítés feltétele a
+        // kitöltött cancellationReason).
+        String normalizedReason = normalizeStornoReason(reason);
 
         transfer.setToWorker(toWorker);
         transfer.setStatus(Transfer.TransferStatus.REJECTED);
-        transfer.setNotes((transfer.getNotes() != null ? transfer.getNotes() + "\n" : "") + "Elutasítás oka: " + reason);
+        transfer.setNotes((transfer.getNotes() != null ? transfer.getNotes() + "\n" : "")
+                + "Elutasítás oka: " + normalizedReason);
+
+        // Közös adatmodell a sztornóval: a HUF naplókönyv megkülönböztetője
+        // (isCancelled = true AND cancellationReason IS NOT NULL) ezt igényli — így a
+        // naplókönyv-lekérdezéseken NULLA változtatás kell, a REJECTED-et is fedik.
+        // Az indoklás a reversal-generálás ELŐTT áll be (a createReversalTransaction olvassa).
+        transfer.setIsCancelled(true);
+        transfer.setCancelledAt(LocalDateTime.now());
+        transfer.setCancellationReason(normalizedReason);
+        transfer.setCancelledBy(toWorker.getId());
+
+        // FKH-022 FR-K2/3: az elutasítás-sor SAJÁT naplókönyv-sorszáma HUF-os bizonylatnál.
+        if (transfer.getCompanyId() != null && isHufDaybookNumber(transfer.getTransferNumber())) {
+            transfer.setStornoJournalSequence(hufDaybookSequenceService.next(
+                    transfer.getCompanyId(), transfer.getCancelledAt().getYear()));
+        }
+
+        // A create-kori könyvelés visszafordítása. A visszapótlandó oldalt a DIRECTION dönti el,
+        // NEM a kezdeményező: a create ugyanazt könyvelte, akár a küldő vonja vissza
+        // (stornoPending), akár a fogadó utasítja el. Ezért a helper változtatás nélkül közös.
+        Transfer.TransferDirection dir = transfer.getDirection() != null
+                ? transfer.getDirection() : Transfer.TransferDirection.UF;
+        reversePendingCounterTransactions(transfer, toWorker, dir);
+
         transfer = transferRepository.save(transfer);
+
+        // KÜLÖN audit-action: az elutasítás NEM sztornó, az audit-nyom nem nevezheti annak.
+        // (A bizonylat-referencia ettől függetlenül közös "-SZ" marad — follow-up #21.)
+        auditLogService.log("TRANSFER_REJECTED",
+                String.format("VV-TX-004: Átadás-átvétel elutasítva: %s, indoklás: %s",
+                        transfer.getTransferNumber(), normalizedReason),
+                transfer.getId());
+
         return toDto(transfer);
     }
 

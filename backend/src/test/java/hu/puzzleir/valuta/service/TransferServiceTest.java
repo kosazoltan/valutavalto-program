@@ -854,20 +854,31 @@ class TransferServiceTest {
         verify(transferRepository, never()).save(any());
     }
 
+    // 13.6 fixture-bővítés: a reject() mostantól VISSZAPÓTOLJA a create-kori könyvelést, ezért a
+    // fixture megkapja a cash/bizonylat stubokat (a storno-success teszt mintája szerint). A teszt
+    // EREDETI CÉLJA változatlan — a célfiók dolgozója sikeresen elutasíthat —, a mellette mérhető
+    // mellékhatás (kassza-visszapótlás, -SZ bizonylat, TRANSFER_REJECTED audit) bővült.
     @Test
-    @DisplayName("SEC-regresszió: a CÉLFIÓK dolgozója továbbra is elutasíthat")
+    @DisplayName("SEC-regresszió: a CÉLFIÓK dolgozója továbbra is elutasíthat — és a kassza visszapótlódik")
     void testReject_receivingBranchWorker_succeeds() {
         UUID companyId = UUID.randomUUID();
-        Transfer transfer = buildStornoTarget(companyId);
+        Transfer transfer = buildStornoTarget(companyId); // direction = F
         transfer.setStatus(Transfer.TransferStatus.PENDING);
+        UUID fromId = transfer.getFromBranch().getId();
         Worker rejecter = Worker.builder().id(7L).branch(transfer.getToBranch()).build();
+        CashBalance fromBal = CashBalance.builder().currentBalance(new BigDecimal("5000")).build();
 
         when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
         when(workerRepository.findById(7L)).thenReturn(Optional.of(rejecter));
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-ELUT-1");
+        when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+                eq(fromId), anyLong(), eq(companyId))).thenReturn(Optional.of(fromBal));
 
         try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(null);
 
             service.reject(50L, "sérült plomba", 7L);
         }
@@ -875,5 +886,11 @@ class TransferServiceTest {
         assertThat(transfer.getStatus()).isEqualTo(Transfer.TransferStatus.REJECTED);
         assertThat(transfer.getNotes()).contains("sérült plomba");
         verify(transferRepository).save(any(Transfer.class));
+
+        // F irány: a create LEVONT a küldőtől, az elutasítás VISSZAADJA (5000 + 1000).
+        assertThat(fromBal.getCurrentBalance()).isEqualByComparingTo("6000");
+        assertThat(transfer.getIsCancelled()).isTrue();
+        assertThat(transfer.getCancellationReason()).isEqualTo("sérült plomba");
+        verify(auditLogService).log(eq("TRANSFER_REJECTED"), contains("VV-TX-004"), eq(50L));
     }
 }
