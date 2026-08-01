@@ -1961,10 +1961,14 @@ export const transferApi = {
     })
     return response.data
   },
-  cancel: async (id: number): Promise<void> => {
-    await api.post(`/transfers/${id}/cancel`)
+  /**
+   * PENDING átadás visszavonása — a végpont a backendben a BIZTONSÁGOS sztornó-útvonalra irányít
+   * (kassza-visszapótlás + `-SZ` bizonylat + STORNO audit), ezért az indoklás KÖTELEZŐ.
+   */
+  cancel: async (id: number, reason: string): Promise<void> => {
+    await api.post(`/transfers/${id}/cancel`, { reason })
   },
-  /** FR-12..16: átadás-átvétel bizonylat sztornózása indoklással (a /cancel a PENDING-törlés). */
+  /** FR-12..16: átadás-átvétel bizonylat sztornózása indoklással (COMPLETED bizonylatra). */
   storno: async (id: number, reason: string): Promise<Transfer> => {
     const response = await api.post<Transfer>(`/transfers/${id}/storno`, { reason })
     return response.data

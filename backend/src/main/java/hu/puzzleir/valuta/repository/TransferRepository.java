@@ -308,6 +308,17 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
      * {@code findForReconciliation} precedense szerint. A sztornózott COMPLETED
      * bizonylat (is_cancelled=true) bent marad: azt az eredeti + sztornó sorpár
      * ellentételezi.
+     *
+     * <p><b>PENDING-sztornó bővítés:</b> az FR-K13 eredeti premisszája („CANCELLED = nem volt
+     * pénzmozgás") KIZÁRÓLAG a régi, hibás {@code cancel()} útra volt igaz. A
+     * {@code TransferService.stornoPending} úton a bizonylat a create-kor MÁR könyvelt, a
+     * sztornó pedig visszafordította — két valós {@code cash_balance}-mozgás. Az ilyen tétel
+     * ezért eredeti + sztornó sorpárként MEGJELENIK (nettó nulla), mint a COMPLETED-sztornó.
+     * Megkülönböztető: {@code isCancelled = true AND cancellationReason IS NOT NULL} — a régi
+     * {@code cancel()} soha nem állított indoklást, a {@code reject()} a {@code notes}-ba ír,
+     * és a {@code cancellationReason}-t egyedül a storno-út tölti. Ugyanez a predikátum áll a
+     * párjában ({@link #sumHufDaybookSignedHufBeforeDate}) — a kettőt CSAK EGYÜTT szabad
+     * módosítani, különben a Nyitó egyenleg elcsúszik a napi soroktól.
      */
     @Query("""
             SELECT DISTINCT t FROM Transfer t
@@ -318,8 +329,9 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND ((t.transferNumber LIKE 'FF-%' AND fb.id = :branchId)
                 OR (t.transferNumber LIKE 'UF-%' AND tb.id = :branchId))
               AND t.transferNumber NOT LIKE '%-SZ'
-              AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
-                                   hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+              AND (t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                    hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+                OR (t.isCancelled = true AND t.cancellationReason IS NOT NULL))
             ORDER BY t.createdAt ASC, t.transferNumber ASC
             """)
     List<Transfer> findHufDaybookTransfersForDate(@Param("companyId") UUID companyId,
@@ -332,6 +344,12 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
      * NEM sztornó); a nap-hozzárendelés a cancelledAt alapján történik.
      * FR-K13 (Bugbot #1): a CANCELLED/REJECTED státuszú (érvénytelenített) bizonylat
      * defenzíven a sztornó-ágból is kizárva — sztornó csak COMPLETED bizonylaton él.
+     *
+     * <p><b>PENDING-sztornó bővítés:</b> a {@code stornoPending} úton a bizonylat CANCELLED
+     * státuszt kap, de VALÓS könyvelés-visszafordítás történt — ezért a sztornó-sora
+     * megjelenik. Megkülönböztető: {@code cancellationReason IS NOT NULL} (a régi
+     * {@code cancel()} indoklás nélkül hagyta). A pár ({@link #sumCancelledHufDaybookSignedHufBefore})
+     * ugyanezt a predikátumot hordozza — CSAK EGYÜTT módosíthatók.
      */
     @Query("""
             SELECT DISTINCT t FROM Transfer t
@@ -344,8 +362,9 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND ((t.transferNumber LIKE 'FF-%' AND fb.id = :branchId)
                 OR (t.transferNumber LIKE 'UF-%' AND tb.id = :branchId))
               AND t.transferNumber NOT LIKE '%-SZ'
-              AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
-                                   hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+              AND (t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                    hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+                OR (t.isCancelled = true AND t.cancellationReason IS NOT NULL))
             ORDER BY t.cancelledAt ASC, t.transferNumber ASC
             """)
     List<Transfer> findCancelledHufDaybookTransfersForDate(@Param("companyId") UUID companyId,
@@ -371,8 +390,9 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND ((t.transferNumber LIKE 'FF-%' AND t.fromBranch.id = :branchId)
                 OR (t.transferNumber LIKE 'UF-%' AND t.toBranch.id = :branchId))
               AND t.transferNumber NOT LIKE '%-SZ'
-              AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
-                                   hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+              AND (t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                    hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+                OR (t.isCancelled = true AND t.cancellationReason IS NOT NULL))
             """)
     BigDecimal sumHufDaybookSignedHufBeforeDate(@Param("companyId") UUID companyId,
                                                 @Param("branchId") UUID branchId,
@@ -395,8 +415,9 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND ((t.transferNumber LIKE 'FF-%' AND t.fromBranch.id = :branchId)
                 OR (t.transferNumber LIKE 'UF-%' AND t.toBranch.id = :branchId))
               AND t.transferNumber NOT LIKE '%-SZ'
-              AND t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
-                                   hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+              AND (t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                    hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+                OR (t.isCancelled = true AND t.cancellationReason IS NOT NULL))
             """)
     BigDecimal sumCancelledHufDaybookSignedHufBefore(@Param("companyId") UUID companyId,
                                                      @Param("branchId") UUID branchId,

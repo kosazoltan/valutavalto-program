@@ -440,13 +440,24 @@ export default function TransferPage() {
     }
   }
 
-  // Cancel transfer
+  // Cancel transfer — a backend mostantól a biztonságos sztornó-útvonalra irányít
+  // (kassza-visszapótlás + bizonylat + audit), ezért az indoklás KÖTELEZŐ.
   const handleCancel = async (transfer: Transfer) => {
-    if (!confirm('Biztosan törli ezt az átadást?')) return
+    const reason = await requestReason({
+      title: 'Átadás visszavonása — az indoklás kötelező',
+      placeholder: 'Pl. téves rögzítés, elmaradt szállítás',
+    })
+    if (reason === null) return // megszakítva
+    const trimmedReason = reason.trim()
+    if (!trimmedReason) {
+      setError('Az átadás visszavonásához az indoklás megadása kötelező!')
+      return
+    }
 
     try {
       setLoading(true)
-      await transferApi.cancel(transfer.id)
+      setError(null)
+      await transferApi.cancel(transfer.id, trimmedReason)
       await recordLocalAuditEvent({
         entityType: 'TRANSFER',
         eventType: 'CANCEL',
@@ -454,6 +465,7 @@ export default function TransferPage() {
         referenceNumber: transfer.transferNumber,
         payload: {
           transferId: transfer.id,
+          reason: trimmedReason,
         },
         status: 'SERVER_FORWARDED',
       })

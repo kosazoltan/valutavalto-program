@@ -47,10 +47,23 @@ public class TransferController {
         return ResponseEntity.ok(transferService.reject(id, reason, workerId));
     }
 
+    /**
+     * PENDING átadás visszavonása — a végpont MEGMARAD (kliens-kompatibilitás), de belül a
+     * BIZTONSÁGOS sztornó-útvonalra irányít.
+     *
+     * <p>A korábbi {@code TransferService.cancel} csak státuszt váltott: a create-kor lekönyvelt
+     * összeg NEM került vissza a küldő fiók kasszájába, bizonylat és audit-nyom sem keletkezett.
+     * Mostantól a hívás a {@link TransferService#storno} diszpécserre megy, amely PENDING-nél
+     * automatikusan a {@code stornoPending} ágra fut (visszapótlás + {@code -SZ} bizonylat +
+     * {@code STORNO} audit + HUF naplósorszám). Ezért lett az indoklás KÖTELEZŐ.
+     *
+     * <p>A válasz alakja szándékosan változatlan (204 No Content) — a szűkített hatókör miatt a
+     * kliens-oldali szerződésből csak a request body bővül. Szerepkör-annotáció változatlan.
+     */
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
-    public ResponseEntity<Void> cancel(@PathVariable Long id) {
-        transferService.cancel(id);
+    public ResponseEntity<Void> cancel(@PathVariable Long id, @Valid @RequestBody StornoRequestDto dto) {
+        transferService.storno(id, dto.getReason());
         return ResponseEntity.noContent().build();
     }
 
