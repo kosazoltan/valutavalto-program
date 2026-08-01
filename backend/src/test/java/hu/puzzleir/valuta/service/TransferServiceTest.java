@@ -776,17 +776,101 @@ class TransferServiceTest {
         }
     }
 
+    // A reject() tenant/branch-guardot kapott (security hardening), és a guardok a
+    // storno mintája szerint MEGELŐZIK az állapot-vizsgálatot. Ezért a fixture kiegészült
+    // cég/fiók adatokkal és SecurityUtils-mockkal, hogy a teszt a guardokon ÁTJUTVA
+    // továbbra is a státusz-guardot mérje. Az assert VÁLTOZATLAN.
     @Test
     @DisplayName("reject — mar lezart transfer nem utasithato el")
     void testReject_completed_throws() {
-        Transfer transfer = Transfer.builder()
-                .id(1L)
-                .status(Transfer.TransferStatus.COMPLETED)
-                .build();
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId); // status = COMPLETED
+        Worker rejecter = Worker.builder().id(7L).branch(transfer.getToBranch()).build();
 
-        when(transferRepository.findById(1L)).thenReturn(Optional.of(transfer));
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(workerRepository.findById(7L)).thenReturn(Optional.of(rejecter));
 
-        assertThatThrownBy(() -> service.reject(1L, "teszt ok", 1L))
-                .isInstanceOf(ValidationException.class);
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            assertThatThrownBy(() -> service.reject(50L, "teszt ok", 7L))
+                    .isInstanceOf(ValidationException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("SEC: idegen CÉG átadásának elutasítása → 404 (a létezés sem szivárog), mellékhatás nélkül")
+    void testReject_crossTenant_notFound_noSideEffect() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId);
+        transfer.setStatus(Transfer.TransferStatus.PENDING);
+        Worker rejecter = Worker.builder().id(7L).branch(transfer.getToBranch()).build();
+
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        // lenient: a guard ELŐBB dob, mint hogy ide jutna — de a stub nélkül a teszt a
+        // "Dolgozó nem található" ResourceNotFoundException-re is zöld lenne, azaz ROSSZ okból.
+        // Így a kivétel egyetlen lehetséges forrása a tenant-guard.
+        lenient().when(workerRepository.findById(7L)).thenReturn(Optional.of(rejecter));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            // MÁSIK cég van bejelentkezve
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(UUID.randomUUID());
+
+            assertThatThrownBy(() -> service.reject(50L, "idegen cég", 7L))
+                    .isInstanceOf(ResourceNotFoundException.class);
+        }
+
+        assertThat(transfer.getStatus())
+                .as("elutasított kísérlet NEM változtathat státuszt")
+                .isEqualTo(Transfer.TransferStatus.PENDING);
+        verify(transferRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("SEC: idegen FIÓK dolgozója (azonos cég) nem utasíthat el — mellékhatás nélkül")
+    void testReject_foreignBranchWorker_rejected_noSideEffect() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId);
+        transfer.setStatus(Transfer.TransferStatus.PENDING);
+        Company company = Company.builder().id(companyId).build();
+        Branch foreignBranch = Branch.builder().id(UUID.randomUUID()).code("BR777").company(company).build();
+        Worker foreignWorker = Worker.builder().id(9L).branch(foreignBranch).build();
+
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(workerRepository.findById(9L)).thenReturn(Optional.of(foreignWorker));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            assertThatThrownBy(() -> service.reject(50L, "idegen fiók", 9L))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("célfiók");
+        }
+
+        assertThat(transfer.getStatus()).isEqualTo(Transfer.TransferStatus.PENDING);
+        verify(transferRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("SEC-regresszió: a CÉLFIÓK dolgozója továbbra is elutasíthat")
+    void testReject_receivingBranchWorker_succeeds() {
+        UUID companyId = UUID.randomUUID();
+        Transfer transfer = buildStornoTarget(companyId);
+        transfer.setStatus(Transfer.TransferStatus.PENDING);
+        Worker rejecter = Worker.builder().id(7L).branch(transfer.getToBranch()).build();
+
+        when(transferRepository.findById(50L)).thenReturn(Optional.of(transfer));
+        when(workerRepository.findById(7L)).thenReturn(Optional.of(rejecter));
+        when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> sec = org.mockito.Mockito.mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            service.reject(50L, "sérült plomba", 7L);
+        }
+
+        assertThat(transfer.getStatus()).isEqualTo(Transfer.TransferStatus.REJECTED);
+        assertThat(transfer.getNotes()).contains("sérült plomba");
+        verify(transferRepository).save(any(Transfer.class));
     }
 }
