@@ -303,15 +303,39 @@ public class TransferService {
         return value == null ? null : value.replaceAll("[\\x00-\\x1F\\x7F]", "_");
     }
 
+    /**
+     * PENDING átadás elutasítása a FOGADÓ oldalról (a {@link #receive} ellenpárja).
+     *
+     * <p><b>Tenant/branch-scope guard (security hardening).</b> A metódus korábban nyers
+     * {@code findOrThrow(id)}-ra épült, cég- és fiók-ellenőrzés nélkül: ismert azonosító
+     * birtokában egy jogosult felhasználó MÁS cég vagy MÁS fiók PENDING átadását is
+     * elutasíthatta ({@code security-standards.md} §1–§3). A guardok sorrendje a
+     * {@link #storno} mintáját követi — a tenant-ellenőrzés MEGELŐZI az állapot-vizsgálatot,
+     * hogy idegen azonosítóra a bizonylat létezése és státusza se szivárogjon (404, nem 403).
+     *
+     * <p>A fiók-guard a {@link #receive} mintája: az elutasítás a CÉLFIÓK joga (a UI is csak a
+     * bejövő listán kínálja fel, és a metódus az elutasítót {@code toWorker}-ként rögzíti).
+     * A {@code null} branch-ű, országos szkópú szerepköröket — a {@code receive}-hez hasonlóan —
+     * szándékosan átengedi.
+     */
     @Transactional(rollbackFor = Exception.class)
     public TransferDto reject(Long id, String reason, Long workerId) {
-        Transfer transfer = findOrThrow(id);
-        if (transfer.getStatus() != Transfer.TransferStatus.PENDING) {
-            throw new ValidationException("Csak függőben lévő átadás utasítható el!");
-        }
+        Transfer transfer = transferRepository.findById(id).orElse(null);
+        assertOwnCompany(transfer, String.valueOf(id));
+        assertTerritoryVisible(transfer, String.valueOf(id));
 
         Worker toWorker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
+
+        // A célfiók joga — a receive:247 guardjának tükre (országos szkóp = null branch átengedve).
+        if (toWorker.getBranch() != null && !java.util.Objects.equals(
+                toWorker.getBranch().getId(), transfer.getToBranch().getId())) {
+            throw new ValidationException("Csak a célfiók dolgozói utasíthatják el ezt az átadást!");
+        }
+
+        if (transfer.getStatus() != Transfer.TransferStatus.PENDING) {
+            throw new ValidationException("Csak függőben lévő átadás utasítható el!");
+        }
 
         transfer.setToWorker(toWorker);
         transfer.setStatus(Transfer.TransferStatus.REJECTED);
