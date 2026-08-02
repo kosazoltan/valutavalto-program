@@ -1953,14 +1953,12 @@ export interface VatRefundRequest {
 }
 
 // ================== DAYBOOK API ==================
+// FKH-027 FR-8 (9.1/6.): a `downloadPdf` kliens-metódus törölve — a Naplókönyv
+// nyomtatása böngészős `window.print()`-tel megy (DaybookPage), nincs PDF-letöltés.
+// A backend `/daybook/{branchId}/{date}/pdf` végpont SZÁNDÉKOSAN megmarad (TBD-1).
 export const dailyReportApi = {
-  get: async (branchId: string, date: string) => (await api.get(`/daybook/${branchId}/${date}`)).data,
-  downloadPdf: async (branchId: string, date: string): Promise<Blob> => {
-    const response = await api.get(`/daybook/${branchId}/${date}/pdf`, {
-      responseType: 'blob',
-    })
-    return response.data as Blob
-  },
+  get: async (branchId: string, date: string) =>
+    (await api.get(`/daybook/${branchId}/${date}`)).data,
 }
 
 // ================== TURNOVER API ==================
