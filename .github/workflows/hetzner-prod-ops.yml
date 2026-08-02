@@ -774,6 +774,16 @@ jobs:
             #                         emberi torlesi dontesnek legyen kontextusa. NEM blokkolja a mozgatast.
             QUARANTINE_FAIL=0
             QUARANTINE_DIR=""
+            # QSTATE: a 8. szakasz TENYLEGES vegallapota. A zaro osszefoglalo KIZAROLAG ebbol dolgozik,
+            # hogy soha ne allithasson valotlant (pl. "a konyvtar valtozatlanul a helyen van" olyankor,
+            # amikor a mv mar reszben lefutott). Ertekei:
+            #   NOTHING_TO_DO  - nem volt 18-as adatkonyvtar
+            #   NOT_ATTEMPTED  - a mozgatas EL SEM KEZDODOTT (guard blokkolta / leallitas / mkdir bukott)
+            #   OK             - forras eltunt, cel teljes (PG_VERSION jelen)
+            #   SAFE_FAIL      - forras erintetlen, cel ures/nincs -> NINCS adatvesztes
+            #   DUAL           - forras ES cel is letezik tartalommal -> manualis dontes kell
+            #   UNKNOWN        - sem tiszta siker, sem biztonsagos hiba nem allapithato meg
+            QSTATE=NOT_ATTEMPTED
             OBJ_SUMMARY="nem meghatarozhato"
             PG18DIR=/var/lib/postgresql/18/main
             QROOT=/var/backups
@@ -929,39 +939,77 @@ jobs:
 
                 if [ "$QUARANTINE_FAIL" = "0" ]; then
                   echo "--- 8b) az adatkonyvtar ATMOZGATASA karantenba (NEM torles) ---"
-                  if ! sudo mkdir -p "$QDIR"; then
-                    echo "::error::A karanten-konyvtar letrehozasa BUKOTT ($QDIR) — a mozgatas kimarad."
+                  # dir_has_content(): 0 = a konyvtar letezik ES nem ures. A harom-agu utoellenorzesnek
+                  # "erdemi tartalom" kell: egy ures maradek-konyvtar egyik iranyban sem bizonyit adatot.
+                  dir_has_content() {
+                    sudo test -d "$1" || return 1
+                    [ -n "$(sudo ls -A "$1" 2>/dev/null | head -1)" ]
+                  }
+                  # ELOZETES kettos-allapot ellenorzes: ha egy KORABBI, megszakadt futas mar hagyott
+                  # karanten-peldanyt tartalommal, ES a forras is megvan, akkor az elozo futas a masolas
+                  # UTAN, a forras torlese ELOTT szakadt meg. Ilyenkor TILOS ujra mozgatni — ket peldany
+                  # lenne, es nem eldontheto gepileg, melyik a hiteles. (Sikeres elozo futas utan a forras
+                  # nem letezne, igy ide sem jutnank el.)
+                  PREV_Q=""
+                  for q in $(sudo find "$QROOT" -maxdepth 1 -type d -name 'pg18-quarantine-*' 2>/dev/null | sort); do
+                    if dir_has_content "$q/main"; then PREV_Q="$q/main"; break; fi
+                  done
+                  if [ -n "$PREV_Q" ] && dir_has_content "$PG18DIR"; then
+                    QSTATE=DUAL
                     QUARANTINE_FAIL=1
-                  elif ! sudo mv "$PG18DIR" "$QDIR/main"; then
-                    echo "::error::Az adatkonyvtar mozgatasa BUKOTT ($PG18DIR -> $QDIR/main) — kezi ellenorzes kell."
+                    echo "::error::KETTOS ALLAPOT — MANUALIS BEAVATKOZAS SZUKSEGES: mar letezik korabbi karanten-peldany tartalommal ($PREV_Q), ES a forras ($PG18DIR) is letezik tartalommal. NE futtasd ujra automatikusan ezt a lepest; elotte donteni kell, melyik a hiteles peldany. A workflow SEMMILYEN automatikus korrekciot nem vegez."
+                  elif ! sudo mkdir -p "$QDIR"; then
+                    QSTATE=NOT_ATTEMPTED
                     QUARANTINE_FAIL=1
+                    echo "::error::A karanten-konyvtar letrehozasa BUKOTT ($QDIR) — a mozgatas EL SEM KEZDODOTT, a forras erintetlen."
                   else
-                    echo "  mv $PG18DIR -> $QDIR/main : OK"
-                    echo "--- 8c) a mozgatas eredmenyenek ellenorzese ---"
-                    if sudo test -e "$PG18DIR"; then
-                      echo "::error::A FORRAS meg letezik a mozgatas utan: $PG18DIR — a karanten allapota nem egyertelmu!"
-                      QUARANTINE_FAIL=1
-                    else
-                      echo "  forras eltunt: $PG18DIR — OK"
-                    fi
-                    if sudo test -f "$QDIR/main/PG_VERSION"; then
-                      echo "  cel-ellenorzes OK: PG_VERSION jelen ($QDIR/main/PG_VERSION = $(sudo cat "$QDIR/main/PG_VERSION" 2>/dev/null | tr -d '[:space:]'))"
-                      echo "  karanten merete: $(sudo du -sh "$QDIR/main" 2>/dev/null | awk '{print $1}')"
+                    sudo mv "$PG18DIR" "$QDIR/main"; MVRC=$?
+                    echo "  mv $PG18DIR -> $QDIR/main : exit=$MVRC"
+                    echo "--- 8c) A MOZGATAS UTANI TENYLEGES ALLAPOT (ez a biztonsagi garancia — NEM az mv exit-kodja, NEM a G4 elozetes predikcioja) ---"
+                    # A GNU mv cross-device fallbackje ELOSZOR MASOL, es CSAK a masolas sikeres befejezese
+                    # UTAN torli a forrast. Az egyetlen valodi adatvesztes-ablak tehat a masolas es a torles
+                    # KOZOTTI megszakadas. Ez ellen nem a G4 elozetes predikciojanak tokeletesitesevel
+                    # vedekezunk (az egzotikus mount-elrendezeseknel elvileg sem tehato 100%-ban
+                    # megbizhatova), hanem ezzel a harom-agu (+ catch-all) utoellenorzessel, ami a
+                    # TENYLEGES fajlrendszer-allapotbol dolgozik es soha nem allit valotlant.
+                    SRC_HAS=0; DST_HAS=0; DST_PGV=0
+                    dir_has_content "$PG18DIR"   && SRC_HAS=1
+                    dir_has_content "$QDIR/main" && DST_HAS=1
+                    sudo test -f "$QDIR/main/PG_VERSION" && DST_PGV=1
+                    echo "  forras ($PG18DIR) tartalommal: $SRC_HAS | cel ($QDIR/main) tartalommal: $DST_HAS | celban PG_VERSION: $DST_PGV"
+                    if [ "$SRC_HAS" = "0" ] && [ "$DST_HAS" = "1" ] && [ "$DST_PGV" = "1" ]; then
+                      # (a) TISZTA SIKER
+                      QSTATE=OK
                       QUARANTINE_DIR="$QDIR/main"
-                    else
-                      echo "::error::A karanten-celban NINCS PG_VERSION ($QDIR/main) — a mozgatas eredmenye NEM igazolt, kezi ellenorzes kell!"
+                      echo "  KARANTEN OK — a forras eltunt, a cel teljes (PG_VERSION = $(sudo cat "$QDIR/main/PG_VERSION" 2>/dev/null | tr -d '[:space:]'), meret: $(sudo du -sh "$QDIR/main" 2>/dev/null | awk '{print $1}'))"
+                      echo "  MEGJEGYZES: a 18-as klaszter-BEJEGYZES (/etc/postgresql/18/main) szandekosan erintetlen — igy a"
+                      echo "  muvelet visszafordithato (az adatkonyvtar visszamozgatasaval). Amig a bejegyzes megvan, egy"
+                      echo "  esetleges kesobbi inditasi kiserlet a 18-asra hianyzo adatkonyvtar miatt bukna; ez a 16-os"
+                      echo "  klasztert es a valuta-backendet NEM erinti (a backend a postgresql@16-main.service-tol fugg)."
+                    elif [ "$SRC_HAS" = "1" ] && [ "$DST_HAS" = "0" ]; then
+                      # (b) TISZTA, BIZTONSAGOS HIBA — a mozgatas erdemben meg sem kezdodott
+                      QSTATE=SAFE_FAIL
                       QUARANTINE_FAIL=1
+                      echo "::error::A karantenba helyezes NEM sikerult (mv exit=$MVRC), DE az allapot BIZTONSAGOS: a forras adatkonyvtar VALTOZATLANUL a helyen van ($PG18DIR), a karanten-cel ures vagy nem letezik. NINCS adatvesztes. Kezi ellenorzes kell, mielott ujra futna."
+                    elif [ "$SRC_HAS" = "1" ] && [ "$DST_HAS" = "1" ]; then
+                      # (c) KETTOS ALLAPOT — a masolas utan, a torles elott szakadt meg
+                      QSTATE=DUAL
+                      QUARANTINE_FAIL=1
+                      echo "::error::KETTOS ALLAPOT — MANUALIS BEAVATKOZAS SZUKSEGES: mind a forras ($PG18DIR), mind a celkonyvtar ($QDIR/main) letezik tartalommal. A muvelet a masolas UTAN, a forras torlese ELOTT szakadhatott meg. NE futtasd ujra automatikusan ezt a lepest; elotte donteni kell, melyik a hiteles peldany. A workflow SEMMILYEN automatikus korrekciot nem vegez."
+                    else
+                      # (catch-all) minden mas kombinacio: forras es cel is ures/hianyzik, vagy a celban
+                      # van tartalom PG_VERSION nelkul. Nem allithatjuk sem a sikert, sem a biztonsagot.
+                      QSTATE=UNKNOWN
+                      QUARANTINE_FAIL=1
+                      echo "::error::ISMERETLEN/HIANYOS ALLAPOT — MANUALIS BEAVATKOZAS SZUKSEGES: forras_tartalom=$SRC_HAS, cel_tartalom=$DST_HAS, cel_PG_VERSION=$DST_PGV (mv exit=$MVRC). Sem tiszta siker, sem biztonsagos hiba nem allapithato meg. NE futtasd ujra automatikusan; eloszor kezzel kell tisztazni, hol van a hiteles adat. Legutobbi ellenorzott mentes: ${BACKUP_DIR_FOUND:-<nincs>}"
                     fi
-                    echo "--- pg_lsclusters a karanten utan (a 18-as bejegyzes megmarad, 'down'; az adat mar a karantenban) ---"
+                    echo "--- pg_lsclusters a mozgatasi kiserlet utan ---"
                     sudo pg_lsclusters 2>&1 | mask || true
-                    echo "  MEGJEGYZES: a 18-as klaszter-BEJEGYZES (/etc/postgresql/18/main) szandekosan erintetlen — igy a"
-                    echo "  muvelet visszafordithato (az adatkonyvtar visszamozgatasaval). Amig a bejegyzes megvan, egy"
-                    echo "  esetleges kesobbi inditasi kiserlet a 18-asra hianyzo adatkonyvtar miatt bukna; ez a 16-os"
-                    echo "  klasztert es a valuta-backendet NEM erinti (a backend a postgresql@16-main.service-tol fugg)."
                   fi
                 fi
               fi
             else
+              QSTATE=NOTHING_TO_DO
               echo "  ($PG18DIR nem letezik — nincs mit karantenba helyezni, a lepes kihagyva)"
             fi
             echo ""
@@ -972,17 +1020,35 @@ jobs:
             echo "bootstrap-status utolso HTTP-kod: $CODE"
             echo "backup-guard (1b)         : $([ "$BACKUP_OK" = "1" ] && echo "OK ($BACKUP_DIR_FOUND)" || echo 'NINCS friss mentes')"
             echo "18-as klaszter objektum-leltar (informacios): $OBJ_SUMMARY"
+            echo "8. szakasz vegallapota (QSTATE): $QSTATE"
+            # A zaro sor KIZAROLAG a QSTATE-bol dolgozik: a "valtozatlanul a helyen van" allitas CSAK ott
+            # hangzik el, ahol a mozgatas-utani ellenorzes ezt tenylegesen igazolta (NOT_ATTEMPTED / SAFE_FAIL).
             if [ "$QUARANTINE_FAIL" -ne 0 ]; then
-              echo "=== Kesz — RESZBEN SIKERES, a 8. lepesnel (a 16-os klaszter systemd alatt online, a backend 200-at ad, DE a 18-as klaszter karantenba helyezese nem tortent meg — a 18-as adatkonyvtar VALTOZATLANUL a helyen van) ==="
+              case "$QSTATE" in
+                NOT_ATTEMPTED)
+                  echo "=== Kesz — RESZBEN SIKERES, a 8. lepesnel: a 16-os klaszter systemd alatt online es a backend 200-at ad, a 18-as karantenba helyezese EL SEM KEZDODOTT (guard blokkolta, vagy a leallitas/konyvtar-letrehozas bukott) — a 18-as adatkonyvtar valtozatlanul a helyen van ==="
+                  ;;
+                SAFE_FAIL)
+                  echo "=== Kesz — RESZBEN SIKERES, a 8. lepesnel: a mozgatas nem sikerult, de az allapot BIZTONSAGOS — a 18-as adatkonyvtar valtozatlanul a helyen van, nincs adatvesztes ==="
+                  ;;
+                DUAL)
+                  echo "=== Kesz — FIGYELEM: KETTOS ALLAPOT a 8. lepesnel. A DB + backend HELYREALLT, de a 18-as klaszter adatai KET helyen leteznek (forras ES karanten). MANUALIS dontes kell, melyik a hiteles peldany; a lepes automatikus ujrafuttatasa TILOS. ==="
+                  ;;
+                *)
+                  echo "=== Kesz — FIGYELEM: ISMERETLEN ALLAPOT a 8. lepesnel. A DB + backend HELYREALLT, de a 18-as adatkonyvtar sorsa nem allapithato meg egyertelmuen (sem tiszta siker, sem biztonsagos hiba). MANUALIS ellenorzes kell; a lepes automatikus ujrafuttatasa TILOS. ==="
+                  ;;
+              esac
               exit 1
             fi
-            if [ -n "$QUARANTINE_DIR" ]; then
+            if [ "$QSTATE" = "OK" ] && [ -n "$QUARANTINE_DIR" ]; then
               echo ""
               echo "A 18-as klaszter adatkonyvtara KARANTENBA kerult (NEM torolve), itt: $QUARANTINE_DIR"
               echo "A tenyleges vegleges torles kulon, MANUALIS dontes — ez a workflow nem vegzi el automatikusan."
               echo "Visszaallitas (ha megis kellene): sudo mv '$QUARANTINE_DIR' '$PG18DIR'"
+              echo "=== Kesz — SIKERES (16-os klaszter systemd alatt online, backend HTTP 200, a 18-as klaszter adatkonyvtara karantenban) ==="
+            else
+              echo "=== Kesz — SIKERES (16-os klaszter systemd alatt online, backend HTTP 200; a 18-as klaszter adatkonyvtara nem letezett, nem volt mit karantenba helyezni) ==="
             fi
-            echo "=== Kesz — SIKERES (16-os klaszter systemd alatt online, backend HTTP 200, 18-as klaszter karantenban) ==="
           ENDSSH
 
       - name: 'NEON BACKUP PLAN (read-only) — replica-jog teszt + FK-closure + meretek'
