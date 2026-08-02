@@ -156,6 +156,9 @@ jobs:
             TS=$(date +%Y%m%d-%H%M%S)
             BDIR="/var/backups/cutover-$TS"
             sudo mkdir -p "$BDIR"
+            # A lokalis pg_dump 'postgres' userkent fut, ezert a root-tulajdonu konyvtarba nem tudna
+            # irni (Permission denied). Az iras-jog atadasa KOTELEZO a pg_dump ELOTT.
+            sudo chown postgres:postgres "$BDIR"
             echo "=== Backup-konyvtar: $BDIR ==="
             echo ""
             echo "=== .env aktualis config (jelszo maszkolva) ==="
@@ -185,6 +188,26 @@ jobs:
             echo ""
             echo "=== Neon transaction-delta reszletek (ha van) ==="
             psql "$NEON_URI" -P pager=off -c "SELECT id, created_at, status FROM transaction WHERE created_at > '2026-06-14 06:30:00' ORDER BY created_at DESC LIMIT 20" 2>/dev/null || echo "(nincs / nem olvashato)"
+            echo ""
+            echo "=== 4) VEGSO ELLENORZES: mindket dump letezik es ertelmes meretu (> 1000 byte) ==="
+            # Ez a lepes a Postgres-patch elotti biztonsagi mentes: NEM fejezodhet be sikeresen,
+            # ha barmelyik DB-rol hianyzik vagy csonka a dump (nema zold pipa tilos).
+            BACKUP_FAIL=0
+            for d in local_valuta.dump neon_neondb.dump; do
+              SZ=$(sudo stat -c%s "$BDIR/$d" 2>/dev/null || echo 0)
+              SZ=${SZ:-0}
+              if [ "$SZ" -gt 1000 ]; then
+                echo "  OK      $d : $SZ byte"
+              else
+                echo "  HIBA    $d : $SZ byte"
+                echo "::error::Ervenytelen backup: $BDIR/$d hianyzik vagy gyanusan kicsi ($SZ byte)"
+                BACKUP_FAIL=1
+              fi
+            done
+            if [ "$BACKUP_FAIL" -ne 0 ]; then
+              echo "::error::CUTOVER BACKUP SIKERTELEN — legalabb az egyik DB-rol nem keszult ervenyes mentes. A Postgres-patch NEM inditando!"
+              exit 1
+            fi
             echo "=== Kesz — KET backup elkeszult, semmi DB nem valtozott ==="
           ENDSSH
 
