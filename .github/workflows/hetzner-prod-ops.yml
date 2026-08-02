@@ -24,6 +24,7 @@ on:
           - cutover-unit-probe
           - cutover-runtime-probe
           - cluster-status-probe
+          - incident-restore-pg16-service
           - restore-local-primary
           - neon-backup-plan
           - neon-backup-refresh
@@ -507,6 +508,216 @@ jobs:
             echo ""
 
             echo "=== Kesz — read-only, semmi nem valtozott ==="
+          ENDSSH
+
+      - name: 'INCIDENT RESTORE PG16 SERVICE (write) — beragadt 16-os klaszter systemd ala + backend + ures 18 eldobasa'
+        if: ${{ github.event.inputs.action == 'incident-restore-pg16-service' }}
+        run: |
+          # INCIDENS-HELYREALLITAS (IRO MUVELET). Kizarolag a 2026-08-02-i, kb. 22 oraja tarto elesincidensre.
+          # DIAGNOZIS (cluster-status-probe, 2026-08-02 08:3x UTC):
+          #   * a 16-os (hiteles, adatot tartalmazo) klaszter TENYLEGESEN FUT es figyel az 5432-n, az adatok
+          #     frissek es epek (WAL-iras aznap 07:37-ig), DE a felbeszakadt pg_upgradecluster miatt NEM a
+          #     systemd felugyelete alatt indult el -> a postgresql@16-main.service 'failed'
+          #     ("Cluster is already running" / "Can't open PID file ... after start" / result 'protocol');
+          #   * a valuta-backend.service emiatt 'dependency' hibaval nem indul, HOLOTT a DB elerheto lenne;
+          #   * a 18-as klaszter (5433) online, de URES/felkesz (~40 MB) — a szandektalan major-upgrade itt
+          #     szakadt meg, tenyleges adat-migracio sosem futott ra;
+          #   * a leallas elottrol van friss, pg_restore --list-tel igazolt mentes MINDKET DB-rol
+          #     (cutover-backup).
+          # CEL: a 16-os klasztert rendezetten a systemd fele ala visszavinni, a backendet elinditani, es
+          # CSAK sikeres backend-health utan az ures 18-as klasztert eldobni.
+          # FAIL-CLOSED: minden szakasz gatolja a kovetkezot; bukas eseten ::error:: + exit 1, es a
+          # folyamat ott all meg (a 7. lepes utan SZANDEKOSAN NINCS automatikus rollback — a DB-oldal
+          # ekkorra mar helyreallt, egy sikertelen backend-indulas kulon vizsgalatot igenyel).
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            # mask(): ugyanaz az ALTALANOS kulcs=ertek / kulcs: ertek szabaly, mint a cluster-status-probe-ban
+            # (a lepesek onallo scriptek, nincs kozos forras). A systemctl status / journalctl kimenet sokfele
+            # formaban hordozhat secretet: connection-URI credential, Bearer/Basic sema, "password: ...",
+            # PGPASSWORD=, token=, api_key=, Authorization:. A kettospontos alak a sor vegeig maszkol, az
+            # egyenlosegjeles token-alapu marad (kulonben a logfmt-szeru "a=1 b=2" sor egeszet kiuresitene).
+            mask() {
+              sed -E \
+                -e 's#(://)[^:@/[:space:]]+:[^@[:space:]]+@#\1***:***@#g' \
+                -e 's#(://)[^@/[:space:]]+@#\1***@#g' \
+                -e 's#\b(Bearer|Basic)[[:space:]]+[A-Za-z0-9._~+/=-]{8,}#\1 ***#Ig' \
+                -e 's/("?[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"?[[:space:]]*[=:][[:space:]]*")[^"]*/\1***/Ig' \
+                -e 's/("[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"[[:space:]]*[=:][[:space:]]*)[^",}[:space:]]+/\1***/Ig' \
+                -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*:[[:space:]]*)[^"]+/\1***/Ig' \
+                -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*=[[:space:]]*)[^[:space:]&;,"]+/\1***/Ig'
+            }
+            # pg16_status(): a pg_lsclusters 16/main soranak Status oszlopa (Ver Cluster Port Status ...).
+            # A fejlec-sor ($1=="Ver") nem illeszkedik, igy nem kell -h kapcsolo.
+            pg16_status() { sudo pg_lsclusters 2>/dev/null | awk '$1=="16" && $2=="main" {print $4}'; }
+            # listen5432(): hany listener van MOST az 5432-es porton (a peer-oszlop "0.0.0.0:*", nem illeszkedik).
+            listen5432() { sudo ss -tlnp 2>/dev/null | grep -cE ':5432([[:space:]]|$)'; }
+
+            echo "=== 1) ELOTTE-allapot rogzitese (read-only) ==="
+            sudo pg_lsclusters 2>&1 | mask || echo "(pg_lsclusters nem elerheto)"
+            echo "--- systemctl status postgresql@16-main.service (rovidítve) ---"
+            systemctl status postgresql@16-main.service --no-pager -n 10 2>&1 | mask || true
+            echo "--- 5432-es port allapota MOST ---"
+            sudo ss -tlnp 2>/dev/null | grep -E ':5432([[:space:]]|$)' || echo "  (nincs listener az 5432-n)"
+            echo ""
+
+            echo "=== 2) A systemd-n KIVUL futo 16-os klaszter GRACEFUL leallitasa (--mode=fast) ==="
+            PG16_BEFORE=$(pg16_status)
+            echo "  pg_lsclusters 16/main statusz elotte: ${PG16_BEFORE:-<ures>}"
+            if [ "$PG16_BEFORE" = "online" ]; then
+              if ! sudo -u postgres pg_ctlcluster 16 main stop --mode=fast; then
+                echo "::error::A 16-os klaszter leallitasa BUKOTT (pg_ctlcluster 16 main stop --mode=fast) — ALLJ. A klaszter valoszinuleg tovabbra is fut; kezi vizsgalat kell, semmi mas nem valtozott."
+                exit 1
+              fi
+              echo "  pg_ctlcluster stop --mode=fast: OK"
+            elif [ "$PG16_BEFORE" = "down" ]; then
+              # Idempotens ujrafuttatas (pl. ha a 2. lepes utan szakadt meg a kapcsolat): a mar leallitott
+              # klaszterre a pg_ctlcluster stop hibat adna, ezert csak atlepjuk.
+              echo "  a 16-os klaszter mar 'down' — a stop lepes kihagyva (idempotens ujrafuttatas)"
+            else
+              echo "::error::Ismeretlen/hianyzo 16/main klaszter-statusz ('${PG16_BEFORE:-<ures>}') — ALLJ, ez nem a diagnosztizalt allapot."
+              exit 1
+            fi
+            echo ""
+
+            echo "=== 3) Ellenorzes: TENYLEGESEN leallt-e a 16-os klaszter ==="
+            sleep 3
+            PG16_AFTER=$(pg16_status)
+            echo "  pg_lsclusters 16/main statusz: ${PG16_AFTER:-<ures>}"
+            if [ "$PG16_AFTER" != "down" ]; then
+              echo "::error::A 16/main statusza nem 'down' a leallitas utan — ALLJ (nem indulhat ra a systemd-s start)."
+              exit 1
+            fi
+            L=$(listen5432); L=${L:-0}
+            if [ "$L" -ne 0 ]; then
+              echo "::error::Az 5432-es porton MEG MINDIG van listener a leallitas utan — ALLJ, ez nem a vart allapot."
+              sudo ss -tlnp 2>/dev/null | grep -E ':5432([[:space:]]|$)' || true
+              exit 1
+            fi
+            echo "  5432-es port: nincs listener — OK"
+            echo ""
+
+            echo "=== 4) A 'failed' systemd-allapot torlese (reset-failed) ==="
+            # SZANDEKOSAN NEM fail-closed: ez a lepes onmagaban nem valtoztat a klaszteren, viszont ha itt
+            # allnank meg, a DB LEALLITVA maradna (rosszabb, mint a kiindulo allapot). A valodi kapu az
+            # 5. szakasz start + is-active ellenorzese.
+            if ! sudo systemctl reset-failed postgresql@16-main.service; then
+              echo "::warning::A systemctl reset-failed nem sikerult — a start megis megkiserelve (az 5. szakasz a valodi kapu)"
+            else
+              echo "  reset-failed: OK"
+            fi
+            echo ""
+
+            echo "=== 5) Rendes indítás a systemd-n KERESZTUL ==="
+            if ! sudo systemctl start postgresql@16-main.service; then
+              echo "::error::A 'systemctl start postgresql@16-main.service' BUKOTT — ALLJ. Diagnosztika (utolso 30 journal-sor):"
+              sudo journalctl -u postgresql@16-main.service -n 30 --no-pager 2>&1 | mask || echo "  (journal nem olvashato)"
+              echo "=== Kesz — RESZBEN SIKERES, az 5. lepesnel allt meg (a 16-os klaszter LE VAN ALLITVA, kezi indulas kell) ==="
+              exit 1
+            fi
+            sleep 3
+            ACT=$(systemctl is-active postgresql@16-main.service 2>/dev/null)
+            echo "  systemctl is-active postgresql@16-main.service: ${ACT:-<ures>}"
+            if [ "$ACT" != "active" ]; then
+              echo "::error::A postgresql@16-main.service nem 'active' az indulas utan — ALLJ. Diagnosztika (utolso 30 journal-sor):"
+              sudo journalctl -u postgresql@16-main.service -n 30 --no-pager 2>&1 | mask || echo "  (journal nem olvashato)"
+              echo "=== Kesz — RESZBEN SIKERES, az 5. lepesnel allt meg (a unit nem 'active') ==="
+              exit 1
+            fi
+            echo "  a 16-os klaszter MOST a systemd felugyelete alatt fut — OK"
+            echo ""
+
+            echo "=== 6a) DB-elerhetoseg SUPERUSERkent (peer auth, kozvetlenul a klaszteren) ==="
+            SU_OUT=$(sudo -u postgres psql -d valuta -tAc "SELECT 1" 2>&1); SU_RC=$?
+            echo "  exit=$SU_RC | valasz='$(printf '%s' "$SU_OUT" | mask | tail -1)'"
+            if [ "$SU_RC" -ne 0 ] || [ "$(printf '%s' "$SU_OUT" | tr -d '[:space:]')" != "1" ]; then
+              echo "::error::A 'valuta' DB superuserkent NEM erheto el — ALLJ, a backendet rossz DB-allapot mellett nem inditjuk."
+              echo "=== Kesz — RESZBEN SIKERES, a 6a) lepesnel allt meg ==="
+              exit 1
+            fi
+            echo ""
+
+            echo "=== 6b) APP-SZINTU elerhetoseg — a futo backend .env-hitelesitoivel, PgBouncer-en (6432) ==="
+            # Pontosan ugy, ahogy a cutover-preflight tette: a jelszo sehol nem logolt.
+            ENVFILE=/opt/valutavalto/backend/.env
+            DBU=$(sudo grep -E '^DATABASE_USERNAME=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)
+            DBP=$(sudo grep -E '^DATABASE_PASSWORD=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)
+            DBU=${DBU:-valuta_user}
+            echo "  user: $DBU (jelszo nem logolt)"
+            APP_OUT=$(PGPASSWORD="$DBP" psql "host=localhost port=6432 dbname=valuta user=$DBU" -tAc \
+              "SELECT 'app-kapcsolat=OK; employee='||(SELECT count(*) FROM employee)||'; transaction='||(SELECT count(*) FROM transaction)" 2>&1); APP_RC=$?
+            printf '%s\n' "$APP_OUT" | mask | tail -3 | sed 's/^/  /'
+            if [ "$APP_RC" -ne 0 ] || ! printf '%s' "$APP_OUT" | grep -q 'app-kapcsolat=OK'; then
+              echo "::error::Az app-szintu DB-kapcsolat (PgBouncer 6432) NEM el — ALLJ, a backendet rossz DB-allapot mellett nem inditjuk."
+              echo "--- diagnosztika: pgbouncer statusz ---"
+              systemctl status pgbouncer.service --no-pager -n 12 2>&1 | mask || true
+              echo "=== Kesz — RESZBEN SIKERES, a 6b) lepesnel allt meg (a 16-os klaszter systemd alatt fut) ==="
+              exit 1
+            fi
+            echo "  app-szintu kapcsolat: OK"
+            echo ""
+
+            echo "=== 7) valuta-backend.service inditasa + health-check retry ==="
+            if ! sudo systemctl start valuta-backend.service; then
+              echo "::error::A 'systemctl start valuta-backend.service' BUKOTT — ALLJ (NINCS automatikus rollback). Utolso 40 journal-sor:"
+              sudo journalctl -u valuta-backend.service -n 40 --no-pager 2>&1 | mask || echo "  (journal nem olvashato)"
+              echo "  (a 18-as klaszter eldobasa SZANDEKOSAN KIMARAD — marad ter a tovabbi diagnosztikahoz)"
+              echo "=== Kesz — RESZBEN SIKERES, a 7. lepesnel allt meg (DB-reteg helyreallt, backend nem indult) ==="
+              exit 1
+            fi
+            sleep 15
+            HEALTHY=0; CODE=000
+            for i in 1 2 3 4 5 6 7 8; do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
+              echo "  health attempt $i: HTTP $CODE"
+              [ "$CODE" = "200" ] && { HEALTHY=1; break; }
+              sleep 12
+            done
+            if [ "$HEALTHY" != "1" ]; then
+              echo "::error::A backend a retry-k alatt NEM adott 200-at (utolso: HTTP $CODE) — ALLJ. NINCS automatikus rollback: a DB-oldal ekkorra helyreallt, ez kulon vizsgalatot igenyel, nem DB-visszaallitast. Utolso 40 journal-sor:"
+              sudo journalctl -u valuta-backend.service -n 40 --no-pager 2>&1 | mask || echo "  (journal nem olvashato)"
+              echo "  (a 18-as klaszter eldobasa SZANDEKOSAN KIMARAD — marad ter a tovabbi diagnosztikahoz)"
+              echo "=== Kesz — RESZBEN SIKERES, a 7. lepesnel allt meg (backend health-check bukott) ==="
+              exit 1
+            fi
+            echo "  backend health: HTTP 200 — OK"
+            echo ""
+
+            echo "=== 8) A felkesz, URES 18-as klaszter biztonsagos eldobasa (csak sikeres 7. lepes utan) ==="
+            DROP18_FAIL=0
+            PG18DIR=/var/lib/postgresql/18/main
+            if sudo test -d "$PG18DIR"; then
+              echo "  18-as klaszter merete: $(sudo du -sh "$PG18DIR" 2>/dev/null | awk '{print $1}')"
+              SZ18=$(sudo du -sm "$PG18DIR" 2>/dev/null | awk '{print $1}'); SZ18=${SZ18:-0}
+              # GUARD: a diagnosztika egy ~40 MB-os, sosem migralt klasztert talalt. Ha a konyvtar ennel
+              # nagysagrendekkel nagyobb, az NEM az ures/felkesz klaszter -> nem dobjuk el automatikusan.
+              if [ "$SZ18" -gt 512 ]; then
+                echo "::error::A 18-as klaszter $SZ18 MB — jelentosen nagyobb a vart ~40 MB-nal, igy NEM az azonositott ures/felkesz klaszter. A pg_dropcluster KIMARAD, kezi ellenorzes kell."
+                DROP18_FAIL=1
+              elif sudo pg_dropcluster 18 main --stop; then
+                echo "  pg_dropcluster 18 main --stop: OK"
+                echo "--- pg_lsclusters a dropcluster utan (csak a 16-os maradhat, 'online') ---"
+                sudo pg_lsclusters 2>&1 | mask || true
+              else
+                echo "::error::A 'pg_dropcluster 18 main --stop' BUKOTT — a helyreallitas (DB + backend) EL, csak a takaritas maradt el."
+                DROP18_FAIL=1
+              fi
+            else
+              echo "  ($PG18DIR nem letezik — nincs mit eldobni, a lepes kihagyva)"
+            fi
+            echo ""
+
+            echo "=== 9) VEGSO OSSZEFOGLALO ==="
+            sudo pg_lsclusters 2>&1 | mask || echo "(pg_lsclusters nem elerheto)"
+            echo "valuta-backend MainPID    : $(systemctl show valuta-backend.service -p MainPID --value 2>/dev/null)"
+            echo "valuta-backend ActiveState: $(systemctl show valuta-backend.service -p ActiveState --value 2>/dev/null) | SubState: $(systemctl show valuta-backend.service -p SubState --value 2>/dev/null)"
+            echo "bootstrap-status utolso HTTP-kod: $CODE"
+            if [ "$DROP18_FAIL" -ne 0 ]; then
+              echo "=== Kesz — RESZBEN SIKERES, a 8. lepesnel (a 16-os klaszter systemd alatt online, a backend 200-at ad, DE a 18-as klaszter eldobasa nem tortent meg) ==="
+              exit 1
+            fi
+            echo "=== Kesz — SIKERES (16-os klaszter systemd alatt online, backend HTTP 200, ures 18-as klaszter eldobva) ==="
           ENDSSH
 
       - name: 'NEON BACKUP PLAN (read-only) — replica-jog teszt + FK-closure + meretek'
