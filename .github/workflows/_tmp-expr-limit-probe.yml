@@ -1,0 +1,534 @@
+name: TMP expression-limit probe (TORLENDO)
+
+# IDEIGLENES, ELDOBHATO PROBA. Semmilyen kulso rendszerhez nem nyul: egyetlen echo.
+# Celja EGY kerdes empirikus eldontese: elfogad-e a GitHub Actions egy 21000 karakternel
+# HOSSZABB run-scalart, ha az NEM tartalmaz ${{ }} kifejezest (azaz literal, nem template).
+# A torzs a hetzner-prod-ops.yml incident-restore lepesenek run-blokkja, MINDEN sora kikommentezve.
+on:
+  push:
+    branches: [ci/fix-actions-expression-limit]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Hosszu LITERAL run-blokk (0 db expression) — elindul-e egyaltalan'
+        run: |
+          # # INCIDENS-HELYREALLITAS (IRO MUVELET). Kizarolag a 2026-08-02-i, kb. 22 oraja tarto elesincidensre.
+          # # DIAGNOZIS (cluster-status-probe, 2026-08-02 08:3x UTC):
+          # #   * a 16-os (hiteles, adatot tartalmazo) klaszter TENYLEGESEN FUT es figyel az 5432-n, az adatok
+          # #     frissek es epek (WAL-iras aznap 07:37-ig), DE a felbeszakadt pg_upgradecluster miatt NEM a
+          # #     systemd felugyelete alatt indult el -> a postgresql@16-main.service 'failed'
+          # #     ("Cluster is already running" / "Can't open PID file ... after start" / result 'protocol');
+          # #   * a valuta-backend.service emiatt 'dependency' hibaval nem indul, HOLOTT a DB elerheto lenne;
+          # #   * a 18-as klaszter (5433) online, de URES/felkesz (~40 MB) — a szandektalan major-upgrade itt
+          # #     szakadt meg, tenyleges adat-migracio sosem futott ra;
+          # #   * a leallas elottrol van friss, pg_restore --list-tel igazolt mentes MINDKET DB-rol
+          # #     (cutover-backup).
+          # # CEL: a 16-os klasztert rendezetten a systemd fele ala visszavinni, a backendet elinditani, es
+          # # CSAK sikeres backend-health utan a felkesz 18-as klasztert KARANTENBA helyezni (adatkonyvtar
+          # # atmozgatasa /var/backups ala — NEM torles, visszafordithato).
+          # # FAIL-CLOSED: minden szakasz gatolja a kovetkezot; bukas eseten ::error:: + exit 1, es a
+          # # folyamat ott all meg (a 7. lepes utan SZANDEKOSAN NINCS automatikus rollback — a DB-oldal
+          # # ekkorra mar helyreallt, egy sikertelen backend-indulas kulon vizsgalatot igenyel).
+          # # A confirm_down_ok input SANITIZALVA, szigoruan 'yes'/'no' erteke megy at a boxra —
+          # # tetszoleges felhasznaloi szoveg SOHA nem kerul a tavoli scriptbe.
+          # CONFIRM=no
+          # case "$(printf '%s' "${CONFIRM_DOWN_OK:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" in
+          # igen|yes|true|y|i) CONFIRM=yes ;;
+          # esac
+          # echo "confirm_down_ok (normalizalva): $CONFIRM"
+          # if [ -z "${VPS_SSH_USER:-}" ] || [ -z "${VPS_SERVER_IP:-}" ]; then
+          # echo "::error::Hianyzo VPS_SSH_USER / VPS_SERVER_IP secret — a lepes nem futhat."
+          # exit 1
+          # fi
+          # ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+          # "$VPS_SSH_USER@$VPS_SERVER_IP" \
+          # "CONFIRM_DOWN='$CONFIRM' bash -s" << 'ENDSSH'
+          # set -o pipefail
+          # # mask(): ugyanaz az ALTALANOS kulcs=ertek / kulcs: ertek szabaly, mint a cluster-status-probe-ban
+          # # (a lepesek onallo scriptek, nincs kozos forras). A systemctl status / journalctl kimenet sokfele
+          # # formaban hordozhat secretet: connection-URI credential, Bearer/Basic sema, "password: ...",
+          # # PGPASSWORD=, token=, api_key=, Authorization:. A kettospontos alak a sor vegeig maszkol, az
+          # # egyenlosegjeles token-alapu marad (kulonben a logfmt-szeru "a=1 b=2" sor egeszet kiuresitene).
+          # mask() {
+          # sed -E \
+          # -e 's#(://)[^:@/[:space:]]+:[^@[:space:]]+@#\1***:***@#g' \
+          # -e 's#(://)[^@/[:space:]]+@#\1***@#g' \
+          # -e 's#\b(Bearer|Basic)[[:space:]]+[A-Za-z0-9._~+/=-]{8,}#\1 ***#Ig' \
+          # -e 's/("?[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"?[[:space:]]*[=:][[:space:]]*")[^"]*/\1***/Ig' \
+          # -e 's/("[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"[[:space:]]*[=:][[:space:]]*)[^",}[:space:]]+/\1***/Ig' \
+          # -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*:[[:space:]]*)[^"]+/\1***/Ig' \
+          # -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*=[[:space:]]*)[^[:space:]&;,"]+/\1***/Ig'
+          # }
+          # # pg16_status(): a pg_lsclusters 16/main soranak Status oszlopa (Ver Cluster Port Status ...).
+          # # A fejlec-sor ($1=="Ver") nem illeszkedik, igy nem kell -h kapcsolo.
+          # pg16_status() { sudo pg_lsclusters 2>/dev/null | awk '$1=="16" && $2=="main" {print $4}'; }
+          # # listen5432(): hany listener van MOST az 5432-es porton (a peer-oszlop "0.0.0.0:*", nem illeszkedik).
+          # listen5432() { sudo ss -tlnp 2>/dev/null | grep -cE ':5432([[:space:]]|$)'; }
+          # echo "=== 1) ELOTTE-allapot rogzitese (read-only) ==="
+          # sudo pg_lsclusters 2>&1 | mask || echo "(pg_lsclusters nem elerheto)"
+          # echo "--- systemctl status postgresql@16-main.service (rovidítve) ---"
+          # systemctl status postgresql@16-main.service --no-pager -n 10 2>&1 | mask || true
+          # echo "--- 5432-es port allapota MOST ---"
+          # sudo ss -tlnp 2>/dev/null | grep -E ':5432([[:space:]]|$)' || echo "  (nincs listener az 5432-n)"
+          # echo ""
+          # echo "=== 1b) BACKUP-GUARD ELOELLENORZES (read-only) — van-e friss, ellenorizheto cutover-mentes ==="
+          # # A 8. szakasz (a 18-as klaszter adatkonyvtaranak karantenba mozgatasa) az egyetlen olyan muvelet
+          # # ebben a lepesben, ami adatot mozgat, es CSAK akkor futhat, ha van friss, ellenorizheto mentes. Itt, a legelejen ertekeljuk ki (a flaget a 8.
+          # # szakasz hasznalja), hogy az uzemelteto AZONNAL lassa, ha a takaritas ki fog maradni — ne a
+          # # ~3 perces helyreallitas vegen derüljön ki.
+          # # ABLAK = 48 ora, NEM 24: a cutover-backup KOZVETLENUL a Postgres-patch elott futott, ami a
+          # # kb. 22 oras kimaradast okozta. Egy 24 oras ablak igy meg ERVENYES incidens-mentesre is
+          # # lejarna a helyreallitas kozben, es a guard vaklarmakent blokkolna a takaritast.
+          # BACKUP_MAX_AGE_MIN=2880
+          # BACKUP_OK=0
+          # BACKUP_DIR_FOUND=""
+          # for d in $(sudo find /var/backups -maxdepth 1 -type d -name 'cutover-*' -mmin -"$BACKUP_MAX_AGE_MIN" 2>/dev/null | sort -r); do
+          # echo "  vizsgalt konyvtar: $d (mtime: $(sudo stat -c '%y' "$d" 2>/dev/null))"
+          # DUMPS_OK=1
+          # for f in local_valuta.dump neon_neondb.dump; do
+          # SZ=$(sudo stat -c%s "$d/$f" 2>/dev/null || echo 0); SZ=${SZ:-0}
+          # if [ "$SZ" -gt 1000 ]; then
+          # echo "    OK              $f : $SZ byte"
+          # else
+          # echo "    HIANYZIK/KICSI  $f : $SZ byte"
+          # DUMPS_OK=0
+          # fi
+          # done
+          # if [ "$DUMPS_OK" = "1" ]; then BACKUP_OK=1; BACKUP_DIR_FOUND="$d"; break; fi
+          # done
+          # if [ "$BACKUP_OK" = "1" ]; then
+          # echo "  BACKUP-GUARD: OK — friss, teljes mentes: $BACKUP_DIR_FOUND"
+          # else
+          # # SZANDEKOSAN csak ::warning:: itt: a DB-reteg helyreallitasa (2-7. szakasz) NEM destruktiv
+          # # es surgosebb, mint a takaritas. A hianyzo mentes KIZAROLAG a 8. szakaszt tiltja.
+          # echo "::warning::BACKUP-GUARD: NINCS 48 oranal frissebb, teljes cutover-backup a /var/backups alatt — a 8. szakasz (18-as klaszter karantenba helyezese) KI FOG MARADNI. A DB-helyreallitas folytatodik."
+          # fi
+          # echo ""
+          # echo "=== 2) A systemd-n KIVUL futo 16-os klaszter GRACEFUL leallitasa (--mode=fast) ==="
+          # PG16_BEFORE=$(pg16_status)
+          # echo "  pg_lsclusters 16/main statusz elotte: ${PG16_BEFORE:-<ures>}"
+          # if [ "$PG16_BEFORE" = "online" ]; then
+          # if ! sudo -u postgres pg_ctlcluster 16 main stop --mode=fast; then
+          # echo "::error::A 16-os klaszter leallitasa BUKOTT (pg_ctlcluster 16 main stop --mode=fast) — ALLJ. A klaszter valoszinuleg tovabbra is fut; kezi vizsgalat kell, semmi mas nem valtozott."
+          # exit 1
+          # fi
+          # echo "  pg_ctlcluster stop --mode=fast: OK"
+          # elif [ "$PG16_BEFORE" = "down" ]; then
+          # # EMBERI MEGEROSITESHEZ KOTOTT AG. A dokumentalt 2026-08-02-i incidens-szignatura az, hogy a
+          # # klaszter FUT (csak systemd-n kivul) — a 'down' allapot tehat NEM az eredeti incidens, hanem
+          # # vagy ennek a lepesnek egy megszakadt korabbi futasa, vagy egy KESOBBI, MAS okbol tortent
+          # # leallas. A ketto kozott a gep nem tud megbizhatoan donteni: a szignatura (stale postmaster.pid
+          # # + 'protocol' journal-hiba) EPPEN AKKOR tunik el, amikor a 2. szakasz sikeresen leallitotta a
+          # # klasztert, igy a mintaillesztes a jogos ujrafuttatast blokkolna, egy veletlen egyezest pedig
+          # # atengedne. Ezert a kapu egy EXPLICIT emberi input (confirm_down_ok), a szignaturat pedig
+          # # csak INFORMALISAN irjuk ki a dontes tamogatasara.
+          # echo "  a 16-os klaszter mar 'down' — ez NEM az eredeti incidens-szignatura"
+          # echo "--- incidens-szignatura (informalis, nem dontesi kapu) ---"
+          # echo "    postmaster.pid: $(sudo test -f /var/lib/postgresql/16/main/postmaster.pid && echo 'JELEN (nem tiszta leallas)' || echo 'nincs (tiszta leallas)')"
+          # echo "    utolso 'protocol'/'already running' journal-sorok:"
+          # sudo journalctl -u postgresql@16-main.service -n 40 --no-pager 2>/dev/null \
+          # | grep -iE 'protocol|already running|PID file' | tail -4 | mask | sed 's/^/      /' \
+          # || echo "      (nincs ilyen sor / journal nem olvashato)"
+          # if [ "${CONFIRM_DOWN:-no}" != "yes" ]; then
+          # echo "::error::A 16/main klaszter mar 'down', de nincs emberi megerosites. ALLJ — lehet, hogy ez egy KESOBBI, mas okbol tortent leallas, amire ez a helyreallito lepes NEM ervenyes. Ha tudatos ujrafuttatas: inditsd ujra a workflow-t a 'confirm_down_ok' = IGEN inputtal."
+          # echo "=== Kesz — RESZBEN SIKERES, a 2. lepesnel allt meg (emberi megerosites szukseges) ==="
+          # exit 1
+          # fi
+          # echo "  confirm_down_ok=IGEN — tudatos ujrafuttatas mar leallitott klaszteren, a stop lepes kihagyva"
+          # else
+          # echo "::error::Ismeretlen/hianyzo 16/main klaszter-statusz ('${PG16_BEFORE:-<ures>}') — ALLJ, ez nem a diagnosztizalt allapot."
+          # exit 1
+          # fi
+          # echo ""
+          # echo "=== 3) Ellenorzes: TENYLEGESEN leallt-e a 16-os klaszter ==="
+          # sleep 3
+          # PG16_AFTER=$(pg16_status)
+          # echo "  pg_lsclusters 16/main statusz: ${PG16_AFTER:-<ures>}"
+          # if [ "$PG16_AFTER" != "down" ]; then
+          # echo "::error::A 16/main statusza nem 'down' a leallitas utan — ALLJ (nem indulhat ra a systemd-s start)."
+          # exit 1
+          # fi
+          # L=$(listen5432); L=${L:-0}
+          # if [ "$L" -ne 0 ]; then
+          # echo "::error::Az 5432-es porton MEG MINDIG van listener a leallitas utan — ALLJ, ez nem a vart allapot."
+          # sudo ss -tlnp 2>/dev/null | grep -E ':5432([[:space:]]|$)' || true
+          # exit 1
+          # fi
+          # echo "  5432-es port: nincs listener — OK"
+          # echo ""
+          # echo "=== 4) A 'failed' systemd-allapot torlese (reset-failed) ==="
+          # # SZANDEKOSAN NEM fail-closed: ez a lepes onmagaban nem valtoztat a klaszteren, viszont ha itt
+          # # allnank meg, a DB LEALLITVA maradna (rosszabb, mint a kiindulo allapot). A valodi kapu az
+          # # 5. szakasz start + is-active ellenorzese.
+          # if ! sudo systemctl reset-failed postgresql@16-main.service; then
+          # echo "::warning::A systemctl reset-failed nem sikerult — a start megis megkiserelve (az 5. szakasz a valodi kapu)"
+          # else
+          # echo "  reset-failed: OK"
+          # fi
+          # # Informalis utoallapot-naplozas (NEM kapu): ha a reset utan meglepo allapot marad, ez mutatja meg.
+          # echo "  is-failed : $(systemctl is-failed postgresql@16-main.service 2>/dev/null || true)"
+          # systemctl show -p ActiveState -p Result postgresql@16-main.service 2>/dev/null | sed 's/^/  /' || true
+          # echo ""
+          # echo "=== 5) Rendes indítás a systemd-n KERESZTUL ==="
+          # if ! sudo systemctl start postgresql@16-main.service; then
+          # echo "::error::A 'systemctl start postgresql@16-main.service' BUKOTT — ALLJ. Diagnosztika (utolso 30 journal-sor):"
+          # sudo journalctl -u postgresql@16-main.service -n 30 --no-pager 2>&1 | mask || echo "  (journal nem olvashato)"
+          # echo "=== Kesz — RESZBEN SIKERES, az 5. lepesnel allt meg (a 16-os klaszter LE VAN ALLITVA, kezi indulas kell) ==="
+          # exit 1
+          # fi
+          # sleep 3
+          # ACT=$(systemctl is-active postgresql@16-main.service 2>/dev/null)
+          # echo "  systemctl is-active postgresql@16-main.service: ${ACT:-<ures>}"
+          # if [ "$ACT" != "active" ]; then
+          # echo "::error::A postgresql@16-main.service nem 'active' az indulas utan — ALLJ. Diagnosztika (utolso 30 journal-sor):"
+          # sudo journalctl -u postgresql@16-main.service -n 30 --no-pager 2>&1 | mask || echo "  (journal nem olvashato)"
+          # echo "=== Kesz — RESZBEN SIKERES, az 5. lepesnel allt meg (a unit nem 'active') ==="
+          # exit 1
+          # fi
+          # echo "  a 16-os klaszter MOST a systemd felugyelete alatt fut — OK"
+          # echo ""
+          # echo "=== 6a) DB-elerhetoseg SUPERUSERkent (peer auth, kozvetlenul a klaszteren) ==="
+          # SU_OUT=$(sudo -u postgres psql -d valuta -tAc "SELECT 1" 2>&1); SU_RC=$?
+          # echo "  exit=$SU_RC | valasz='$(printf '%s' "$SU_OUT" | mask | tail -1)'"
+          # if [ "$SU_RC" -ne 0 ] || [ "$(printf '%s' "$SU_OUT" | tr -d '[:space:]')" != "1" ]; then
+          # echo "::error::A 'valuta' DB superuserkent NEM erheto el — ALLJ, a backendet rossz DB-allapot mellett nem inditjuk."
+          # echo "=== Kesz — RESZBEN SIKERES, a 6a) lepesnel allt meg ==="
+          # exit 1
+          # fi
+          # echo ""
+          # echo "=== 6b) APP-SZINTU elerhetoseg — a futo backend .env-hitelesitoivel, PgBouncer-en (6432) ==="
+          # # Pontosan ugy, ahogy a cutover-preflight tette: a jelszo sehol nem logolt.
+          # ENVFILE=/opt/valutavalto/backend/.env
+          # DBU=$(sudo grep -E '^DATABASE_USERNAME=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)
+          # DBP=$(sudo grep -E '^DATABASE_PASSWORD=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)
+          # DBU=${DBU:-valuta_user}
+          # echo "  user: $DBU (jelszo nem logolt)"
+          # APP_OUT=$(PGPASSWORD="$DBP" psql "host=localhost port=6432 dbname=valuta user=$DBU" -tAc \
+          # "SELECT 'app-kapcsolat=OK; employee='||(SELECT count(*) FROM employee)||'; transaction='||(SELECT count(*) FROM transaction)" 2>&1); APP_RC=$?
+          # printf '%s\n' "$APP_OUT" | mask | tail -3 | sed 's/^/  /'
+          # if [ "$APP_RC" -ne 0 ] || ! printf '%s' "$APP_OUT" | grep -q 'app-kapcsolat=OK'; then
+          # echo "::error::Az app-szintu DB-kapcsolat (PgBouncer 6432) NEM el — ALLJ, a backendet rossz DB-allapot mellett nem inditjuk."
+          # echo "--- diagnosztika: pgbouncer statusz ---"
+          # systemctl status pgbouncer.service --no-pager -n 12 2>&1 | mask || true
+          # echo "=== Kesz — RESZBEN SIKERES, a 6b) lepesnel allt meg (a 16-os klaszter systemd alatt fut) ==="
+          # exit 1
+          # fi
+          # echo "  app-szintu kapcsolat: OK"
+          # echo ""
+          # echo "=== 7) valuta-backend.service inditasa + health-check retry ==="
+          # if ! sudo systemctl start valuta-backend.service; then
+          # echo "::error::A 'systemctl start valuta-backend.service' BUKOTT — ALLJ (NINCS automatikus rollback). Utolso 40 journal-sor:"
+          # sudo journalctl -u valuta-backend.service -n 40 --no-pager 2>&1 | mask || echo "  (journal nem olvashato)"
+          # echo "  (a 18-as klaszter karantenba helyezese SZANDEKOSAN KIMARAD — marad ter a tovabbi diagnosztikahoz)"
+          # echo "=== Kesz — RESZBEN SIKERES, a 7. lepesnel allt meg (DB-reteg helyreallt, backend nem indult) ==="
+          # exit 1
+          # fi
+          # sleep 15
+          # HEALTHY=0; CODE=000
+          # for i in 1 2 3 4 5 6 7 8; do
+          # CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
+          # echo "  health attempt $i: HTTP $CODE"
+          # [ "$CODE" = "200" ] && { HEALTHY=1; break; }
+          # sleep 12
+          # done
+          # if [ "$HEALTHY" != "1" ]; then
+          # echo "::error::A backend a retry-k alatt NEM adott 200-at (utolso: HTTP $CODE) — ALLJ. NINCS automatikus rollback: a DB-oldal ekkorra helyreallt, ez kulon vizsgalatot igenyel, nem DB-visszaallitast. Utolso 40 journal-sor:"
+          # sudo journalctl -u valuta-backend.service -n 40 --no-pager 2>&1 | mask || echo "  (journal nem olvashato)"
+          # echo "  (a 18-as klaszter karantenba helyezese SZANDEKOSAN KIMARAD — marad ter a tovabbi diagnosztikahoz)"
+          # echo "=== Kesz — RESZBEN SIKERES, a 7. lepesnel allt meg (backend health-check bukott) ==="
+          # exit 1
+          # fi
+          # echo "  backend health: HTTP 200 — OK"
+          # echo ""
+          # echo "=== 8) A felkesz 18-as klaszter KARANTENBA HELYEZESE — NEM torles (csak sikeres 7. lepes utan) ==="
+          # # IRANYVALTAS: a cel NEM a 18-as klaszter vegleges eldobasanak bizonyitasa, hanem a production
+          # # DB + backend hasznalhato allapota — az a 2-7. szakaszban MAR megvan, es semmilyen modon nem
+          # # fugg a 18-as klaszter sorsatol. A "kimeritoen ures" allitas elvileg befejezhetetlen (mindig
+          # # van meg egy katalogus: pg_publication, pg_policy, pg_tablespace, pg_foreign_server,
+          # # pg_event_trigger, pg_user_mapping, ...), ezert a DESZTRUKTIV pg_dropcluster helyett
+          # # VISSZAFORDITHATO karanten: az adatkonyvtar ATMOZGATASA a /var/backups ala. A vegleges torles
+          # # kulon, MANUALIS emberi dontes — ezt a workflow NEM vegzi el.
+          # #   G1 (marad, BLOKKOLO) : konyvtar-meret <= 512 MB
+          # #   G3 (marad, BLOKKOLO) : van 48 oranal frissebb, teljes cutover-mentes (1b szakasz)
+          # #   G4 (uj,   BLOKKOLO) : a forras es a karanten-cel AZONOS fajlrendszeren van, igy az mv
+          # #                         ATOMI rename — egy cross-device mv masolas+torles lenne, ami
+          # #                         megszakadva reszallapotot hagyna.
+          # #   G2 (MAR NEM guard)  : a strukturalis objektum-leltar INFORMACIOS naplozas, hogy a kesobbi
+          # #                         emberi torlesi dontesnek legyen kontextusa. NEM blokkolja a mozgatast.
+          # QUARANTINE_FAIL=0
+          # QUARANTINE_DIR=""
+          # # QSTATE: a 8. szakasz TENYLEGES vegallapota. A zaro osszefoglalo KIZAROLAG ebbol dolgozik,
+          # # hogy soha ne allithasson valotlant (pl. "a konyvtar valtozatlanul a helyen van" olyankor,
+          # # amikor a mv mar reszben lefutott). Ertekei:
+          # #   NOTHING_TO_DO  - nem volt 18-as adatkonyvtar
+          # #   NOT_ATTEMPTED  - a mozgatas EL SEM KEZDODOTT (guard blokkolta / leallitas / mkdir bukott)
+          # #   OK             - forras eltunt, cel teljes (PG_VERSION jelen)
+          # #   SAFE_FAIL      - forras erintetlen, cel ures/nincs -> NINCS adatvesztes
+          # #   DUAL           - forras ES cel is letezik tartalommal -> manualis dontes kell
+          # #   UNKNOWN        - sem tiszta siker, sem biztonsagos hiba nem allapithato meg
+          # QSTATE=NOT_ATTEMPTED
+          # OBJ_SUMMARY="nem meghatarozhato"
+          # PG18DIR=/var/lib/postgresql/18/main
+          # QROOT=/var/backups
+          # if sudo test -d "$PG18DIR"; then
+          # GUARDS_OK=1
+          # echo "--- G1) meret-szuro (BLOKKOLO) ---"
+          # echo "  18-as klaszter merete: $(sudo du -sh "$PG18DIR" 2>/dev/null | awk '{print $1}')"
+          # SZ18=$(sudo du -sm "$PG18DIR" 2>/dev/null | awk '{print $1}'); SZ18=${SZ18:-0}
+          # if [ "$SZ18" -gt 512 ]; then
+          # echo "::error::G1 BUKOTT: a 18-as klaszter $SZ18 MB — jelentosen nagyobb a vart ~40 MB-nal. Karantenba helyezes helyett kezi vizsgalat kell (nagyobb adatmennyiseget nem mozgatunk sietve)."
+          # GUARDS_OK=0
+          # else
+          # echo "  G1 OK: $SZ18 MB (<= 512 MB)"
+          # fi
+          # echo "--- G2) strukturalis objektum-leltar (INFORMACIOS — NEM blokkol) ---"
+          # # SORREND-KRITIKUS: ez a lekerdezes-alapu leltar csak addig keszitheto el, amig a 18-as
+          # # klaszter meg fut, ezert a leallitas ELOTT keszul. Az eredmenye a kesobbi, MANUALIS
+          # # torlesi dontes kontextusa; a karantenba helyezest (visszafordithato) nem befolyasolja.
+          # PORT18=$(sudo pg_lsclusters 2>/dev/null | awk '$1=="18" && $2=="main" {print $3}')
+          # ST18=$(sudo pg_lsclusters 2>/dev/null | awk '$1=="18" && $2=="main" {print $4}')
+          # echo "  pg_lsclusters 18/main: port=${PORT18:-<ures>} statusz=${ST18:-<ures>}"
+          # # A user-eredetu objektumok EGY lekerdezesben, kategoriankent: rel|fn|ty|ex|lo|osszesen.
+          # #   rel : pg_class relkind r/p (tabla, particionalt), S (sequence), m (materializalt nezet),
+          # #         v (nezet), f (foreign tabla)
+          # #   fn  : pg_proc (fuggveny/procedura)
+          # #   ty  : pg_type — a tabla-kompozit (typrelid mogotti relkind <> 'c') es a generalt
+          # #         array-tipusok kiszurve, hogy ne szamoljuk ketszer a relaciokat
+          # #   ex  : pg_extension a friss initdb alapertelmezettjen (plpgsql) felul
+          # #   lo  : pg_largeobject_metadata (large objectek — nem latszanak nevterben)
+          # # Kizarva mindenhol: a pg_* es information_schema nevterek, valamint az extensionhoz
+          # # TARTOZO objektumok (pg_depend.deptype='e') — azok nem user-eredetuek.
+          # OBJ_SQL="SELECT rel, fn, ty, ex, lo, rel+fn+ty+ex+lo FROM (SELECT
+          # (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+          # WHERE c.relkind IN ('r','p','S','m','v','f')
+          # AND n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+          # AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_class'::regclass
+          # AND d.objid=c.oid AND d.deptype='e')) AS rel,
+          # (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+          # WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+          # AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_proc'::regclass
+          # AND d.objid=p.oid AND d.deptype='e')) AS fn,
+          # (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
+          # WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+          # AND (t.typrelid = 0 OR (SELECT c2.relkind FROM pg_class c2 WHERE c2.oid=t.typrelid) = 'c')
+          # AND NOT EXISTS (SELECT 1 FROM pg_type el WHERE el.oid=t.typelem AND el.typarray=t.oid)
+          # AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_type'::regclass
+          # AND d.objid=t.oid AND d.deptype='e')) AS ty,
+          # (SELECT count(*) FROM pg_extension WHERE extname NOT IN ('plpgsql')) AS ex,
+          # (SELECT count(*) FROM pg_largeobject_metadata) AS lo
+          # ) s"
+          # # A leltar SOHA nem all meg hibaval: minden ag csak naplóz es visszater. Ha barmi nem
+          # # kerdezheto le, az OBJ_SUMMARY marad 'nem meghatarozhato' — a kesobbi emberi dontes igy
+          # # tudja, hogy a leltar hianyzik, nem azt hiszi, hogy 0 objektum volt.
+          # g2_object_report() {
+          # local port="$1" status="$2" expect_dir="$3"
+          # if [ "$status" != "online" ]; then
+          # echo "  (a 18-as klaszter statusza '${status:-<ures>}' — a leltar lekerdezessel nem keszitheto el)"
+          # return 0
+          # fi
+          # if ! printf '%s' "${port:-}" | grep -qE '^[0-9]+$' || [ "$port" = "5432" ]; then
+          # echo "  (ervenytelen vagy gyanus port '${port:-<ures>}' — a leltar kimarad; az 5432 a 16-os HITELES klaszter)"
+          # return 0
+          # fi
+          # local vnum datadir
+          # vnum=$(sudo -u postgres psql -p "$port" -d postgres -tAc "SHOW server_version_num" 2>&1 | tr -d '[:space:]')
+          # if ! printf '%s' "$vnum" | grep -qE '^[0-9]+$' || [ "$vnum" -lt 180000 ]; then
+          # echo "  (a(z) $port porton nem 18-as major valaszol: server_version_num='$(printf '%s' "$vnum" | mask)' — a leltar kimarad)"
+          # return 0
+          # fi
+          # datadir=$(sudo -u postgres psql -p "$port" -d postgres -tAc "SHOW data_directory" 2>&1 | tr -d '[:space:]')
+          # if [ "$datadir" != "$expect_dir" ]; then
+          # echo "  (IDENTITAS-ELTERES: a valaszolo szerver data_directory-ja '$(printf '%s' "$datadir" | mask)', a vart '$expect_dir' helyett — a leltar NEM erre a klaszterre vonatkozna, kimarad)"
+          # return 0
+          # fi
+          # echo "  identitas: server_version_num=$vnum, data_directory=$datadir"
+          # local dblist dbrc
+          # dblist=$(sudo -u postgres psql -p "$port" -d postgres -tAc "SELECT datname FROM pg_database WHERE datistemplate = false" 2>&1); dbrc=$?
+          # if [ "$dbrc" -ne 0 ] || [ -z "$(printf '%s' "$dblist" | tr -d '[:space:]')" ]; then
+          # echo "  (a nem-template adatbazisok listaja nem kerdezheto le (exit=$dbrc) — a leltar kimarad)"
+          # return 0
+          # fi
+          # local total=0 reliable=1 db row clean dbtotal
+          # while IFS= read -r db; do
+          # [ -n "$db" ] || continue
+          # row=$(sudo -u postgres psql -p "$port" -d "$db" -tAc "$OBJ_SQL" 2>&1); local rc=$?
+          # clean=$(printf '%s' "$row" | tr -d '[:space:]')
+          # if [ "$rc" -ne 0 ] || ! printf '%s' "$clean" | grep -qE '^[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+$'; then
+          # echo "    $db : NEM SZAMOLHATO (exit=$rc, valasz='$(printf '%s' "$row" | mask | tail -1)')"
+          # reliable=0
+          # continue
+          # fi
+          # dbtotal=$(printf '%s' "$clean" | cut -d'|' -f6)
+          # echo "    $db : rel(tabla/seq/matview/nezet)=$(printf '%s' "$clean" | cut -d'|' -f1) fuggveny=$(printf '%s' "$clean" | cut -d'|' -f2) tipus=$(printf '%s' "$clean" | cut -d'|' -f3) extension=$(printf '%s' "$clean" | cut -d'|' -f4) large_object=$(printf '%s' "$clean" | cut -d'|' -f5) | OSSZESEN=$dbtotal"
+          # total=$((total + dbtotal))
+          # done < <(printf '%s\n' "$dblist")
+          # if [ "$reliable" != "1" ]; then
+          # OBJ_SUMMARY="reszben meghatarozhatatlan (legalabb egy DB-ben nem sikerult a szamlalas)"
+          # echo "  LELTAR: RESZLEGES — legalabb egy adatbazisban nem sikerult megszamolni az objektumokat (a mar megszamoltak osszege: $total)"
+          # return 0
+          # fi
+          # if [ "$total" -ne 0 ]; then
+          # OBJ_SUMMARY="$total user-eredetu objektum a vizsgalt kategoriakban"
+          # echo "::warning::LELTAR: a 18-as klaszter $total user-eredetu objektumot tartalmaz a vizsgalt kategoriakban. A karantenba helyezes ettol fuggetlenul megtortenik (VISSZAFORDITHATO, nem torles), de a VEGLEGES torles elott ezt merlegelni kell."
+          # return 0
+          # fi
+          # OBJ_SUMMARY="0 user-eredetu objektum a vizsgalt kategoriakban"
+          # echo "  LELTAR: 0 user-eredetu objektum a vizsgalt kategoriakban (tabla/sequence/matview/nezet/fuggveny/tipus/extension/large object)"
+          # echo "  (megjegyzes: a lista nem kimerito — pl. pg_publication, pg_policy, pg_tablespace, pg_foreign_server, pg_event_trigger, pg_user_mapping nincs benne. EPPEN EZERT karanten es nem torles.)"
+          # return 0
+          # }
+          # g2_object_report "$PORT18" "$ST18" "$PG18DIR"
+          # echo "--- G3) backup-guard (BLOKKOLO, az 1b szakasz eredmenye) ---"
+          # if [ "$BACKUP_OK" = "1" ]; then
+          # echo "  G3 OK: friss, teljes mentes: $BACKUP_DIR_FOUND"
+          # else
+          # echo "::error::G3 BUKOTT: nincs friss, ellenorizheto backup — a karantenba helyezes kihagyva biztonsagi okbol."
+          # GUARDS_OK=0
+          # fi
+          # echo "--- G4) azonos fajlrendszer (BLOKKOLO — az mv csak igy atomi rename) ---"
+          # SRC_DEV=$(sudo stat -c%d "$PG18DIR" 2>/dev/null)
+          # DST_DEV=$(sudo stat -c%d "$QROOT" 2>/dev/null)
+          # echo "  forras eszkoz-azonosito: ${SRC_DEV:-<ures>} | karanten-gyoker ($QROOT): ${DST_DEV:-<ures>}"
+          # if [ -z "${SRC_DEV:-}" ] || [ -z "${DST_DEV:-}" ] || [ "$SRC_DEV" != "$DST_DEV" ]; then
+          # echo "::error::G4 BUKOTT: a forras es a karanten-cel NEM ugyanazon a fajlrendszeren van (vagy nem meghatarozhato) — a mozgatas masolas+torles lenne, ami megszakadva reszallapotot hagy. Kezi dontes kell."
+          # GUARDS_OK=0
+          # else
+          # echo "  G4 OK: azonos fajlrendszer, az mv atomi rename lesz"
+          # fi
+          # if [ "$GUARDS_OK" != "1" ]; then
+          # echo "::error::A 18-as klaszter karantenba helyezese KIMARAD (lasd a fenti bukott guardot). A helyreallitas (DB + backend) EL, csak a takaritas maradt el — kezi ellenorzes kell."
+          # QUARANTINE_FAIL=1
+          # else
+          # TS18=$(date +%Y%m%d-%H%M%S)
+          # QDIR="$QROOT/pg18-quarantine-$TS18"
+          # echo "--- 8a) a 18-as klaszter leallitasa (ha fut) ---"
+          # ST18_NOW=$(sudo pg_lsclusters 2>/dev/null | awk '$1=="18" && $2=="main" {print $4}')
+          # if [ "$ST18_NOW" = "online" ]; then
+          # if sudo -u postgres pg_ctlcluster 18 main stop --mode=fast; then
+          # echo "  pg_ctlcluster 18 main stop --mode=fast: OK"
+          # else
+          # echo "::error::A 18-as klaszter leallitasa BUKOTT — a karantenba helyezes KIMARAD (futo klaszter adatkonyvtarat nem mozgatunk)."
+          # QUARANTINE_FAIL=1
+          # fi
+          # else
+          # echo "  a 18-as klaszter statusza '${ST18_NOW:-<ures>}' — nem fut, a leallitas kihagyva (hibatlan)"
+          # fi
+          # if [ "$QUARANTINE_FAIL" = "0" ]; then
+          # echo "--- 8b) az adatkonyvtar ATMOZGATASA karantenba (NEM torles) ---"
+          # # dir_has_content(): 0 = a konyvtar letezik ES nem ures. A harom-agu utoellenorzesnek
+          # # "erdemi tartalom" kell: egy ures maradek-konyvtar egyik iranyban sem bizonyit adatot.
+          # dir_has_content() {
+          # sudo test -d "$1" || return 1
+          # [ -n "$(sudo ls -A "$1" 2>/dev/null | head -1)" ]
+          # }
+          # # ELOZETES kettos-allapot ellenorzes: ha egy KORABBI, megszakadt futas mar hagyott
+          # # karanten-peldanyt tartalommal, ES a forras is megvan, akkor az elozo futas a masolas
+          # # UTAN, a forras torlese ELOTT szakadt meg. Ilyenkor TILOS ujra mozgatni — ket peldany
+          # # lenne, es nem eldontheto gepileg, melyik a hiteles. (Sikeres elozo futas utan a forras
+          # # nem letezne, igy ide sem jutnank el.)
+          # PREV_Q=""
+          # for q in $(sudo find "$QROOT" -maxdepth 1 -type d -name 'pg18-quarantine-*' 2>/dev/null | sort); do
+          # if dir_has_content "$q/main"; then PREV_Q="$q/main"; break; fi
+          # done
+          # if [ -n "$PREV_Q" ] && dir_has_content "$PG18DIR"; then
+          # QSTATE=DUAL
+          # QUARANTINE_FAIL=1
+          # echo "::error::KETTOS ALLAPOT — MANUALIS BEAVATKOZAS SZUKSEGES: mar letezik korabbi karanten-peldany tartalommal ($PREV_Q), ES a forras ($PG18DIR) is letezik tartalommal. NE futtasd ujra automatikusan ezt a lepest; elotte donteni kell, melyik a hiteles peldany. A workflow SEMMILYEN automatikus korrekciot nem vegez."
+          # elif ! sudo mkdir -p "$QDIR"; then
+          # QSTATE=NOT_ATTEMPTED
+          # QUARANTINE_FAIL=1
+          # echo "::error::A karanten-konyvtar letrehozasa BUKOTT ($QDIR) — a mozgatas EL SEM KEZDODOTT, a forras erintetlen."
+          # else
+          # sudo mv "$PG18DIR" "$QDIR/main"; MVRC=$?
+          # echo "  mv $PG18DIR -> $QDIR/main : exit=$MVRC"
+          # echo "--- 8c) A MOZGATAS UTANI TENYLEGES ALLAPOT (ez a biztonsagi garancia — NEM az mv exit-kodja, NEM a G4 elozetes predikcioja) ---"
+          # # A GNU mv cross-device fallbackje ELOSZOR MASOL, es CSAK a masolas sikeres befejezese
+          # # UTAN torli a forrast. Az egyetlen valodi adatvesztes-ablak tehat a masolas es a torles
+          # # KOZOTTI megszakadas. Ez ellen nem a G4 elozetes predikciojanak tokeletesitesevel
+          # # vedekezunk (az egzotikus mount-elrendezeseknel elvileg sem tehato 100%-ban
+          # # megbizhatova), hanem ezzel a harom-agu (+ catch-all) utoellenorzessel, ami a
+          # # TENYLEGES fajlrendszer-allapotbol dolgozik es soha nem allit valotlant.
+          # SRC_HAS=0; DST_HAS=0; DST_PGV=0
+          # dir_has_content "$PG18DIR"   && SRC_HAS=1
+          # dir_has_content "$QDIR/main" && DST_HAS=1
+          # sudo test -f "$QDIR/main/PG_VERSION" && DST_PGV=1
+          # echo "  forras ($PG18DIR) tartalommal: $SRC_HAS | cel ($QDIR/main) tartalommal: $DST_HAS | celban PG_VERSION: $DST_PGV"
+          # if [ "$SRC_HAS" = "0" ] && [ "$DST_HAS" = "1" ] && [ "$DST_PGV" = "1" ]; then
+          # # (a) TISZTA SIKER
+          # QSTATE=OK
+          # QUARANTINE_DIR="$QDIR/main"
+          # echo "  KARANTEN OK — a forras eltunt, a cel teljes (PG_VERSION = $(sudo cat "$QDIR/main/PG_VERSION" 2>/dev/null | tr -d '[:space:]'), meret: $(sudo du -sh "$QDIR/main" 2>/dev/null | awk '{print $1}'))"
+          # echo "  MEGJEGYZES: a 18-as klaszter-BEJEGYZES (/etc/postgresql/18/main) szandekosan erintetlen — igy a"
+          # echo "  muvelet visszafordithato (az adatkonyvtar visszamozgatasaval). Amig a bejegyzes megvan, egy"
+          # echo "  esetleges kesobbi inditasi kiserlet a 18-asra hianyzo adatkonyvtar miatt bukna; ez a 16-os"
+          # echo "  klasztert es a valuta-backendet NEM erinti (a backend a postgresql@16-main.service-tol fugg)."
+          # elif [ "$SRC_HAS" = "1" ] && [ "$DST_HAS" = "0" ]; then
+          # # (b) TISZTA, BIZTONSAGOS HIBA — a mozgatas erdemben meg sem kezdodott
+          # QSTATE=SAFE_FAIL
+          # QUARANTINE_FAIL=1
+          # echo "::error::A karantenba helyezes NEM sikerult (mv exit=$MVRC), DE az allapot BIZTONSAGOS: a forras adatkonyvtar VALTOZATLANUL a helyen van ($PG18DIR), a karanten-cel ures vagy nem letezik. NINCS adatvesztes. Kezi ellenorzes kell, mielott ujra futna."
+          # elif [ "$SRC_HAS" = "1" ] && [ "$DST_HAS" = "1" ]; then
+          # # (c) KETTOS ALLAPOT — a masolas utan, a torles elott szakadt meg
+          # QSTATE=DUAL
+          # QUARANTINE_FAIL=1
+          # echo "::error::KETTOS ALLAPOT — MANUALIS BEAVATKOZAS SZUKSEGES: mind a forras ($PG18DIR), mind a celkonyvtar ($QDIR/main) letezik tartalommal. A muvelet a masolas UTAN, a forras torlese ELOTT szakadhatott meg. NE futtasd ujra automatikusan ezt a lepest; elotte donteni kell, melyik a hiteles peldany. A workflow SEMMILYEN automatikus korrekciot nem vegez."
+          # else
+          # # (catch-all) minden mas kombinacio: forras es cel is ures/hianyzik, vagy a celban
+          # # van tartalom PG_VERSION nelkul. Nem allithatjuk sem a sikert, sem a biztonsagot.
+          # QSTATE=UNKNOWN
+          # QUARANTINE_FAIL=1
+          # echo "::error::ISMERETLEN/HIANYOS ALLAPOT — MANUALIS BEAVATKOZAS SZUKSEGES: forras_tartalom=$SRC_HAS, cel_tartalom=$DST_HAS, cel_PG_VERSION=$DST_PGV (mv exit=$MVRC). Sem tiszta siker, sem biztonsagos hiba nem allapithato meg. NE futtasd ujra automatikusan; eloszor kezzel kell tisztazni, hol van a hiteles adat. Legutobbi ellenorzott mentes: ${BACKUP_DIR_FOUND:-<nincs>}"
+          # fi
+          # echo "--- pg_lsclusters a mozgatasi kiserlet utan ---"
+          # sudo pg_lsclusters 2>&1 | mask || true
+          # fi
+          # fi
+          # fi
+          # else
+          # QSTATE=NOTHING_TO_DO
+          # echo "  ($PG18DIR nem letezik — nincs mit karantenba helyezni, a lepes kihagyva)"
+          # fi
+          # echo ""
+          # echo "=== 9) VEGSO OSSZEFOGLALO ==="
+          # sudo pg_lsclusters 2>&1 | mask || echo "(pg_lsclusters nem elerheto)"
+          # echo "valuta-backend MainPID    : $(systemctl show valuta-backend.service -p MainPID --value 2>/dev/null)"
+          # echo "valuta-backend ActiveState: $(systemctl show valuta-backend.service -p ActiveState --value 2>/dev/null) | SubState: $(systemctl show valuta-backend.service -p SubState --value 2>/dev/null)"
+          # echo "bootstrap-status utolso HTTP-kod: $CODE"
+          # echo "backup-guard (1b)         : $([ "$BACKUP_OK" = "1" ] && echo "OK ($BACKUP_DIR_FOUND)" || echo 'NINCS friss mentes')"
+          # echo "18-as klaszter objektum-leltar (informacios): $OBJ_SUMMARY"
+          # echo "8. szakasz vegallapota (QSTATE): $QSTATE"
+          # # A zaro sor KIZAROLAG a QSTATE-bol dolgozik: a "valtozatlanul a helyen van" allitas CSAK ott
+          # # hangzik el, ahol a mozgatas-utani ellenorzes ezt tenylegesen igazolta (NOT_ATTEMPTED / SAFE_FAIL).
+          # if [ "$QUARANTINE_FAIL" -ne 0 ]; then
+          # case "$QSTATE" in
+          # NOT_ATTEMPTED)
+          # echo "=== Kesz — RESZBEN SIKERES, a 8. lepesnel: a 16-os klaszter systemd alatt online es a backend 200-at ad, a 18-as karantenba helyezese EL SEM KEZDODOTT (guard blokkolta, vagy a leallitas/konyvtar-letrehozas bukott) — a 18-as adatkonyvtar valtozatlanul a helyen van ==="
+          # ;;
+          # SAFE_FAIL)
+          # echo "=== Kesz — RESZBEN SIKERES, a 8. lepesnel: a mozgatas nem sikerult, de az allapot BIZTONSAGOS — a 18-as adatkonyvtar valtozatlanul a helyen van, nincs adatvesztes ==="
+          # ;;
+          # DUAL)
+          # echo "=== Kesz — FIGYELEM: KETTOS ALLAPOT a 8. lepesnel. A DB + backend HELYREALLT, de a 18-as klaszter adatai KET helyen leteznek (forras ES karanten). MANUALIS dontes kell, melyik a hiteles peldany; a lepes automatikus ujrafuttatasa TILOS. ==="
+          # ;;
+          # *)
+          # echo "=== Kesz — FIGYELEM: ISMERETLEN ALLAPOT a 8. lepesnel. A DB + backend HELYREALLT, de a 18-as adatkonyvtar sorsa nem allapithato meg egyertelmuen (sem tiszta siker, sem biztonsagos hiba). MANUALIS ellenorzes kell; a lepes automatikus ujrafuttatasa TILOS. ==="
+          # ;;
+          # esac
+          # exit 1
+          # fi
+          # if [ "$QSTATE" = "OK" ] && [ -n "$QUARANTINE_DIR" ]; then
+          # echo ""
+          # echo "A 18-as klaszter adatkonyvtara KARANTENBA kerult (NEM torolve), itt: $QUARANTINE_DIR"
+          # echo "A tenyleges vegleges torles kulon, MANUALIS dontes — ez a workflow nem vegzi el automatikusan."
+          # echo "Visszaallitas (ha megis kellene): sudo mv '$QUARANTINE_DIR' '$PG18DIR'"
+          # echo "=== Kesz — SIKERES (16-os klaszter systemd alatt online, backend HTTP 200, a 18-as klaszter adatkonyvtara karantenban) ==="
+          # else
+          # echo "=== Kesz — SIKERES (16-os klaszter systemd alatt online, backend HTTP 200; a 18-as klaszter adatkonyvtara nem letezett, nem volt mit karantenba helyezni) ==="
+          # fi
+          # ENDSSH
+          echo "PROBE OK — a literal run-blokk elindult es lefutott"

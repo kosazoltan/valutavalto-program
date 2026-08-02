@@ -522,6 +522,14 @@ jobs:
           # egy 'bash -s' heredoc TORZSEBE script-injection lenne (a quoted heredoc a runneren nem
           # expandal, de a beirt szoveg valtozatlanul a TAVOLI shell scriptjeve valik).
           CONFIRM_DOWN_OK: ${{ github.event.inputs.confirm_down_ok }}
+          # AZ SSH-CEL IS ENV-EN AT JON — KOTELEZO, NEM STILUS: a GitHub Actions a TELJES run-scalart
+          # EGYETLEN interpolalt template-kifejezeskent parseolja, ha az barhol tartalmaz ${{ }}-t, es
+          # egy kifejezes max. 21000 karakter lehet. Ez a run-blokk 34906 karakter, ezert MAR AZ
+          # INDULAS ELOTT elszallt: "Invalid workflow file ... Exceeded max expression length 21000"
+          # (a hiba a 'run: |' pipe-jara mutatott, nem egy konkret kifejezesre). Env-valtozoval a
+          # blokkban NULLA ${{ }} marad -> literal scalar -> a kifejezes-limit nem ertelmezett ra.
+          VPS_SSH_USER: ${{ secrets.VPS_SSH_USER }}
+          VPS_SERVER_IP: ${{ secrets.VPS_SERVER_IP }}
         run: |
           # INCIDENS-HELYREALLITAS (IRO MUVELET). Kizarolag a 2026-08-02-i, kb. 22 oraja tarto elesincidensre.
           # DIAGNOZIS (cluster-status-probe, 2026-08-02 08:3x UTC):
@@ -547,8 +555,12 @@ jobs:
             igen|yes|true|y|i) CONFIRM=yes ;;
           esac
           echo "confirm_down_ok (normalizalva): $CONFIRM"
+          if [ -z "${VPS_SSH_USER:-}" ] || [ -z "${VPS_SERVER_IP:-}" ]; then
+            echo "::error::Hianyzo VPS_SSH_USER / VPS_SERVER_IP secret — a lepes nem futhat."
+            exit 1
+          fi
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "$VPS_SSH_USER@$VPS_SERVER_IP" \
               "CONFIRM_DOWN='$CONFIRM' bash -s" << 'ENDSSH'
             set -o pipefail
             # mask(): ugyanaz az ALTALANOS kulcs=ertek / kulcs: ertek szabaly, mint a cluster-status-probe-ban
