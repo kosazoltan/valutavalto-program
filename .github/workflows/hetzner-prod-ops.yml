@@ -34,6 +34,11 @@ on:
           - ha-disable-failover
           - ha-backup-to-neon
           - ha-install-freeze-watchdog
+      confirm_down_ok:
+        description: "CSAK az 'incident-restore-pg16-service'-hez: irj IGEN-t, ha a 16/main klaszter MAR 'down', es tudatosan futtatod ujra. Egyebkent HAGYD URESEN."
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -512,6 +517,11 @@ jobs:
 
       - name: 'INCIDENT RESTORE PG16 SERVICE (write) — beragadt 16-os klaszter systemd ala + backend + ures 18 eldobasa'
         if: ${{ github.event.inputs.action == 'incident-restore-pg16-service' }}
+        env:
+          # A felhasznaloi input KIZAROLAG env-en at jon be. A ${{ }} textualis behelyettesites
+          # egy 'bash -s' heredoc TORZSEBE script-injection lenne (a quoted heredoc a runneren nem
+          # expandal, de a beirt szoveg valtozatlanul a TAVOLI shell scriptjeve valik).
+          CONFIRM_DOWN_OK: ${{ github.event.inputs.confirm_down_ok }}
         run: |
           # INCIDENS-HELYREALLITAS (IRO MUVELET). Kizarolag a 2026-08-02-i, kb. 22 oraja tarto elesincidensre.
           # DIAGNOZIS (cluster-status-probe, 2026-08-02 08:3x UTC):
@@ -529,9 +539,16 @@ jobs:
           # FAIL-CLOSED: minden szakasz gatolja a kovetkezot; bukas eseten ::error:: + exit 1, es a
           # folyamat ott all meg (a 7. lepes utan SZANDEKOSAN NINCS automatikus rollback — a DB-oldal
           # ekkorra mar helyreallt, egy sikertelen backend-indulas kulon vizsgalatot igenyel).
+          # A confirm_down_ok input SANITIZALVA, szigoruan 'yes'/'no' erteke megy at a boxra —
+          # tetszoleges felhasznaloi szoveg SOHA nem kerul a tavoli scriptbe.
+          CONFIRM=no
+          case "$(printf '%s' "${CONFIRM_DOWN_OK:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" in
+            igen|yes|true|y|i) CONFIRM=yes ;;
+          esac
+          echo "confirm_down_ok (normalizalva): $CONFIRM"
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
-              bash -s << 'ENDSSH'
+              "CONFIRM_DOWN='$CONFIRM' bash -s" << 'ENDSSH'
             set -o pipefail
             # mask(): ugyanaz az ALTALANOS kulcs=ertek / kulcs: ertek szabaly, mint a cluster-status-probe-ban
             # (a lepesek onallo scriptek, nincs kozos forras). A systemctl status / journalctl kimenet sokfele
@@ -562,6 +579,40 @@ jobs:
             sudo ss -tlnp 2>/dev/null | grep -E ':5432([[:space:]]|$)' || echo "  (nincs listener az 5432-n)"
             echo ""
 
+            echo "=== 1b) BACKUP-GUARD ELOELLENORZES (read-only) — van-e friss, ellenorizheto cutover-mentes ==="
+            # A 8. szakasz (pg_dropcluster) az EGYETLEN destruktiv muvelet ebben a lepesben, es CSAK akkor
+            # futhat, ha van friss, ellenorizheto mentes. Itt, a legelejen ertekeljuk ki (a flaget a 8.
+            # szakasz hasznalja), hogy az uzemelteto AZONNAL lassa, ha a takaritas ki fog maradni — ne a
+            # ~3 perces helyreallitas vegen derüljön ki.
+            # ABLAK = 48 ora, NEM 24: a cutover-backup KOZVETLENUL a Postgres-patch elott futott, ami a
+            # kb. 22 oras kimaradast okozta. Egy 24 oras ablak igy meg ERVENYES incidens-mentesre is
+            # lejarna a helyreallitas kozben, es a guard vaklarmakent blokkolna a takaritast.
+            BACKUP_MAX_AGE_MIN=2880
+            BACKUP_OK=0
+            BACKUP_DIR_FOUND=""
+            for d in $(sudo find /var/backups -maxdepth 1 -type d -name 'cutover-*' -mmin -"$BACKUP_MAX_AGE_MIN" 2>/dev/null | sort -r); do
+              echo "  vizsgalt konyvtar: $d (mtime: $(sudo stat -c '%y' "$d" 2>/dev/null))"
+              DUMPS_OK=1
+              for f in local_valuta.dump neon_neondb.dump; do
+                SZ=$(sudo stat -c%s "$d/$f" 2>/dev/null || echo 0); SZ=${SZ:-0}
+                if [ "$SZ" -gt 1000 ]; then
+                  echo "    OK              $f : $SZ byte"
+                else
+                  echo "    HIANYZIK/KICSI  $f : $SZ byte"
+                  DUMPS_OK=0
+                fi
+              done
+              if [ "$DUMPS_OK" = "1" ]; then BACKUP_OK=1; BACKUP_DIR_FOUND="$d"; break; fi
+            done
+            if [ "$BACKUP_OK" = "1" ]; then
+              echo "  BACKUP-GUARD: OK — friss, teljes mentes: $BACKUP_DIR_FOUND"
+            else
+              # SZANDEKOSAN csak ::warning:: itt: a DB-reteg helyreallitasa (2-7. szakasz) NEM destruktiv
+              # es surgosebb, mint a takaritas. A hianyzo mentes KIZAROLAG a 8. szakaszt tiltja.
+              echo "::warning::BACKUP-GUARD: NINCS 48 oranal frissebb, teljes cutover-backup a /var/backups alatt — a 8. szakasz (pg_dropcluster) KI FOG MARADNI. A DB-helyreallitas folytatodik."
+            fi
+            echo ""
+
             echo "=== 2) A systemd-n KIVUL futo 16-os klaszter GRACEFUL leallitasa (--mode=fast) ==="
             PG16_BEFORE=$(pg16_status)
             echo "  pg_lsclusters 16/main statusz elotte: ${PG16_BEFORE:-<ures>}"
@@ -572,9 +623,27 @@ jobs:
               fi
               echo "  pg_ctlcluster stop --mode=fast: OK"
             elif [ "$PG16_BEFORE" = "down" ]; then
-              # Idempotens ujrafuttatas (pl. ha a 2. lepes utan szakadt meg a kapcsolat): a mar leallitott
-              # klaszterre a pg_ctlcluster stop hibat adna, ezert csak atlepjuk.
-              echo "  a 16-os klaszter mar 'down' — a stop lepes kihagyva (idempotens ujrafuttatas)"
+              # EMBERI MEGEROSITESHEZ KOTOTT AG. A dokumentalt 2026-08-02-i incidens-szignatura az, hogy a
+              # klaszter FUT (csak systemd-n kivul) — a 'down' allapot tehat NEM az eredeti incidens, hanem
+              # vagy ennek a lepesnek egy megszakadt korabbi futasa, vagy egy KESOBBI, MAS okbol tortent
+              # leallas. A ketto kozott a gep nem tud megbizhatoan donteni: a szignatura (stale postmaster.pid
+              # + 'protocol' journal-hiba) EPPEN AKKOR tunik el, amikor a 2. szakasz sikeresen leallitotta a
+              # klasztert, igy a mintaillesztes a jogos ujrafuttatast blokkolna, egy veletlen egyezest pedig
+              # atengedne. Ezert a kapu egy EXPLICIT emberi input (confirm_down_ok), a szignaturat pedig
+              # csak INFORMALISAN irjuk ki a dontes tamogatasara.
+              echo "  a 16-os klaszter mar 'down' — ez NEM az eredeti incidens-szignatura"
+              echo "--- incidens-szignatura (informalis, nem dontesi kapu) ---"
+              echo "    postmaster.pid: $(sudo test -f /var/lib/postgresql/16/main/postmaster.pid && echo 'JELEN (nem tiszta leallas)' || echo 'nincs (tiszta leallas)')"
+              echo "    utolso 'protocol'/'already running' journal-sorok:"
+              sudo journalctl -u postgresql@16-main.service -n 40 --no-pager 2>/dev/null \
+                | grep -iE 'protocol|already running|PID file' | tail -4 | mask | sed 's/^/      /' \
+                || echo "      (nincs ilyen sor / journal nem olvashato)"
+              if [ "${CONFIRM_DOWN:-no}" != "yes" ]; then
+                echo "::error::A 16/main klaszter mar 'down', de nincs emberi megerosites. ALLJ — lehet, hogy ez egy KESOBBI, mas okbol tortent leallas, amire ez a helyreallito lepes NEM ervenyes. Ha tudatos ujrafuttatas: inditsd ujra a workflow-t a 'confirm_down_ok' = IGEN inputtal."
+                echo "=== Kesz — RESZBEN SIKERES, a 2. lepesnel allt meg (emberi megerosites szukseges) ==="
+                exit 1
+              fi
+              echo "  confirm_down_ok=IGEN — tudatos ujrafuttatas mar leallitott klaszteren, a stop lepes kihagyva"
             else
               echo "::error::Ismeretlen/hianyzo 16/main klaszter-statusz ('${PG16_BEFORE:-<ures>}') — ALLJ, ez nem a diagnosztizalt allapot."
               exit 1
@@ -607,6 +676,9 @@ jobs:
             else
               echo "  reset-failed: OK"
             fi
+            # Informalis utoallapot-naplozas (NEM kapu): ha a reset utan meglepo allapot marad, ez mutatja meg.
+            echo "  is-failed : $(systemctl is-failed postgresql@16-main.service 2>/dev/null || true)"
+            systemctl show -p ActiveState -p Result postgresql@16-main.service 2>/dev/null | sed 's/^/  /' || true
             echo ""
 
             echo "=== 5) Rendes indítás a systemd-n KERESZTUL ==="
@@ -685,18 +757,89 @@ jobs:
             echo ""
 
             echo "=== 8) A felkesz, URES 18-as klaszter biztonsagos eldobasa (csak sikeres 7. lepes utan) ==="
+            # HAROM FUGGETLEN, EGYUTTESEN KOTELEZO GUARD az EGYETLEN destruktiv muvelet elott. Barmelyik
+            # bukasa/bizonytalansaga eseten a dropcluster KIMARAD (::error:: + DROP18_FAIL=1), a mar
+            # helyreallt DB+backend erintetlenul marad:
+            #   G1 (olcso elso szuro) : konyvtar-meret <= 512 MB
+            #   G2 (STRUKTURALIS)     : a klaszter minden nem-template DB-jeben 0 user-tabla. A puszta
+            #                           meret NEM eleg: egy valodi, de kicsi adatbazis is lehet 512 MB alatt.
+            #   G3 (backup)           : van 48 oranal frissebb, teljes cutover-mentes (1b szakasz)
             DROP18_FAIL=0
             PG18DIR=/var/lib/postgresql/18/main
             if sudo test -d "$PG18DIR"; then
+              echo "--- G1) meret-szuro ---"
               echo "  18-as klaszter merete: $(sudo du -sh "$PG18DIR" 2>/dev/null | awk '{print $1}')"
               SZ18=$(sudo du -sm "$PG18DIR" 2>/dev/null | awk '{print $1}'); SZ18=${SZ18:-0}
-              # GUARD: a diagnosztika egy ~40 MB-os, sosem migralt klasztert talalt. Ha a konyvtar ennel
-              # nagysagrendekkel nagyobb, az NEM az ures/felkesz klaszter -> nem dobjuk el automatikusan.
+              GUARDS_OK=1
               if [ "$SZ18" -gt 512 ]; then
-                echo "::error::A 18-as klaszter $SZ18 MB — jelentosen nagyobb a vart ~40 MB-nal, igy NEM az azonositott ures/felkesz klaszter. A pg_dropcluster KIMARAD, kezi ellenorzes kell."
+                echo "::error::G1 BUKOTT: a 18-as klaszter $SZ18 MB — jelentosen nagyobb a vart ~40 MB-nal, igy NEM az azonositott ures/felkesz klaszter."
+                GUARDS_OK=0
+              else
+                echo "  G1 OK: $SZ18 MB (<= 512 MB)"
+              fi
+
+              echo "--- G2) STRUKTURALIS uresseg-ellenorzes (nem-template DB-k user-tablai) ---"
+              # FAIL-CLOSED: ha barmi miatt nem tudjuk MEGBIZHATOAN megszamolni a user-tablakat
+              # (a klaszter nem online, nincs portja, nem a 18-as verzio valaszol, psql-hiba, nem szam
+              # jott vissza), az ugyanolyan blokkolo, mint egy megtalalt tabla.
+              PORT18=$(sudo pg_lsclusters 2>/dev/null | awk '$1=="18" && $2=="main" {print $3}')
+              ST18=$(sudo pg_lsclusters 2>/dev/null | awk '$1=="18" && $2=="main" {print $4}')
+              echo "  pg_lsclusters 18/main: port=${PORT18:-<ures>} statusz=${ST18:-<ures>}"
+              STRUCT_OK=0
+              if [ "$ST18" != "online" ]; then
+                echo "::error::G2 BUKOTT: a 18-as klaszter statusza '${ST18:-<ures>}' (nem 'online') — a uressege NEM ellenorizheto lekerdezessel."
+              elif ! printf '%s' "${PORT18:-}" | grep -qE '^[0-9]+$' || [ "$PORT18" = "5432" ]; then
+                echo "::error::G2 BUKOTT: ervenytelen vagy gyanus port ('${PORT18:-<ures>}') a 18/main-hoz — 5432 eseten a 16-os (HITELES) klasztert kerdeznenk le."
+              else
+                # A verzio-ellenorzes vedelem az ellen, hogy port-tevesztesbol a 16-os klasztert kerdezzuk.
+                VNUM=$(sudo -u postgres psql -p "$PORT18" -d postgres -tAc "SHOW server_version_num" 2>&1 | tr -d '[:space:]')
+                if ! printf '%s' "$VNUM" | grep -qE '^[0-9]+$' || [ "$VNUM" -lt 180000 ]; then
+                  echo "::error::G2 BUKOTT: a(z) $PORT18 porton valaszolo szerver server_version_num='$(printf '%s' "$VNUM" | mask)' — nem a 18-as klaszter, vagy nem lekerdezheto."
+                else
+                  DBLIST=$(sudo -u postgres psql -p "$PORT18" -d postgres -tAc "SELECT datname FROM pg_database WHERE datistemplate = false" 2>&1); DBRC=$?
+                  if [ "$DBRC" -ne 0 ] || [ -z "$(printf '%s' "$DBLIST" | tr -d '[:space:]')" ]; then
+                    echo "::error::G2 BUKOTT: a nem-template adatbazisok listaja nem kerdezheto le (exit=$DBRC) — $(printf '%s' "$DBLIST" | mask | tail -2)"
+                  else
+                    TOTAL_TABLES=0; COUNT_RELIABLE=1
+                    while IFS= read -r db; do
+                      [ -n "$db" ] || continue
+                      N=$(sudo -u postgres psql -p "$PORT18" -d "$db" -tAc \
+                        "SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema')" 2>&1); NRC=$?
+                      NCLEAN=$(printf '%s' "$N" | tr -d '[:space:]')
+                      if [ "$NRC" -ne 0 ] || ! printf '%s' "$NCLEAN" | grep -qE '^[0-9]+$'; then
+                        echo "    $db : NEM SZAMOLHATO (exit=$NRC, valasz='$(printf '%s' "$N" | mask | tail -1)')"
+                        COUNT_RELIABLE=0
+                      else
+                        echo "    $db : $NCLEAN user-tabla"
+                        TOTAL_TABLES=$((TOTAL_TABLES + NCLEAN))
+                      fi
+                    done < <(printf '%s\n' "$DBLIST")
+                    if [ "$COUNT_RELIABLE" != "1" ]; then
+                      echo "::error::G2 BUKOTT: legalabb egy adatbazisban NEM sikerult megbizhatoan megszamolni a user-tablakat — a klaszter uressege NEM igazolt."
+                    elif [ "$TOTAL_TABLES" -ne 0 ]; then
+                      echo "::error::G2 BUKOTT: a 18-as klaszterben OSSZESEN $TOTAL_TABLES user-tabla van — ez NEM ures klaszter, ADATVESZTES kockazata. A pg_dropcluster KIMARAD."
+                    else
+                      echo "  G2 OK: minden nem-template adatbazisban 0 user-tabla (strukturalisan ures)"
+                      STRUCT_OK=1
+                    fi
+                  fi
+                fi
+              fi
+              [ "$STRUCT_OK" = "1" ] || GUARDS_OK=0
+
+              echo "--- G3) backup-guard (az 1b szakasz eredmenye) ---"
+              if [ "$BACKUP_OK" = "1" ]; then
+                echo "  G3 OK: friss, teljes mentes: $BACKUP_DIR_FOUND"
+              else
+                echo "::error::G3 BUKOTT: nincs friss, ellenorizheto backup — dropcluster kihagyva biztonsagi okbol."
+                GUARDS_OK=0
+              fi
+
+              if [ "$GUARDS_OK" != "1" ]; then
+                echo "::error::A 18-as klaszter eldobasa KIMARAD (lasd a fenti bukott guardot). A helyreallitas (DB + backend) EL, csak a takaritas maradt el — kezi ellenorzes kell."
                 DROP18_FAIL=1
               elif sudo pg_dropcluster 18 main --stop; then
-                echo "  pg_dropcluster 18 main --stop: OK"
+                echo "  pg_dropcluster 18 main --stop: OK (mindharom guard atment)"
                 echo "--- pg_lsclusters a dropcluster utan (csak a 16-os maradhat, 'online') ---"
                 sudo pg_lsclusters 2>&1 | mask || true
               else
@@ -713,6 +856,7 @@ jobs:
             echo "valuta-backend MainPID    : $(systemctl show valuta-backend.service -p MainPID --value 2>/dev/null)"
             echo "valuta-backend ActiveState: $(systemctl show valuta-backend.service -p ActiveState --value 2>/dev/null) | SubState: $(systemctl show valuta-backend.service -p SubState --value 2>/dev/null)"
             echo "bootstrap-status utolso HTTP-kod: $CODE"
+            echo "backup-guard (1b)         : $([ "$BACKUP_OK" = "1" ] && echo "OK ($BACKUP_DIR_FOUND)" || echo 'NINCS friss mentes')"
             if [ "$DROP18_FAIL" -ne 0 ]; then
               echo "=== Kesz — RESZBEN SIKERES, a 8. lepesnel (a 16-os klaszter systemd alatt online, a backend 200-at ad, DE a 18-as klaszter eldobasa nem tortent meg) ==="
               exit 1
