@@ -353,8 +353,43 @@ jobs:
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
               bash -s << 'ENDSSH'
             set -o pipefail
-            # Maszkolo szuro: minden kiirt sorbol eltunteti a jelszot / connection-URI credentialt.
-            mask() { sed -E 's|password=[^&;[:space:]]*|password=***|g; s#(://)[^@/[:space:]]*@#\1***@#g'; }
+            # ---------------- Maszkolo szurok ----------------
+            # mask(): ALTALANOS szabaly esetenkenti mintalista helyett — barmely "kulcs=ertek" vagy
+            # "kulcs: ertek" par, ahol a kulcs tartalmazza a pass / pwd / secret / token / key / auth /
+            # cred szavak valamelyiket (KIS-NAGYBETU FUGGETLENUL), ertek-oldalon maszkolodik. Ez egyben
+            # lefedi a password=, "password: ", "password = ", {"password":"..."}, PGPASSWORD=, token=,
+            # api_key=, secret=, Authorization: es a Bearer/Basic sema alakokat is, plusz a
+            # connection-URI credentialt (scheme://user:pass@host) — a journalctl / systemctl status
+            # kimenet ugyanis sokfele formaban hordozhat secretet.
+            # TUDATOS KIVETEL: a pgbouncer auth_type / auth_file / auth_query / auth_user / auth_dbname
+            # es a postgres hba_file / ident_file NEM secret (auth-metodus neve, ill. fajl-utvonal), es
+            # EPPEN EZEK a diagnosztika lenyege — ezert a maszkolas elott placeholderre cserelodnek
+            # (a '@@' megtori a kulcs-elvalaszto szomszedsagot), utana visszaallnak.
+            mask() {
+              sed -E \
+                -e 's/\b(auth_(type|file|query|user|dbname)|hba_file|ident_file)\b/@@KEEP:\1@@/Ig' \
+                -e 's#(://)[^:@/[:space:]]+:[^@[:space:]]+@#\1***:***@#g' \
+                -e 's#(://)[^@/[:space:]]+@#\1***@#g' \
+                -e 's#\b(Bearer|Basic)[[:space:]]+[A-Za-z0-9._~+/=-]{8,}#\1 ***#Ig' \
+                -e 's/("?[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"?[[:space:]]*[=:][[:space:]]*")[^"]*/\1***/Ig' \
+                -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*[=:][[:space:]]*)[^[:space:]&;,"]+/\1***/Ig' \
+                -e 's/@@KEEP:([A-Za-z0-9_]+)@@/\1/Ig'
+            }
+            # mask_hba(): a pg_hba.conf soraira — a mask() UTAN a CIM/CIDR oszlopot is elrejti. A nyers
+            # CIDR / IP / netmask infra-recon adat a CI-logban (ezt jelezte a review), miközben a
+            # DIAGNOSZTIKAI jel megmarad: sor-tipus (local/host/hostssl/hostnossl), db- es user-scope,
+            # auth-metodus, es hogy van-e egyaltalan sor a LOOPBACK-ra. Oszlop-alapu (awk), nem
+            # IP-regex — az utobbi a sokfele cim-alak (CIDR, netmask-par, IPv6, hostnev) miatt torekeny.
+            mask_hba() {
+              mask | awk '
+                { if ($1 == "local" || NF < 4) { print "  " $0; next }
+                  keep = ($4=="127.0.0.1/32" || $4=="::1/128" || $4=="samehost" || $4=="samenet" || $4=="all" || $4=="0.0.0.0/0" || $4=="::/0" || $4=="::0/0");
+                  if (!keep) {
+                    if (NF >= 5 && $5 ~ /^[0-9]+\.[0-9.]+$/) { $5 = "<netmask-maszkolva>" }
+                    $4 = "<cim-maszkolva>"
+                  }
+                  print "  " $0 }'
+            }
 
             echo "=== 1) pg_lsclusters — MINDEN klaszter (verzio, port, statusz, adatkonyvtar) ==="
             sudo pg_lsclusters 2>&1 | mask || echo "(pg_lsclusters nem elerheto)"
@@ -438,8 +473,10 @@ jobs:
             echo "=== 8) A 16-os klaszter pg_hba.conf ervenyes sorai (a 'restricted connections' gyanu) ==="
             # A pg_upgradecluster a regi klasztert 'restricted connections' modba teheti (local-only hba),
             # ez magyarazna a 'no pg_hba.conf entry ... SSL encryption' hibat IPv4-en.
+            # A sorok mask_hba()-n mennek at: a konkret halozati cim/CIDR/netmask elrejtve, a sor-tipus,
+            # a db/user-scope, az auth-metodus es a loopback-lefedettseg lathato marad.
             sudo stat -c '  hba mtime: %y' /etc/postgresql/16/main/pg_hba.conf 2>/dev/null || echo "  (nincs 16-os pg_hba.conf)"
-            sudo grep -vE '^[[:space:]]*(#|$)' /etc/postgresql/16/main/pg_hba.conf 2>/dev/null | sed 's/^/  /' || echo "  (nem olvashato)"
+            sudo grep -vE '^[[:space:]]*(#|$)' /etc/postgresql/16/main/pg_hba.conf 2>/dev/null | mask_hba || echo "  (nem olvashato)"
             echo ""
 
             echo "=== Kesz — read-only, semmi nem valtozott ==="
