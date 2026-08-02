@@ -361,34 +361,61 @@ jobs:
             # api_key=, secret=, Authorization: es a Bearer/Basic sema alakokat is, plusz a
             # connection-URI credentialt (scheme://user:pass@host) — a journalctl / systemctl status
             # kimenet ugyanis sokfele formaban hordozhat secretet.
-            # TUDATOS KIVETEL: a pgbouncer auth_type / auth_file / auth_query / auth_user / auth_dbname
-            # es a postgres hba_file / ident_file NEM secret (auth-metodus neve, ill. fajl-utvonal), es
-            # EPPEN EZEK a diagnosztika lenyege — ezert a maszkolas elott placeholderre cserelodnek
-            # (a '@@' megtori a kulcs-elvalaszto szomszedsagot), utana visszaallnak.
+            # A KETTOSPONTOS alak (kulcs: ertek) a SOR VEGEIG maszkol (a naplo-stilusu "password: my pass
+            # phrase" kulonben csak az elso szoig tunt volna el); az EGYENLOSEGJELES alak token-alapu
+            # marad, mert a logfmt-szeru "a=1 b=2" lancokban a sor-vegeig maszkolas az egesz diagnosztikai
+            # sort kiuresitene.
+            # NINCS globalis kivetel: a pgbouncer auth_* kulcsokat CSAK a mask_pgb() vedi (lasd ott).
             mask() {
               sed -E \
-                -e 's/\b(auth_(type|file|query|user|dbname)|hba_file|ident_file)\b/@@KEEP:\1@@/Ig' \
                 -e 's#(://)[^:@/[:space:]]+:[^@[:space:]]+@#\1***:***@#g' \
                 -e 's#(://)[^@/[:space:]]+@#\1***@#g' \
                 -e 's#\b(Bearer|Basic)[[:space:]]+[A-Za-z0-9._~+/=-]{8,}#\1 ***#Ig' \
                 -e 's/("?[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"?[[:space:]]*[=:][[:space:]]*")[^"]*/\1***/Ig' \
-                -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*[=:][[:space:]]*)[^[:space:]&;,"]+/\1***/Ig' \
-                -e 's/@@KEEP:([A-Za-z0-9_]+)@@/\1/Ig'
+                -e 's/("[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"[[:space:]]*[=:][[:space:]]*)[^",}[:space:]]+/\1***/Ig' \
+                -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*:[[:space:]]*)[^"]+/\1***/Ig' \
+                -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*=[[:space:]]*)[^[:space:]&;,"]+/\1***/Ig'
+            }
+            # mask_pgb(): KIZAROLAG a pgbouncer.ini kiirasahoz. A pgbouncer auth_type / auth_file /
+            # auth_query / auth_user / auth_dbname (+ postgres hba_file / ident_file) NEM secret
+            # (auth-metodus neve, felhasznalonev, ill. fajl-utvonal), es EPPEN EZEK a 3. szakasz
+            # diagnosztikai lenyege — a szeles 'auth' szominta kulonben 'auth_type = ***'-ga tenne oket.
+            # A kivetel SZANDEKOSAN NEM globalis (korabban az volt): mashonnan — pl. a journalbol —
+            # erkezo 'auth_user = ...' sor a sima mask()-on megy at es maszkolodik.
+            mask_pgb() {
+              sed -E 's/\b(auth_(type|file|query|user|dbname)|hba_file|ident_file)\b/@@KEEP:\1@@/Ig' \
+                | mask \
+                | sed -E 's/@@KEEP:([A-Za-z0-9_]+)@@/\1/Ig'
             }
             # mask_hba(): a pg_hba.conf soraira — a mask() UTAN a CIM/CIDR oszlopot is elrejti. A nyers
-            # CIDR / IP / netmask infra-recon adat a CI-logban (ezt jelezte a review), miközben a
-            # DIAGNOSZTIKAI jel megmarad: sor-tipus (local/host/hostssl/hostnossl), db- es user-scope,
-            # auth-metodus, es hogy van-e egyaltalan sor a LOOPBACK-ra. Oszlop-alapu (awk), nem
-            # IP-regex — az utobbi a sokfele cim-alak (CIDR, netmask-par, IPv6, hostnev) miatt torekeny.
+            # CIDR / IP / netmask infra-recon adat a CI-logban, miközben a DIAGNOSZTIKAI jel megmarad:
+            # sor-tipus (local/host/hostssl/hostnossl), db- es user-scope, auth-metodus, es hogy van-e
+            # egyaltalan sor a loopbackre. Oszlop-alapu, nem IP-regex — az utobbi a sokfele cim-alak
+            # (CIDR, netmask-par, IPv6, hostnev) miatt torekeny.
+            # IDEZOJEL-TUDATOS tokenizalas: a pg_hba.conf mezoi idezojelben whitespace-t is tartalmazhatnak
+            # (pl. 'host all "user name" 10.0.0.0/24 scram-sha-256'), amitol a sima whitespace-split
+            # elcsusztatna az oszlopokat es a CIM MASZKOLATLAN maradna.
+            # Ket ut, mert a FPAT GAWK-KITERJESZTES: a Debian/Ubuntu alapertelmezett awk-ja a mawk, ami a
+            # FPAT-ot NEMAN figyelmen kivul hagyja (visszahozna pont ezt a hibat). Ezert gawk eseten FPAT,
+            # egyebkent az idezojelen BELULI whitespace placeholderre cserelese a split elott — a ket ag
+            # kimenete azonos. A mezo-logika egy helyen (HBA_AWK) van, nincs duplikalva.
+            HBA_AWK='{ if ($1 == "local" || NF < 4) { print "  " $0; next }
+                       keep = ($4=="127.0.0.1/32" || $4=="::1/128" || $4=="samehost" || $4=="samenet" || $4=="all" || $4=="0.0.0.0/0" || $4=="::/0" || $4=="::0/0");
+                       if (!keep) {
+                         if (NF >= 5 && $5 ~ /^[0-9]+\.[0-9.]+$/) { $5 = "<netmask-maszkolva>" }
+                         $4 = "<cim-maszkolva>"
+                       }
+                       print "  " $0 }'
             mask_hba() {
-              mask | awk '
-                { if ($1 == "local" || NF < 4) { print "  " $0; next }
-                  keep = ($4=="127.0.0.1/32" || $4=="::1/128" || $4=="samehost" || $4=="samenet" || $4=="all" || $4=="0.0.0.0/0" || $4=="::/0" || $4=="::0/0");
-                  if (!keep) {
-                    if (NF >= 5 && $5 ~ /^[0-9]+\.[0-9.]+$/) { $5 = "<netmask-maszkolva>" }
-                    $4 = "<cim-maszkolva>"
-                  }
-                  print "  " $0 }'
+              if command -v gawk >/dev/null 2>&1; then
+                mask | gawk 'BEGIN { FPAT = "([^[:space:]\"]+)|(\"[^\"]*\")" }'"$HBA_AWK"
+              else
+                # A ciklus soronkent addig cserel, amig van meg whitespace NYITOTT idezojelen belul.
+                mask \
+                  | sed -E ':a; s/^(([^"]*"[^"]*")*[^"]*"[^"]*)[[:blank:]]/\1@@SP@@/; ta' \
+                  | awk "$HBA_AWK" \
+                  | sed -E 's/@@SP@@/ /g'
+              fi
             }
 
             echo "=== 1) pg_lsclusters — MINDEN klaszter (verzio, port, statusz, adatkonyvtar) ==="
@@ -422,7 +449,7 @@ jobs:
             systemctl status pgbouncer.service --no-pager -n 15 2>&1 | mask || true
             echo "--- /etc/pgbouncer/pgbouncer.ini relevans sorai (jelszo maszkolva) ---"
             sudo grep -nE '^[[:space:]]*(\[|listen_addr|listen_port|auth_type|auth_file|pool_mode|max_client_conn|default_pool_size|server_tls|[A-Za-z0-9_]+[[:space:]]*=[[:space:]]*host=)' \
-              /etc/pgbouncer/pgbouncer.ini 2>/dev/null | mask || echo "(pgbouncer.ini nem olvashato / nincs)"
+              /etc/pgbouncer/pgbouncer.ini 2>/dev/null | mask_pgb || echo "(pgbouncer.ini nem olvashato / nincs)"
             echo "--- pgbouncer.ini mtime ---"
             sudo stat -c '  %y  %n' /etc/pgbouncer/pgbouncer.ini 2>/dev/null || echo "(nincs)"
             echo ""
