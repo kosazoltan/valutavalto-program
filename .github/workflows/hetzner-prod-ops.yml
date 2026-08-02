@@ -23,6 +23,7 @@ on:
           - cutover-preflight
           - cutover-unit-probe
           - cutover-runtime-probe
+          - cluster-status-probe
           - restore-local-primary
           - neon-backup-plan
           - neon-backup-refresh
@@ -335,6 +336,177 @@ jobs:
             echo "=== NEON neondb — aktiv kapcsolatok (a backend Hikari-poolja ITT van-e) ==="
             psql "$NEON_URI" -P pager=off -c "SELECT count(*) conns, usename, application_name, client_addr, state FROM pg_stat_activity WHERE datname='neondb' GROUP BY usename, application_name, client_addr, state ORDER BY 1 DESC LIMIT 12" 2>/dev/null || echo "(n/a)"
             echo "=== Kesz — runtime probe read-only ==="
+          ENDSSH
+
+      - name: 'CLUSTER STATUS PROBE (read-only) — elakadt PG16->18 upgrade diagnosztika'
+        if: ${{ github.event.inputs.action == 'cluster-status-probe' }}
+        run: |
+          # TELJESEN READ-ONLY incidens-diagnosztika. NEM indit, NEM allit le, NEM javit,
+          # NEM ir egyetlen fajlt/DB-t sem — csak olvas es jelent.
+          # KONTEXTUS: a tervezett PG 16.13->16.14 patch kozben a postgresql-common egy NEM KERT
+          # 16->18 major-migraciot (pg_upgradecluster) inditott, ami halozati megszakadas miatt
+          # (Broken pipe / exit 255) felbeszakadt. A valuta-backend.service NEM fut (MainPID: 0),
+          # a lokalis DB-kapcsolat serult (PgBouncer 6432 "Connection refused" / "no pg_hba.conf entry").
+          # CEL: kideriteni, hogy a regi 16-os klaszter erintetlen-e, melyik klaszter/port el MOST,
+          # es mire mutat a PgBouncer — a helyreallitast KULON korben, ennek eredmenye alapjan tervezzuk.
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              bash -s << 'ENDSSH'
+            set -o pipefail
+            # ---------------- Maszkolo szurok ----------------
+            # mask(): ALTALANOS szabaly esetenkenti mintalista helyett — barmely "kulcs=ertek" vagy
+            # "kulcs: ertek" par, ahol a kulcs tartalmazza a pass / pwd / secret / token / key / auth /
+            # cred szavak valamelyiket (KIS-NAGYBETU FUGGETLENUL), ertek-oldalon maszkolodik. Ez egyben
+            # lefedi a password=, "password: ", "password = ", {"password":"..."}, PGPASSWORD=, token=,
+            # api_key=, secret=, Authorization: es a Bearer/Basic sema alakokat is, plusz a
+            # connection-URI credentialt (scheme://user:pass@host) — a journalctl / systemctl status
+            # kimenet ugyanis sokfele formaban hordozhat secretet.
+            # A KETTOSPONTOS alak (kulcs: ertek) a SOR VEGEIG maszkol (a naplo-stilusu "password: my pass
+            # phrase" kulonben csak az elso szoig tunt volna el); az EGYENLOSEGJELES alak token-alapu
+            # marad, mert a logfmt-szeru "a=1 b=2" lancokban a sor-vegeig maszkolas az egesz diagnosztikai
+            # sort kiuresitene.
+            # NINCS globalis kivetel: a pgbouncer auth_* kulcsokat CSAK a mask_pgb() vedi (lasd ott).
+            mask() {
+              sed -E \
+                -e 's#(://)[^:@/[:space:]]+:[^@[:space:]]+@#\1***:***@#g' \
+                -e 's#(://)[^@/[:space:]]+@#\1***@#g' \
+                -e 's#\b(Bearer|Basic)[[:space:]]+[A-Za-z0-9._~+/=-]{8,}#\1 ***#Ig' \
+                -e 's/("?[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"?[[:space:]]*[=:][[:space:]]*")[^"]*/\1***/Ig' \
+                -e 's/("[A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*"[[:space:]]*[=:][[:space:]]*)[^",}[:space:]]+/\1***/Ig' \
+                -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*:[[:space:]]*)[^"]+/\1***/Ig' \
+                -e 's/([A-Za-z0-9_.-]*(pass|pwd|secret|token|key|auth|cred)[A-Za-z0-9_.-]*[[:space:]]*=[[:space:]]*)[^[:space:]&;,"]+/\1***/Ig'
+            }
+            # mask_pgb(): KIZAROLAG a pgbouncer.ini kiirasahoz. A pgbouncer auth_type / auth_file /
+            # auth_query / auth_user / auth_dbname (+ postgres hba_file / ident_file) NEM secret
+            # (auth-metodus neve, felhasznalonev, ill. fajl-utvonal), es EPPEN EZEK a 3. szakasz
+            # diagnosztikai lenyege — a szeles 'auth' szominta kulonben 'auth_type = ***'-ga tenne oket.
+            # A kivetel SZANDEKOSAN NEM globalis (korabban az volt): mashonnan — pl. a journalbol —
+            # erkezo 'auth_user = ...' sor a sima mask()-on megy at es maszkolodik.
+            mask_pgb() {
+              sed -E 's/\b(auth_(type|file|query|user|dbname)|hba_file|ident_file)\b/@@KEEP:\1@@/Ig' \
+                | mask \
+                | sed -E 's/@@KEEP:([A-Za-z0-9_]+)@@/\1/Ig'
+            }
+            # mask_hba(): a pg_hba.conf soraira — a mask() UTAN a CIM/CIDR oszlopot is elrejti. A nyers
+            # CIDR / IP / netmask infra-recon adat a CI-logban, miközben a DIAGNOSZTIKAI jel megmarad:
+            # sor-tipus (local/host/hostssl/hostnossl), db- es user-scope, auth-metodus, es hogy van-e
+            # egyaltalan sor a loopbackre. Oszlop-alapu, nem IP-regex — az utobbi a sokfele cim-alak
+            # (CIDR, netmask-par, IPv6, hostnev) miatt torekeny.
+            # IDEZOJEL-TUDATOS tokenizalas: a pg_hba.conf mezoi idezojelben whitespace-t is tartalmazhatnak
+            # (pl. 'host all "user name" 10.0.0.0/24 scram-sha-256'), amitol a sima whitespace-split
+            # elcsusztatna az oszlopokat es a CIM MASZKOLATLAN maradna.
+            # Ket ut, mert a FPAT GAWK-KITERJESZTES: a Debian/Ubuntu alapertelmezett awk-ja a mawk, ami a
+            # FPAT-ot NEMAN figyelmen kivul hagyja (visszahozna pont ezt a hibat). Ezert gawk eseten FPAT,
+            # egyebkent az idezojelen BELULI whitespace placeholderre cserelese a split elott — a ket ag
+            # kimenete azonos. A mezo-logika egy helyen (HBA_AWK) van, nincs duplikalva.
+            HBA_AWK='{ if ($1 == "local" || NF < 4) { print "  " $0; next }
+                       keep = ($4=="127.0.0.1/32" || $4=="::1/128" || $4=="samehost" || $4=="samenet" || $4=="all" || $4=="0.0.0.0/0" || $4=="::/0" || $4=="::0/0");
+                       if (!keep) {
+                         if (NF >= 5 && $5 ~ /^[0-9]+\.[0-9.]+$/) { $5 = "<netmask-maszkolva>" }
+                         $4 = "<cim-maszkolva>"
+                       }
+                       print "  " $0 }'
+            mask_hba() {
+              if command -v gawk >/dev/null 2>&1; then
+                mask | gawk 'BEGIN { FPAT = "([^[:space:]\"]+)|(\"[^\"]*\")" }'"$HBA_AWK"
+              else
+                # A ciklus soronkent addig cserel, amig van meg whitespace NYITOTT idezojelen belul.
+                mask \
+                  | sed -E ':a; s/^(([^"]*"[^"]*")*[^"]*"[^"]*)[[:blank:]]/\1@@SP@@/; ta' \
+                  | awk "$HBA_AWK" \
+                  | sed -E 's/@@SP@@/ /g'
+              fi
+            }
+
+            echo "=== 1) pg_lsclusters — MINDEN klaszter (verzio, port, statusz, adatkonyvtar) ==="
+            sudo pg_lsclusters 2>&1 | mask || echo "(pg_lsclusters nem elerheto)"
+            echo ""
+
+            echo "=== 2a) postgresql-vonatkozasu systemd unitok FELDERITESE (tenyleges unit-nevek) ==="
+            # Elobb a tenyleges unit-neveket deritjuk fel, csak utana kerdezunk ra celzottan —
+            # a 18-as klaszter unit-neve gepenkent elterhet (pl. postgresql@18-main.service).
+            systemctl list-units --type=service --all --no-legend --no-pager 2>/dev/null \
+              | grep -iE 'postgres|pgbouncer' || echo "(nincs betoltott postgres/pgbouncer unit)"
+            echo "--- unit-file-ok (a nem betoltott/disabled unitok is latszanak) ---"
+            systemctl list-unit-files --no-legend --no-pager 2>/dev/null \
+              | grep -iE 'postgres|pgbouncer' || echo "(nincs ilyen unit-file)"
+            echo ""
+
+            echo "=== 2b) A felderitett postgresql@* unitok reszletes statusza ==="
+            PGUNITS=$(systemctl list-units --type=service --all --no-legend --no-pager 2>/dev/null \
+              | awk '{ for (i=1;i<=NF;i++) if ($i ~ /\.service$/) { print $i; break } }' \
+              | grep -E '^postgresql' | sort -u || true)
+            if [ -z "$PGUNITS" ]; then
+              echo "(egyetlen betoltott postgresql* unit sincs — a fenti unit-file listabol kell tajekozodni)"
+            fi
+            for u in $PGUNITS; do
+              echo "--- systemctl status $u ---"
+              systemctl status "$u" --no-pager -n 12 2>&1 | mask || true
+              echo ""
+            done
+
+            echo "=== 3) PgBouncer statusz + a konfigban BEALLITOTT cel (melyik port/klaszter) ==="
+            systemctl status pgbouncer.service --no-pager -n 15 2>&1 | mask || true
+            echo "--- /etc/pgbouncer/pgbouncer.ini relevans sorai (jelszo maszkolva) ---"
+            sudo grep -nE '^[[:space:]]*(\[|listen_addr|listen_port|auth_type|auth_file|pool_mode|max_client_conn|default_pool_size|server_tls|[A-Za-z0-9_]+[[:space:]]*=[[:space:]]*host=)' \
+              /etc/pgbouncer/pgbouncer.ini 2>/dev/null | mask_pgb || echo "(pgbouncer.ini nem olvashato / nincs)"
+            echo "--- pgbouncer.ini mtime ---"
+            sudo stat -c '  %y  %n' /etc/pgbouncer/pgbouncer.ini 2>/dev/null || echo "(nincs)"
+            echo ""
+
+            echo "=== 4) PORTHASZNALAT MOST: ki figyel 5432 / 5433 / 6432 porton ==="
+            sudo ss -tlnp 2>/dev/null | grep -E ':5432|:5433|:6432' || echo "(egyik porton sincs listener — se 5432, se 5433, se 6432)"
+            echo ""
+
+            echo "=== 5) valuta-backend.service statusz + utolso 40 journal-sor (miert nem indul) ==="
+            echo "MainPID    : $(systemctl show valuta-backend.service -p MainPID --value 2>/dev/null)"
+            echo "ActiveState: $(systemctl show valuta-backend.service -p ActiveState --value 2>/dev/null) | SubState: $(systemctl show valuta-backend.service -p SubState --value 2>/dev/null)"
+            echo "Result     : $(systemctl show valuta-backend.service -p Result --value 2>/dev/null) | utolso aktivalas: $(systemctl show valuta-backend.service -p ActiveEnterTimestamp --value 2>/dev/null)"
+            echo "--- systemctl status valuta-backend.service ---"
+            systemctl status valuta-backend.service --no-pager -n 15 2>&1 | mask || true
+            echo "--- journalctl -u valuta-backend.service -n 40 (maszkolt) ---"
+            sudo journalctl -u valuta-backend.service -n 40 --no-pager 2>&1 | mask || echo "(journal nem olvashato)"
+            echo ""
+
+            echo "=== 6) Lemezterulet — van-e hely egy esetleges 18-as klaszter kezelesehez ==="
+            df -h /var/lib/postgresql 2>&1 || echo "(df nem futott)"
+            echo "--- klaszter-adatkonyvtarak merete (du) ---"
+            for d in /var/lib/postgresql/*/main; do
+              [ -d "$d" ] || continue
+              echo "  $(sudo du -sh "$d" 2>/dev/null | awk '{print $1}')  $d"
+            done
+            echo ""
+
+            echo "=== 7) A REGI 16-os klaszter adatkonyvtara — erintetlen-e ==="
+            PG16=/var/lib/postgresql/16/main
+            if sudo test -d "$PG16"; then
+              echo "  meret        : $(sudo du -sh "$PG16" 2>/dev/null | awk '{print $1}')"
+              echo "  konyvtar mtime: $(sudo stat -c '%y' "$PG16" 2>/dev/null)"
+              echo "  PG_VERSION   : $(sudo cat "$PG16/PG_VERSION" 2>/dev/null || echo '(nem olvashato)')"
+              echo "  postmaster.pid: $(sudo test -f "$PG16/postmaster.pid" && echo 'JELEN (fut vagy nem tiszta leallas)' || echo 'nincs (leallitott klaszter)')"
+              echo "--- kulcs-fajlok mtime-ja ---"
+              for f in PG_VERSION global/pg_control postmaster.opts; do
+                sudo stat -c '  %y  %n' "$PG16/$f" 2>/dev/null || echo "  (nincs: $PG16/$f)"
+              done
+              echo "--- legfrissebb WAL-szegmensek (utolso iras idopontja) ---"
+              sudo ls -lt --time-style=long-iso "$PG16/pg_wal" 2>/dev/null | head -6 || echo "  (pg_wal nem listazhato)"
+              echo "--- legfrissebb elemek a klaszter-gyokerben ---"
+              sudo ls -lt --time-style=long-iso "$PG16" 2>/dev/null | head -10 || echo "  (nem listazhato)"
+            else
+              echo "::warning::$PG16 NEM letezik — a regi 16-os klaszter adatkonyvtara eltunt!"
+            fi
+            echo ""
+
+            echo "=== 8) A 16-os klaszter pg_hba.conf ervenyes sorai (a 'restricted connections' gyanu) ==="
+            # A pg_upgradecluster a regi klasztert 'restricted connections' modba teheti (local-only hba),
+            # ez magyarazna a 'no pg_hba.conf entry ... SSL encryption' hibat IPv4-en.
+            # A sorok mask_hba()-n mennek at: a konkret halozati cim/CIDR/netmask elrejtve, a sor-tipus,
+            # a db/user-scope, az auth-metodus es a loopback-lefedettseg lathato marad.
+            sudo stat -c '  hba mtime: %y' /etc/postgresql/16/main/pg_hba.conf 2>/dev/null || echo "  (nincs 16-os pg_hba.conf)"
+            sudo grep -vE '^[[:space:]]*(#|$)' /etc/postgresql/16/main/pg_hba.conf 2>/dev/null | mask_hba || echo "  (nem olvashato)"
+            echo ""
+
+            echo "=== Kesz — read-only, semmi nem valtozott ==="
           ENDSSH
 
       - name: 'NEON BACKUP PLAN (read-only) — replica-jog teszt + FK-closure + meretek'
