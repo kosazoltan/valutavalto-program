@@ -626,15 +626,21 @@ jobs:
             fi
             echo ""
 
-            echo "=== 2) A systemd-n KIVUL futo 16-os klaszter GRACEFUL leallitasa (--mode=fast) ==="
+            echo "=== 2) A 16-os klaszter GRACEFUL leallitasa (--mode=fast) — a stop MINDIG megkiserelve ==="
+            # GYOKEROK (a #51 futas tanulsaga): ez a lepes korabban a pg_lsclusters 16/main statuszabol
+            # dontotte el, hogy egyaltalan MEGPROBALJA-e a leallitast — es 'down' + confirm_down_ok=IGEN
+            # eseten KIHAGYTA a stopot. Csakhogy EPPEN ARROL SZOL EZ AZ INCIDENS, hogy a pg_lsclusters /
+            # systemd nyilvantartasa ELSZAKADT a tenyleges OS-szintu folyamat-allapottol: a #51 futasban
+            # a nyilvantartas 'down'-t mutatott, MIKOZBEN az 5432-es porton elo listener volt. A 3. szakasz
+            # ezt helyesen kiszurte es megallt (fail-closed mukodott, semmi nem serult), de a 2. szakasz
+            # dontese egy megbizhatatlan forrasra epult.
+            # JAVITAS: a pg_lsclusters statusza MAR CSAK az emberi megerosites kapujat vezerli
+            # (confirm_down_ok), a leallitasi KISERLETET nem. A pg_ctlcluster stop idempotens: ha a
+            # klaszter tenylegesen nem fut, "nem fut" jellegu hibat ad, amit elfogadunk; ha fut, leallitja.
             PG16_BEFORE=$(pg16_status)
-            echo "  pg_lsclusters 16/main statusz elotte: ${PG16_BEFORE:-<ures>}"
+            echo "  pg_lsclusters 16/main statusz elotte: ${PG16_BEFORE:-<ures>} (csak a megerosites-kapuhoz, a stophoz NEM)"
             if [ "$PG16_BEFORE" = "online" ]; then
-              if ! sudo -u postgres pg_ctlcluster 16 main stop --mode=fast; then
-                echo "::error::A 16-os klaszter leallitasa BUKOTT (pg_ctlcluster 16 main stop --mode=fast) — ALLJ. A klaszter valoszinuleg tovabbra is fut; kezi vizsgalat kell, semmi mas nem valtozott."
-                exit 1
-              fi
-              echo "  pg_ctlcluster stop --mode=fast: OK"
+              echo "  a nyilvantartas 'online' — a stop a vart uton fut"
             elif [ "$PG16_BEFORE" = "down" ]; then
               # EMBERI MEGEROSITESHEZ KOTOTT AG. A dokumentalt 2026-08-02-i incidens-szignatura az, hogy a
               # klaszter FUT (csak systemd-n kivul) — a 'down' allapot tehat NEM az eredeti incidens, hanem
@@ -656,9 +662,26 @@ jobs:
                 echo "=== Kesz — RESZBEN SIKERES, a 2. lepesnel allt meg (emberi megerosites szukseges) ==="
                 exit 1
               fi
-              echo "  confirm_down_ok=IGEN — tudatos ujrafuttatas mar leallitott klaszteren, a stop lepes kihagyva"
+              echo "  confirm_down_ok=IGEN — tudatos ujrafuttatas engedelyezve; a stop ettol FUGGETLENUL lefut"
             else
               echo "::error::Ismeretlen/hianyzo 16/main klaszter-statusz ('${PG16_BEFORE:-<ures>}') — ALLJ, ez nem a diagnosztizalt allapot."
+              exit 1
+            fi
+            # A TENYLEGES leallitasi kiserlet — a nyilvantartas statuszatol FUGGETLENUL, mindig lefut.
+            STOP_OUT=$(sudo -u postgres pg_ctlcluster 16 main stop --mode=fast 2>&1); STOP_RC=$?
+            [ -n "$STOP_OUT" ] && printf '%s\n' "$STOP_OUT" | mask | sed 's/^/    /'
+            if [ "$STOP_RC" -eq 0 ]; then
+              echo "  pg_ctlcluster 16 main stop --mode=fast: OK (exit 0)"
+            elif printf '%s' "$STOP_OUT" | grep -qiE 'not running|no server running|is server running'; then
+              # ELFOGADHATO: a parancs expliciten azt jelzi, hogy nincs mit leallitani. A 3. szakasz
+              # ettol fuggetlenul ellenorzi a TENYLEGES allapotot (statusz + 5432-es listener).
+              echo "  a stop 'nem fut' jellegu hibat adott (exit $STOP_RC) — elfogadhato, nincs mit leallitani"
+              echo "--- diagnosztika: van-e MEGIS elo listener az 5432-n (a #51 futas ellentmondasa) ---"
+              sudo ss -tlnp 2>/dev/null | grep -E ':5432([[:space:]]|$)' | mask | sed 's/^/      /' \
+                || echo "      (nincs listener az 5432-n — konzisztens a 'nem fut' valasszal)"
+            else
+              echo "::error::A 'pg_ctlcluster 16 main stop --mode=fast' BUKOTT (exit $STOP_RC), es a hiba oka NEM egyertelmuen a 'nem fut' allapot — ALLJ. A klaszter valoszinuleg tovabbra is fut; kezi vizsgalat kell, semmi mas nem valtozott."
+              echo "=== Kesz — RESZBEN SIKERES, a 2. lepesnel allt meg (a leallitas bizonytalan hibaval tert vissza) ==="
               exit 1
             fi
             echo ""
