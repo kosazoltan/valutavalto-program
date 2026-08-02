@@ -159,6 +159,9 @@ jobs:
             # A lokalis pg_dump 'postgres' userkent fut, ezert a root-tulajdonu konyvtarba nem tudna
             # irni (Permission denied). Az iras-jog atadasa KOTELEZO a pg_dump ELOTT.
             sudo chown postgres:postgres "$BDIR"
+            # A teljes production DB-dump nem maradhat a szerver default umask-ja (0755/0644) szerint
+            # vilagolvashato allapotban — csak a tulajdonos (postgres) es a root ferhet hozza.
+            sudo chmod 700 "$BDIR"
             echo "=== Backup-konyvtar: $BDIR ==="
             echo ""
             echo "=== .env aktualis config (jelszo maszkolva) ==="
@@ -172,13 +175,52 @@ jobs:
             done
             echo ""
             echo "=== 1) Lokalis 'valuta' backup (pg_dump PG16, custom format) ==="
-            sudo -u postgres pg_dump -Fc -d valuta -f "$BDIR/local_valuta.dump"
+            # 1. VEDELMI RETEG: a pg_dump exit-kodja fail-closed — bukas eseten AZONNAL megallunk,
+            # nem a vegso meret-guardra bizzuk a hiba kiderulését.
+            if ! sudo -u postgres pg_dump -Fc -d valuta -f "$BDIR/local_valuta.dump"; then
+              echo "::error::Lokalis pg_dump BUKOTT (valuta DB) — nincs ervenyes lokalis mentes, a Postgres-patch NEM inditando!"
+              exit 1
+            fi
+            # A dump-fajl sem maradhat a default umask szerint olvashato.
+            sudo chmod 600 "$BDIR/local_valuta.dump"
             sudo bash -c "ls -l '$BDIR/local_valuta.dump' | awk '{print \"  meret: \"\$5\" byte\"}'; sha256sum '$BDIR/local_valuta.dump'"
+            # INTEGRITAS: a custom-format archivum TOC-ja olvashato-e (csonka/serult dumpot is elkap,
+            # amit a puszta meret-ellenorzes atengedne).
+            if sudo -u postgres sh -c 'command -v pg_restore >/dev/null 2>&1'; then
+              LOCAL_TOC=$(sudo -u postgres pg_restore --list "$BDIR/local_valuta.dump" 2>/dev/null | wc -l)
+              if [ "${LOCAL_TOC:-0}" -gt 0 ]; then
+                echo "  integritas OK: pg_restore --list $LOCAL_TOC sort adott"
+              else
+                echo "::error::local_valuta.dump SERULT/CSONKA — a pg_restore --list nem adott TOC-bejegyzest!"
+                exit 1
+              fi
+            else
+              echo "::warning::pg_restore nem elerheto — a lokalis dump belso konzisztencia-ellenorzese kimaradt (a meret-guard ervenyben marad)"
+            fi
             echo ""
             echo "=== 2) Neon backup (pg_dump PG17 docker, custom format) ==="
-            docker run --rm -e PGURI="$NEON_URI" postgres:17 sh -c 'pg_dump -Fc "$PGURI"' > /tmp/neon.dump 2>/tmp/neon.err || { echo "::error::Neon pg_dump bukott"; sed -E 's#postgres(ql)?://[^[:space:]]*#<NEON_URI>#g' /tmp/neon.err | tail -8; }
-            sudo mv /tmp/neon.dump "$BDIR/neon_neondb.dump" 2>/dev/null || true
-            sudo bash -c "[ -f '$BDIR/neon_neondb.dump' ] && { ls -l '$BDIR/neon_neondb.dump' | awk '{print \"  meret: \"\$5\" byte\"}'; sha256sum '$BDIR/neon_neondb.dump'; } || echo '(Neon dump hianyzik)'"
+            # 1. VEDELMI RETEG: a Neon pg_dump bukasa is fail-closed (korabban csak logolt es folytatta).
+            if ! docker run --rm -e PGURI="$NEON_URI" postgres:17 sh -c 'pg_dump -Fc "$PGURI"' > /tmp/neon.dump 2>/tmp/neon.err; then
+              echo "::error::Neon pg_dump BUKOTT — nincs ervenyes Neon-mentes, a Postgres-patch NEM inditando!"
+              sed -E 's#postgres(ql)?://[^[:space:]]*#<NEON_URI>#g' /tmp/neon.err | tail -8
+              rm -f /tmp/neon.dump /tmp/neon.err
+              exit 1
+            fi
+            # INTEGRITAS meg az athelyezes elott, ugyanazzal a PG17-es eszkozzel, ami irta.
+            NEON_TOC=$(docker run --rm -v /tmp/neon.dump:/neon.dump:ro postgres:17 pg_restore --list /neon.dump 2>/dev/null | wc -l)
+            if [ "${NEON_TOC:-0}" -le 0 ]; then
+              echo "::error::A Neon dump SERULT/CSONKA — a pg_restore --list nem adott TOC-bejegyzest!"
+              rm -f /tmp/neon.dump /tmp/neon.err
+              exit 1
+            fi
+            echo "  integritas OK: pg_restore --list $NEON_TOC sort adott"
+            rm -f /tmp/neon.err
+            if ! sudo mv /tmp/neon.dump "$BDIR/neon_neondb.dump"; then
+              echo "::error::A Neon dump athelyezese a backup-konyvtarba BUKOTT ($BDIR/neon_neondb.dump)"
+              exit 1
+            fi
+            sudo chmod 600 "$BDIR/neon_neondb.dump"
+            sudo bash -c "ls -l '$BDIR/neon_neondb.dump' | awk '{print \"  meret: \"\$5\" byte\"}'; sha256sum '$BDIR/neon_neondb.dump'"
             echo ""
             echo "=== 3) NEON-DELTA: a lokalis utolso irasanal (2026-06-14 06:30) ujabb uzleti sorok a Neonon ==="
             for t in transaction collected_transaction data_collection cash_balance daily_session vault_transfer closing_wizard notification receipt; do
@@ -190,6 +232,7 @@ jobs:
             psql "$NEON_URI" -P pager=off -c "SELECT id, created_at, status FROM transaction WHERE created_at > '2026-06-14 06:30:00' ORDER BY created_at DESC LIMIT 20" 2>/dev/null || echo "(nincs / nem olvashato)"
             echo ""
             echo "=== 4) VEGSO ELLENORZES: mindket dump letezik es ertelmes meretu (> 1000 byte) ==="
+            # 2. VEDELMI RETEG a fenti explicit exit-kod- es integritas-ellenorzesek MELLETT (nem helyettuk).
             # Ez a lepes a Postgres-patch elotti biztonsagi mentes: NEM fejezodhet be sikeresen,
             # ha barmelyik DB-rol hianyzik vagy csonka a dump (nema zold pipa tilos).
             BACKUP_FAIL=0
