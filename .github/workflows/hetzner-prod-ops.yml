@@ -761,8 +761,10 @@ jobs:
             # bukasa/bizonytalansaga eseten a dropcluster KIMARAD (::error:: + DROP18_FAIL=1), a mar
             # helyreallt DB+backend erintetlenul marad:
             #   G1 (olcso elso szuro) : konyvtar-meret <= 512 MB
-            #   G2 (STRUKTURALIS)     : a klaszter minden nem-template DB-jeben 0 user-tabla. A puszta
-            #                           meret NEM eleg: egy valodi, de kicsi adatbazis is lehet 512 MB alatt.
+            #   G2 (STRUKTURALIS)     : igazolt klaszter-IDENTITAS (data_directory) + 0 user-eredetu
+            #                           OBJEKTUM minden nem-template DB-ben (tabla, sequence, matview,
+            #                           nezet, fuggveny, tipus, extension, large object). A puszta meret
+            #                           NEM eleg: egy valodi, de kicsi adatbazis is lehet 512 MB alatt.
             #   G3 (backup)           : van 48 oranal frissebb, teljes cutover-mentes (1b szakasz)
             DROP18_FAIL=0
             PG18DIR=/var/lib/postgresql/18/main
@@ -778,53 +780,106 @@ jobs:
                 echo "  G1 OK: $SZ18 MB (<= 512 MB)"
               fi
 
-              echo "--- G2) STRUKTURALIS uresseg-ellenorzes (nem-template DB-k user-tablai) ---"
-              # FAIL-CLOSED: ha barmi miatt nem tudjuk MEGBIZHATOAN megszamolni a user-tablakat
-              # (a klaszter nem online, nincs portja, nem a 18-as verzio valaszol, psql-hiba, nem szam
-              # jott vissza), az ugyanolyan blokkolo, mint egy megtalalt tabla.
+              echo "--- G2) STRUKTURALIS uresseg-ellenorzes (identitas + user-eredetu objektumok) ---"
+              # FAIL-CLOSED MINDEN BIZONYTALANSAGRA: ha barmi miatt nem tudjuk MEGBIZHATOAN igazolni,
+              # hogy a vizsgalt szerver EPPEN az eldobni kivant klaszter ES hogy strukturalisan ures
+              # (nem online, ervenytelen port, nem 18-as verzio, MAS data_directory, psql-hiba, nem
+              # ertelmezheto valasz), az ugyanolyan blokkolo, mint egy megtalalt user-objektum.
               PORT18=$(sudo pg_lsclusters 2>/dev/null | awk '$1=="18" && $2=="main" {print $3}')
               ST18=$(sudo pg_lsclusters 2>/dev/null | awk '$1=="18" && $2=="main" {print $4}')
               echo "  pg_lsclusters 18/main: port=${PORT18:-<ures>} statusz=${ST18:-<ures>}"
-              STRUCT_OK=0
-              if [ "$ST18" != "online" ]; then
-                echo "::error::G2 BUKOTT: a 18-as klaszter statusza '${ST18:-<ures>}' (nem 'online') — a uressege NEM ellenorizheto lekerdezessel."
-              elif ! printf '%s' "${PORT18:-}" | grep -qE '^[0-9]+$' || [ "$PORT18" = "5432" ]; then
-                echo "::error::G2 BUKOTT: ervenytelen vagy gyanus port ('${PORT18:-<ures>}') a 18/main-hoz — 5432 eseten a 16-os (HITELES) klasztert kerdeznenk le."
-              else
-                # A verzio-ellenorzes vedelem az ellen, hogy port-tevesztesbol a 16-os klasztert kerdezzuk.
-                VNUM=$(sudo -u postgres psql -p "$PORT18" -d postgres -tAc "SHOW server_version_num" 2>&1 | tr -d '[:space:]')
-                if ! printf '%s' "$VNUM" | grep -qE '^[0-9]+$' || [ "$VNUM" -lt 180000 ]; then
-                  echo "::error::G2 BUKOTT: a(z) $PORT18 porton valaszolo szerver server_version_num='$(printf '%s' "$VNUM" | mask)' — nem a 18-as klaszter, vagy nem lekerdezheto."
-                else
-                  DBLIST=$(sudo -u postgres psql -p "$PORT18" -d postgres -tAc "SELECT datname FROM pg_database WHERE datistemplate = false" 2>&1); DBRC=$?
-                  if [ "$DBRC" -ne 0 ] || [ -z "$(printf '%s' "$DBLIST" | tr -d '[:space:]')" ]; then
-                    echo "::error::G2 BUKOTT: a nem-template adatbazisok listaja nem kerdezheto le (exit=$DBRC) — $(printf '%s' "$DBLIST" | mask | tail -2)"
-                  else
-                    TOTAL_TABLES=0; COUNT_RELIABLE=1
-                    while IFS= read -r db; do
-                      [ -n "$db" ] || continue
-                      N=$(sudo -u postgres psql -p "$PORT18" -d "$db" -tAc \
-                        "SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema')" 2>&1); NRC=$?
-                      NCLEAN=$(printf '%s' "$N" | tr -d '[:space:]')
-                      if [ "$NRC" -ne 0 ] || ! printf '%s' "$NCLEAN" | grep -qE '^[0-9]+$'; then
-                        echo "    $db : NEM SZAMOLHATO (exit=$NRC, valasz='$(printf '%s' "$N" | mask | tail -1)')"
-                        COUNT_RELIABLE=0
-                      else
-                        echo "    $db : $NCLEAN user-tabla"
-                        TOTAL_TABLES=$((TOTAL_TABLES + NCLEAN))
-                      fi
-                    done < <(printf '%s\n' "$DBLIST")
-                    if [ "$COUNT_RELIABLE" != "1" ]; then
-                      echo "::error::G2 BUKOTT: legalabb egy adatbazisban NEM sikerult megbizhatoan megszamolni a user-tablakat — a klaszter uressege NEM igazolt."
-                    elif [ "$TOTAL_TABLES" -ne 0 ]; then
-                      echo "::error::G2 BUKOTT: a 18-as klaszterben OSSZESEN $TOTAL_TABLES user-tabla van — ez NEM ures klaszter, ADATVESZTES kockazata. A pg_dropcluster KIMARAD."
-                    else
-                      echo "  G2 OK: minden nem-template adatbazisban 0 user-tabla (strukturalisan ures)"
-                      STRUCT_OK=1
-                    fi
-                  fi
+              # A user-eredetu objektumok EGY lekerdezesben, kategoriankent: rel|fn|ty|ex|lo|osszesen.
+              # A puszta tabla-szamlalas NEM eleg: egy 0 tablas klaszter is tartalmazhat sequence-t,
+              # materializalt nezetet, fuggvenyt, tipust, extensiont vagy large objectet.
+              #   rel : pg_class relkind r/p (tabla, particionalt), S (sequence), m (materializalt nezet),
+              #         v (nezet), f (foreign tabla)
+              #   fn  : pg_proc (fuggveny/procedura)
+              #   ty  : pg_type — a tabla-kompozit (typrelid mogotti relkind <> 'c') es a generalt
+              #         array-tipusok kiszurve, hogy ne szamoljuk ketszer a relaciokat
+              #   ex  : pg_extension a friss initdb alapertelmezettjen (plpgsql) felul
+              #   lo  : pg_largeobject_metadata (large objectek — sehol nem latszanak nevterben)
+              # Kizarva mindenhol: a pg_* es information_schema nevterek, valamint az extensionhoz
+              # TARTOZO objektumok (pg_depend.deptype='e') — azok nem user-eredetuek.
+              OBJ_SQL="SELECT rel, fn, ty, ex, lo, rel+fn+ty+ex+lo FROM (SELECT
+                (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+                   WHERE c.relkind IN ('r','p','S','m','v','f')
+                     AND n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+                     AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_class'::regclass
+                                       AND d.objid=c.oid AND d.deptype='e')) AS rel,
+                (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                   WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+                     AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_proc'::regclass
+                                       AND d.objid=p.oid AND d.deptype='e')) AS fn,
+                (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
+                   WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname <> 'information_schema'
+                     AND (t.typrelid = 0 OR (SELECT c2.relkind FROM pg_class c2 WHERE c2.oid=t.typrelid) = 'c')
+                     AND NOT EXISTS (SELECT 1 FROM pg_type el WHERE el.oid=t.typelem AND el.typarray=t.oid)
+                     AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_type'::regclass
+                                       AND d.objid=t.oid AND d.deptype='e')) AS ty,
+                (SELECT count(*) FROM pg_extension WHERE extname NOT IN ('plpgsql')) AS ex,
+                (SELECT count(*) FROM pg_largeobject_metadata) AS lo
+              ) s"
+              # Fuggvenybe emelve, hogy a sok fail-closed kilepes ne 6 szintu if-elagazas legyen.
+              # Visszateresi ertek: 0 = strukturalisan ures ES igazolt identitasu, 1 = minden mas.
+              g2_structural_check() {
+                local port="$1" status="$2" expect_dir="$3"
+                if [ "$status" != "online" ]; then
+                  echo "::error::G2 BUKOTT: a 18-as klaszter statusza '${status:-<ures>}' (nem 'online') — a uressege NEM ellenorizheto lekerdezessel."
+                  return 1
                 fi
-              fi
+                if ! printf '%s' "${port:-}" | grep -qE '^[0-9]+$' || [ "$port" = "5432" ]; then
+                  echo "::error::G2 BUKOTT: ervenytelen vagy gyanus port ('${port:-<ures>}') a 18/main-hoz — 5432 eseten a 16-os (HITELES) klasztert kerdeznenk le."
+                  return 1
+                fi
+                # (i) verzio-ellenorzes: nem egy regebbi major valaszol-e a porton
+                local vnum
+                vnum=$(sudo -u postgres psql -p "$port" -d postgres -tAc "SHOW server_version_num" 2>&1 | tr -d '[:space:]')
+                if ! printf '%s' "$vnum" | grep -qE '^[0-9]+$' || [ "$vnum" -lt 180000 ]; then
+                  echo "::error::G2 BUKOTT: a(z) $port porton valaszolo szerver server_version_num='$(printf '%s' "$vnum" | mask)' — nem 18-as major, vagy nem lekerdezheto."
+                  return 1
+                fi
+                # (ii) IDENTITAS-ellenorzes: a verzio+port meg csak azt igazolja, hogy VALAMILYEN 18-as
+                # szerver valaszol. Azt, hogy EPPEN az eldobni kivant adatkonyvtarhoz tartozik-e, csak a
+                # data_directory pontos egyezese bizonyitja.
+                local datadir
+                datadir=$(sudo -u postgres psql -p "$port" -d postgres -tAc "SHOW data_directory" 2>&1 | tr -d '[:space:]')
+                if [ "$datadir" != "$expect_dir" ]; then
+                  echo "::error::G2 BUKOTT: IDENTITAS-ELTERES — a(z) $port porton valaszolo szerver data_directory-ja '$(printf '%s' "$datadir" | mask)', a VART '$expect_dir' helyett. Nem igazolt, hogy a vizsgalt szerver az eldobni kivant klaszter."
+                  return 1
+                fi
+                echo "  identitas OK: server_version_num=$vnum, data_directory=$datadir"
+                local dblist dbrc
+                dblist=$(sudo -u postgres psql -p "$port" -d postgres -tAc "SELECT datname FROM pg_database WHERE datistemplate = false" 2>&1); dbrc=$?
+                if [ "$dbrc" -ne 0 ] || [ -z "$(printf '%s' "$dblist" | tr -d '[:space:]')" ]; then
+                  echo "::error::G2 BUKOTT: a nem-template adatbazisok listaja nem kerdezheto le (exit=$dbrc) — $(printf '%s' "$dblist" | mask | tail -2)"
+                  return 1
+                fi
+                local total=0 reliable=1 db row clean dbtotal
+                while IFS= read -r db; do
+                  [ -n "$db" ] || continue
+                  row=$(sudo -u postgres psql -p "$port" -d "$db" -tAc "$OBJ_SQL" 2>&1); local rc=$?
+                  clean=$(printf '%s' "$row" | tr -d '[:space:]')
+                  if [ "$rc" -ne 0 ] || ! printf '%s' "$clean" | grep -qE '^[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+$'; then
+                    echo "    $db : NEM SZAMOLHATO (exit=$rc, valasz='$(printf '%s' "$row" | mask | tail -1)')"
+                    reliable=0
+                    continue
+                  fi
+                  dbtotal=$(printf '%s' "$clean" | cut -d'|' -f6)
+                  echo "    $db : rel(tabla/seq/matview/nezet)=$(printf '%s' "$clean" | cut -d'|' -f1) fuggveny=$(printf '%s' "$clean" | cut -d'|' -f2) tipus=$(printf '%s' "$clean" | cut -d'|' -f3) extension=$(printf '%s' "$clean" | cut -d'|' -f4) large_object=$(printf '%s' "$clean" | cut -d'|' -f5) | OSSZESEN=$dbtotal"
+                  total=$((total + dbtotal))
+                done < <(printf '%s\n' "$dblist")
+                if [ "$reliable" != "1" ]; then
+                  echo "::error::G2 BUKOTT: legalabb egy adatbazisban NEM sikerult megbizhatoan megszamolni a user-eredetu objektumokat — a klaszter uressege NEM igazolt."
+                  return 1
+                fi
+                if [ "$total" -ne 0 ]; then
+                  echo "::error::G2 BUKOTT: a 18-as klaszterben OSSZESEN $total user-eredetu objektum van (tabla/sequence/matview/nezet/fuggveny/tipus/extension/large object) — ez NEM ures klaszter, ADATVESZTES kockazata. A pg_dropcluster KIMARAD."
+                  return 1
+                fi
+                echo "  G2 OK: igazolt identitas + minden nem-template adatbazisban 0 user-eredetu objektum"
+                return 0
+              }
+              if g2_structural_check "$PORT18" "$ST18" "$PG18DIR"; then STRUCT_OK=1; else STRUCT_OK=0; fi
               [ "$STRUCT_OK" = "1" ] || GUARDS_OK=0
 
               echo "--- G3) backup-guard (az 1b szakasz eredmenye) ---"
