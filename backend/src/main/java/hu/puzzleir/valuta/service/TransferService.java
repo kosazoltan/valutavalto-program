@@ -202,8 +202,9 @@ public class TransferService {
                 // gyakorlatban tört címlet fizikailag nem fordulhat elő.
                 if (d.getFaceValue().compareTo(BigDecimal.ONE) < 0) {
                     throw new ValidationException(
-                            "VV-VALID-002: A címlet névleges értéke nem lehet 1-nél kisebb"
-                                    + " (tört címlet nem rögzíthető)!");
+                            "VV-VALID-002: A címlet névleges értéke "
+                                    + hu.puzzleir.valuta.exception.ValidationMessages.FRACTIONAL_FACE_VALUE_CORE
+                                    + "!");
                 }
                 BigDecimal lineTotal = d.getFaceValue().multiply(BigDecimal.valueOf(d.getQuantity()));
                 denomSum = denomSum.add(lineTotal);

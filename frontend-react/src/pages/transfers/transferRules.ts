@@ -1,5 +1,5 @@
 import type { CreateTransferRequest } from '../../services/api/index'
-import { isAllowedFaceValue } from '../../utils/denominationRules'
+import { FRACTIONAL_FACE_VALUE_ERROR, isAllowedFaceValue } from '../../utils/denominationRules'
 
 /**
  * Átadás-átvétel üzleti szabályok (Kósa Zoltán tesztelői kérés, pénztár+értéktár modul).
@@ -263,7 +263,7 @@ export function buildDenominationPayload(
   )
   if (hasFractional) {
     return {
-      error: 'A címlet névleges értéke nem lehet 1-nél kisebb (tört címlet nem rögzíthető)!',
+      error: FRACTIONAL_FACE_VALUE_ERROR,
     }
   }
   const parsed = allParsed.filter(

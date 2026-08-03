@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto.transaction;
 
+import hu.puzzleir.valuta.exception.ValidationMessages;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -20,7 +21,7 @@ public class TransactionBanknoteDto {
      * ellen. A korábbi 0.01-es minimum a tört címletet átengedte.
      */
     @NotNull(message = "faceValue kötelező")
-    @DecimalMin(value = "1", message = "A címlet névértéke nem lehet 1-nél kisebb (tört címlet nem rögzíthető)!")
+    @DecimalMin(value = "1", message = ValidationMessages.BANKNOTE_FACE_VALUE_MIN_MESSAGE)
     private BigDecimal faceValue;
 
     @NotNull(message = "quantity kötelező")

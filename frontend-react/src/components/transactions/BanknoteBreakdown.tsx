@@ -6,7 +6,7 @@ import {
   TransactionBanknoteCreateRequest,
 } from '../../services/api/transactions'
 import { getErrorMessage } from '../../utils/errorHandling'
-import { isAllowedFaceValue } from '../../utils/denominationRules'
+import { FRACTIONAL_FACE_VALUE_WARNING, isAllowedFaceValue } from '../../utils/denominationRules'
 import { toast } from '../ui/toaster'
 import { useTranslation } from 'react-i18next'
 
@@ -67,10 +67,7 @@ export default function BanknoteBreakdown({
     // FK-072 (FR-6): a szabad számmezős fallback-ágon (COMMON_DENOMINATIONS-on kívüli
     // valuta) sem vihető be 1 alatti (tört) névérték — közös szabály (NFR-2).
     if (!isAllowedFaceValue(newRow.faceValue)) {
-      toast.warning(
-        'Érvénytelen adat',
-        'A címlet névértéke nem lehet 1-nél kisebb (tört címlet nem rögzíthető)!',
-      )
+      toast.warning('Érvénytelen adat', FRACTIONAL_FACE_VALUE_WARNING)
       return
     }
     try {

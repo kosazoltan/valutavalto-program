@@ -513,8 +513,9 @@ public class ClosingWizardService {
                 // (GlobalExceptionHandler, azonos VV-VALID-004 kóddal).
                 if (value < 1) {
                     throw new ValidationException(
-                            "VV-VALID-004: A címlet névértéke nem lehet 1-nél kisebb"
-                                    + " (tört címlet nem rögzíthető): " + currencyCode + " " + value);
+                            "VV-VALID-004: A címlet névértéke "
+                                    + hu.puzzleir.valuta.exception.ValidationMessages.FRACTIONAL_FACE_VALUE_CORE
+                                    + ": " + currencyCode + " " + value);
                 }
                 // FK-072 MEDIUM (counter-review): negatív darabszám nem írhat DenominationBalance-t
                 // — SZÁNDÉKOSAN külön kód/üzenet (nem a VV-VALID-004-es névérték-szabály), hogy a

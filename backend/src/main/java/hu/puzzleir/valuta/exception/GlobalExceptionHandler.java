@@ -173,8 +173,8 @@ public class GlobalExceptionHandler {
         // változzon — a meglévő unit tesztek közvetlenül, egy argumentummal hívják.)
         if (isClosingDenominationRequest() && isIntegerMapKeyBindFailure(ex)) {
             return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
-                    "VV-VALID-004: A címlet névértéke nem lehet 1-nél kisebb (tört címlet"
-                            + " nem rögzíthető) — a címletezés névértékei csak egész számok lehetnek.");
+                    "VV-VALID-004: A címlet névértéke " + ValidationMessages.FRACTIONAL_FACE_VALUE_CORE
+                            + " — a címletezés névértékei csak egész számok lehetnek.");
         }
 
         Throwable cur = ex.getCause();
