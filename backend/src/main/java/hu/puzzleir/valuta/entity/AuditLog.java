@@ -73,6 +73,29 @@ public class AuditLog {
     private LocalDateTime createdAt;
 
     /**
+     * {@code created_at} vedohalo — a {@link Transfer#applyCreatedAtFallback()} bevalt mintaja.
+     * A mezo {@code nullable = false}, az erteket viszont kizarolag a {@code @CreatedDate}
+     * auditing tolti. Az audit-bejegyzest BARMELY iras-utvonal kivaltja, tehat minden olyan
+     * kontextus, ahol az auditing nincs bekapcsolva (pl. {@code TestApplication}-alapu
+     * Spring-kontextusok — repo-szabaly: ott az {@code @EnableJpaAuditing} suite-szintu torest
+     * okozott), NOT NULL-sertessel elhasalna, holott maga az auditalando esemeny hibatlan.
+     * Egy audit-bejegyzes nem veszhet el amiatt, hogy a hivo kontextusban nincs auditing.
+     *
+     * <p><b>Elesben ez sosem sul el:</b> a {@code ValutaBackendApplication} hordozza az
+     * {@code @EnableJpaAuditing}-et, es a JPA-spec szerint az {@code @EntityListeners}
+     * callbackjei az entitas sajat callbackjei ELOTT futnak — ide erve a {@code createdAt}
+     * mar ki van toltve, a null-check no-op.
+     *
+     * <p>Kizarolag null-check + kitoltes: meglevo erteket SOHA nem ir felul.
+     */
+    @PrePersist
+    void applyCreatedAtFallback() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
+
+    /**
      * SHA-256 hash az aktualis bejegyzes tartalmabol.
      * H11 gap fix: tamper-evidence hash-lanc penzugyi audit logokhoz.
      */

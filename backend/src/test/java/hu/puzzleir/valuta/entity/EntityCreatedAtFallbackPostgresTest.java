@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
 import hu.puzzleir.valuta.TestApplication;
+import hu.puzzleir.valuta.repository.AuditLogRepository;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -82,6 +84,7 @@ class EntityCreatedAtFallbackPostgresTest {
         registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
     }
 
+    @Autowired private AuditLogRepository auditLogRepository;
     @Autowired private CompanyRepository companyRepository;
     @Autowired private DictionaryRepository dictionaryRepository;
     @Autowired private BranchRepository branchRepository;
@@ -140,9 +143,52 @@ class EntityCreatedAtFallbackPostgresTest {
                 .isAfterOrEqualTo(before.minusMinutes(1));
     }
 
+    @Test
+    @DisplayName("(a) AuditLog: auditing nélkül, createdAt megadása nélkül is menthető, a perzisztált érték nem null")
+    void auditLog_withoutAuditingAndWithoutCreatedAt_persistsWithFallbackValue() {
+        LocalDateTime before = LocalDateTime.now();
+
+        UUID id = transactionTemplate.execute(status -> {
+            AuditLog saved = auditLogRepository.save(newAuditLog(null));
+            entityManager.flush();
+            entityManager.clear();
+            return saved.getId();
+        });
+
+        AuditLog reloaded = auditLogRepository.findById(id).orElseThrow();
+        assertThat(reloaded.getCreatedAt())
+                .as("audit-bejegyzés nem veszhet el amiatt, hogy a hívó kontextusban nincs auditing")
+                .isNotNull()
+                .isAfterOrEqualTo(before.minusMinutes(1));
+    }
+
     // =====================================================================
     // (b) auditing nélkül, explicit createdAt → az eredeti érték marad
     // =====================================================================
+
+    @Test
+    @DisplayName("(b) AuditLog: expliciten megadott createdAt-ot a védőháló NEM írja felül")
+    void auditLog_withExplicitCreatedAt_keepsCallerProvidedValue() {
+        UUID id = transactionTemplate.execute(status -> {
+            AuditLog saved = auditLogRepository.save(newAuditLog(EXPLICIT_CREATED_AT));
+            entityManager.flush();
+            entityManager.clear();
+            return saved.getId();
+        });
+
+        assertThat(auditLogRepository.findById(id).orElseThrow().getCreatedAt())
+                .as("a védőháló kizárólag null esetén tölt — meglévő értéket sosem ír felül")
+                .isEqualTo(EXPLICIT_CREATED_AT);
+    }
+
+    private AuditLog newAuditLog(LocalDateTime createdAt) {
+        return AuditLog.builder()
+                .action("CREATE")
+                .entityType("SystemParameter")
+                .entityId(UUID.randomUUID().toString())
+                .createdAt(createdAt)
+                .build();
+    }
 
     @Test
     @DisplayName("(b) Transfer: expliciten megadott createdAt-ot a védőháló NEM írja felül")
