@@ -65,6 +65,12 @@ describe('BanknoteBreakdown — FK-072_v2 tört címletek (FR-6, FR-7)', () => {
     await waitFor(() => {
       expect(mocks.toast.warning).toHaveBeenCalled()
     })
+    // NFR-1: az elutasítás magyar hibaüzenettel történik — a warning cím+üzenet
+    // szövege együtt tartalmazza legalább az "1"-et és a "címlet" szót (nem szó
+    // szerinti egyezés, a többi helyszín "1-nél kisebb" regex-védelmi szintje).
+    const warningText = mocks.toast.warning.mock.calls.at(-1)!.join(' ')
+    expect(warningText).toMatch(/1/)
+    expect(warningText).toMatch(/címlet/i)
     expect(mocks.create).not.toHaveBeenCalled()
   })
 
