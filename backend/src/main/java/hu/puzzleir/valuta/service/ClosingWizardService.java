@@ -516,6 +516,14 @@ public class ClosingWizardService {
                             "VV-VALID-004: A címlet névértéke nem lehet 1-nél kisebb"
                                     + " (tört címlet nem rögzíthető): " + currencyCode + " " + value);
                 }
+                // FK-072 MEDIUM (counter-review): negatív darabszám nem írhat DenominationBalance-t
+                // — SZÁNDÉKOSAN külön kód/üzenet (nem a VV-VALID-004-es névérték-szabály), hogy a
+                // hívó megkülönböztethesse a két szabálysértést.
+                if (count < 0) {
+                    throw new ValidationException(
+                            "VV-VALID-005: A címlet darabszáma nem lehet negatív: "
+                                    + currencyCode + " " + value + " → " + count);
+                }
                 BigDecimal subtotal = BigDecimal.valueOf(value).multiply(BigDecimal.valueOf(count));
                 total = total.add(subtotal);
 

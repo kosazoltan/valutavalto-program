@@ -114,6 +114,22 @@ class ClosingWizardZeroFaceValueAutoCreateFk072Test {
     }
 
     @Test
+    @DisplayName("MEDIUM: negatív darabszám érvényes kulcson → VV-VALID-005 (a törttől ELTÉRŐ üzenet), nincs balance-írás")
+    void negativeCount_rejectedWithDistinctMessage() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            assertThatThrownBy(() ->
+                    service.countDenominations(branchId, businessDate, Map.of("EUR", Map.of(20000, -5))))
+                    .isInstanceOf(ValidationException.class)
+                    // Külön kód + "negatív" szó — a hívó megkülönböztetheti a névérték- és
+                    // a darabszám-szabálysértést (a VV-VALID-004 névértékről beszél).
+                    .hasMessageContaining("VV-VALID-005")
+                    .hasMessageContaining("negatív");
+
+            verify(denominationBalanceRepository, never()).save(any());
+        }
+    }
+
+    @Test
     @DisplayName("Regresszió: érvényes egész kulcsok (EUR 1, 2) változatlanul mentődnek")
     void wholeFaceValueKeys_stillPersisted() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
