@@ -219,8 +219,10 @@ public class SystemParameterService {
         } catch (RuntimeException e) {
             // Az audit-bejegyzés maga (action/actor/entity) így is rögzül — a snapshot hiánya
             // nem akaszthatja meg az írási műveletet.
+            // A kivétel üzenete is felhasználói tartalmat hordozhat (a Jackson a szerializált
+            // mezőket beleírja), ezért az is sanitizálva megy a logba.
             log.warn("SystemParameter audit JSON szerializáció sikertelen: kulcs={}, hiba={}",
-                    sanitizeForLog(p.getParameterKey()), e.getMessage());
+                    sanitizeForLog(p.getParameterKey()), sanitizeForLog(e.getMessage()));
             return null;
         }
     }
@@ -265,7 +267,7 @@ public class SystemParameterService {
             return workerId != null ? workerId.toString() : null;
         } catch (RuntimeException e) {
             log.warn("SystemParameter audit worker-id feloldás sikertelen (rendszer-kontextus?): {}",
-                    e.getMessage());
+                    sanitizeForLog(e.getMessage()));
             return null;
         }
     }
@@ -275,7 +277,7 @@ public class SystemParameterService {
             return SecurityUtils.getCurrentWorkerCode();
         } catch (RuntimeException e) {
             log.warn("SystemParameter audit worker-kód feloldás sikertelen (rendszer-kontextus?): {}",
-                    e.getMessage());
+                    sanitizeForLog(e.getMessage()));
             return null;
         }
     }
