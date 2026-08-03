@@ -125,6 +125,9 @@ class ClosingWizardZeroFaceValueAutoCreateFk072Test {
                     .hasMessageContaining("VV-VALID-005")
                     .hasMessageContaining("negatív");
 
+            // Codex LOW: az auto-create ág (denominationRepository.save) sem futhat le —
+            // ugyanaz a védelmi szint, mint a 0/negatív névérték teszteknél.
+            verify(denominationRepository, never()).save(any());
             verify(denominationBalanceRepository, never()).save(any());
         }
     }
