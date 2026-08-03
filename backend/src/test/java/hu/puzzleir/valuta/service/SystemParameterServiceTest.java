@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.controller.SystemParameterController;
 import hu.puzzleir.valuta.entity.SystemParameter;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -8,12 +9,15 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -38,6 +43,10 @@ class SystemParameterServiceTest {
     private static final String KEY = "FORINT_SUPERVISOR_THRESHOLD";
 
     @Mock private SystemParameterRepository repo;
+    @Mock private AuditLogService auditLogService;
+    /** Valódi ObjectMapper: az audit-snapshot JSON tartalmát is állítjuk, nem csak a hívás tényét. */
+    @Spy private tools.jackson.databind.ObjectMapper objectMapper =
+            tools.jackson.databind.json.JsonMapper.builder().build();
     @InjectMocks private SystemParameterService service;
 
     private SystemParameter param(String value, UUID companyId) {
@@ -57,11 +66,11 @@ class SystemParameterServiceTest {
     void getValue_companySpecificWins() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
-            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                     .thenReturn(Optional.of(param("500000", COMPANY_A)));
 
             assertThat(service.getValue(KEY)).isEqualTo("500000");
-            verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
+            verify(repo, never()).findEffectiveGlobalByParameterKey(anyString());
         }
     }
 
@@ -70,7 +79,7 @@ class SystemParameterServiceTest {
     void findEffectiveValue_dataAccessErrorYieldsEmpty() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
-            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                     .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("DB down"));
 
             assertThat(service.findEffectiveValue(KEY)).isEmpty();
@@ -82,7 +91,7 @@ class SystemParameterServiceTest {
     void findEffectiveValue_programmingErrorPropagates() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
-            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                     .thenThrow(new NullPointerException("programozási hiba"));
 
             assertThatThrownBy(() -> service.findEffectiveValue(KEY))
@@ -101,18 +110,18 @@ class SystemParameterServiceTest {
                 .build();
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A, COMPANY_B);
-            when(repo.findByParameterKeyAndCompanyId(key, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(key, COMPANY_A))
                     .thenReturn(Optional.of(companyOverride));
-            when(repo.findByParameterKeyAndCompanyId(key, COMPANY_B))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(key, COMPANY_B))
                     .thenReturn(Optional.empty());
-            when(repo.findByParameterKeyAndCompanyIdIsNull(key)).thenReturn(Optional.empty());
+            when(repo.findEffectiveGlobalByParameterKey(key)).thenReturn(Optional.empty());
 
             assertThat(service.getValue(key, "48")).isEqualTo("24");
             assertThat(service.getValue(key, "48")).isEqualTo("48");
         }
 
-        verify(repo).findByParameterKeyAndCompanyId(key, COMPANY_A);
-        verify(repo).findByParameterKeyAndCompanyId(key, COMPANY_B);
+        verify(repo).findEffectiveByParameterKeyAndCompanyId(key, COMPANY_A);
+        verify(repo).findEffectiveByParameterKeyAndCompanyId(key, COMPANY_B);
     }
 
     @Test
@@ -120,9 +129,9 @@ class SystemParameterServiceTest {
     void getValue_fallsBackToGlobal() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
-            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                     .thenReturn(Optional.empty());
-            when(repo.findByParameterKeyAndCompanyIdIsNull(KEY))
+            when(repo.findEffectiveGlobalByParameterKey(KEY))
                     .thenReturn(Optional.of(param("1000000", null)));
 
             assertThat(service.getValue(KEY)).isEqualTo("1000000");
@@ -134,14 +143,14 @@ class SystemParameterServiceTest {
     void getByKey_companyBeatsGlobal() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
-            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                     .thenReturn(Optional.of(param("500000", COMPANY_A)));
             // globál sor is "létezik" a DB-ben, de a service meg sem kérdezi:
             SystemParameter got = service.getByKey(KEY);
 
             assertThat(got.getParameterValue()).isEqualTo("500000");
             assertThat(got.getCompanyId()).isEqualTo(COMPANY_A);
-            verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
+            verify(repo, never()).findEffectiveGlobalByParameterKey(anyString());
         }
     }
 
@@ -150,9 +159,9 @@ class SystemParameterServiceTest {
     void missingParameter_semanticsUnchanged() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
-            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                     .thenReturn(Optional.empty());
-            when(repo.findByParameterKeyAndCompanyIdIsNull(KEY))
+            when(repo.findEffectiveGlobalByParameterKey(KEY))
                     .thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.getByKey(KEY))
@@ -166,7 +175,7 @@ class SystemParameterServiceTest {
     void getRawValue_preservesPresentBlankValue() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
-            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                     .thenReturn(Optional.of(param("", COMPANY_A)));
 
             assertThat(service.getRawValue(KEY, null)).isEmpty();
@@ -178,7 +187,7 @@ class SystemParameterServiceTest {
     void getValueWithDefault_repoError_returnsDefault() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
-            when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                     .thenThrow(new RuntimeException("db down"));
 
             assertThat(service.getValue(KEY, "safe")).isEqualTo("safe");
@@ -254,21 +263,21 @@ class SystemParameterServiceTest {
     @Test
     @DisplayName("getCompanyValue — létező cég-sor értékét adja")
     void getCompanyValue_returnsCompanyScopedValue() {
-        when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+        when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                 .thenReturn(Optional.of(param("company-secret", COMPANY_A)));
 
         assertThat(service.getCompanyValue(KEY, COMPANY_A, "def")).isEqualTo("company-secret");
-        verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
+        verify(repo, never()).findEffectiveGlobalByParameterKey(anyString());
     }
 
     @Test
     @DisplayName("getCompanyValue — nincs cég-sor → default, globális fallback nélkül")
     void getCompanyValue_missingCompanyScopedValueReturnsDefaultWithoutGlobalFallback() {
-        when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A))
+        when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
                 .thenReturn(Optional.empty());
 
         assertThat(service.getCompanyValue(KEY, COMPANY_A, "def")).isEqualTo("def");
-        verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
+        verify(repo, never()).findEffectiveGlobalByParameterKey(anyString());
     }
 
     @Test
@@ -458,5 +467,338 @@ class SystemParameterServiceTest {
             verify(repo).delete(global);
             verify(repo, never()).deleteById(any());
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // is_active-szűrés az EFFEKTÍV lookupon (findEffective + wrapperek,
+    // getCompanyValue). Az admin lista- (listAll/listByCategory) és ÍRÁSI utak
+    // szándékosan NEM szűrnek: az adminnak látnia és írnia kell az inaktív sort.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Inaktivált (is_active=false) sor — az admin a felületen "Inaktív"-ra állította. */
+    private SystemParameter inactiveParam(String key, String value, UUID companyId) {
+        return SystemParameter.builder()
+                .id(UUID.randomUUID())
+                .parameterKey(key)
+                .parameterValue(value)
+                .parameterType("STRING")
+                .category("CLOSING")
+                .companyId(companyId)
+                .isActive(false)
+                .build();
+    }
+
+    @Test
+    @DisplayName("is_active: inaktivált GLOBÁLIS sor nem effektív találat → findEffectiveValue üres")
+    void findEffectiveValue_inactiveGlobalRowIsNotEffective() {
+        String key = "CLOSING_TOLERANCE_EUR";
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(null);
+            when(repo.findEffectiveGlobalByParameterKey(key)).thenReturn(Optional.empty());
+
+            // A ClosingToleranceService az empty-ből tudja, hogy nincs használható sor,
+            // és a fallbackra (nem-HUF → 0) esik vissza — nem az inaktivált 5000-re.
+            assertThat(service.findEffectiveValue(key)).isEmpty();
+        }
+    }
+
+    @Test
+    @DisplayName("is_active: inaktivált CÉG-override → visszaesés az AKTÍV globális sorra (nem üres)")
+    void findEffective_inactiveCompanyOverrideFallsBackToGlobal() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                    .thenReturn(Optional.empty());
+            when(repo.findEffectiveGlobalByParameterKey(KEY))
+                    .thenReturn(Optional.of(param("1000000", null)));
+
+            assertThat(service.findEffectiveValue(KEY)).contains("1000000");
+            assertThat(service.getValue(KEY)).isEqualTo("1000000");
+            assertThat(service.getByKey(KEY).getCompanyId()).isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("is_active: inaktivált CÉG-override és nincs globális sor → üres / RNF")
+    void findEffective_inactiveCompanyOverrideWithoutGlobalYieldsEmpty() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                    .thenReturn(Optional.empty());
+            when(repo.findEffectiveGlobalByParameterKey(KEY)).thenReturn(Optional.empty());
+
+            assertThat(service.findEffectiveValue(KEY)).isEmpty();
+            assertThat(service.getValue(KEY, "fallback")).isEqualTo("fallback");
+            assertThatThrownBy(() -> service.getByKey(KEY))
+                    .isInstanceOf(ResourceNotFoundException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("is_active NULL (nincs kitöltve) → TOVÁBBRA IS érvényes effektív találat")
+    void findEffectiveValue_nullIsActiveStillCountsAsActive() {
+        SystemParameter legacyRow = SystemParameter.builder()
+                .id(UUID.randomUUID())
+                .parameterKey(KEY)
+                .parameterValue("1000000")
+                .parameterType("STRING")
+                .category("TRANSACTION")
+                .isActive(null)
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(null);
+            when(repo.findEffectiveGlobalByParameterKey(KEY)).thenReturn(Optional.of(legacyRow));
+
+            assertThat(service.findEffectiveValue(KEY)).contains("1000000");
+            assertThat(service.getValue(KEY)).isEqualTo("1000000");
+        }
+        // A NULL-tolerancia SQL-szintű bizonyítéka a
+        // SystemParameterIsActiveEffectiveLookupPostgresTest (valós PostgreSQL).
+    }
+
+    @Test
+    @DisplayName("getCompanyValue — inaktivált cég-sor kiesik → default, globális fallback nélkül")
+    void getCompanyValue_inactiveRowYieldsDefault() {
+        when(repo.findEffectiveByParameterKeyAndCompanyId(KEY, COMPANY_A))
+                .thenReturn(Optional.empty());
+
+        assertThat(service.getCompanyValue(KEY, COMPANY_A, "def")).isEqualTo("def");
+        verify(repo, never()).findByParameterKeyAndCompanyIdIsNull(anyString());
+        verify(repo, never()).findEffectiveGlobalByParameterKey(anyString());
+    }
+
+    @Test
+    @DisplayName("create — a kérésben küldött isActive=false ténylegesen mentődik (nem mindig true)")
+    void create_honoursIsActiveFalseFromRequestBody() {
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+        SystemParameterController controller = new SystemParameterController(service);
+
+        SystemParameter created = controller.create(Map.of(
+                "parameterKey", "RECEIPT_FOOTER_TEXT",
+                "parameterValue", "szoveg",
+                "parameterType", "STRING",
+                "category", "RECEIPT",
+                "description", "leiras",
+                "isActive", "false")).getBody();
+
+        ArgumentCaptor<SystemParameter> captor = ArgumentCaptor.forClass(SystemParameter.class);
+        verify(repo).save(captor.capture());
+        assertThat(captor.getValue().getIsActive()).isFalse();
+        assertThat(created).isNotNull();
+        assertThat(created.getIsActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("create — a frontend boolean isActive mezője a Map<String,String> body-ban \"false\"-ként érkezik")
+    void createRequestBody_booleanIsActiveDeserializesToStringValue() throws Exception {
+        // A SystemParameterPage boolean-t küld ({"isActive": false}); a controller body-ja
+        // Map<String,String> — a Jackson scalar→String coercion adja a "false"-t, amit a
+        // parseIsActive értelmez. Ez a teszt ezt a (különben néma) feltevést rögzíti.
+        Map<String, String> body = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                "{\"parameterKey\":\"K\",\"isActive\":false}",
+                new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() { });
+
+        assertThat(body).containsEntry("isActive", "false");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // security-standards.md §3 — "Minden írás auditálva": az ÖSSZES írási út
+    // (create / upsert / upsertCompanyValue / update / toggleActive / delete)
+    // hash-láncolt audit_log bejegyzést ír a hívó tranzakcióján belül.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** A logWithDetails 8./9. paramétere az oldValue/newValue (before/after) JSON. */
+    private String[] captureAuditValues(String expectedAction) {
+        ArgumentCaptor<String> oldValue = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> newValue = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService).logWithDetails(
+                eq(expectedAction), eq("SystemParameter"), any(),
+                any(), any(), any(), any(),
+                oldValue.capture(), newValue.capture(), any(), any());
+        return new String[] { oldValue.getValue(), newValue.getValue() };
+    }
+
+    @Test
+    @DisplayName("audit — create() CREATE bejegyzést ír, after_value a mentett kulccsal/értékkel/isActive-val")
+    void create_writesCreateAuditEntry() {
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.create("RECEIPT_FOOTER_TEXT", "szoveg", "STRING", "RECEIPT", "leiras", Boolean.FALSE);
+
+        String[] values = captureAuditValues("CREATE");
+        assertThat(values[0]).isNull();
+        assertThat(values[1])
+                .contains("\"parameterKey\":\"RECEIPT_FOOTER_TEXT\"")
+                .contains("\"parameterValue\":\"szoveg\"")
+                .contains("\"isActive\":false");
+    }
+
+    @Test
+    @DisplayName("audit — update() UPDATE bejegyzést ír, before_value a régi, after_value az új állapottal")
+    void update_writesUpdateAuditEntryWithBeforeAndAfter() {
+        SystemParameter existing = param("regi", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(existing.getId(), COMPANY_A)).thenReturn(Optional.of(existing));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.update(existing.getId(), "uj", "uj leiras");
+        }
+
+        String[] values = captureAuditValues("UPDATE");
+        assertThat(values[0]).contains("\"parameterValue\":\"regi\"");
+        assertThat(values[1]).contains("\"parameterValue\":\"uj\"");
+    }
+
+    @Test
+    @DisplayName("audit — toggleActive() UPDATE bejegyzést ír, before_value a DB-ből olvasott VALÓDI régi isActive-val")
+    void toggleActive_writesAuditEntryWithRealPreviousIsActive() {
+        SystemParameter existing = param("v", COMPANY_A); // isActive=true a helperből
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(existing.getId(), COMPANY_A)).thenReturn(Optional.of(existing));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.toggleActive(existing.getId());
+        }
+
+        String[] values = captureAuditValues("UPDATE");
+        assertThat(values[0]).contains("\"isActive\":true");
+        assertThat(values[1]).contains("\"isActive\":false");
+    }
+
+    // ── toggleActive NULL-tolerancia: a NULL is_active AKTÍV-nak számít ──────
+    // Az effektív lookup (findEffective*) a NULL-t aktívként kezeli, mert az oszlopnak
+    // nincs NOT NULL kikötése (V3_5/V74) és régi sorok NULL-t tartalmazhatnak. A váltásnak
+    // ezzel konzisztensnek kell lennie: NULL → explicit false, NPE nélkül.
+
+    /** Régi sor, amelyben az is_active soha nem lett kitöltve. */
+    private SystemParameter rowWithIsActive(Boolean isActive) {
+        return SystemParameter.builder()
+                .id(UUID.randomUUID())
+                .parameterKey(KEY)
+                .parameterValue("v")
+                .parameterType("STRING")
+                .category("TRANSACTION")
+                .companyId(COMPANY_A)
+                .isActive(isActive)
+                .build();
+    }
+
+    @Test
+    @DisplayName("toggleActive — NULL is_active sor: nincs NPE, a NULL aktívnak számít → explicit false lesz")
+    void toggleActive_nullIsActiveRow_becomesExplicitlyInactive() {
+        SystemParameter legacyRow = rowWithIsActive(null);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(legacyRow.getId(), COMPANY_A)).thenReturn(Optional.of(legacyRow));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(service.toggleActive(legacyRow.getId()).getIsActive()).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("toggleActive — explicit false sor: true-ra vált (változatlan)")
+    void toggleActive_explicitlyInactiveRow_becomesActive() {
+        SystemParameter inactiveRow = rowWithIsActive(false);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(inactiveRow.getId(), COMPANY_A)).thenReturn(Optional.of(inactiveRow));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(service.toggleActive(inactiveRow.getId()).getIsActive()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("audit — NULL-ból induló toggleActive before_value-ja a TÉNYLEGES null-t rögzíti, nem a levezetett true-t")
+    void toggleActive_nullIsActiveRow_auditRecordsRealNullBeforeValue() {
+        SystemParameter legacyRow = rowWithIsActive(null);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(legacyRow.getId(), COMPANY_A)).thenReturn(Optional.of(legacyRow));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.toggleActive(legacyRow.getId());
+        }
+
+        String[] values = captureAuditValues("UPDATE");
+        assertThat(values[0])
+                .as("az audit a DB valóságát rögzíti: a sor is_active-ja NULL volt")
+                .contains("\"isActive\":null")
+                .doesNotContain("\"isActive\":true");
+        assertThat(values[1]).contains("\"isActive\":false");
+    }
+
+    @Test
+    @DisplayName("audit — delete() DELETE bejegyzést ír, before_value a törölt állapottal")
+    void delete_writesDeleteAuditEntryWithBeforeValue() {
+        SystemParameter existing = param("torlendo", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(existing.getId(), COMPANY_A)).thenReturn(Optional.of(existing));
+
+            service.delete(existing.getId());
+        }
+
+        String[] values = captureAuditValues("DELETE");
+        assertThat(values[0]).contains("\"parameterValue\":\"torlendo\"");
+        assertThat(values[1]).isNull();
+    }
+
+    @Test
+    @DisplayName("audit — upsert() meglévő globál sor frissítésekor UPDATE bejegyzést ír")
+    void upsert_writesUpdateAuditEntryForExistingGlobalRow() {
+        when(repo.findByParameterKeyAndCompanyIdIsNull(KEY)).thenReturn(Optional.of(param("regi", null)));
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.upsert(KEY, "uj", "TRANSACTION", null);
+
+        String[] values = captureAuditValues("UPDATE");
+        assertThat(values[0]).contains("\"parameterValue\":\"regi\"");
+        assertThat(values[1]).contains("\"parameterValue\":\"uj\"");
+    }
+
+    @Test
+    @DisplayName("audit — upsertCompanyValue() új cég-sornál CREATE bejegyzést ír")
+    void upsertCompanyValue_writesCreateAuditEntryForNewRow() {
+        when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A)).thenReturn(Optional.empty());
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.upsertCompanyValue(KEY, COMPANY_A, "ertek", "COMPLIANCE", "desc");
+
+        String[] values = captureAuditValues("CREATE");
+        assertThat(values[0]).isNull();
+        assertThat(values[1]).contains("\"parameterValue\":\"ertek\"");
+    }
+
+    @Test
+    @DisplayName("audit — titok-értékű kulcs (MNB_API_TOKEN) értéke NEM kerül nyersen az audit-bejegyzésbe")
+    void auditMasksSecretValuedParameters() {
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.create("MNB_API_TOKEN", "sup3r-titkos-token", "STRING", "INTEGRATION", null, null);
+
+        String[] values = captureAuditValues("CREATE");
+        assertThat(values[1])
+                .doesNotContain("sup3r-titkos-token")
+                .contains("\"parameterKey\":\"MNB_API_TOKEN\"");
+    }
+
+    @Test
+    @DisplayName("create — isActive nélküli kérés változatlanul aktív sort hoz létre (API-kontraktus)")
+    void create_defaultsToActiveWhenIsActiveAbsent() {
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+        SystemParameterController controller = new SystemParameterController(service);
+
+        SystemParameter created = controller.create(Map.of(
+                "parameterKey", "RECEIPT_FOOTER_TEXT",
+                "parameterValue", "szoveg",
+                "parameterType", "STRING",
+                "category", "RECEIPT")).getBody();
+
+        assertThat(created).isNotNull();
+        assertThat(created.getIsActive()).isTrue();
     }
 }
