@@ -506,11 +506,12 @@ public class ClosingWizardService {
             for (Map.Entry<Integer, Integer> denom : denoms.entrySet()) {
                 int value = denom.getKey();
                 int count = denom.getValue();
-                // FK-072 (FR-3): 1 alatti névértékű, nem-nulla darabszámú bejegyzés nem
-                // rögzíthető (UI-megkerülő direkt API-hívás ellen). A tört (nem-egész)
-                // kulcsot már a JSON-binding utasítja el (GlobalExceptionHandler, azonos
-                // VV-VALID-004 kóddal) — itt az egész, de 1 alatti kulcs a célpont.
-                if (value < 1 && count != 0) {
+                // FK-072 (FR-3): 1 alatti névértékű kulcs nem fogadható el — darabszámtól
+                // FÜGGETLENÜL (Codex HIGH: a count==0-s érvénytelen kulcs is Denomination
+                // auto-create-et futtatna lentebb, törzs-szennyezés direkt API-hívásból).
+                // A tört (nem-egész) kulcsot már a JSON-binding utasítja el
+                // (GlobalExceptionHandler, azonos VV-VALID-004 kóddal).
+                if (value < 1) {
                     throw new ValidationException(
                             "VV-VALID-004: A címlet névértéke nem lehet 1-nél kisebb"
                                     + " (tört címlet nem rögzíthető): " + currencyCode + " " + value);
