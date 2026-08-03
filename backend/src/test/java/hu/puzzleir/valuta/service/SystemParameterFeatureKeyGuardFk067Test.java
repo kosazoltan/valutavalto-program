@@ -39,6 +39,10 @@ import static org.mockito.Mockito.*;
 class SystemParameterFeatureKeyGuardFk067Test {
 
     @Mock private SystemParameterRepository repo;
+    /** §3 audit-bekötés (VV-VALID-201) óta a service kollaborátora — a guard-viselkedés változatlan. */
+    @Mock private AuditLogService auditLogService;
+    @org.mockito.Spy private tools.jackson.databind.ObjectMapper objectMapper =
+            tools.jackson.databind.json.JsonMapper.builder().build();
     @InjectMocks private SystemParameterService service;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();

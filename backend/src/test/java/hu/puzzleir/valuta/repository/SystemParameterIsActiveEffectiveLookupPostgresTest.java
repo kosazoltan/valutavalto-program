@@ -15,6 +15,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * kiejtene élő paramétereket.
  */
 @Testcontainers
-@Import(SystemParameterService.class)
+@Import({ SystemParameterService.class, hu.puzzleir.valuta.service.AuditLogService.class })
 @SpringBootTest(
         classes = TestApplication.class,
         properties = {
@@ -109,6 +110,63 @@ class SystemParameterIsActiveEffectiveLookupPostgresTest {
                 .map(SystemParameter::getParameterValue)
                 .contains("1000000");
         assertThat(service.findEffectiveValue(key)).contains("1000000");
+    }
+
+    @Test
+    @DisplayName("audit — a create() ténylegesen INSERT-el egy audit_log sort (security-standards §3)")
+    void createWritesRealAuditLogRow() {
+        String key = uniqueKey("AUDIT_CREATE");
+
+        SystemParameter created = service.create(key, "42", "STRING", "CLOSING", "audit-teszt", Boolean.FALSE);
+
+        Map<String, Object> row = jdbcTemplate.queryForMap("""
+                SELECT action, entity_type, entity_id, old_value, new_value, entry_hash
+                  FROM audit_log
+                 WHERE entity_type = 'SystemParameter' AND entity_id = ?
+                """, created.getId().toString());
+
+        assertThat(row.get("action")).isEqualTo("CREATE");
+        assertThat(row.get("old_value")).isNull();
+        assertThat((String) row.get("new_value"))
+                .contains("\"parameterKey\":\"" + key + "\"")
+                .contains("\"parameterValue\":\"42\"")
+                .contains("\"isActive\":false");
+        // hash-lánc (tamper-evidence) is kitöltődik, nem csak a mezők:
+        assertThat((String) row.get("entry_hash")).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("audit — a toggleActive() UPDATE sort ír a DB-ből olvasott VALÓDI előző is_active-val")
+    void toggleActiveWritesAuditLogRowWithRealBeforeState() {
+        String key = uniqueKey("AUDIT_TOGGLE");
+        SystemParameter created = service.create(key, "1", "STRING", "CLOSING", null, Boolean.TRUE);
+
+        service.toggleActive(created.getId());
+
+        Map<String, Object> row = jdbcTemplate.queryForMap("""
+                SELECT action, old_value, new_value, reason
+                  FROM audit_log
+                 WHERE entity_type = 'SystemParameter' AND entity_id = ? AND action = 'UPDATE'
+                """, created.getId().toString());
+
+        assertThat((String) row.get("old_value")).contains("\"isActive\":true");
+        assertThat((String) row.get("new_value")).contains("\"isActive\":false");
+        assertThat((String) row.get("reason")).contains("true").contains("false");
+    }
+
+    @Test
+    @DisplayName("audit — titok-értékű kulcs értéke NEM kerül be az audit_log sorba")
+    void secretValuedParameterIsMaskedInAuditLog() {
+        String key = uniqueKey("MNB_API_TOKEN");
+
+        SystemParameter created = service.create(key, "sup3r-titkos-token", "STRING", "INTEGRATION", null, null);
+
+        String newValue = jdbcTemplate.queryForObject("""
+                SELECT new_value FROM audit_log
+                 WHERE entity_type = 'SystemParameter' AND entity_id = ?
+                """, String.class, created.getId().toString());
+
+        assertThat(newValue).doesNotContain("sup3r-titkos-token").contains(key);
     }
 
     @Test

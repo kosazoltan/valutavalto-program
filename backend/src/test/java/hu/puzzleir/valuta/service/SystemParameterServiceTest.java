@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -41,6 +43,10 @@ class SystemParameterServiceTest {
     private static final String KEY = "FORINT_SUPERVISOR_THRESHOLD";
 
     @Mock private SystemParameterRepository repo;
+    @Mock private AuditLogService auditLogService;
+    /** Valódi ObjectMapper: az audit-snapshot JSON tartalmát is állítjuk, nem csak a hívás tényét. */
+    @Spy private tools.jackson.databind.ObjectMapper objectMapper =
+            tools.jackson.databind.json.JsonMapper.builder().build();
     @InjectMocks private SystemParameterService service;
 
     private SystemParameter param(String value, UUID companyId) {
@@ -593,6 +599,127 @@ class SystemParameterServiceTest {
                 new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() { });
 
         assertThat(body).containsEntry("isActive", "false");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // security-standards.md §3 — "Minden írás auditálva": az ÖSSZES írási út
+    // (create / upsert / upsertCompanyValue / update / toggleActive / delete)
+    // hash-láncolt audit_log bejegyzést ír a hívó tranzakcióján belül.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** A logWithDetails 8./9. paramétere az oldValue/newValue (before/after) JSON. */
+    private String[] captureAuditValues(String expectedAction) {
+        ArgumentCaptor<String> oldValue = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> newValue = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService).logWithDetails(
+                eq(expectedAction), eq("SystemParameter"), any(),
+                any(), any(), any(), any(),
+                oldValue.capture(), newValue.capture(), any(), any());
+        return new String[] { oldValue.getValue(), newValue.getValue() };
+    }
+
+    @Test
+    @DisplayName("audit — create() CREATE bejegyzést ír, after_value a mentett kulccsal/értékkel/isActive-val")
+    void create_writesCreateAuditEntry() {
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.create("RECEIPT_FOOTER_TEXT", "szoveg", "STRING", "RECEIPT", "leiras", Boolean.FALSE);
+
+        String[] values = captureAuditValues("CREATE");
+        assertThat(values[0]).isNull();
+        assertThat(values[1])
+                .contains("\"parameterKey\":\"RECEIPT_FOOTER_TEXT\"")
+                .contains("\"parameterValue\":\"szoveg\"")
+                .contains("\"isActive\":false");
+    }
+
+    @Test
+    @DisplayName("audit — update() UPDATE bejegyzést ír, before_value a régi, after_value az új állapottal")
+    void update_writesUpdateAuditEntryWithBeforeAndAfter() {
+        SystemParameter existing = param("regi", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(existing.getId(), COMPANY_A)).thenReturn(Optional.of(existing));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.update(existing.getId(), "uj", "uj leiras");
+        }
+
+        String[] values = captureAuditValues("UPDATE");
+        assertThat(values[0]).contains("\"parameterValue\":\"regi\"");
+        assertThat(values[1]).contains("\"parameterValue\":\"uj\"");
+    }
+
+    @Test
+    @DisplayName("audit — toggleActive() UPDATE bejegyzést ír, before_value a DB-ből olvasott VALÓDI régi isActive-val")
+    void toggleActive_writesAuditEntryWithRealPreviousIsActive() {
+        SystemParameter existing = param("v", COMPANY_A); // isActive=true a helperből
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(existing.getId(), COMPANY_A)).thenReturn(Optional.of(existing));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.toggleActive(existing.getId());
+        }
+
+        String[] values = captureAuditValues("UPDATE");
+        assertThat(values[0]).contains("\"isActive\":true");
+        assertThat(values[1]).contains("\"isActive\":false");
+    }
+
+    @Test
+    @DisplayName("audit — delete() DELETE bejegyzést ír, before_value a törölt állapottal")
+    void delete_writesDeleteAuditEntryWithBeforeValue() {
+        SystemParameter existing = param("torlendo", COMPANY_A);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(existing.getId(), COMPANY_A)).thenReturn(Optional.of(existing));
+
+            service.delete(existing.getId());
+        }
+
+        String[] values = captureAuditValues("DELETE");
+        assertThat(values[0]).contains("\"parameterValue\":\"torlendo\"");
+        assertThat(values[1]).isNull();
+    }
+
+    @Test
+    @DisplayName("audit — upsert() meglévő globál sor frissítésekor UPDATE bejegyzést ír")
+    void upsert_writesUpdateAuditEntryForExistingGlobalRow() {
+        when(repo.findByParameterKeyAndCompanyIdIsNull(KEY)).thenReturn(Optional.of(param("regi", null)));
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.upsert(KEY, "uj", "TRANSACTION", null);
+
+        String[] values = captureAuditValues("UPDATE");
+        assertThat(values[0]).contains("\"parameterValue\":\"regi\"");
+        assertThat(values[1]).contains("\"parameterValue\":\"uj\"");
+    }
+
+    @Test
+    @DisplayName("audit — upsertCompanyValue() új cég-sornál CREATE bejegyzést ír")
+    void upsertCompanyValue_writesCreateAuditEntryForNewRow() {
+        when(repo.findByParameterKeyAndCompanyId(KEY, COMPANY_A)).thenReturn(Optional.empty());
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.upsertCompanyValue(KEY, COMPANY_A, "ertek", "COMPLIANCE", "desc");
+
+        String[] values = captureAuditValues("CREATE");
+        assertThat(values[0]).isNull();
+        assertThat(values[1]).contains("\"parameterValue\":\"ertek\"");
+    }
+
+    @Test
+    @DisplayName("audit — titok-értékű kulcs (MNB_API_TOKEN) értéke NEM kerül nyersen az audit-bejegyzésbe")
+    void auditMasksSecretValuedParameters() {
+        when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.create("MNB_API_TOKEN", "sup3r-titkos-token", "STRING", "INTEGRATION", null, null);
+
+        String[] values = captureAuditValues("CREATE");
+        assertThat(values[1])
+                .doesNotContain("sup3r-titkos-token")
+                .contains("\"parameterKey\":\"MNB_API_TOKEN\"");
     }
 
     @Test
