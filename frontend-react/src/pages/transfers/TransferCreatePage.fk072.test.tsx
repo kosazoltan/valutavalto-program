@@ -212,4 +212,53 @@ describe('TransferCreatePage — FK-072_v2 tört címletek (FR-4, FR-7)', () => 
       }),
     )
   })
+
+  it('döntés-dokumentáció: csupa tört sorú címlet-törzsnél nincs preset-előtöltés, szabad bevitel marad', async () => {
+    // GREEN közben hozott, utólag elfogadott döntés (beszámoló 3.4): ha a preset
+    // törzse KIZÁRÓLAG tört (1 alatti) sorokat tartalmaz, a szűrés után nem marad
+    // előtölthető sor → visszaesés a szabad bevitelre (a Codex PR #1101 üres-törzs
+    // viselkedésével azonos módon), tört értékkel előtöltött sor nem jelenhet meg.
+    mocks.denominationList.mockResolvedValue([
+      {
+        id: 31,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 0.5,
+        denominationType: 'COIN',
+        active: true,
+      },
+      {
+        id: 32,
+        currencyId: 1,
+        currencyCode: 'EUR',
+        faceValue: 0.05,
+        denominationType: 'COIN',
+        active: true,
+      },
+    ])
+
+    render(
+      <MemoryRouter>
+        <TransferCreatePage />
+      </MemoryRouter>,
+    )
+
+    await fillBaseForm()
+    fireEvent.click(screen.getByLabelText(/Címletezés megadása/))
+
+    // A preset-lekérés lefut a törzs ellen…
+    await waitFor(() => {
+      expect(mocks.denominationList).toHaveBeenCalled()
+    })
+
+    // …de nincs preset-banner és nincs tört értékkel előtöltött sor: egyetlen,
+    // üres szabad beviteli sor marad.
+    expect(screen.queryByText(/címletei betöltve/)).toBeNull()
+    expect(screen.queryByDisplayValue('0.5')).toBeNull()
+    expect(screen.queryByDisplayValue('0,5')).toBeNull()
+    expect(screen.queryByDisplayValue('0.05')).toBeNull()
+    expect(screen.getAllByPlaceholderText('db')).toHaveLength(1)
+    const zeroInputs = screen.getAllByPlaceholderText('0')
+    expect((zeroInputs[zeroInputs.length - 1] as HTMLInputElement).value).toBe('')
+  })
 })
