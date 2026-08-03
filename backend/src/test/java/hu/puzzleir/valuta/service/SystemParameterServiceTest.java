@@ -667,6 +667,70 @@ class SystemParameterServiceTest {
         assertThat(values[1]).contains("\"isActive\":false");
     }
 
+    // ── toggleActive NULL-tolerancia: a NULL is_active AKTÍV-nak számít ──────
+    // Az effektív lookup (findEffective*) a NULL-t aktívként kezeli, mert az oszlopnak
+    // nincs NOT NULL kikötése (V3_5/V74) és régi sorok NULL-t tartalmazhatnak. A váltásnak
+    // ezzel konzisztensnek kell lennie: NULL → explicit false, NPE nélkül.
+
+    /** Régi sor, amelyben az is_active soha nem lett kitöltve. */
+    private SystemParameter rowWithIsActive(Boolean isActive) {
+        return SystemParameter.builder()
+                .id(UUID.randomUUID())
+                .parameterKey(KEY)
+                .parameterValue("v")
+                .parameterType("STRING")
+                .category("TRANSACTION")
+                .companyId(COMPANY_A)
+                .isActive(isActive)
+                .build();
+    }
+
+    @Test
+    @DisplayName("toggleActive — NULL is_active sor: nincs NPE, a NULL aktívnak számít → explicit false lesz")
+    void toggleActive_nullIsActiveRow_becomesExplicitlyInactive() {
+        SystemParameter legacyRow = rowWithIsActive(null);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(legacyRow.getId(), COMPANY_A)).thenReturn(Optional.of(legacyRow));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(service.toggleActive(legacyRow.getId()).getIsActive()).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("toggleActive — explicit false sor: true-ra vált (változatlan)")
+    void toggleActive_explicitlyInactiveRow_becomesActive() {
+        SystemParameter inactiveRow = rowWithIsActive(false);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(inactiveRow.getId(), COMPANY_A)).thenReturn(Optional.of(inactiveRow));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(service.toggleActive(inactiveRow.getId()).getIsActive()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("audit — NULL-ból induló toggleActive before_value-ja a TÉNYLEGES null-t rögzíti, nem a levezetett true-t")
+    void toggleActive_nullIsActiveRow_auditRecordsRealNullBeforeValue() {
+        SystemParameter legacyRow = rowWithIsActive(null);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(COMPANY_A);
+            when(repo.findVisibleById(legacyRow.getId(), COMPANY_A)).thenReturn(Optional.of(legacyRow));
+            when(repo.save(any(SystemParameter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.toggleActive(legacyRow.getId());
+        }
+
+        String[] values = captureAuditValues("UPDATE");
+        assertThat(values[0])
+                .as("az audit a DB valóságát rögzíti: a sor is_active-ja NULL volt")
+                .contains("\"isActive\":null")
+                .doesNotContain("\"isActive\":true");
+        assertThat(values[1]).contains("\"isActive\":false");
+    }
+
     @Test
     @DisplayName("audit — delete() DELETE bejegyzést ír, before_value a törölt állapottal")
     void delete_writesDeleteAuditEntryWithBeforeValue() {

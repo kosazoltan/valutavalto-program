@@ -155,6 +155,27 @@ class SystemParameterIsActiveEffectiveLookupPostgresTest {
     }
 
     @Test
+    @DisplayName("toggleActive — valós NULL is_active soron: nincs NPE, explicit false lesz, az audit a null-t rögzíti")
+    void toggleActiveOnRealNullIsActiveRow() {
+        String key = uniqueKey("TOGGLE_NULL");
+        insertRow(key, "1", null, null);
+        SystemParameter row = repository.findByParameterKeyAndCompanyIdIsNull(key).orElseThrow();
+        assertThat(row.getIsActive()).as("a DB-ből valóban null jön vissza").isNull();
+
+        service.toggleActive(row.getId());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT is_active FROM system_parameter WHERE parameter_key = ?", Boolean.class, key))
+                .isFalse();
+        Map<String, Object> auditRow = jdbcTemplate.queryForMap("""
+                SELECT old_value, new_value FROM audit_log
+                 WHERE entity_type = 'SystemParameter' AND entity_id = ? AND action = 'UPDATE'
+                """, row.getId().toString());
+        assertThat((String) auditRow.get("old_value")).contains("\"isActive\":null");
+        assertThat((String) auditRow.get("new_value")).contains("\"isActive\":false");
+    }
+
+    @Test
     @DisplayName("audit — titok-értékű kulcs értéke NEM kerül be az audit_log sorba")
     void secretValuedParameterIsMaskedInAuditLog() {
         String key = uniqueKey("MNB_API_TOKEN");

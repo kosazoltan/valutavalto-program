@@ -347,10 +347,19 @@ public class SystemParameterService {
         // az inaktiválásnak az effektív lookup is_active-szűrése óta valódi runtime-hatása van.
         String beforeJson = auditSnapshot(p);
         Boolean previousActive = p.getIsActive();
-        p.setIsActive(!p.getIsActive());
+        // NULL-tolerancia — konzisztensen az effektív lookuppal (findEffective*:
+        // "is_active = TRUE OR is_active IS NULL"): az oszlopnak nincs NOT NULL kikötése
+        // (V3_5/V74), a régi sorok NULL-t tartalmazhatnak, és az ilyen sor AKTÍVKÉNT
+        // viselkedik. A váltás ezért a NULL-t true-ként értelmezi → explicit false lesz;
+        // a korábbi `!p.getIsActive()` ezen a soron unboxing-NPE-vel elszállt.
+        // Az audit before_value-ja ettől függetlenül a TÉNYLEGES (null) értéket őrzi meg.
+        boolean effectivelyActive = !Boolean.FALSE.equals(previousActive);
+        p.setIsActive(!effectivelyActive);
         SystemParameter saved = repo.save(p);
         audit("UPDATE", saved.getId(), beforeJson, auditSnapshot(saved),
-                "Aktív állapot váltása: " + previousActive + " → " + saved.getIsActive());
+                "Aktív állapot váltása: " + previousActive
+                        + (previousActive == null ? " (aktívnak számít)" : "")
+                        + " → " + saved.getIsActive());
         return saved;
     }
 
