@@ -30,16 +30,21 @@ public class SystemParameterService {
      * (parameter_key + company_id), hiányában a globális (company_id IS NULL).
      * Kontextus nélkül (scheduler/startup/async: getCurrentCompanyIdOrNull() == null)
      * közvetlenül a globális sor.
+     *
+     * <p>is_active-szűrés: az admin által "Inaktív"-ra állított sor NEM effektív találat —
+     * a lookup a {@code findEffective*} (aktív-szűrt, NULL-toleráns) repository-metódusokon megy.
+     * Ha a CÉG-override inaktív, az úgy viselkedik, mintha nem is létezne: a globális sorra
+     * esünk vissza (nem üres találat). Az admin lista- és írási utak szándékosan szűretlenek.
      */
     private Optional<SystemParameter> findEffective(String key) {
         UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
         if (companyId != null) {
-            Optional<SystemParameter> scoped = repo.findByParameterKeyAndCompanyId(key, companyId);
+            Optional<SystemParameter> scoped = repo.findEffectiveByParameterKeyAndCompanyId(key, companyId);
             if (scoped.isPresent()) {
                 return scoped;
             }
         }
-        return repo.findByParameterKeyAndCompanyIdIsNull(key);
+        return repo.findEffectiveGlobalByParameterKey(key);
     }
 
     public SystemParameter getByKey(String key) {
@@ -114,12 +119,13 @@ public class SystemParameterService {
     /**
      * Cég-KIZÁRÓLAGOS olvasás — tenant-titok (pl. compliance címzettek).
      * SOHA nem esik vissza globális sorra; null companyId (nincs kontextus) → default.
+     * Az inaktivált sor itt is kiesik (aktív-szűrt lookup) → default.
      */
     public String getCompanyValue(String key, UUID companyId, String defaultValue) {
         if (companyId == null) {
             return defaultValue;
         }
-        return repo.findByParameterKeyAndCompanyId(key, companyId)
+        return repo.findEffectiveByParameterKeyAndCompanyId(key, companyId)
                 .map(SystemParameter::getParameterValue)
                 .filter(v -> v != null && !v.isBlank())
                 .orElse(defaultValue);
@@ -191,12 +197,25 @@ public class SystemParameterService {
                         .companyId(companyId).isActive(true).build()));
     }
 
+    /** Változatlan kontraktus: isActive nélkül a létrejövő sor aktív. */
     @Transactional(rollbackFor = Exception.class)
     public SystemParameter create(String key, String value, String type, String category, String description) {
+        return create(key, value, type, category, description, null);
+    }
+
+    /**
+     * A létrehozó felület "Aktív" jelölőnégyzetét tiszteletben tartó overload: a kérésben
+     * küldött isActive értéke ténylegesen mentődik. {@code null} (a mező nincs kitöltve)
+     * → aktív sor, hogy a meglévő hívók/API-kontraktus ne változzon.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public SystemParameter create(String key, String value, String type, String category,
+                                  String description, Boolean isActive) {
         assertGlobalFinancialControlKeyWriteAllowed(key, null);
         SystemParameter p = SystemParameter.builder()
                 .parameterKey(key).parameterValue(value).parameterType(type)
-                .category(category).description(description).isActive(true).build();
+                .category(category).description(description)
+                .isActive(isActive == null ? Boolean.TRUE : isActive).build();
         return repo.save(p);
     }
 

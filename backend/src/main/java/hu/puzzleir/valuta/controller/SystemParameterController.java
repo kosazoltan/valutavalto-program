@@ -50,7 +50,28 @@ public class SystemParameterController {
     public ResponseEntity<SystemParameter> create(@Valid @RequestBody Map<String, String> body) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(
                 body.get("parameterKey"), body.get("parameterValue"),
-                body.get("parameterType"), body.get("category"), body.get("description")));
+                body.get("parameterType"), body.get("category"), body.get("description"),
+                parseIsActive(body.get("isActive"))));
+    }
+
+    /**
+     * A létrehozó űrlap "Aktív" jelölőnégyzete (a frontend boolean-t küld, a Map&lt;String,String&gt;
+     * body-ban "true"/"false" szövegként érkezik). Hiányzó, üres vagy nem értelmezhető érték →
+     * {@code null}, amit a service aktív sorként hoz létre — elgépelés nem inaktiválhat némán
+     * egy új paramétert, és a mezőt ma nem küldő hívók viselkedése változatlan.
+     */
+    private static Boolean parseIsActive(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String value = raw.trim();
+        if ("false".equalsIgnoreCase(value)) {
+            return Boolean.FALSE;
+        }
+        if ("true".equalsIgnoreCase(value)) {
+            return Boolean.TRUE;
+        }
+        return null;
     }
 
     @PutMapping("/{id}")
