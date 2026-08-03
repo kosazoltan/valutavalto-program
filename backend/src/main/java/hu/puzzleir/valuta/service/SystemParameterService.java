@@ -219,10 +219,16 @@ public class SystemParameterService {
         } catch (RuntimeException e) {
             // Az audit-bejegyzés maga (action/actor/entity) így is rögzül — a snapshot hiánya
             // nem akaszthatja meg az írási műveletet.
-            // A kivétel üzenete is felhasználói tartalmat hordozhat (a Jackson a szerializált
-            // mezőket beleírja), ezért az is sanitizálva megy a logba.
-            log.warn("SystemParameter audit JSON szerializáció sikertelen: kulcs={}, hiba={}",
-                    sanitizeForLog(p.getParameterKey()), sanitizeForLog(e.getMessage()));
+            //
+            // Szándékosan SEMMILYEN felhasználói eredetű érték nem kerül a log-üzenetbe:
+            // sem a parameterKey, sem a kivétel üzenete (a Jackson a szerializált mezőket
+            // beleírja) — mindkettő ADMIN által megadható tartalom, és log-injection
+            // (CRLF) forrás. A CodeQL a CRLF-strip helpert nem ismeri el barriernek
+            // (java/log-injection), ezért itt a taint-utat magát szüntetjük meg.
+            // Diagnosztika nem vész el: a hívó közvetlenül ezután írja az audit_log sort a
+            // művelettel és az entity_id-val, így a hibás eset onnan korrelálható.
+            log.warn("SystemParameter audit JSON szerializáció sikertelen (a művelet folytatódik): hibatípus={}",
+                    e.getClass().getSimpleName());
             return null;
         }
     }
