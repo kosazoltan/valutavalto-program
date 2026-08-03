@@ -165,6 +165,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Request body not readable: {}", ex.getMessage());
 
+        // FK-072 (FR-3): a záró-varázsló címletezés végpontján a Map<Integer,Integer>
+        // kulcs bind-hibája (tipikusan tört névérték, pl. "0.5") ne kontextus nélküli
+        // nyers 400 legyen, hanem egyértelmű magyar validációs hiba. Az egész, de
+        // 1 alatti kulcsot a ClosingWizardService validálja ugyanezzel a kóddal.
+        // (A kérés-URI a RequestContextHolder-ből jön, hogy a handler-szignatúra ne
+        // változzon — a meglévő unit tesztek közvetlenül, egy argumentummal hívják.)
+        if (isClosingDenominationRequest() && isIntegerMapKeyBindFailure(ex)) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
+                    "VV-VALID-004: A címlet névértéke " + ValidationMessages.FRACTIONAL_FACE_VALUE_CORE
+                            + " — a címletezés névértékei csak egész számok lehetnek.");
+        }
+
         Throwable cur = ex.getCause();
         while (cur != null) {
             // (a) Klasszikus InvalidFormatException — Jackson default enum bind failure
@@ -197,6 +209,36 @@ public class GlobalExceptionHandler {
 
         return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
                 "Hiányzó vagy érvénytelen request body");
+    }
+
+    /** FK-072: a záró-varázsló címletezés-beküldési végpontja-e az aktuális kérés. */
+    private boolean isClosingDenominationRequest() {
+        var attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if (!(attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra)) {
+            return false;
+        }
+        String uri = sra.getRequest().getRequestURI();
+        return uri != null && uri.contains("/closing-wizard/") && uri.endsWith("/denominations");
+    }
+
+    /**
+     * FK-072: Integer Map-kulcs bind-hibája-e a kivétel (pl. "0.5" kulcs). A Jackson 3
+     * a hibás kulcsot InvalidFormatException-nel (targetType=Integer) jelzi; fallbackként
+     * a kivétel-lánc üzenetében a "Map key" markert is elfogadjuk.
+     */
+    private boolean isIntegerMapKeyBindFailure(Throwable ex) {
+        Throwable cur = ex;
+        while (cur != null) {
+            if (cur instanceof tools.jackson.databind.exc.InvalidFormatException ife
+                    && Integer.class.equals(ife.getTargetType())) {
+                return true;
+            }
+            if (cur.getMessage() != null && cur.getMessage().contains("Map key")) {
+                return true;
+            }
+            cur = cur.getCause();
+        }
+        return false;
     }
 
     /**

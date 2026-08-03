@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.dto.transaction;
 
+import hu.puzzleir.valuta.exception.ValidationMessages;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -14,8 +15,13 @@ public class TransactionBanknoteDto {
     @Size(min = 3, max = 3, message = "currencyCode 3 karakter kell legyen")
     private String currencyCode;
 
+    /**
+     * FK-072: 1 alatti (tört) névérték sehol nem rögzíthető — a frontend-védelem
+     * (BanknoteBreakdown / isAllowedFaceValue) backend-oldali párja, direkt API-hívás
+     * ellen. A korábbi 0.01-es minimum a tört címletet átengedte.
+     */
     @NotNull(message = "faceValue kötelező")
-    @DecimalMin(value = "0.01", message = "faceValue pozitív kell legyen")
+    @DecimalMin(value = "1", message = ValidationMessages.BANKNOTE_FACE_VALUE_MIN_MESSAGE)
     private BigDecimal faceValue;
 
     @NotNull(message = "quantity kötelező")

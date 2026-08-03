@@ -506,6 +506,25 @@ public class ClosingWizardService {
             for (Map.Entry<Integer, Integer> denom : denoms.entrySet()) {
                 int value = denom.getKey();
                 int count = denom.getValue();
+                // FK-072 (FR-3): 1 alatti névértékű kulcs nem fogadható el — darabszámtól
+                // FÜGGETLENÜL (Codex HIGH: a count==0-s érvénytelen kulcs is Denomination
+                // auto-create-et futtatna lentebb, törzs-szennyezés direkt API-hívásból).
+                // A tört (nem-egész) kulcsot már a JSON-binding utasítja el
+                // (GlobalExceptionHandler, azonos VV-VALID-004 kóddal).
+                if (value < 1) {
+                    throw new ValidationException(
+                            "VV-VALID-004: A címlet névértéke "
+                                    + hu.puzzleir.valuta.exception.ValidationMessages.FRACTIONAL_FACE_VALUE_CORE
+                                    + ": " + currencyCode + " " + value);
+                }
+                // FK-072 MEDIUM (counter-review): negatív darabszám nem írhat DenominationBalance-t
+                // — SZÁNDÉKOSAN külön kód/üzenet (nem a VV-VALID-004-es névérték-szabály), hogy a
+                // hívó megkülönböztethesse a két szabálysértést.
+                if (count < 0) {
+                    throw new ValidationException(
+                            "VV-VALID-005: A címlet darabszáma nem lehet negatív: "
+                                    + currencyCode + " " + value + " → " + count);
+                }
                 BigDecimal subtotal = BigDecimal.valueOf(value).multiply(BigDecimal.valueOf(count));
                 total = total.add(subtotal);
 

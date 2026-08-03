@@ -198,6 +198,14 @@ public class TransferService {
                         || d.getFaceValue() == null || d.getFaceValue().compareTo(BigDecimal.ZERO) <= 0) {
                     throw new ValidationException("VV-VALID-002: A címletezés darabszáma és névleges értéke pozitív kell legyen!");
                 }
+                // FK-072 (FR-4): 1 alatti (tört) névleges érték nem rögzíthető — az üzleti
+                // gyakorlatban tört címlet fizikailag nem fordulhat elő.
+                if (d.getFaceValue().compareTo(BigDecimal.ONE) < 0) {
+                    throw new ValidationException(
+                            "VV-VALID-002: A címlet névleges értéke "
+                                    + hu.puzzleir.valuta.exception.ValidationMessages.FRACTIONAL_FACE_VALUE_CORE
+                                    + "!");
+                }
                 BigDecimal lineTotal = d.getFaceValue().multiply(BigDecimal.valueOf(d.getQuantity()));
                 denomSum = denomSum.add(lineTotal);
                 transfer.getDenominations().add(TransferDenomination.builder()

@@ -30,6 +30,7 @@ import type { Denomination } from '../../services/api/settings'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { isAllowedFaceValue } from '../../utils/denominationRules'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 import {
@@ -106,7 +107,10 @@ export default function ClosingWizardPage() {
     normalizedRole.includes('foertektar')
   const denominationSections = useMemo(
     () =>
-      isVaultContext
+      // FK-072: az 1 alatti (tört) névértékű sor SEMMILYEN formában nem kerülhet a
+      // kirajzolásba — a szűrés itt, az egyetlen közös ponton fut, így a vault- és a
+      // pénztár-ág (és a HUF-fallback) is azonos elven védett (NFR-2).
+      (isVaultContext
         ? Object.entries(currencyDenominations)
             .map(([currencyCode, faceValues]) => ({ currencyCode, faceValues }))
             .sort((a, b) => a.currencyCode.localeCompare(b.currencyCode))
@@ -123,7 +127,11 @@ export default function ClosingWizardPage() {
                   ? cashierDenominations['HUF']
                   : [...HUF_DENOMINATIONS]
                 : (cashierDenominations[currencyCode] ?? []),
-          })),
+          }))
+      ).map(({ currencyCode, faceValues }) => ({
+        currencyCode,
+        faceValues: faceValues.filter(isAllowedFaceValue),
+      })),
     [currencyDenominations, isVaultContext, cashierCurrencies, cashierDenominations],
   )
   const denominationTotals = useMemo(
