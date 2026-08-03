@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import { isAllowedFaceValue } from '../../utils/denominationRules'
 import { validateCarrierSeal } from '../transfers/transferRules'
 import { ReceiptPreviewModal } from '../../components/electron'
 import { isElectron } from '../../utils/electron'
@@ -321,6 +322,12 @@ export default function ShipmentNewPage() {
       setError(
         'A címletezésben minden sorhoz pozitív egész darabszám és pozitív névleges érték szükséges.',
       )
+      return
+    }
+    // FK-072 (FR-5, kliens-oldal): 1 alatti (tört) névleges érték nem küldhető be —
+    // közös szabály az összes címletező felülettel (NFR-2).
+    if (normalizedDenominations.some((line) => !isAllowedFaceValue(line.faceValue))) {
+      setError('A címlet névleges értéke nem lehet 1-nél kisebb (tört címlet nem rögzíthető)!')
       return
     }
     const denominationTotal = normalizedDenominations.reduce((sum, line) => sum + line.lineTotal, 0)

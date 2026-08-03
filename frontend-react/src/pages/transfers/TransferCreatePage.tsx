@@ -24,6 +24,7 @@ import {
 import { useAuthStore } from '../../stores/authStore'
 import { NumberInput } from '../../components/NumberInput'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { isAllowedFaceValue } from '../../utils/denominationRules'
 import {
   getElectronCachedRates,
   isElectronQueueAvailable,
@@ -101,7 +102,6 @@ export default function TransferCreatePage() {
   const [denomPresetCode, setDenomPresetCode] = useState<string | null>(null)
   const denomPresetCurrencyRef = useRef<number | null>(null)
 
-
   // Supervisor PIN for TH transfers
   const [showSupervisorPin, setShowSupervisorPin] = useState(false)
   const [pendingTransferAfterPin, setPendingTransferAfterPin] = useState(false)
@@ -114,7 +114,6 @@ export default function TransferCreatePage() {
   // FR-6: sikeres rögzítés után nyomtatható bizonylat (Szállító + Plombaszám a szállítólevélen)
   const [printReceiptData, setPrintReceiptData] = useState<PrintReceiptData | null>(null)
   const [showReceiptModal, setShowReceiptModal] = useState(false)
-
 
   // A létrehozó oldalnak csak a valuta- és irodatörzs szükséges.
   const loadData = useCallback(async () => {
@@ -269,9 +268,12 @@ export default function TransferCreatePage() {
           next: Array<{ id: number; quantity: string; faceValue: string }>,
         ) =>
           setDenominationLines((prev) => (prev.some((r) => r.quantity.trim() !== '') ? prev : next))
-        if (denoms.length === 0) {
+        // FK-072: a törzs tört (1 alatti) sora nem tölthet elő sort — az új validáció
+        // úgyis elutasítaná, a felhasználó pedig nem értené, honnan jött.
+        const allowedDenoms = denoms.filter((d) => isAllowedFaceValue(d.faceValue))
+        if (allowedDenoms.length === 0) {
           // Codex PR #1101 P2: valutaváltáskor az ELŐZŐ valuta stale presetje nem
-          // maradhat — üres törzsnél vissza a szabad bevitelre.
+          // maradhat — üres (vagy csupa tört sorú) törzsnél vissza a szabad bevitelre.
           setDenomPresetCode(null)
           applyIfPristine([{ id: denomIdRef.current++, quantity: '', faceValue: '' }])
           return
@@ -281,7 +283,7 @@ export default function TransferCreatePage() {
         // Címletenként egy sor, csökkenő névértékkel (a DenominationPage rendezése) —
         // a felhasználó csak a darabszámot tölti ki; a sorok szerkeszthetők maradnak.
         applyIfPristine(
-          [...denoms]
+          [...allowedDenoms]
             .sort((a, b) => b.faceValue - a.faceValue)
             .map((d) => ({
               id: denomIdRef.current++,
@@ -595,7 +597,6 @@ export default function TransferCreatePage() {
     return null
   }, [])
 
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -740,9 +741,7 @@ export default function TransferCreatePage() {
                 )
                 return filterTransferTargetBranches(candidates, ownBranch).map((b) => {
                   const isTH =
-                    b.branchTypeCode === 'TH' ||
-                    /\bTH\b/i.test(b.code) ||
-                    /\bTH\b/i.test(b.name)
+                    b.branchTypeCode === 'TH' || /\bTH\b/i.test(b.code) || /\bTH\b/i.test(b.name)
                   const isVault = b.isVault === true
                   const badge = isVault ? ' (értéktár)' : isTH ? ' (TH)' : ''
                   return (
@@ -835,15 +834,11 @@ export default function TransferCreatePage() {
                 <select
                   id="currency"
                   value={currencyId ?? ''}
-                  onChange={(e) =>
-                    setCurrencyId(e.target.value ? Number(e.target.value) : null)
-                  }
+                  onChange={(e) => setCurrencyId(e.target.value ? Number(e.target.value) : null)}
                   className="form-input w-full"
                 >
                   {/* FT/kez.ktg típusnál nincs üres opció — a HUF kötelezően kiválasztva marad. */}
-                  {!isHufOnlyType && (
-                    <option value="">{t('transfers.valasszonValutat')}</option>
-                  )}
+                  {!isHufOnlyType && <option value="">{t('transfers.valasszonValutat')}</option>}
                   {filteredCurrencies.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.code} - {c.name}
@@ -931,8 +926,8 @@ export default function TransferCreatePage() {
                 {/* A.3: jelzés, hogy a címlet-törzs előtöltötte a névértékeket. */}
                 {denomPresetCode && (
                   <p className="text-xs text-blue-700">
-                    A(z) {denomPresetCode} címletei betöltve — csak a darabszámot adja meg (a
-                    sorok szabadon szerkeszthetők, az üresen hagyott címlet kimarad).
+                    A(z) {denomPresetCode} címletei betöltve — csak a darabszámot adja meg (a sorok
+                    szabadon szerkeszthetők, az üresen hagyott címlet kimarad).
                   </p>
                 )}
                 {denominationLines.map((line, idx) => {
@@ -960,9 +955,7 @@ export default function TransferCreatePage() {
                         />
                       </div>
                       <div>
-                        {idx === 0 && (
-                          <label className="form-label text-xs">Névleges érték</label>
-                        )}
+                        {idx === 0 && <label className="form-label text-xs">Névleges érték</label>}
                         <NumberInput
                           value={line.faceValue}
                           onChange={(v) =>

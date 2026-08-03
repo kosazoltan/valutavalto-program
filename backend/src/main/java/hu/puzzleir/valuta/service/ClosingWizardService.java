@@ -506,6 +506,15 @@ public class ClosingWizardService {
             for (Map.Entry<Integer, Integer> denom : denoms.entrySet()) {
                 int value = denom.getKey();
                 int count = denom.getValue();
+                // FK-072 (FR-3): 1 alatti névértékű, nem-nulla darabszámú bejegyzés nem
+                // rögzíthető (UI-megkerülő direkt API-hívás ellen). A tört (nem-egész)
+                // kulcsot már a JSON-binding utasítja el (GlobalExceptionHandler, azonos
+                // VV-VALID-004 kóddal) — itt az egész, de 1 alatti kulcs a célpont.
+                if (value < 1 && count != 0) {
+                    throw new ValidationException(
+                            "VV-VALID-004: A címlet névértéke nem lehet 1-nél kisebb"
+                                    + " (tört címlet nem rögzíthető): " + currencyCode + " " + value);
+                }
                 BigDecimal subtotal = BigDecimal.valueOf(value).multiply(BigDecimal.valueOf(count));
                 total = total.add(subtotal);
 

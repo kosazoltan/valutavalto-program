@@ -1,4 +1,5 @@
 import type { CreateTransferRequest } from '../../services/api/index'
+import { isAllowedFaceValue } from '../../utils/denominationRules'
 
 /**
  * Átadás-átvétel üzleti szabályok (Kósa Zoltán tesztelői kérés, pénztár+értéktár modul).
@@ -245,18 +246,33 @@ export function buildDenominationPayload(
   totalAmount: number,
 ): DenominationBuildResult {
   if (!enabled) return {}
-  const parsed = lines
-    .map((l) => ({
-      quantity: parseInt(l.quantity, 10),
-      faceValue: parseFloat(String(l.faceValue).replace(',', '.').replace(/\s/g, '')),
-    }))
-    .filter(
-      (l) =>
-        Number.isFinite(l.quantity) &&
-        l.quantity > 0 &&
-        Number.isFinite(l.faceValue) &&
-        l.faceValue > 0,
-    )
+  const allParsed = lines.map((l) => ({
+    quantity: parseInt(l.quantity, 10),
+    faceValue: parseFloat(String(l.faceValue).replace(',', '.').replace(/\s/g, '')),
+  }))
+  // FK-072 (FR-4): kitöltött sorban az 1 alatti (tört) névleges érték egyértelmű hibát
+  // ad — NEM néma kihagyást, mert az érthetetlen összeg-eltérési hibát okozna. Az üres
+  // / nem-pozitív sorok kihagyása változatlan (lásd lentebb).
+  const hasFractional = allParsed.some(
+    (l) =>
+      Number.isFinite(l.quantity) &&
+      l.quantity > 0 &&
+      Number.isFinite(l.faceValue) &&
+      l.faceValue > 0 &&
+      !isAllowedFaceValue(l.faceValue),
+  )
+  if (hasFractional) {
+    return {
+      error: 'A címlet névleges értéke nem lehet 1-nél kisebb (tört címlet nem rögzíthető)!',
+    }
+  }
+  const parsed = allParsed.filter(
+    (l) =>
+      Number.isFinite(l.quantity) &&
+      l.quantity > 0 &&
+      Number.isFinite(l.faceValue) &&
+      l.faceValue > 0,
+  )
   if (parsed.length === 0) return {}
   const sum = parsed.reduce((s, l) => s + l.quantity * l.faceValue, 0)
   if (Math.abs(sum - totalAmount) > 0.0001) {

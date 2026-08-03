@@ -23,6 +23,7 @@ import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { isAllowedFaceValue } from '../../utils/denominationRules'
 
 interface DenominationQuantityUpdateRequest {
   denominationId: string
@@ -1082,7 +1083,14 @@ export default function DenominationPage() {
               </thead>
               <tbody>
                 {denominations
-                  .filter((d) => d.currencyId === selectedCurrencyId && d.active)
+                  // FK-072: a tört (1 alatti) névértékű törzssor a kirajzolásból is
+                  // hiányzik — nem disabled, hanem egyáltalán nincs a DOM-ban.
+                  .filter(
+                    (d) =>
+                      d.currencyId === selectedCurrencyId &&
+                      d.active &&
+                      isAllowedFaceValue(d.faceValue),
+                  )
                   .sort((a, b) => b.faceValue - a.faceValue)
                   .map((denomination) => {
                     const quantity = editingQuantities[denomination.id] || 0

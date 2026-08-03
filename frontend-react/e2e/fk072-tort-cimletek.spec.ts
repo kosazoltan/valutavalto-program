@@ -32,11 +32,46 @@ const worker = {
 
 /** Címlettörzs: HUF egész + EUR egész (100, 1) ÉS tört (0,5) sor. */
 const denominationMaster = [
-  { id: 1, currencyId: 2, currencyCode: 'HUF', faceValue: 20000, denominationType: 'BANKNOTE', active: true },
-  { id: 2, currencyId: 2, currencyCode: 'HUF', faceValue: 1000, denominationType: 'BANKNOTE', active: true },
-  { id: 3, currencyId: 4, currencyCode: 'EUR', faceValue: 100, denominationType: 'BANKNOTE', active: true },
-  { id: 4, currencyId: 4, currencyCode: 'EUR', faceValue: 1, denominationType: 'COIN', active: true },
-  { id: 5, currencyId: 4, currencyCode: 'EUR', faceValue: 0.5, denominationType: 'COIN', active: true },
+  {
+    id: 1,
+    currencyId: 2,
+    currencyCode: 'HUF',
+    faceValue: 20000,
+    denominationType: 'BANKNOTE',
+    active: true,
+  },
+  {
+    id: 2,
+    currencyId: 2,
+    currencyCode: 'HUF',
+    faceValue: 1000,
+    denominationType: 'BANKNOTE',
+    active: true,
+  },
+  {
+    id: 3,
+    currencyId: 4,
+    currencyCode: 'EUR',
+    faceValue: 100,
+    denominationType: 'BANKNOTE',
+    active: true,
+  },
+  {
+    id: 4,
+    currencyId: 4,
+    currencyCode: 'EUR',
+    faceValue: 1,
+    denominationType: 'COIN',
+    active: true,
+  },
+  {
+    id: 5,
+    currencyId: 4,
+    currencyCode: 'EUR',
+    faceValue: 0.5,
+    denominationType: 'COIN',
+    active: true,
+  },
 ]
 
 async function mockClosingApis(page: Page) {
@@ -220,10 +255,7 @@ async function login(page: Page) {
 
 /** A címletsor inputja a sor-label melletti spinbutton (sorrend-független keresés). */
 function denomInput(page: Page, label: string) {
-  return page
-    .getByText(label, { exact: true })
-    .locator('..')
-    .getByRole('spinbutton')
+  return page.getByText(label, { exact: true }).locator('..').getByRole('spinbutton')
 }
 
 async function startWizardUntilDenominationStep(page: Page) {
