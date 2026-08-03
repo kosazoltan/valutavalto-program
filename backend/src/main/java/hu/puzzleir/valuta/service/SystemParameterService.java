@@ -220,9 +220,26 @@ public class SystemParameterService {
             // Az audit-bejegyzés maga (action/actor/entity) így is rögzül — a snapshot hiánya
             // nem akaszthatja meg az írási műveletet.
             log.warn("SystemParameter audit JSON szerializáció sikertelen: kulcs={}, hiba={}",
-                    p.getParameterKey(), e.getMessage());
+                    sanitizeForLog(p.getParameterKey()), e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * CodeQL log-injection guard: CRLF + control character stripping — az
+     * {@link AdminCurrencyService} bevált mintája. A {@code parameterKey} ADMIN által
+     * szabadon megadható érték (POST /api/v1/system-parameters), tehát a logba írása előtt
+     * sanitizálni kell.
+     *
+     * <p>A logback-spring.xml {@code %redact(%msg)} konvertere ezt globálisan is elvégzi, de a
+     * CodeQL statikus elemzés nem ismeri fel a custom convertert — az explicit sanitize szünteti
+     * meg az alertet. NULL-safe: null input → {@code <null>}.
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return "<null>";
+        }
+        return value.replaceAll("[\\r\\n\\t\\x00-\\x1F\\x7F]", "_");
     }
 
     /** Hash-láncolt audit-bejegyzés a hívó tranzakcióján belül (rollbacknél visszagörög). */
