@@ -215,6 +215,151 @@ class DailyJournalServiceTest {
     }
 
     @Test
+    @DisplayName("ő/ű a fiók nevében → NEM száll el, a PDF legenerálódik (ő→ö, ű→ü csere)")
+    void branchNameWithOHungarumlaut_pdfGenerated_charsSubstituted() throws IOException {
+        // A WinAnsiEncoding NEM tartalmazza az ő (U+0151) / ű (U+0171) karaktereket,
+        // ezért a PDFBox showText() korábban IllegalArgumentException-t dobott → HTTP 500.
+        Branch branch = createBranch(companyId);
+        branch.setName("Fűzfő teszt fiók");
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(typedQuery.getResultList()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            assertThat(pdf).isNotEmpty();
+            try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+                // ő → ö, ű → ü (vizuálisan legközelebbi, WinAnsiban létező karakterek)
+                assertThat(text).contains("Iroda: BR001 - Füzfö teszt fiók");
+                // A nem-renderelhető eredeti karakterek nem maradhatnak benne.
+                assertThat(text).doesNotContain("ű").doesNotContain("ő");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Nagy Ő/Ű a fiók nevében → Ö/Ü csere, a PDF legenerálódik")
+    void branchNameWithUppercaseOHungarumlaut_pdfGenerated_charsSubstituted() throws IOException {
+        Branch branch = createBranch(companyId);
+        branch.setName("ŐRBOTTYÁN ŰRHAJÓ");
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(typedQuery.getResultList()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+                assertThat(text).contains("Iroda: BR001 - ÖRBOTTYÁN ÜRHAJÓ");
+                assertThat(text).doesNotContain("Ű").doesNotContain("Ő");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("REGRESSZIÓ: a WinAnsiban létező magyar ékezetek (á é í ó ö ú ü) VÁLTOZATLANUL renderelődnek")
+    void branchNameWithWinAnsiAccents_charactersPreserved() throws IOException {
+        Branch branch = createBranch(companyId);
+        branch.setName("Óbudai fiók áéíóöúü ÁÉÍÓÖÚÜ");
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(typedQuery.getResultList()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+                // Egyetlen helyes ékezet sem sérülhet (nincs ASCII-fehérlista!).
+                assertThat(text).contains("Iroda: BR001 - Óbudai fiók áéíóöúü ÁÉÍÓÖÚÜ");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("WinAnsin kívüli egyéb karakter (pl. emoji / CJK) → '?' fallback, nincs kivétel")
+    void branchNameWithNonWinAnsiSymbols_replacedWithQuestionMark() throws IOException {
+        Branch branch = createBranch(companyId);
+        branch.setName("Teszt 😀 東京 fiók");   // emoji (surrogate pair) + CJK
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(typedQuery.getResultList()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+                // A surrogate pair EGY code point → EGY '?'; a két CJK írásjel → két '?'.
+                assertThat(text).contains("Iroda: BR001 - Teszt ? ?? fiók");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("ő/ű a bizonylatszámban (tételsor) → nem száll el a render")
+    void receiptNumberWithOHungarumlaut_rendersRow() throws IOException {
+        Branch branch = createBranch(companyId);
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+
+        Currency eur = new Currency();
+        eur.setCode("EUR");
+        Transaction tx = createTx("Vő2026ű001", TransactionType.BUY, eur, "1000", "365000", LocalTime.of(9, 15));
+        when(typedQuery.getResultList()).thenReturn(List.of(tx));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);
+
+            try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+                String text = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+                assertThat(text).contains("Vö2026ü001");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("GARANCIA: a safeText() által megtartott MINDEN WinAnsi karakter valóban renderelhető")
+    void everyWinAnsiCharacter_rendersWithoutException() throws IOException {
+        // Empirikus bizonyíték arra, hogy a safeText() tagsági predikátuma (AGL név +
+        // WinAnsiEncoding.contains) egybeesik azzal, amit a PDFBox showText() ténylegesen
+        // elfogad — így a szűrés se nem szigorúbb (ékezet-vesztés), se nem lazább (HTTP 500).
+        var winAnsi = org.apache.pdfbox.pdmodel.font.encoding.WinAnsiEncoding.INSTANCE;
+        var glyphs = org.apache.pdfbox.pdmodel.font.encoding.GlyphList.getAdobeGlyphList();
+
+        StringBuilder allWinAnsi = new StringBuilder();
+        for (String glyphName : winAnsi.getCodeToNameMap().values()) {
+            String unicode = glyphs.toUnicode(glyphName);
+            if (unicode != null) {
+                allWinAnsi.append(unicode);
+            }
+        }
+        assertThat(allWinAnsi.length()).isGreaterThan(100);   // értelmes lefedettség
+
+        Branch branch = createBranch(companyId);
+        branch.setName(allWinAnsi.toString());
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(typedQuery.getResultList()).thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            byte[] pdf = service.generatePdf(branchId, testDate);   // nem dobhat kivételt
+
+            assertThat(pdf).isNotEmpty();
+            assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
+        }
+    }
+
+    @Test
     @DisplayName("JPQL financialEffective=TRUE + status=COMPLETED")
     void query_filtersFinancialEffectiveAndStatus() throws IOException {
         Branch branch = createBranch(companyId);

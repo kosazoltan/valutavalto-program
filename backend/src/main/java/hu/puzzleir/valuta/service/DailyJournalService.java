@@ -17,6 +17,9 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.font.encoding.Encoding;
+import org.apache.pdfbox.pdmodel.font.encoding.GlyphList;
+import org.apache.pdfbox.pdmodel.font.encoding.WinAnsiEncoding;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +64,10 @@ public class DailyJournalService {
     private static final float FONT_SIZE_HEADER = 12f;
     private static final float FONT_SIZE_BODY = 9f;
     private static final float LINE_HEIGHT = 12f;
+
+    /** A {@link #safeText(String)} karakter-tagsági ellenőrzéséhez (lásd ott a részleteket). */
+    private static final GlyphList ADOBE_GLYPH_LIST = GlyphList.getAdobeGlyphList();
+    private static final Encoding WIN_ANSI_ENCODING = WinAnsiEncoding.INSTANCE;
 
     private static final DecimalFormat AMOUNT_FORMAT;
     private static final DecimalFormat RATE_FORMAT;
@@ -316,12 +323,54 @@ public class DailyJournalService {
         content.endText();
     }
 
-    /** PDF szöveg-biztos string (ékezet → ASCII fallback PDF-mentes szövegre). */
+    /**
+     * PDF-render-biztos string a Standard-14 Helvetica + {@link WinAnsiEncoding} párosához.
+     *
+     * <p><b>A WinAnsiEncoding NEM ismeri a teljes magyar ábécét.</b> Az á/é/í/ó/ö/ú/ü és
+     * nagybetűs párjaik benne vannak, de a kettős hosszú ékezetes
+     * <b>ő (U+0151 / U+0150) és ű (U+0171 / U+0170) NINCS</b> — ezekre a PDFBox
+     * {@code showText()} {@code IllegalArgumentException}-t dob
+     * ("U+0151 ('odblacute') is not available in the font Helvetica"), ami korábban
+     * HTTP 500-at okozott, ha a fiók neve vagy a bizonylatszám ilyen betűt tartalmazott.</p>
+     *
+     * <p>Tényleges viselkedés:</p>
+     * <ul>
+     *   <li><b>ő→ö, Ő→Ö, ű→ü, Ű→Ü</b> — jóváhagyott üzleti döntés: a vizuálisan
+     *       legközelebbi, WinAnsiban létező karakter.</li>
+     *   <li>Minden egyéb, WinAnsiban nem létező code point (emoji, CJK, extra-Unicode,
+     *       sorvég) → {@code '?'}; kivétel helyett látható helyettesítő jel.</li>
+     *   <li>A WinAnsiban létező karakterek <b>változatlanul</b> maradnak — nincs
+     *       szűkítő ASCII-fehérlista, a helyes magyar ékezetek nem sérülnek.</li>
+     * </ul>
+     *
+     * <p>A tagságot a tényleges {@link WinAnsiEncoding} tábla dönti el, az Adobe Glyph List
+     * szerinti névfeloldással — ugyanaz a két lépés, amit a PDFBox
+     * {@code PDType1Font.encode()} is végez —, nem kézzel karbantartott karakterlista.</p>
+     */
     private static String safeText(String s) {
         if (s == null) return "";
-        // PDType1Font Standard14Fonts WinAnsi encoding-et használ, magyar ékezet OK,
-        // de extra-Unicode (pl. → ¶) NEM. Itt csak null-safe.
-        return s;
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); ) {
+            int cp = s.codePointAt(i);
+            i += Character.charCount(cp);   // surrogate pár = EGY code point
+            int mapped = switch (cp) {
+                case 0x0151 -> 'ö';   // ő
+                case 0x0150 -> 'Ö';   // Ő
+                case 0x0171 -> 'ü';   // ű
+                case 0x0170 -> 'Ü';   // Ű
+                default -> cp;
+            };
+            sb.appendCodePoint(isWinAnsiRenderable(mapped) ? mapped : '?');
+        }
+        return sb.toString();
+    }
+
+    /** True, ha a code point a WinAnsiEncoding tábla tagja (AGL névfeloldás után). */
+    private static boolean isWinAnsiRenderable(int codePoint) {
+        String glyphName = ADOBE_GLYPH_LIST.codePointToName(codePoint);
+        return glyphName != null
+                && !".notdef".equals(glyphName)
+                && WIN_ANSI_ENCODING.contains(glyphName);
     }
 
     private static String truncate(String s, int max) {
