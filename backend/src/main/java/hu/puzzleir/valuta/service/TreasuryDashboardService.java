@@ -59,9 +59,20 @@ public class TreasuryDashboardService {
             totalTransactions += report.getTransactionCount() != null ? report.getTransactionCount() : 0;
         }
 
-        // Aktuális készlet összesítés valutánként — csak a saját céghez tartozó egyenlegek
+        // Aktuális készlet összesítés valutánként — csak a saját céghez tartozó egyenlegek.
+        // FKH-029 FR-6: az értéktári (is_vault=TRUE) és a VAULT_COUNTERPARTY branch-ek
+        // egyenlege NEM tartozik a pénztári valuta-összesítőbe. Ez a szűrő az FKH-029 V371
+        // közvetlen következménye: a migráció után mind a 8 Értéktárnak van 23-23 (nulla)
+        // cash_balance sora, és bármely jövőbeni nem-nulla értéktári egyenleg meghamisítaná
+        // az Országos pénztári készletet (FK-036 hibaosztály). A vault-készlet helyes
+        // megjelenítési helye a getVaultStockFlow / StockSnapshotService vault-szekciója.
+        // A counterparty-kizárás azért KELL az isVault mellé, mert a VAULT_COUNTERPARTY
+        // branch-ek is_vault=FALSE értékűek (FK-058 kanonikus minta, null-safe).
         List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
         for (CashBalance cb : allBalances) {
+            if (isExcludedFromCashierTotals(cb.getBranch())) {
+                continue;
+            }
             String code = cb.getCurrency().getCode();
             CurrencyTotalsDto totals = currencyTotals.computeIfAbsent(code,
                     k -> CurrencyTotalsDto.builder()
@@ -75,7 +86,14 @@ public class TreasuryDashboardService {
                     .add(cb.getCurrentBalance()).setScale(4, RoundingMode.HALF_UP));
         }
 
-        List<Branch> activeBranches = branchRepository.findByCompanyId(companyId);
+        // FKH-029 FR-6: a "pénztár-szám" ne tartalmazza az Értéktárakat és a
+        // counterparty-branch-eket (MNB, bankok, Úton lévő pénztár, Többlet/Hiány) —
+        // ez a FK-036 "66 helyett 65 pénztár" hibaosztály. A repo-metódus a FK-058
+        // kanonikus, null-safe counterparty-kizárása; az isVault szűrés fölötte.
+        long activeCashierBranchCount = branchRepository
+                .findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId).stream()
+                .filter(b -> !Boolean.TRUE.equals(b.getIsVault()))
+                .count();
 
         return TreasuryDashboardDto.builder()
                 .currencyTotals(currencyTotals)
@@ -84,8 +102,32 @@ public class TreasuryDashboardService {
                 .totalFeeHuf(totalFeeHuf.setScale(2, RoundingMode.HALF_UP))
                 .totalProfit(totalProfit.setScale(2, RoundingMode.HALF_UP))
                 .totalTransactionCount(totalTransactions)
-                .branchCount(activeBranches.size())
+                .branchCount((int) activeCashierBranchCount)
                 .build();
+    }
+
+    /**
+     * FKH-029 FR-6: kizárandó-e a branch a PÉNZTÁRI valuta-összesítőből?
+     *
+     * <p>Két, egymást nem helyettesítő feltétel:
+     * <ul>
+     *   <li>{@code is_vault=TRUE} — Értéktár. Az FKH-029 V371 után mindegyiknek van
+     *       {@code cash_balance} sora (könyvelési réteg), de az nem pénztári készlet.</li>
+     *   <li>{@code branchType.code = 'VAULT_COUNTERPARTY'} — MNB, bankok, Úton lévő pénztár,
+     *       Többlet/Hiány. Ezek {@code is_vault=FALSE} értékűek, ezért az {@code isVault}
+     *       szűrő ŐKET NEM fogja meg (FK-058 tanulság).</li>
+     * </ul>
+     * Null-safe: hiányzó branch vagy branchType nem okoz NPE-t.</p>
+     */
+    private static boolean isExcludedFromCashierTotals(Branch branch) {
+        if (branch == null) {
+            return true;
+        }
+        if (Boolean.TRUE.equals(branch.getIsVault())) {
+            return true;
+        }
+        var branchType = branch.getBranchType();
+        return branchType != null && "VAULT_COUNTERPARTY".equals(branchType.getCode());
     }
 
     /**

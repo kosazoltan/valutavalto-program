@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -1207,11 +1208,7 @@ public class TransferService {
      */
     private void decreaseCashBalance(Branch branch, Currency currency, BigDecimal amount) {
         UUID companyId = requireBranchCompanyId(branch);
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
-                branch.getId(), currency.getId(), companyId)
-                .orElseThrow(() -> new ValidationException(
-                        String.format("Kassza egyenleg nem található: %s / %s",
-                                branch.getCode(), currency.getCode())));
+        CashBalance balance = resolveCashBalanceForUpdate(branch, currency, companyId);
 
         // Negatív kassza védelem
         if (balance.getCurrentBalance().compareTo(amount) < 0) {
@@ -1239,17 +1236,68 @@ public class TransferService {
      */
     private void increaseCashBalance(Branch branch, Currency currency, BigDecimal amount) {
         UUID companyId = requireBranchCompanyId(branch);
-        CashBalance balance = cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
-                branch.getId(), currency.getId(), companyId)
-                .orElseThrow(() -> new ValidationException(
-                        String.format("Kassza egyenleg nem található: %s / %s",
-                                branch.getCode(), currency.getCode())));
+        CashBalance balance = resolveCashBalanceForUpdate(branch, currency, companyId);
 
         balance.updateBalance(amount, true);
         cashBalanceRepository.save(balance);
         log.debug("Kassza növelve: {} {} += {}", branch.getCode(), currency.getCode(), amount);
         // Batch3-B FR-1: vault branch-nel a currency_stock IS no.
         applyVaultStockMirror(branch, currency, amount, true);
+    }
+
+    /**
+     * FKH-029 FR-2: a kassza-sor lockolt feloldása, VAULT-branchre lazy get-or-create-tel.
+     *
+     * <p><b>Miért kell:</b> az FKH-028 V369 a BR020 hiányzó {@code cash_balance} sorait pótolta,
+     * mert a Batch3-B mirror-architektúra (ld. {@link #applyVaultStockMirror}) a vault-mozgást a
+     * {@code cash_balance}-on könyveli és onnan tükrözi a {@code currency_stock}-ba. A 2026-08-04-i
+     * élő audit szerint azonban további 7 aktív Értéktárnak nem volt egyetlen sora sem, és a
+     * BR075 (Békéscsaba Értéktár) 10 átadása 2026-05-26 óta PENDING maradt, mert ez a metódus
+     * {@code orElseThrow}-val bukott. A V371 migráció visszamenőleg pótol; ez a runtime-ág a
+     * jövőre védi ki ugyanezt (újonnan aktivált valuta, új Értéktár felvétele).</p>
+     *
+     * <p><b>Fail-closed megőrzése (szándékos szűkítés):</b> a lazy létrehozás KIZÁRÓLAG
+     * {@code is_vault=TRUE} branchre szól, ahol a 0 nyitóértékű sor a V369-ben dokumentált
+     * helyes állapot. Nem-vault (pénztári) branchen a hiányzó kassza valódi adathiba, ezért ott
+     * a {@link ValidationException} változatlanul dobódik.</p>
+     *
+     * <p><b>Lock-ordering (CashLockOrdering, #947-#953):</b> a hívó ágak a zárakat már globális
+     * sorrendben megszerezték. Az {@code insertIfAbsent} egyetlen sorra szóló
+     * {@code ON CONFLICT DO NOTHING} INSERT, ami a {@code (branch_id, currency_id)} unique
+     * indexen szerializálódik — nem szerez a sorrenden kívüli új {@code SELECT ... FOR UPDATE}
+     * zárat, ezért a deadlock-megelőző invariánst nem sérti.</p>
+     *
+     * <p>A csökkentő ág negatív-kassza védelme a frissen létrehozott 0-s sorra is érvényes:
+     * a lazy create könyvelési sort ad, <b>fedezetet nem</b>.</p>
+     */
+    private CashBalance resolveCashBalanceForUpdate(Branch branch, Currency currency, UUID companyId) {
+        Optional<CashBalance> existing = cashBalanceRepository
+                .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+                        branch.getId(), currency.getId(), companyId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        if (!Boolean.TRUE.equals(branch.getIsVault())) {
+            // Nem-vault branch: a hiányzó kassza valódi adathiba — fail-closed (változatlan).
+            throw new ValidationException(
+                    String.format("Kassza egyenleg nem található: %s / %s",
+                            branch.getCode(), currency.getCode()));
+        }
+
+        // Vault branch: a könyvelési sornak léteznie KELL (V369 invariáns-fordulat) — pótoljuk.
+        cashBalanceRepository.insertIfAbsent(companyId, branch.getId(), currency.getId());
+        CashBalance created = cashBalanceRepository
+                .findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(
+                        branch.getId(), currency.getId(), companyId)
+                .orElseThrow(() -> new ValidationException(
+                        String.format("Kassza egyenleg nem található: %s / %s",
+                                branch.getCode(), currency.getCode())));
+        log.warn("FKH-029: hiányzó értéktári kassza-sor pótolva 0 nyitóértékkel — "
+                        + "branch: {}, valuta: {}, territory: {}. A V371 migráció ezt visszamenőleg "
+                        + "elvégezte; új előfordulás új Értéktárra vagy újonnan aktivált valutára utal.",
+                branch.getCode(), currency.getCode(), branch.getVaultTerritoryId());
+        return created;
     }
 
     /**

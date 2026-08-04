@@ -53,7 +53,11 @@ public class DailyBalanceService {
     private final CompanyRepository companyRepository;
     private final AuditLogService auditLogService;
     private final MonthlyClosingSummaryRepository monthlyClosingSummaryRepository;
-    private final CurrencyStockRepository currencyStockRepository;
+    /**
+     * FKH-029 FR-5: a nyitó-egyenleg Szint-3 fallback forrása (korábban a holt
+     * CASHIER {@code CurrencyStock} réteg volt).
+     */
+    private final CashBalanceRepository cashBalanceRepository;
     private final BranchRepository branchRepository;
     private final DenominationBalanceRepository denominationBalanceRepository;
 
@@ -185,8 +189,17 @@ public class DailyBalanceService {
      *
      * 1. Előző napi záró egyenleg (DailyBalance tábla)
      * 2. Előző havi lezárt összesítő (MonthlyClosingSummary — currency breakdown JSON-ből)
-     * 3. Aktuális valutakészlet (CurrencyStock.quantity)
+     * 3. Aktuális kassza-egyenleg (cash_balance.current_balance)
      * 4. Nulla (első nap az irodában)
+     *
+     * <p>FKH-029 FR-5: a 3. szint korábban a {@code CurrencyStock.quantity}-ből olvasott
+     * ({@code entityType='CASHIER'}). Az élő audit (2026-08-04) szerint az a réteg HOLT:
+     * összesen 4 sor létezett, mind INAKTÍV fiókon, azonos 2026-03-16-i időbélyeggel (seed),
+     * és az élő fiókoknak egyetlen soruk sem volt — a rétegbe író egyetlen útvonal
+     * ({@code MaterialReceiptService}) pedig soha nem futott élesben
+     * ({@code material_receipt} = 0 sor). Vagyis ez a fallback élő fiókra MINDIG a 4. szintre
+     * (0) esett, csendben. A {@code cash_balance} ugyanazt a fiók-készletet tartja nyilván,
+     * élő adattal — ezért szigorúan jobb forrás.</p>
      */
     BigDecimal getOpeningBalance(UUID branchId, LocalDate date, String currencyCode) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
@@ -217,15 +230,16 @@ public class DailyBalanceService {
             }
         }
 
-        // Szint 3: CurrencyStock.quantity (iroda jelenlegi készlete)
-        Optional<CurrencyStock> stock = currencyStockRepository
-            .findByBranchIdAndCurrencyCode(branchId.toString(), currencyCode);
+        // Szint 3: cash_balance.current_balance (a fiók élő kassza-egyenlege).
+        // FKH-029 FR-5: korábban CurrencyStock (CASHIER) — holt réteg, ld. a Javadocot.
+        Optional<CashBalance> cashBalance = cashBalanceRepository
+            .findByBranchIdAndCurrencyCodeAndCompanyId(branchId, currencyCode, companyId);
 
-        if (stock.isPresent() && stock.get().getQuantity() != null
-                && stock.get().getQuantity().compareTo(BigDecimal.ZERO) > 0) {
-            log.debug("Nyitó egyenleg forrása: CurrencyStock.quantity ({}): {}",
-                currencyCode, stock.get().getQuantity());
-            return stock.get().getQuantity();
+        if (cashBalance.isPresent() && cashBalance.get().getCurrentBalance() != null
+                && cashBalance.get().getCurrentBalance().compareTo(BigDecimal.ZERO) > 0) {
+            log.debug("Nyitó egyenleg forrása: cash_balance.current_balance ({}): {}",
+                currencyCode, cashBalance.get().getCurrentBalance());
+            return cashBalance.get().getCurrentBalance();
         }
 
         // Szint 4: nulla — első nap az irodában

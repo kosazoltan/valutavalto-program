@@ -222,4 +222,38 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
         @Param("branchId") UUID branchId,
         @Param("currencyCode") String currencyCode,
         @Param("companyId") UUID companyId);
+
+    /**
+     * FKH-029 FR-3 (read-only megfigyelhetőség): azok az AKTÍV értéktári branch-ek, amelyeknek
+     * hiányzik {@code cash_balance} soruk legalább egy aktív valutára.
+     *
+     * <p>A V371 migráció után ez üres — bármely találat új Értéktárra vagy újonnan aktivált
+     * valutára utal, amit a {@code TransferService} lazy get-or-create ága már kezel, de
+     * érdemes riasztani, mert a hiány a napzárás/riport útvonalakon is felszínre jöhet.</p>
+     *
+     * <p>A job rendszerszintű (nincs request-scope JWT), ezért CÉGFÜGGETLEN — a visszaadott
+     * sorok tartalmazzák a cég kódját is. Csak SELECT, semmit nem módosít.</p>
+     *
+     * @return sorok: {@code [companyCode, branchCode, missingCurrencyCodes(csv), missingCount]}
+     */
+    @Query(value = """
+            SELECT co.code                       AS company_code,
+                   b.code                        AS branch_code,
+                   string_agg(c.code, ',' ORDER BY c.code) AS missing_currencies,
+                   count(*)                      AS missing_count
+              FROM branch b
+              JOIN company co ON co.id = b.company_id
+              CROSS JOIN currency c
+             WHERE b.is_vault = TRUE
+               AND b.is_active = TRUE
+               AND c.is_active = TRUE
+               AND NOT EXISTS (
+                   SELECT 1 FROM cash_balance cb
+                    WHERE cb.branch_id = b.id
+                      AND cb.currency_id = c.id
+               )
+             GROUP BY co.code, b.code
+             ORDER BY co.code, b.code
+            """, nativeQuery = true)
+    List<Object[]> findVaultBranchesWithMissingCashBalance();
 }
