@@ -208,6 +208,45 @@ class TransactionReversalTransferFkh028Test {
     }
 
     @Test
+    @DisplayName("FKH-028/5.kör HIGH-1: idegen iroda V370-jelölt bizonylatára a sztornó-elutasítás NEM különböztethető meg a jelöletlen esettől (nincs V370-infó-szivárgás)")
+    void foreignBranchStorno_uniformRejection_noV370Leak() {
+        UUID foreignBranchId = UUID.randomUUID();
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            // A hívó egy MÁSIK iroda dolgozója.
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(foreignBranchId);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(true);
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L)
+                    .reason("Idegen sztorno kiserlet")
+                    .approvedBy("SUPERVISOR")
+                    .build();
+
+            // (1) V370-jelölt idegen bizonylat
+            Transaction marked = transferTransaction(TransactionType.TRANSFER_OUT);
+            marked.setNotes("[FKH-028 V370] duplikalt tetel — rendezve.");
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(marked));
+            String markedMessage = org.assertj.core.api.Assertions.catchThrowable(
+                    () -> reversalService.executeReversal(request)).getMessage();
+
+            // (2) jelöletlen idegen bizonylat
+            when(transactionRepository.findByIdForUpdate(100L))
+                    .thenReturn(Optional.of(transferTransaction(TransactionType.TRANSFER_OUT)));
+            String unmarkedMessage = org.assertj.core.api.Assertions.catchThrowable(
+                    () -> reversalService.executeReversal(request)).getMessage();
+
+            // A tulajdonjog-guard fut ELŐSZÖR: mindkét eset UGYANAZT a hibát adja,
+            // a V370-státusz nem szivároghat idegen iroda felé.
+            org.assertj.core.api.Assertions.assertThat(markedMessage)
+                    .as("Idegen+jelölt eset üzenete a tulajdonjog-hiba, nem a V370-guard")
+                    .doesNotContain("V370")
+                    .isEqualTo(unmarkedMessage);
+        }
+    }
+
+    @Test
     @DisplayName("FKH-028: TRANSFER_IN sztornó → a valuta KIKERÜL a kasszából (-) készlet-validációval, HUF-ellenláb NINCS")
     void transferInReversal_removesCashBalance_withStockValidation_withoutHufLeg() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {

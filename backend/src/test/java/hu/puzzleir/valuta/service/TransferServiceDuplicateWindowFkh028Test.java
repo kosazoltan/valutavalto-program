@@ -117,6 +117,73 @@ class TransferServiceDuplicateWindowFkh028Test {
     }
 
     @Test
+    @DisplayName("FKH-028/5.kör HIGH-2: a 3 mp-nél LASSABB, még folyamatban lévő create alatt az azonos retry ELUTASÍTVA (nem idő-, hanem állapot-alapú védelem)")
+    void slowInFlightCreate_retryStillRejected() throws Exception {
+        // Az első create a transferRepository.save-nél mesterségesen beragad (latch),
+        // a második azonos kérés 3 mp-nél KÉSŐBB érkezik — az időablak-alapú védelem
+        // itt átengedné (a kulcs kiöregedett), az állapot-alapú (PROCESSING) nem.
+        java.util.concurrent.CountDownLatch saveEntered = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch releaseSave = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicBoolean firstSave = new java.util.concurrent.atomic.AtomicBoolean(true);
+        when(transferRepository.save(any())).thenAnswer(inv -> {
+            if (firstSave.getAndSet(false)) {
+                saveEntered.countDown();
+                releaseSave.await(20, java.util.concurrent.TimeUnit.SECONDS);
+            }
+            return inv.getArgument(0);
+        });
+
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            java.util.concurrent.Future<?> first = executor.submit(() -> service.create(dto("1000"), 1L));
+            org.assertj.core.api.Assertions.assertThat(
+                            saveEntered.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                    .as("Az első create-nek el kell érnie a save-et")
+                    .isTrue();
+
+            // 3 mp-nél hosszabb feldolgozás szimulálása: a retry az ablakon TÚL érkezik.
+            Thread.sleep(3200);
+
+            assertThatThrownBy(() -> service.create(dto("1000"), 1L))
+                    .as("A még folyamatban lévő azonos create alatt a retry nem mehet át")
+                    .isInstanceOf(ConflictException.class);
+
+            releaseSave.countDown();
+            first.get(20, java.util.concurrent.TimeUnit.SECONDS);
+        } finally {
+            releaseSave.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("FKH-028/5.kör MEDIUM: a metódustörzs UTÁNI (commit-)bukás is felszabadítja a kulcsot — a következő legitim kérés nem kap hamis konfliktust")
+    void commitFailureAfterBody_releasesKey_nextRequestNotBlocked() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.create(dto("1000"), 1L);
+
+            // A tranzakció a metódustörzs UTÁN bukik el (commit/flush-hiba szimuláció):
+            // a regisztrált szinkronizációk rollback-státusszal záródnak.
+            for (org.springframework.transaction.support.TransactionSynchronization sync :
+                    java.util.List.copyOf(
+                            org.springframework.transaction.support.TransactionSynchronizationManager
+                                    .getSynchronizations())) {
+                sync.afterCompletion(
+                        org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK);
+            }
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        // A bukott (rollbackelt) kísérlet után az AZONNALI, azonos paraméterű legitim
+        // újraküldés nem kaphat hamis konfliktust.
+        assertThatCode(() -> service.create(dto("1000"), 1L))
+                .as("A commit-bukás után a kulcs felszabadul, a retry átmegy")
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("FKH-028/V370-guard: a V370-korrekcióval jelölt átadólapra a storno() 409-cel elutasítva")
     void v370MarkedTransfer_stornoRejected() {
         Company company = Company.builder().id(UUID.randomUUID()).build();
