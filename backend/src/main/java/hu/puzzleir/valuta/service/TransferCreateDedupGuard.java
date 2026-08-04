@@ -54,13 +54,12 @@ public class TransferCreateDedupGuard {
     public static final String ENDPOINT = "TRANSFER_CREATE_DEDUP";
     /** Rövid TTL a cleanup-jobnak — a dedup-rekord percek után már irreleváns. */
     private static final Duration TTL = Duration.ofHours(1);
-    /**
-     * FKH-028 6. kör (MEDIUM-kompenzáció): ha a release() minden retry-jal együtt elbukott
-     * (vagy a folyamat összeomlott), a PROCESSING kulcs beragadna — az ennél régebbi
-     * PROCESSING rekordot az acquire a zár alatt ÁTVESZI. Egy create sosem tart percekig,
-     * így a false-conflict ablak a korábbi ~2 órás TTL/cleanup helyett legfeljebb ennyi.
-     */
-    static final long STALE_PROCESSING_TAKEOVER_MS = Duration.ofMinutes(10).toMillis();
+    // FKH-028 7. kör: a 6. körben itt élt automatikus stale-PROCESSING átvétel (10 perc)
+    // KIVEZETVE (Codex BLOCKING: nincs garancia a legitim kérés futásidejére, és a release
+    // nem tulajdonos-alapú — az „ellopott" rekordot az eredeti, még futó kérés utólag
+    // felülírhatta volna). A PROCESSING rekord MINDIG konfliktus; a beragadt rekordot a
+    // TransferDedupStuckRecordWarningJob riasztja, feloldása manuális admin-eljárás:
+    // docs/ops/idempotency-stuck-record-recovery.md.
     /** A V175-ös unique index neve — a duplikátum-detekció KIZÁRÓLAG erre szűkített. */
     static final String DEDUP_UNIQUE_INDEX = "idempotency_record_unique_idx";
 
@@ -97,23 +96,16 @@ public class TransferCreateDedupGuard {
         if (locked.isPresent()) {
             IdempotencyRecord rec = locked.get();
             if (rec.getStatus() == IdempotencyRecord.Status.PROCESSING) {
-                long ageMs = rec.getCreatedAt() != null
-                        ? Duration.between(rec.getCreatedAt(), now).toMillis()
-                        : Long.MAX_VALUE;
-                if (ageMs <= STALE_PROCESSING_TAKEOVER_MS) {
-                    throw duplicateRejected("az előző azonos beküldés még feldolgozás alatt áll");
-                }
-                // MEDIUM-kompenzáció: beragadt PROCESSING (release-hiba / folyamat-crash) —
-                // a küszöbnél régebbi kulcsot a zár alatt átvesszük, nem várunk a cleanupra.
-                log.warn("Beragadt PROCESSING dedup-kulcs átvétele (kora: {} ms) — "
-                        + "release-hiba/crash kompenzáció", ageMs);
+                // 7. kör: PROCESSING → MINDIG konfliktus, kortól függetlenül (nincs
+                // automatikus átvétel — ld. az osztály-kommentet a kivezetés indokáról).
+                throw duplicateRejected("az előző azonos beküldés még feldolgozás alatt áll");
             } else if (rec.getStatus() == IdempotencyRecord.Status.COMPLETED
                     && rec.getCompletedAt() != null
                     && Duration.between(rec.getCompletedAt(), now).toMillis() <= RECENT_COMPLETED_WINDOW_MS) {
                 throw duplicateRejected("ugyanez az átadás az elmúlt "
                         + (RECENT_COMPLETED_WINDOW_MS / 1000) + " másodpercben már rögzítésre került");
             }
-            // FAILED, régi COMPLETED vagy beragadt PROCESSING: átvesszük a kulcsot (a zár alatt).
+            // FAILED vagy régi COMPLETED: átvesszük a kulcsot (a zár alatt).
             rec.setStatus(IdempotencyRecord.Status.PROCESSING);
             rec.setCreatedAt(now);
             rec.setCompletedAt(null);

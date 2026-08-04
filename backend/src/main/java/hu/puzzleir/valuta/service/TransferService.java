@@ -98,13 +98,13 @@ public class TransferService {
     static final int DEDUP_RELEASE_RETRY_ATTEMPTS = 3;
 
     /**
-     * FKH-028 6. kör (Codex MEDIUM): a dedup-kulcs feloldása gyors, korlátos retry-jal.
+     * FKH-028 6-7. kör (Codex MEDIUM): a dedup-kulcs feloldása gyors, korlátos retry-jal.
      * A release REQUIRES_NEW tranzakciójának átmeneti hibája nem hagyhatja a kulcsot az
      * órás TTL/cleanup-ra — néhány azonnali újrapróbálkozás fut; végleges bukásnál a
-     * kivétel NEM terjed tovább (a create eredményét nem ronthatja el), csak log.error —
-     * a beragadt PROCESSING kulcsot pedig az acquire stale-átvétele
-     * ({@link TransferCreateDedupGuard#STALE_PROCESSING_TAKEOVER_MS}) oldja fel,
-     * így a false-conflict ablak legfeljebb ~10 perc, nem ~2 óra.
+     * kivétel NEM terjed tovább (a create eredményét nem ronthatja el), csak log.error.
+     * A 7. kör óta beragadt kulcsnál NINCS automatikus átvétel: a
+     * TransferDedupStuckRecordWarningJob riaszt, a feloldás manuális admin-eljárás
+     * (docs/ops/idempotency-stuck-record-recovery.md).
      */
     private void releaseDedupWithRetry(UUID companyId, String dedupKey, boolean committed) {
         for (int attempt = 1; attempt <= DEDUP_RELEASE_RETRY_ATTEMPTS; attempt++) {
@@ -114,9 +114,9 @@ public class TransferService {
             } catch (RuntimeException ex) {
                 if (attempt >= DEDUP_RELEASE_RETRY_ATTEMPTS) {
                     log.error("Transfer-dedup release véglegesen sikertelen ({} kísérlet) — "
-                                    + "a beragadt kulcsot az acquire stale-átvétele oldja fel (~{} perc)",
-                            attempt,
-                            TransferCreateDedupGuard.STALE_PROCESSING_TAKEOVER_MS / 60000, ex);
+                                    + "a beragadt kulcsot a figyelmeztető job jelzi, feloldása manuális "
+                                    + "admin-eljárás (docs/ops/idempotency-stuck-record-recovery.md)",
+                            attempt, ex);
                     return;
                 }
                 log.warn("Transfer-dedup release átmeneti hibája ({}. kísérlet), retry", attempt, ex);

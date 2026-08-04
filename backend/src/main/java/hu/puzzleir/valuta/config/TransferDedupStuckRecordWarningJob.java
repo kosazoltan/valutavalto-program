@@ -39,6 +39,21 @@ public class TransferDedupStuckRecordWarningJob {
     /** 5 percenként fut; csak riaszt, nem avatkozik be. */
     @Scheduled(fixedDelayString = "${app.transfer-dedup.stuck-warn-check-ms:300000}")
     public void warnStuckRecords() {
-        // RED-váz — az implementációt a TransferDedupStuckRecordWarningJobFkh028Test hajtja.
+        java.time.Instant threshold = java.time.Instant.now()
+                .minus(java.time.Duration.ofMinutes(stuckWarnMinutes));
+        for (hu.puzzleir.valuta.entity.IdempotencyRecord rec :
+                repository.findByEndpointAndStatusAndCreatedAtBefore(
+                        hu.puzzleir.valuta.service.TransferCreateDedupGuard.ENDPOINT,
+                        hu.puzzleir.valuta.entity.IdempotencyRecord.Status.PROCESSING,
+                        threshold)) {
+            long ageMinutes = rec.getCreatedAt() != null
+                    ? java.time.Duration.between(rec.getCreatedAt(), java.time.Instant.now()).toMinutes()
+                    : -1;
+            log.warn("BERAGADT Transfer-dedup rekord: id={}, kulcs-hash={}, {} perce PROCESSING "
+                            + "(létrejött: {}). A rekord feloldása MANUÁLIS admin-eljárás — "
+                            + "ld. docs/ops/idempotency-stuck-record-recovery.md; a konkrét átadás "
+                            + "a szerver-log időbeli korrelációjával azonosítható.",
+                    rec.getId(), rec.getIdempotencyKey(), ageMinutes, rec.getCreatedAt());
+        }
     }
 }
