@@ -47,48 +47,54 @@ public class TransferService {
     // currency_stock ("B konyv") tukrozesehez.
     private final VaultStockFlowService vaultStockFlowService;
     private final AccessScopeService accessScopeService;
-
-    /**
-     * FKH-028 Fázis 2: rövid távú duplikátum-védelmi időablak (ms). A frontend gomb-letiltása
-     * mellé backend-oldali háló a dupla-beküldés ellen: ugyanattól a felhasználótól, azonos
-     * cél/valuta/összeg/irány/típus paraméterekkel az ablakon belül érkező második create
-     * elutasítva. 3 mp: a dupla-kattintás/lassú dupla-tap biztosan belefér, a legitim ismételt
-     * azonos átadás (percekkel később) nem érintett. App-szintű, memóriabeli guard — a
-     * telepítés egy backend-példányos (Hetzner), a 3 mp-es ablakhoz DB-séma nem indokolt.
-     */
-    static final long DUPLICATE_CREATE_WINDOW_MS = 3000;
-    private final java.util.concurrent.ConcurrentHashMap<String, Long> recentCreateGuard =
-            new java.util.concurrent.ConcurrentHashMap<>();
+    // FKH-028 (5. kör): DB-perzisztens, állapot-alapú duplikátum-védelem — a korábbi
+    // in-memory időablakos map helyett (Codex HIGH-2/MEDIUM). Részletek a guard javadocában.
+    private final TransferCreateDedupGuard createDedupGuard;
 
     @Transactional(rollbackFor = Exception.class)
     public TransferDto create(CreateTransferDto dto, Long workerId) {
-        // FKH-028 Fázis 2: duplikátum-ablak ellenőrzés MINDEN DB-munka előtt. putIfAbsent →
-        // két párhuzamos azonos kérésből is csak egy juthat tovább; sikertelen create-nél
-        // (bármely kivétel) a kulcs felszabadul, hogy a legitim azonnali retry ne akadjon el.
-        final String duplicateKey = workerId + "|" + dto.getToBranchId() + "|" + dto.getCurrencyId()
-                + "|" + (dto.getAmount() != null ? dto.getAmount().stripTrailingZeros().toPlainString() : "null")
-                + "|" + dto.getDirection() + "|" + dto.getTransferType();
-        final long nowMs = System.currentTimeMillis();
-        recentCreateGuard.entrySet().removeIf(e -> nowMs - e.getValue() > DUPLICATE_CREATE_WINDOW_MS);
-        Long previousMs = recentCreateGuard.putIfAbsent(duplicateKey, nowMs);
-        if (previousMs != null && nowMs - previousMs <= DUPLICATE_CREATE_WINDOW_MS) {
-            throw new ConflictException(
-                    "Valószínű duplikált beküldés: ugyanez az átadás az elmúlt "
-                            + (DUPLICATE_CREATE_WINDOW_MS / 1000)
-                            + " másodpercben már rögzítésre került. Ellenőrizze az átadás-listát, mielőtt újra próbálja!");
+        Worker fromWorker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
+
+        // FKH-028: duplikátum-guard MINDEN írási munka előtt. A kulcs-foglalás REQUIRES_NEW-ban
+        // azonnal commitol (párhuzamos kérések látják); a feloldás a tranzakció TÉNYLEGES
+        // befejezésekor történik (afterCompletion) — a metódustörzs utáni commit/flush-bukás
+        // is felszabadítja a kulcsot. Cég nélküli dolgozónál a guard kimarad: a doCreate
+        // ugyanerre az esetre a meglévo "nincs fiók" hibát adja.
+        final UUID dedupCompanyId = fromWorker.getBranch() != null
+                && fromWorker.getBranch().getCompany() != null
+                ? fromWorker.getBranch().getCompany().getId() : null;
+        if (dedupCompanyId == null) {
+            return doCreate(dto, fromWorker);
         }
-        recentCreateGuard.put(duplicateKey, nowMs);
+        final String dedupKey = TransferCreateDedupGuard.buildKey(workerId, dto);
+        createDedupGuard.acquire(dedupCompanyId, dedupKey);
+        if (org.springframework.transaction.support.TransactionSynchronizationManager
+                .isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager
+                    .registerSynchronization(
+                            new org.springframework.transaction.support.TransactionSynchronization() {
+                                @Override
+                                public void afterCompletion(int status) {
+                                    createDedupGuard.release(dedupCompanyId, dedupKey,
+                                            status == org.springframework.transaction.support
+                                                    .TransactionSynchronization.STATUS_COMMITTED);
+                                }
+                            });
+            return doCreate(dto, fromWorker);
+        }
+        // Nem-tranzakciós (unit-teszt) út: nincs afterCompletion — közvetlen feloldás.
         try {
-            return doCreate(dto, workerId);
+            TransferDto result = doCreate(dto, fromWorker);
+            createDedupGuard.release(dedupCompanyId, dedupKey, true);
+            return result;
         } catch (RuntimeException ex) {
-            recentCreateGuard.remove(duplicateKey);
+            createDedupGuard.release(dedupCompanyId, dedupKey, false);
             throw ex;
         }
     }
 
-    private TransferDto doCreate(CreateTransferDto dto, Long workerId) {
-        Worker fromWorker = workerRepository.findById(workerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
+    private TransferDto doCreate(CreateTransferDto dto, Worker fromWorker) {
         Branch fromBranch = fromWorker.getBranch();
         if (fromBranch == null) {
             throw new ValidationException("A dolgozóhoz nincs fiók rendelve!");

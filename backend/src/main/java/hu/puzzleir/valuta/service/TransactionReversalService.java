@@ -59,7 +59,14 @@ public class TransactionReversalService {
         Transaction original = transactionRepository.findByIdForUpdate(request.getOriginalTransactionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Eredeti tranzakcio nem talalhato"));
 
-        // Validaciok
+        // Validaciok — FKH-028 5. kor (Codex HIGH-1): a tulajdonjog-guard fut ELOSZOR,
+        // kozvetlenul a betoltes utan, MINDEN allapot-ellenorzes (isReversed, isReversal,
+        // V370-marker) ELOTT. Igy idegen iroda hivoja fele SEMMILYEN allapot-informacio
+        // (sztornozva-e, V370-jelolt-e) nem szivarog: minden idegen kiserlet ugyanazt a
+        // hibat kapja.
+        if (!original.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Csak sajat iroda tranzakciojat lehet sztornozni!");
+        }
         if (original.isReversed()) {
             throw new ValidationException("Ez a tranzakcio mar sztornozva lett!");
         }
@@ -73,9 +80,6 @@ public class TransactionReversalService {
             throw new hu.puzzleir.valuta.exception.ConflictException(
                     "VV-TX-005: Ezt a bizonylatot a V370 adat-korrekció már rendezte (duplikált tétel)"
                             + " — sztornó nem indítható rá: " + original.getReceiptNumber());
-        }
-        if (!original.getBranch().getId().equals(branchId)) {
-            throw new ValidationException("Csak sajat iroda tranzakciojat lehet sztornozni!");
         }
         // Audit #2 (2026-05-31, user-direktiva) — DATUM-szabaly: a korabbi napi tranzakcio
         // VISSZAMENOLEG SOHA nem sztornozhato (sem supervisorral). Kulonben a lentebbi

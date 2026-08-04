@@ -18,7 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -60,7 +59,7 @@ class TransferServiceDuplicateWindowFkh028Test {
     @Mock private AuditLogService auditLogService;
     @Mock private VaultStockFlowService vaultStockFlowService;
     @Mock private AccessScopeService accessScopeService;
-    @InjectMocks private TransferService service;
+    private TransferService service;
 
     private final UUID fromId = UUID.randomUUID();
     private final UUID toId = UUID.randomUUID();
@@ -68,6 +67,30 @@ class TransferServiceDuplicateWindowFkh028Test {
     @BeforeEach
     void setUp() {
         when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+
+        // FKH-028 5. kör: a dedup-viselkedést a VALÓDI TransferCreateDedupGuard adja,
+        // állapottartó fake IdempotencyRecordRepository-val (DB helyett memóriában) —
+        // így a viselkedés-assertek (duplikátum-elutasítás, kulcs-felszabadulás)
+        // változatlanul érvényesek az architektúra-csere után is.
+        java.util.concurrent.ConcurrentHashMap<String, hu.puzzleir.valuta.entity.IdempotencyRecord> dedupStore =
+                new java.util.concurrent.ConcurrentHashMap<>();
+        hu.puzzleir.valuta.repository.IdempotencyRecordRepository fakeDedupRepo =
+                org.mockito.Mockito.mock(hu.puzzleir.valuta.repository.IdempotencyRecordRepository.class);
+        org.mockito.Mockito.lenient()
+                .when(fakeDedupRepo.findByCompanyIdAndEndpointAndIdempotencyKey(any(), any(), any()))
+                .thenAnswer(inv -> java.util.Optional.ofNullable(dedupStore.get(inv.getArgument(2, String.class))));
+        org.mockito.Mockito.lenient()
+                .when(fakeDedupRepo.save(any(hu.puzzleir.valuta.entity.IdempotencyRecord.class)))
+                .thenAnswer(inv -> {
+                    hu.puzzleir.valuta.entity.IdempotencyRecord rec = inv.getArgument(0);
+                    dedupStore.put(rec.getIdempotencyKey(), rec);
+                    return rec;
+                });
+        TransferCreateDedupGuard realGuard = new TransferCreateDedupGuard(fakeDedupRepo);
+        service = new TransferService(transferRepository, branchRepository, currencyRepository,
+                workerRepository, cashBalanceRepository, transactionRepository,
+                receiptSequenceService, transferSerialSequenceService, hufDaybookSequenceService,
+                auditLogService, vaultStockFlowService, accessScopeService, realGuard);
         Company company = Company.builder().id(UUID.randomUUID()).build();
         Branch fromBranch = Branch.builder().id(fromId).code("BR076").company(company).build();
         Branch toBranch = Branch.builder().id(toId).code("BR001").company(company).build();

@@ -57,6 +57,9 @@ class TransferServiceFractionalDenominationFk072Test {
     @Mock private AuditLogService auditLogService;
     @Mock private VaultStockFlowService vaultStockFlowService;
     @Mock private AccessScopeService accessScopeService;
+    // FKH-028 5. kor: uj konstruktor-fuggoseg — mechanikus fixture-bovites (no-op mock),
+    // a HufDaybookSequenceService-precedens szerint; assert nem valtozott.
+    @Mock private TransferCreateDedupGuard createDedupGuard;
     @InjectMocks private TransferService service;
 
     private final UUID fromId = UUID.randomUUID();
