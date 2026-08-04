@@ -180,6 +180,34 @@ class TransactionReversalTransferFkh028Test {
     }
 
     @Test
+    @DisplayName("FKH-028/V370-guard: a V370-korrekcióval jelölt tranzakcióra a sztornó 409-cel elutasítva, kassza-mozgás és mentés NÉLKÜL")
+    void v370MarkedTransaction_stornoRejected() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            secUtils.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            secUtils.when(SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            secUtils.when(SecurityUtils::isSupervisorOrAbove).thenReturn(true);
+
+            Transaction marked = transferTransaction(TransactionType.TRANSFER_OUT);
+            marked.setNotes("[FKH-028 V370] duplikalt tetel — az egyenleg-korrekcio a V370 migracioban rendezve; app-szintu sztorno TILOS ra.");
+            when(transactionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(marked));
+
+            TransactionService.ReversalRequest request = TransactionService.ReversalRequest.builder()
+                    .originalTransactionId(100L)
+                    .reason("Duplikalt atadas rendezese")
+                    .approvedBy("SUPERVISOR")
+                    .build();
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> reversalService.executeReversal(request))
+                    .isInstanceOf(hu.puzzleir.valuta.exception.ConflictException.class)
+                    .hasMessageContaining("V370");
+
+            verify(helper, never()).updateCashBalance(any(), any(), any(), anyBoolean());
+            verify(transactionRepository, never()).save(any());
+        }
+    }
+
+    @Test
     @DisplayName("FKH-028: TRANSFER_IN sztornó → a valuta KIKERÜL a kasszából (-) készlet-validációval, HUF-ellenláb NINCS")
     void transferInReversal_removesCashBalance_withStockValidation_withoutHufLeg() {
         try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {

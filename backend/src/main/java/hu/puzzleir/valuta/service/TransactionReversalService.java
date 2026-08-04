@@ -66,6 +66,14 @@ public class TransactionReversalService {
         if (original.isReversal()) {
             throw new ValidationException("Sztorno tranzakcio nem sztornozhatoh!");
         }
+        // FKH-028 (V370-guard): a duplikátum-korrekcióval rendezett tranzakció nem sztornózható —
+        // a V370 már visszaírta az egyenleget, az app-sztornó ezzel EGYÜTT dupla jóváírás lenne.
+        if (original.getNotes() != null && original.getNotes()
+                .contains(hu.puzzleir.valuta.exception.ValidationMessages.FKH028_V370_CORRECTION_MARKER)) {
+            throw new hu.puzzleir.valuta.exception.ConflictException(
+                    "VV-TX-005: Ezt a bizonylatot a V370 adat-korrekció már rendezte (duplikált tétel)"
+                            + " — sztornó nem indítható rá: " + original.getReceiptNumber());
+        }
         if (!original.getBranch().getId().equals(branchId)) {
             throw new ValidationException("Csak sajat iroda tranzakciojat lehet sztornozni!");
         }

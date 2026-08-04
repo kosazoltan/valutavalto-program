@@ -460,6 +460,13 @@ public class TransferService {
         if (Boolean.TRUE.equals(transfer.getIsCancelled())) {
             throw new ConflictException("VV-TX-003: Ez a bizonylat már sztornózva van: " + transfer.getTransferNumber());
         }
+        // FKH-028 (V370-guard): a duplikátum-korrekcióval rendezett bizonylat nem sztornózható —
+        // a V370 már visszaírta az egyenleget, az app-sztornó ezzel EGYÜTT dupla jóváírás lenne.
+        if (transfer.getNotes() != null && transfer.getNotes()
+                .contains(hu.puzzleir.valuta.exception.ValidationMessages.FKH028_V370_CORRECTION_MARKER)) {
+            throw new ConflictException("VV-TX-005: Ezt a bizonylatot a V370 adat-korrekció már rendezte"
+                    + " (duplikált tétel) — sztornó nem indítható rá: " + transfer.getTransferNumber());
+        }
         // Státusz-diszpécser: a PENDING bizonylat KÜLÖN útvonalon (stornoPending) szűnik meg —
         // ott a create-kori könyvelést kell visszafordítani, és csak a küldő fiók jogosult.
         // A COMPLETED-ág változatlan. A két út szándékosan külön metódus, közös helperekkel.

@@ -23,6 +23,15 @@ public final class ValidationMessages {
     public static final String BANKNOTE_FACE_VALUE_MIN_MESSAGE =
             "A címlet névértéke " + FRACTIONAL_FACE_VALUE_CORE + "!";
 
+    /**
+     * FKH-028 (V370): a duplikátum-korrekcióval rendezett bizonylatok notes-markere.
+     * A V370 migráció írja a transfer/transaction notes-ba; a sztornó-útvonalak
+     * (TransferService.storno, TransactionReversalService.executeReversal) guardja erre
+     * ismer rá és 409-cel utasítja el a sztornó-kísérletet — a korrekció + app-sztornó
+     * együtt DUPLA jóváírás lenne. A literálnak byte-ra egyeznie kell a V370 SQL-lel.
+     */
+    public static final String FKH028_V370_CORRECTION_MARKER = "[FKH-028 V370]";
+
     private ValidationMessages() {
     }
 }

@@ -117,6 +117,37 @@ class TransferServiceDuplicateWindowFkh028Test {
     }
 
     @Test
+    @DisplayName("FKH-028/V370-guard: a V370-korrekcióval jelölt átadólapra a storno() 409-cel elutasítva")
+    void v370MarkedTransfer_stornoRejected() {
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch fromBranch = Branch.builder().id(fromId).code("BR035").company(company).build();
+        Branch toBranch = Branch.builder().id(toId).code("BR020").company(company).build();
+        Currency usd = Currency.builder().id(11L).code("USD").name("USA dollar").build();
+        hu.puzzleir.valuta.entity.Transfer marked = hu.puzzleir.valuta.entity.Transfer.builder()
+                .id(9L)
+                .transferNumber("AT-000010")
+                .companyId(company.getId())
+                .fromBranch(fromBranch)
+                .toBranch(toBranch)
+                .currency(usd)
+                .amount(new BigDecimal("1000"))
+                .isCancelled(false)
+                .notes("[FKH-028 V370] duplikalt tetel — az egyenleg-korrekcio a V370 migracioban rendezve; app-szintu sztorno TILOS ra.")
+                .build();
+        when(transferRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(marked));
+
+        try (org.mockito.MockedStatic<hu.puzzleir.valuta.security.SecurityUtils> secUtils =
+                     org.mockito.Mockito.mockStatic(hu.puzzleir.valuta.security.SecurityUtils.class)) {
+            secUtils.when(hu.puzzleir.valuta.security.SecurityUtils::getCurrentCompanyId)
+                    .thenReturn(company.getId());
+
+            assertThatThrownBy(() -> service.storno(9L, "duplikatum rendezes"))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("V370");
+        }
+    }
+
+    @Test
     @DisplayName("FKH-028: ha az első create validációs hibával bukik, az azonnali retry NEM duplikátum")
     void failedCreateReleasesGuard_retryNotBlocked() {
         // 1 000 000 > 100 000 készlet → a kimenő (F) könyvelés ValidationException-nel bukik.
