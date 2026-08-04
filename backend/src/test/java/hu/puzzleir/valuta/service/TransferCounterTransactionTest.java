@@ -27,6 +27,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TransferCounterTransactionTest {
 
+    // FKH-028 5. kor: uj konstruktor-fuggoseg — mechanikus fixture-bovites (no-op mock).
+    @org.mockito.Mock private TransferCreateDedupGuard createDedupGuard;
+
     @InjectMocks
     private TransferService transferService;
 

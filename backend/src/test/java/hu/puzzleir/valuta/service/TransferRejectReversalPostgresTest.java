@@ -95,6 +95,7 @@ import static org.mockito.Mockito.verify;
 @Testcontainers
 @Import({
         TransferService.class,
+        TransferCreateDedupGuard.class,
         TransferSerialSequenceService.class,
         HufDaybookSequenceService.class,
         HufDaybookService.class

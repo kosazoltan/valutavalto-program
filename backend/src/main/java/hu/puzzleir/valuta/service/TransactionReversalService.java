@@ -59,15 +59,27 @@ public class TransactionReversalService {
         Transaction original = transactionRepository.findByIdForUpdate(request.getOriginalTransactionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Eredeti tranzakcio nem talalhato"));
 
-        // Validaciok
+        // Validaciok — FKH-028 5. kor (Codex HIGH-1): a tulajdonjog-guard fut ELOSZOR,
+        // kozvetlenul a betoltes utan, MINDEN allapot-ellenorzes (isReversed, isReversal,
+        // V370-marker) ELOTT. Igy idegen iroda hivoja fele SEMMILYEN allapot-informacio
+        // (sztornozva-e, V370-jelolt-e) nem szivarog: minden idegen kiserlet ugyanazt a
+        // hibat kapja.
+        if (!original.getBranch().getId().equals(branchId)) {
+            throw new ValidationException("Csak sajat iroda tranzakciojat lehet sztornozni!");
+        }
         if (original.isReversed()) {
             throw new ValidationException("Ez a tranzakcio mar sztornozva lett!");
         }
         if (original.isReversal()) {
             throw new ValidationException("Sztorno tranzakcio nem sztornozhatoh!");
         }
-        if (!original.getBranch().getId().equals(branchId)) {
-            throw new ValidationException("Csak sajat iroda tranzakciojat lehet sztornozni!");
+        // FKH-028 (V370-guard): a duplikátum-korrekcióval rendezett tranzakció nem sztornózható —
+        // a V370 már visszaírta az egyenleget, az app-sztornó ezzel EGYÜTT dupla jóváírás lenne.
+        if (original.getNotes() != null && original.getNotes()
+                .contains(hu.puzzleir.valuta.exception.ValidationMessages.FKH028_V370_CORRECTION_MARKER)) {
+            throw new hu.puzzleir.valuta.exception.ConflictException(
+                    "VV-TX-005: Ezt a bizonylatot a V370 adat-korrekció már rendezte (duplikált tétel)"
+                            + " — sztornó nem indítható rá: " + original.getReceiptNumber());
         }
         // Audit #2 (2026-05-31, user-direktiva) — DATUM-szabaly: a korabbi napi tranzakcio
         // VISSZAMENOLEG SOHA nem sztornozhato (sem supervisorral). Kulonben a lentebbi
@@ -253,7 +265,20 @@ public class TransactionReversalService {
             // Eredeti eladas visszavonasa: valuta +, HUF -
             helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount(), true);
             helper.updateCashBalance(branchId, helper.getHufCurrencyId(), reversalHufAmount.negate(), false);
+        } else if (original.getTransactionType() == TransactionType.TRANSFER_OUT) {
+            // FKH-028: eredeti kimeno atadas visszavonasa — a valuta VISSZA a kasszaba.
+            // A transfer-tranzakcio EGYLABU keszletmozgas (nincs HUF-ellenlaba), ezert a
+            // BUY/SELL agakkal ellentetben itt HUF-mozgas nem tortenhet.
+            helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount(), true);
+        } else if (original.getTransactionType() == TransactionType.TRANSFER_IN) {
+            // FKH-028: eredeti bejovo atvetel visszavonasa — keszlet-validacio utan a valuta KI.
+            // HUF-ellenlab itt sincs (egylabu mozgas).
+            helper.validateCurrencyStock(branchId, currencyId, original.getCurrencyAmount());
+            helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount().negate(), false);
         }
+        // FKH-028 follow-up (tudatosan scope-on kivul): a reszleges-visszavaltas utvonala
+        // (executePartialRefund BUY/SELL aga lentebb) TRANSFER-tipusra ugyanigy nem mozgat
+        // kasszat — kulon korben rendezendo.
 
         // Napi statisztika frissitese
         dailySessionService.updateSessionStats(

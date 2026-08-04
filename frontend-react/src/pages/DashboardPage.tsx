@@ -50,6 +50,52 @@ interface RecentTransaction {
   status: string
 }
 
+/**
+ * FKH-028 Fázis 6: minden tranzakció-típus a SAJÁT, helyes feliratával jelenik meg —
+ * a korábbi bináris ternary miatt minden nem-BUY tétel (így a Transfer-alapú is)
+ * "Eladás"-ként látszott. TRANSFER_OUT → "Átadás", TRANSFER_IN → "Átvétel" (az
+ * átadás-átvétel/Shipment felületek terminológiáját követve; a backend enum
+ * "Átutalás" displayName-je tudatosan NEM változik — külön téma).
+ */
+const TRANSACTION_TYPE_LABELS: Record<string, string> = {
+  BUY: 'Vétel',
+  SELL: 'Eladás',
+  REVERSAL: 'Sztornó',
+  PARTIAL_REFUND: 'Részleges visszatérítés',
+  CONVERSION: 'Konverzió',
+  TRANSFER_OUT: 'Átadás',
+  TRANSFER_IN: 'Átvétel',
+  WESTERN_UNION_SEND: 'WU küldés',
+  WESTERN_UNION_RECEIVE: 'WU fogadás',
+  MONEYGRAM_SEND: 'MG küldés',
+  MONEYGRAM_RECEIVE: 'MG fogadás',
+  VIGNETTE: 'Autópálya matrica',
+  PHONE_TOPUP: 'Telefon feltöltés',
+  OTHER: 'Egyéb',
+}
+
+function transactionTypeLabel(type: string): string {
+  return TRANSACTION_TYPE_LABELS[type] ?? (type || 'Egyéb')
+}
+
+/** A badge-szín is típus-alapú (a korábbi BUY-alapú ternary helyett). */
+function transactionTypeBadge(type: string): string {
+  switch (type) {
+    case 'BUY':
+      return 'badge-green'
+    case 'SELL':
+      return 'badge-blue'
+    case 'REVERSAL':
+    case 'PARTIAL_REFUND':
+      return 'badge-red'
+    case 'TRANSFER_OUT':
+    case 'TRANSFER_IN':
+      return 'badge-orange'
+    default:
+      return 'badge-gray'
+  }
+}
+
 interface DashboardSummary {
   todayVolume?: number
   activeBranches?: number
@@ -449,8 +495,8 @@ export default function DashboardPage() {
                 <tr key={tx.id}>
                   <td className="font-mono text-sm">{tx.time}</td>
                   <td>
-                    <span className={`badge ${tx.type === 'BUY' ? 'badge-green' : 'badge-blue'}`}>
-                      {tx.type === 'BUY' ? 'Vétel' : 'Eladás'}
+                    <span className={`badge ${transactionTypeBadge(tx.type)}`}>
+                      {transactionTypeLabel(tx.type)}
                     </span>
                   </td>
                   <td>

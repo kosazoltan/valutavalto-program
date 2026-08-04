@@ -36,8 +36,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Menet tesztenként: {@code clean} → {@code target(N-1)} Flyway-migráció (a teljes
  * valós séma + seed-adatok: az EBC cég és a BR035 fiók a V69/V83/V110/V145 seedekből
  * MÁR LÉTEZIK — a teszt nem szúr be duplikátumot, hanem a meglévő sorokat állítja be)
- * → nyers SQL állapot-beállítás → {@code migrate()} latest-ig (a korrekciót a valódi
- * Flyway-út futtatja) → assert.</p>
+ * → nyers SQL állapot-beállítás → {@code migrate()} a FK-070 verzióig (a korrekciót a
+ * valódi Flyway-út futtatja; a lánc vége SZÁNDÉKOSAN nem fut le — a V369/V370 (FKH-028)
+ * ugyanazokat a BR020/BR035 cash_balance sorokat módosítja, saját dedikált tesztje a
+ * {@code Fkh028CashBalanceMigrationsPostgresTest}) → assert.</p>
  *
  * <p>A RAISE NOTICE üzeneteket a Flyway nem adja vissza a hívónak, ezért a NOTICE-
  * assertek közvetlen (raw Statement) futtatásból származnak — ugyanazon a valós,
@@ -129,7 +131,7 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
                 .anySatisfy(n -> assertThat(n).contains("USD 5797.57 -> 5797.00, 1 sor korrigalva"));
 
         // A valódi Flyway-út is lefut a korrigált állapoton (guard: 0 sor), és sikeres.
-        migrateToLatest();
+        migrateThroughFk070();
         try (Connection connection = openConnection()) {
             assertThat(fk070MigrationSucceeded(connection))
                     .as("A FK-070 migráció a flyway_schema_history-ban sikeres")
@@ -155,7 +157,7 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
         }
 
         // Első futás: maga a Flyway-runner alkalmazza a migrációt (valódi út).
-        migrateToLatest();
+        migrateThroughFk070();
 
         List<String> before;
         try (Connection connection = openConnection()) {
@@ -199,7 +201,7 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
             upsertBalance(connection, br035.companyId(), br035.branchId(), "USD", USD_BAD);
         }
 
-        migrateToLatest();
+        migrateThroughFk070();
 
         try (Connection connection = openConnection()) {
             assertThat(balance(connection, "BR035", "EUR"))
@@ -239,7 +241,7 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
             upsertBalance(connection, br035.companyId(), br035.branchId(), "USD", USD_BAD);
         }
 
-        migrateToLatest();
+        migrateThroughFk070();
 
         try (Connection connection = openConnection()) {
             assertThat(fk070MigrationSucceeded(connection))
@@ -264,10 +266,9 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
     // egyenlegekhez (Codex-adta teszteset, változtatás nélkül beillesztve).
     //
     // Codex-figyelmeztetés: a "más cég" állapotot a seedelt cég code mezőjének
-    // átírásával állítjuk elő — ha a jövőben V369+ migráció is bekerül a láncba,
-    // és ez a teszt továbbra is migrateToLatest()-et hív, a mellékhatást (az
-    // adott cég MINDEN 'EBC'-kódos lookupja elbukik ugyanebben a tesztben)
-    // újra át kell nézni.
+    // átírásával állítjuk elő — a jelzett V369+ eset az FKH-028-cal be is következett,
+    // ezért a teszt már nem latest-ig, hanem a FK-070 verzióig migrál
+    // (migrateThroughFk070), így a későbbi migrációk mellékhatásaitól független.
     // =====================================================================
     @Test
     @DisplayName("Lookup-szűrés: ha a BR035 mögötti cég code-ja nem 'EBC', a Flyway-úton futó migráció nem nyúl az egyenlegekhez, és NOTICE jelzi a no-opot")
@@ -289,7 +290,7 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
             before = snapshotAllBalances(connection);
         }
 
-        migrateToLatest();
+        migrateThroughFk070();
 
         try (Connection connection = openConnection()) {
             assertThat(fk070MigrationSucceeded(connection))
@@ -328,7 +329,7 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
             before = snapshotAllBalances(connection);
         }
 
-        migrateToLatest();
+        migrateThroughFk070();
 
         try (Connection connection = openConnection()) {
             assertThat(fk070MigrationSucceeded(connection))
@@ -375,12 +376,14 @@ class CashBalanceCorrectionFk070MigrationPostgresTest {
                 .migrate();
     }
 
-    private static void migrateToLatest() {
-        Flyway.configure()
-                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-                .locations("classpath:db/migration")
-                .load()
-                .migrate();
+    /**
+     * A Flyway-út futtatása a FK-070 migrációig (bezárólag) — NEM latest-ig: a V369/V370
+     * (FKH-028) szándékosan módosítja a BR020/BR035 cash_balance sorokat, így a latest-ig
+     * futás a FK-070-specifikus assertek alól kihúzná a talajt (a lenti Codex-figyelmeztetés
+     * által előre jelzett eset). A V369/V370 lefedése: Fkh028CashBalanceMigrationsPostgresTest.
+     */
+    private static void migrateThroughFk070() throws IOException {
+        migrateToVersion(fk070Version());
     }
 
     private static boolean fk070MigrationSucceeded(Connection connection) throws Exception {

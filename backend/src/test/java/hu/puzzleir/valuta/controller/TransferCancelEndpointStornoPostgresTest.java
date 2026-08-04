@@ -23,6 +23,7 @@ import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.AuditLogService;
 import hu.puzzleir.valuta.service.HufDaybookSequenceService;
 import hu.puzzleir.valuta.service.ReceiptSequenceService;
+import hu.puzzleir.valuta.service.TransferCreateDedupGuard;
 import hu.puzzleir.valuta.service.TransferSerialSequenceService;
 import hu.puzzleir.valuta.service.TransferService;
 import hu.puzzleir.valuta.service.VaultStockFlowService;
@@ -91,6 +92,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({
         TransferController.class,
         TransferService.class,
+        TransferCreateDedupGuard.class,
         TransferSerialSequenceService.class,
         HufDaybookSequenceService.class
 })

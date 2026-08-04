@@ -47,11 +47,90 @@ public class TransferService {
     // currency_stock ("B konyv") tukrozesehez.
     private final VaultStockFlowService vaultStockFlowService;
     private final AccessScopeService accessScopeService;
+    // FKH-028 (5. kör): DB-perzisztens, állapot-alapú duplikátum-védelem — a korábbi
+    // in-memory időablakos map helyett (Codex HIGH-2/MEDIUM). Részletek a guard javadocában.
+    private final TransferCreateDedupGuard createDedupGuard;
 
     @Transactional(rollbackFor = Exception.class)
     public TransferDto create(CreateTransferDto dto, Long workerId) {
         Worker fromWorker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dolgozó nem található: " + workerId));
+
+        // FKH-028: duplikátum-guard MINDEN írási munka előtt. A kulcs-foglalás REQUIRES_NEW-ban
+        // azonnal commitol (párhuzamos kérések látják); a feloldás a tranzakció TÉNYLEGES
+        // befejezésekor történik (afterCompletion) — a metódustörzs utáni commit/flush-bukás
+        // is felszabadítja a kulcsot. Cég nélküli dolgozónál a guard kimarad: a doCreate
+        // ugyanerre az esetre a meglévo "nincs fiók" hibát adja.
+        final UUID dedupCompanyId = fromWorker.getBranch() != null
+                && fromWorker.getBranch().getCompany() != null
+                ? fromWorker.getBranch().getCompany().getId() : null;
+        if (dedupCompanyId == null) {
+            return doCreate(dto, fromWorker);
+        }
+        final String dedupKey = TransferCreateDedupGuard.buildKey(workerId, dto);
+        createDedupGuard.acquire(dedupCompanyId, dedupKey);
+        if (org.springframework.transaction.support.TransactionSynchronizationManager
+                .isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager
+                    .registerSynchronization(
+                            new org.springframework.transaction.support.TransactionSynchronization() {
+                                @Override
+                                public void afterCompletion(int status) {
+                                    releaseDedupWithRetry(dedupCompanyId, dedupKey,
+                                            status == org.springframework.transaction.support
+                                                    .TransactionSynchronization.STATUS_COMMITTED);
+                                }
+                            });
+            return doCreate(dto, fromWorker);
+        }
+        // Nem-tranzakciós (unit-teszt) út: nincs afterCompletion — közvetlen feloldás.
+        try {
+            TransferDto result = doCreate(dto, fromWorker);
+            releaseDedupWithRetry(dedupCompanyId, dedupKey, true);
+            return result;
+        } catch (RuntimeException ex) {
+            releaseDedupWithRetry(dedupCompanyId, dedupKey, false);
+            throw ex;
+        }
+    }
+
+    /** FKH-028 6. kör: a release() gyors, korlátos újrapróbálkozásainak száma. */
+    static final int DEDUP_RELEASE_RETRY_ATTEMPTS = 3;
+
+    /**
+     * FKH-028 6-7. kör (Codex MEDIUM): a dedup-kulcs feloldása gyors, korlátos retry-jal.
+     * A release REQUIRES_NEW tranzakciójának átmeneti hibája nem hagyhatja a kulcsot az
+     * órás TTL/cleanup-ra — néhány azonnali újrapróbálkozás fut; végleges bukásnál a
+     * kivétel NEM terjed tovább (a create eredményét nem ronthatja el), csak log.error.
+     * A 7. kör óta beragadt kulcsnál NINCS automatikus átvétel: a
+     * TransferDedupStuckRecordWarningJob riaszt, a feloldás manuális admin-eljárás
+     * (docs/ops/idempotency-stuck-record-recovery.md).
+     */
+    private void releaseDedupWithRetry(UUID companyId, String dedupKey, boolean committed) {
+        for (int attempt = 1; attempt <= DEDUP_RELEASE_RETRY_ATTEMPTS; attempt++) {
+            try {
+                createDedupGuard.release(companyId, dedupKey, committed);
+                return;
+            } catch (RuntimeException ex) {
+                if (attempt >= DEDUP_RELEASE_RETRY_ATTEMPTS) {
+                    log.error("Transfer-dedup release véglegesen sikertelen ({} kísérlet) — "
+                                    + "a beragadt kulcsot a figyelmeztető job jelzi, feloldása manuális "
+                                    + "admin-eljárás (docs/ops/idempotency-stuck-record-recovery.md)",
+                            attempt, ex);
+                    return;
+                }
+                log.warn("Transfer-dedup release átmeneti hibája ({}. kísérlet), retry", attempt, ex);
+                try {
+                    Thread.sleep(50L * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+    }
+
+    private TransferDto doCreate(CreateTransferDto dto, Worker fromWorker) {
         Branch fromBranch = fromWorker.getBranch();
         if (fromBranch == null) {
             throw new ValidationException("A dolgozóhoz nincs fiók rendelve!");
@@ -422,6 +501,13 @@ public class TransferService {
         }
         if (Boolean.TRUE.equals(transfer.getIsCancelled())) {
             throw new ConflictException("VV-TX-003: Ez a bizonylat már sztornózva van: " + transfer.getTransferNumber());
+        }
+        // FKH-028 (V370-guard): a duplikátum-korrekcióval rendezett bizonylat nem sztornózható —
+        // a V370 már visszaírta az egyenleget, az app-sztornó ezzel EGYÜTT dupla jóváírás lenne.
+        if (transfer.getNotes() != null && transfer.getNotes()
+                .contains(hu.puzzleir.valuta.exception.ValidationMessages.FKH028_V370_CORRECTION_MARKER)) {
+            throw new ConflictException("VV-TX-005: Ezt a bizonylatot a V370 adat-korrekció már rendezte"
+                    + " (duplikált tétel) — sztornó nem indítható rá: " + transfer.getTransferNumber());
         }
         // Státusz-diszpécser: a PENDING bizonylat KÜLÖN útvonalon (stornoPending) szűnik meg —
         // ott a create-kori könyvelést kell visszafordítani, és csak a küldő fiók jogosult.
