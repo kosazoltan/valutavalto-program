@@ -48,7 +48,7 @@ pl. a szerver-log crash/restart bejegyzése a rekord `created_at`-je után, vagy
 backend uptime rövidebb, mint a rekord kora. **TILOS** rutinszerűen futtatni egy
 friss (percen belüli) 409-re — az normál duplikátum-védelem lehet.
 
-A feloldó UPDATE (a `FAILED` állapot a kulcsot azonnal újra-foglalhatóvá teszi,
+A feloldó UPDATE (a `FAILED` állapot a kulcsot azonnal újrafoglalhatóvá teszi,
 a következő legitim kérés átmegy):
 
 ```sql
