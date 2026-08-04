@@ -76,7 +76,7 @@ public class TransferService {
                             new org.springframework.transaction.support.TransactionSynchronization() {
                                 @Override
                                 public void afterCompletion(int status) {
-                                    createDedupGuard.release(dedupCompanyId, dedupKey,
+                                    releaseDedupWithRetry(dedupCompanyId, dedupKey,
                                             status == org.springframework.transaction.support
                                                     .TransactionSynchronization.STATUS_COMMITTED);
                                 }
@@ -86,11 +86,47 @@ public class TransferService {
         // Nem-tranzakciós (unit-teszt) út: nincs afterCompletion — közvetlen feloldás.
         try {
             TransferDto result = doCreate(dto, fromWorker);
-            createDedupGuard.release(dedupCompanyId, dedupKey, true);
+            releaseDedupWithRetry(dedupCompanyId, dedupKey, true);
             return result;
         } catch (RuntimeException ex) {
-            createDedupGuard.release(dedupCompanyId, dedupKey, false);
+            releaseDedupWithRetry(dedupCompanyId, dedupKey, false);
             throw ex;
+        }
+    }
+
+    /** FKH-028 6. kör: a release() gyors, korlátos újrapróbálkozásainak száma. */
+    static final int DEDUP_RELEASE_RETRY_ATTEMPTS = 3;
+
+    /**
+     * FKH-028 6. kör (Codex MEDIUM): a dedup-kulcs feloldása gyors, korlátos retry-jal.
+     * A release REQUIRES_NEW tranzakciójának átmeneti hibája nem hagyhatja a kulcsot az
+     * órás TTL/cleanup-ra — néhány azonnali újrapróbálkozás fut; végleges bukásnál a
+     * kivétel NEM terjed tovább (a create eredményét nem ronthatja el), csak log.error —
+     * a beragadt PROCESSING kulcsot pedig az acquire stale-átvétele
+     * ({@link TransferCreateDedupGuard#STALE_PROCESSING_TAKEOVER_MS}) oldja fel,
+     * így a false-conflict ablak legfeljebb ~10 perc, nem ~2 óra.
+     */
+    private void releaseDedupWithRetry(UUID companyId, String dedupKey, boolean committed) {
+        for (int attempt = 1; attempt <= DEDUP_RELEASE_RETRY_ATTEMPTS; attempt++) {
+            try {
+                createDedupGuard.release(companyId, dedupKey, committed);
+                return;
+            } catch (RuntimeException ex) {
+                if (attempt >= DEDUP_RELEASE_RETRY_ATTEMPTS) {
+                    log.error("Transfer-dedup release véglegesen sikertelen ({} kísérlet) — "
+                                    + "a beragadt kulcsot az acquire stale-átvétele oldja fel (~{} perc)",
+                            attempt,
+                            TransferCreateDedupGuard.STALE_PROCESSING_TAKEOVER_MS / 60000, ex);
+                    return;
+                }
+                log.warn("Transfer-dedup release átmeneti hibája ({}. kísérlet), retry", attempt, ex);
+                try {
+                    Thread.sleep(50L * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
         }
     }
 

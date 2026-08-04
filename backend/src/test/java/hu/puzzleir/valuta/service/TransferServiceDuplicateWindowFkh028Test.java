@@ -79,6 +79,11 @@ class TransferServiceDuplicateWindowFkh028Test {
         org.mockito.Mockito.lenient()
                 .when(fakeDedupRepo.findByCompanyIdAndEndpointAndIdempotencyKey(any(), any(), any()))
                 .thenAnswer(inv -> java.util.Optional.ofNullable(dedupStore.get(inv.getArgument(2, String.class))));
+        // 6. kör: a guard a pesszimista-zaras (ForUpdate) findert hasznalja — a fake-ben
+        // ugyanaz a store-lookup (a valodi zar-viselkedest a kulon Postgres-teszt fedi).
+        org.mockito.Mockito.lenient()
+                .when(fakeDedupRepo.findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(any(), any(), any()))
+                .thenAnswer(inv -> java.util.Optional.ofNullable(dedupStore.get(inv.getArgument(2, String.class))));
         org.mockito.Mockito.lenient()
                 .when(fakeDedupRepo.save(any(hu.puzzleir.valuta.entity.IdempotencyRecord.class)))
                 .thenAnswer(inv -> {

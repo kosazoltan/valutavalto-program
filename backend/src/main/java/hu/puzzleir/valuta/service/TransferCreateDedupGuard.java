@@ -54,6 +54,15 @@ public class TransferCreateDedupGuard {
     static final String ENDPOINT = "TRANSFER_CREATE_DEDUP";
     /** Rövid TTL a cleanup-jobnak — a dedup-rekord percek után már irreleváns. */
     private static final Duration TTL = Duration.ofHours(1);
+    /**
+     * FKH-028 6. kör (MEDIUM-kompenzáció): ha a release() minden retry-jal együtt elbukott
+     * (vagy a folyamat összeomlott), a PROCESSING kulcs beragadna — az ennél régebbi
+     * PROCESSING rekordot az acquire a zár alatt ÁTVESZI. Egy create sosem tart percekig,
+     * így a false-conflict ablak a korábbi ~2 órás TTL/cleanup helyett legfeljebb ennyi.
+     */
+    static final long STALE_PROCESSING_TAKEOVER_MS = Duration.ofMinutes(10).toMillis();
+    /** A V175-ös unique index neve — a duplikátum-detekció KIZÁRÓLAG erre szűkített. */
+    static final String DEDUP_UNIQUE_INDEX = "idempotency_record_unique_idx";
 
     private final IdempotencyRecordRepository repository;
 
@@ -78,20 +87,33 @@ public class TransferCreateDedupGuard {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void acquire(UUID companyId, String dedupKey) {
         Instant now = Instant.now();
-        Optional<IdempotencyRecord> existing =
-                repository.findByCompanyIdAndEndpointAndIdempotencyKey(companyId, ENDPOINT, dedupKey);
-        if (existing.isPresent()) {
-            IdempotencyRecord rec = existing.get();
+        // FKH-028 6. kör (Codex HIGH): a meglévő rekordot PESSZIMISTA ZÁRRAL (SELECT ...
+        // FOR UPDATE, az IdempotencyGuard FAILED-retry mintája) töltjük be — a
+        // FAILED / lejárt-COMPLETED újrafoglalás státusz-döntése és átírása a zár alatt
+        // történik, két konkurens kérésből a második a záron várakozik, majd a friss
+        // (PROCESSING) állapotot látja és konfliktust kap.
+        Optional<IdempotencyRecord> locked =
+                repository.findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(companyId, ENDPOINT, dedupKey);
+        if (locked.isPresent()) {
+            IdempotencyRecord rec = locked.get();
             if (rec.getStatus() == IdempotencyRecord.Status.PROCESSING) {
-                throw duplicateRejected("az előző azonos beküldés még feldolgozás alatt áll");
-            }
-            if (rec.getStatus() == IdempotencyRecord.Status.COMPLETED
+                long ageMs = rec.getCreatedAt() != null
+                        ? Duration.between(rec.getCreatedAt(), now).toMillis()
+                        : Long.MAX_VALUE;
+                if (ageMs <= STALE_PROCESSING_TAKEOVER_MS) {
+                    throw duplicateRejected("az előző azonos beküldés még feldolgozás alatt áll");
+                }
+                // MEDIUM-kompenzáció: beragadt PROCESSING (release-hiba / folyamat-crash) —
+                // a küszöbnél régebbi kulcsot a zár alatt átvesszük, nem várunk a cleanupra.
+                log.warn("Beragadt PROCESSING dedup-kulcs átvétele (kora: {} ms) — "
+                        + "release-hiba/crash kompenzáció", ageMs);
+            } else if (rec.getStatus() == IdempotencyRecord.Status.COMPLETED
                     && rec.getCompletedAt() != null
                     && Duration.between(rec.getCompletedAt(), now).toMillis() <= RECENT_COMPLETED_WINDOW_MS) {
                 throw duplicateRejected("ugyanez az átadás az elmúlt "
                         + (RECENT_COMPLETED_WINDOW_MS / 1000) + " másodpercben már rögzítésre került");
             }
-            // FAILED vagy régi COMPLETED: átvesszük a kulcsot.
+            // FAILED, régi COMPLETED vagy beragadt PROCESSING: átvesszük a kulcsot (a zár alatt).
             rec.setStatus(IdempotencyRecord.Status.PROCESSING);
             rec.setCreatedAt(now);
             rec.setCompletedAt(null);
@@ -111,11 +133,28 @@ public class TransferCreateDedupGuard {
                 .build();
         try {
             repository.save(fresh);
-        } catch (DataIntegrityViolationException race) {
-            // Két tényleg párhuzamos azonos kérés — a UNIQUE constraint dönt, a vesztes 409.
+        } catch (DataIntegrityViolationException violation) {
+            // FKH-028 6. kör (Codex MEDIUM): CSAK a dedup-unique-index tényleges ütközése
+            // minősül duplikátumnak — bármilyen más integritási hiba a normál hibaútra megy.
+            if (!isDedupUniqueViolation(violation)) {
+                throw violation;
+            }
             log.warn("Transfer-dedup insert-race — a konkurens azonos kérés elutasítva");
             throw duplicateRejected("az előző azonos beküldés még feldolgozás alatt áll");
         }
+    }
+
+    /** A kiváltó ok constraint-neve alapján dönt: tényleg a dedup unique indexe ütközött-e. */
+    private static boolean isDedupUniqueViolation(DataIntegrityViolationException violation) {
+        Throwable cur = violation;
+        while (cur != null) {
+            if (cur instanceof org.hibernate.exception.ConstraintViolationException cve) {
+                String name = cve.getConstraintName();
+                return name != null && name.contains(DEDUP_UNIQUE_INDEX);
+            }
+            cur = cur.getCause();
+        }
+        return false;
     }
 
     /**
