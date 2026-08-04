@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptRequestDto;
 import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptResponseDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.MaterialReceiptRepository;
 import hu.puzzleir.valuta.repository.VaultTerritoryRepository;
@@ -40,6 +41,7 @@ public class MaterialReceiptService {
     private final MaterialReceiptRepository materialReceiptRepository;
     private final CurrencyStockRepository currencyStockRepository;
     private final VaultTerritoryRepository vaultTerritoryRepository;
+    private final BranchRepository branchRepository;
 
     @Transactional(readOnly = true)
     public List<MaterialReceiptResponseDto> getReceipts() {
@@ -133,7 +135,15 @@ public class MaterialReceiptService {
             entityId = receipt.getVaultTerritory().getId().toString();
         } else if (receipt.getBranchCode() != null) {
             entityType = "CASHIER";
-            entityId = receipt.getBranchCode();
+            // FKH-029 FR-4: az entity_id a branch UUID-ja, NEM a fiókkód. Minden olvasó
+            // (DailyBalanceService:222, MonthlyClosingService:119,
+            // CurrencyStockRepository.findByBranchIdAndCurrencyCode / findAllByBranchIds)
+            // UUID-val keres — a korábbi branchCode-os írás olvashatatlan árva sort hozott
+            // volna létre. Fail-closed: ismeretlen fiókkódra nem írunk sort.
+            entityId = branchRepository.findByCompanyIdAndCode(companyId, receipt.getBranchCode())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Iroda nem található a bizonylat véglegesítéséhez: " + receipt.getBranchCode()))
+                    .getId().toString();
         } else {
             // Alapértelmezett: első aktív terület
             VaultTerritory territory = vaultTerritoryRepository.findByCompanyIdAndActiveTrue(companyId)

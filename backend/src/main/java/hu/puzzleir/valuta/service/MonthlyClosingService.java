@@ -114,12 +114,33 @@ public class MonthlyClosingService {
         Map<String, MnbExchangeRateCache> mnbRates = mnbExchangeRateService.getRatesForDate(lastBusinessDay);
         log.info("MNB árfolyamok letöltve havi záráshoz: date={}, valuták={}", lastBusinessDay, mnbRates.size());
 
-        // Készlet adatok (CurrencyStock — WAC nyilvántartás)
+        // Készlet adatok (CurrencyStock — WAC nyilvántartás).
+        //
+        // FKH-029 FR-5 (SZÁNDÉKOSAN NEM ÁTÁLLÍTVA, csak megfigyelhetővé tett): a CASHIER
+        // CurrencyStock réteg az élő audit (2026-08-04) szerint holt — élő fióknak nincs sora,
+        // mert az egyetlen író útvonal (MaterialReceiptService) soha nem futott élesben
+        // (material_receipt = 0 sor). A stockMap ezért élesben ÜRES, és a WAC-alapú
+        // bekerülési ár 0-ként számítódik.
+        //
+        // Miért NEM cseréljük cash_balance-ra: ez egy PÉNZÜGYI RIPORT (havi zárás, realizált
+        // eredmény) számértéke. A cash_balance mennyiséget tart nyilván, de NEM tartalmaz
+        // súlyozott átlagos bekerülési árat (WAC) — a csere tehát nem ekvivalens átállítás,
+        // hanem üzleti/számviteli döntés. A WAC_PROFIT_TRACKING_ENABLED flag emellett default
+        // OFF (WacService: az élesítés előtt ops/compliance igazolja a nyitó-készlet
+        // bekerülési árának konzisztenciáját). Ezért itt kizárólag LÁTHATÓVÁ tesszük az
+        // üres állapotot, hogy ne csendben adjon 0 bekerülési árat.
         List<CurrencyStock> stocks = currencyStockRepository
                 .findByEntityTypeAndEntityId("CASHIER", branchId.toString());
         Map<String, CurrencyStock> stockMap = new LinkedHashMap<>();
         for (CurrencyStock cs : stocks) {
             stockMap.put(cs.getCurrencyCode(), cs);
+        }
+        if (stockMap.isEmpty()) {
+            log.warn("FKH-029: nincs CASHIER CurrencyStock sor a havi záráshoz (branch: {}, {}). "
+                            + "A WAC-alapú bekerülési ár 0-ként számítódik. A CASHIER készlet-réteg "
+                            + "kivezetés alatt áll; WAC-alapú realizált eredményhez önálló fejlesztés "
+                            + "és compliance-igazolás szükséges.",
+                    branchId, yearMonth);
         }
 
         // Valutánkénti bontás (forgalom + MNB készletértékelés + realizált eredmény)

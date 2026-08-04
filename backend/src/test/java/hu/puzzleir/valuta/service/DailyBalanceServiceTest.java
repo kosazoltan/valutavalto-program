@@ -62,6 +62,13 @@ class DailyBalanceServiceTest {
     @Mock
     private CurrencyStockRepository currencyStockRepository;
 
+    /**
+     * FKH-029 FR-5: a nyitó-egyenleg Szint-3 fallback forrása a {@code cash_balance}
+     * (korábban a holt CASHIER {@code CurrencyStock} réteg).
+     */
+    @Mock
+    private CashBalanceRepository cashBalanceRepository;
+
     @Mock
     private BranchRepository branchRepository;
 
@@ -127,8 +134,8 @@ class DailyBalanceServiceTest {
     }
 
     @Test
-    @DisplayName("Nyitó egyenleg: nincs havi összesítő → CurrencyStock.quantity-ra esik vissza")
-    void testOpeningBalance_fallbackToCurrencyStock() {
+    @DisplayName("Nyitó egyenleg: nincs havi összesítő → cash_balance.current_balance-ra esik vissza (FKH-029 FR-5)")
+    void testOpeningBalance_fallbackToCashBalance() {
         // Nincs előző nap
         when(dailyBalanceRepository.findClosingBalance(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), eq(TEST_BRANCH_ID), eq("EUR"), any(LocalDate.class)))
             .thenReturn(Optional.empty());
@@ -138,16 +145,18 @@ class DailyBalanceServiceTest {
                 eq(TEST_BRANCH_ID), anyString()))
             .thenReturn(Optional.empty());
 
-        // CurrencyStock tartalmaz készletet
-        CurrencyStock stock = new CurrencyStock();
-        stock.setQuantity(new BigDecimal("750.00"));
-        when(currencyStockRepository.findByBranchIdAndCurrencyCode(
-                eq(TEST_BRANCH_ID.toString()), eq("EUR")))
-            .thenReturn(Optional.of(stock));
+        // FKH-029 FR-5: a Szint-3 forrás a cash_balance (élő adat), nem a holt CASHIER
+        // CurrencyStock réteg. A régi forrás nem is hívódik.
+        CashBalance cashBalance = new CashBalance();
+        cashBalance.setCurrentBalance(new BigDecimal("750.00"));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyCodeAndCompanyId(
+                eq(TEST_BRANCH_ID), eq("EUR"), eq(TEST_COMPANY_ID)))
+            .thenReturn(Optional.of(cashBalance));
 
         BigDecimal result = dailyBalanceService.getOpeningBalance(TEST_BRANCH_ID, TEST_DATE, "EUR");
 
         assertThat(result).isEqualByComparingTo("750.00");
+        verifyNoInteractions(currencyStockRepository);
     }
 
     @Test
@@ -158,8 +167,8 @@ class DailyBalanceServiceTest {
         when(monthlyClosingSummaryRepository.findClosingByBranchAndYearMonth(
                 eq(TEST_BRANCH_ID), anyString()))
             .thenReturn(Optional.empty());
-        when(currencyStockRepository.findByBranchIdAndCurrencyCode(
-                eq(TEST_BRANCH_ID.toString()), eq("EUR")))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyCodeAndCompanyId(
+                eq(TEST_BRANCH_ID), eq("EUR"), eq(TEST_COMPANY_ID)))
             .thenReturn(Optional.empty());
 
         BigDecimal result = dailyBalanceService.getOpeningBalance(TEST_BRANCH_ID, TEST_DATE, "EUR");
@@ -196,7 +205,7 @@ class DailyBalanceServiceTest {
             .thenReturn(Optional.empty());
         when(monthlyClosingSummaryRepository.findClosingByBranchAndYearMonth(eq(TEST_BRANCH_ID), any()))
             .thenReturn(Optional.empty());
-        when(currencyStockRepository.findByBranchIdAndCurrencyCode(eq(TEST_BRANCH_ID.toString()), eq("EUR")))
+        when(cashBalanceRepository.findByBranchIdAndCurrencyCodeAndCompanyId(eq(TEST_BRANCH_ID), eq("EUR"), eq(TEST_COMPANY_ID)))
             .thenReturn(Optional.empty());
 
         // EUR tranzakciók (multi-line-helyes: single-line + line; itt mindkettő 0)
@@ -297,7 +306,7 @@ class DailyBalanceServiceTest {
             .thenReturn(Optional.empty());
         when(dailyBalanceRepository.findClosingBalance(org.mockito.ArgumentMatchers.eq(TEST_COMPANY_ID), eq(TEST_BRANCH_ID), eq("EUR"), any())).thenReturn(Optional.empty());
         when(monthlyClosingSummaryRepository.findClosingByBranchAndYearMonth(eq(TEST_BRANCH_ID), any())).thenReturn(Optional.empty());
-        when(currencyStockRepository.findByBranchIdAndCurrencyCode(eq(TEST_BRANCH_ID.toString()), eq("EUR"))).thenReturn(Optional.empty());
+        when(cashBalanceRepository.findByBranchIdAndCurrencyCodeAndCompanyId(eq(TEST_BRANCH_ID), eq("EUR"), eq(TEST_COMPANY_ID))).thenReturn(Optional.empty());
         when(transactionRepository.sumDailySingleLineTurnoverByCurrency(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.BUY), eq("EUR")))
             .thenReturn(new BigDecimal("100"));
         when(transactionLineRepository.sumDailyLineTurnoverByCurrency(eq(TEST_BRANCH_ID), eq(TEST_DATE), eq(TransactionType.BUY), eq("EUR")))
