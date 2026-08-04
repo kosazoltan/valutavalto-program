@@ -253,7 +253,20 @@ public class TransactionReversalService {
             // Eredeti eladas visszavonasa: valuta +, HUF -
             helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount(), true);
             helper.updateCashBalance(branchId, helper.getHufCurrencyId(), reversalHufAmount.negate(), false);
+        } else if (original.getTransactionType() == TransactionType.TRANSFER_OUT) {
+            // FKH-028: eredeti kimeno atadas visszavonasa — a valuta VISSZA a kasszaba.
+            // A transfer-tranzakcio EGYLABU keszletmozgas (nincs HUF-ellenlaba), ezert a
+            // BUY/SELL agakkal ellentetben itt HUF-mozgas nem tortenhet.
+            helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount(), true);
+        } else if (original.getTransactionType() == TransactionType.TRANSFER_IN) {
+            // FKH-028: eredeti bejovo atvetel visszavonasa — keszlet-validacio utan a valuta KI.
+            // HUF-ellenlab itt sincs (egylabu mozgas).
+            helper.validateCurrencyStock(branchId, currencyId, original.getCurrencyAmount());
+            helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount().negate(), false);
         }
+        // FKH-028 follow-up (tudatosan scope-on kivul): a reszleges-visszavaltas utvonala
+        // (executePartialRefund BUY/SELL aga lentebb) TRANSFER-tipusra ugyanigy nem mozgat
+        // kasszat — kulon korben rendezendo.
 
         // Napi statisztika frissitese
         dailySessionService.updateSessionStats(

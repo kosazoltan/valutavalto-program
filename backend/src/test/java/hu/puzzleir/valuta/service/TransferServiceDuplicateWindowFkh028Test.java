@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.exception.ConflictException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
@@ -27,6 +28,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -34,19 +36,17 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
- * FKH-028 Fázis 2 — ELDOBHATÓ RED-PROBE (ld. memory: red-teszt-mockito-strict-stubs-csapda).
+ * FKH-028 Fázis 2: rövid távú (3 mp-es) duplikátum-védelmi ablak a Transfer create-en.
+ * Ugyanattól a felhasználótól azonos cél/valuta/összeg/irány/típus paraméterekkel az
+ * ablakon belül érkező második beküldés ConflictException — a frontend gomb-letiltás
+ * (Fázis 1) backend-oldali hálója direkt/megismételt API-hívások ellen.
  *
- * A végleges duplikátum-védelem új repository-metódust vezet be, amit a RED fázisban még
- * nem lehet stubolni (nem fordulna a teszt) — ezért ez a próba a MAI viselkedést fogja meg:
- * két, azonos paraméterű create() hívás gyors egymásutánban ma MINDKÉTSZER sikeres
- * (két transfer jön létre). Az elvárt új viselkedés: a második hívás a rövid időablakon
- * belül ConflictException-nel elutasítva.
- *
- * GREEN után ez a fájl TÖRLENDŐ, és a végleges (az új repo-metódust stuboló) teszt veszi át.
+ * (A RED-bizonyítékot az eldobható TransferServiceDuplicateWindowFkh028RedProbeTest adta
+ * — a 9d8a5884 commitban; a mai kódon mindkét azonos create sikeres volt.)
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class TransferServiceDuplicateWindowFkh028RedProbeTest {
+class TransferServiceDuplicateWindowFkh028Test {
 
     @Mock private TransferRepository transferRepository;
     @Mock private WorkerRepository workerRepository;
@@ -78,7 +78,7 @@ class TransferServiceDuplicateWindowFkh028RedProbeTest {
         when(branchRepository.findById(toId)).thenReturn(Optional.of(toBranch));
         when(branchRepository.existsByIdAndCompanyId(eq(toId), any())).thenReturn(true);
         when(currencyRepository.findById(4L)).thenReturn(Optional.of(eur));
-        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L, 2L);
+        when(transferSerialSequenceService.next(any(), eq("AT"))).thenReturn(1L, 2L, 3L);
         when(transferRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("R-001");
         when(transactionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -88,23 +88,45 @@ class TransferServiceDuplicateWindowFkh028RedProbeTest {
                         CashBalance.builder().currentBalance(new BigDecimal("100000")).build()));
     }
 
-    private CreateTransferDto dto() {
+    private CreateTransferDto dto(String amount) {
         CreateTransferDto dto = new CreateTransferDto();
         dto.setToBranchId(toId.toString());
         dto.setCurrencyId(4L);
-        dto.setAmount(new BigDecimal("1000"));
+        dto.setAmount(new BigDecimal(amount));
         dto.setTransferType("CURRENCY");
         dto.setDirection("F");
         return dto;
     }
 
     @Test
-    @DisplayName("RED-PROBE: két azonos create() gyors egymásutánban → a másodiknak ConflictException kell legyen")
+    @DisplayName("FKH-028: két azonos create() az ablakon belül → a második ConflictException")
     void secondIdenticalCreateWithinWindow_rejected() {
-        service.create(dto(), 1L);
+        service.create(dto("1000"), 1L);
 
-        assertThatThrownBy(() -> service.create(dto(), 1L))
+        assertThatThrownBy(() -> service.create(dto("1000"), 1L))
                 .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("duplik");
+                .hasMessageContaining("duplikált");
+    }
+
+    @Test
+    @DisplayName("FKH-028: eltérő összegű második create az ablakon belül → átmegy (nem duplikátum)")
+    void differentAmountWithinWindow_accepted() {
+        service.create(dto("1000"), 1L);
+
+        assertThatCode(() -> service.create(dto("2000"), 1L)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("FKH-028: ha az első create validációs hibával bukik, az azonnali retry NEM duplikátum")
+    void failedCreateReleasesGuard_retryNotBlocked() {
+        // 1 000 000 > 100 000 készlet → a kimenő (F) könyvelés ValidationException-nel bukik.
+        assertThatThrownBy(() -> service.create(dto("1000000"), 1L))
+                .isInstanceOf(ValidationException.class);
+
+        // A retry ugyanazzal a paraméterrel: ugyanaz a készlet-hiba kell legyen, NEM Conflict —
+        // vagyis a bukott kísérlet kulcsa felszabadult.
+        assertThatThrownBy(() -> service.create(dto("1000000"), 1L))
+                .isInstanceOf(ValidationException.class)
+                .isNotInstanceOf(ConflictException.class);
     }
 }

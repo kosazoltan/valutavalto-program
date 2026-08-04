@@ -106,6 +106,10 @@ export default function TransferCreatePage() {
   const [showSupervisorPin, setShowSupervisorPin] = useState(false)
   const [pendingTransferAfterPin, setPendingTransferAfterPin] = useState(false)
 
+  // FKH-028 Fázis 1: szinkron re-entry guard a dupla-beküldés ellen (a loading state
+  // frissítése aszinkron, két azonos tickben érkező kattintást önmagában nem fogna meg).
+  const submittingRef = useRef(false)
+
   // Loading & Error
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -302,8 +306,21 @@ export default function TransferCreatePage() {
 
   // Create new transfer
   const handleCreateTransfer = async (pinVerified = false) => {
+    // FKH-028 Fázis 1: dupla-beküldés védelem. A letiltás a függvény LEGELEJÉN aktiválódik
+    // (a készlet-ellenőrző és árfolyam-feloldó await-ek előtt), a ref pedig az azonos
+    // render-cikluson belüli második kattintást is fogja (a state-frissítés aszinkron).
+    if (submittingRef.current) return
+    submittingRef.current = true
+    setLoading(true)
+    // Korai (validációs) kilépéskor a letiltást vissza kell engedni — különben a gomb
+    // beragadna; a sikeres/hibás beküldés végén az alsó finally teszi ugyanezt.
+    const abortSubmit = () => {
+      submittingRef.current = false
+      setLoading(false)
+    }
     if (!toBranchId) {
       setError('Válasszon cél irodát!')
+      abortSubmit()
       return
     }
 
@@ -315,6 +332,7 @@ export default function TransferCreatePage() {
       const built = buildTransferLines(currencyLines)
       if (built.error) {
         setError(built.error)
+        abortSubmit()
         return
       }
       effLines = built.lines
@@ -323,11 +341,13 @@ export default function TransferCreatePage() {
     } else {
       if (!currencyId || !amount) {
         setError('Minden mező kitöltése kötelező!')
+        abortSubmit()
         return
       }
       effAmountValue = parseFloat(amount.replace(',', '.').replace(/\s/g, ''))
       if (!Number.isFinite(effAmountValue) || effAmountValue <= 0) {
         setError('Adjon meg pozitív összeget!')
+        abortSubmit()
         return
       }
     }
@@ -337,6 +357,7 @@ export default function TransferCreatePage() {
     const carrierSealError = validateCarrierSeal(carrierName, sealNumber)
     if (carrierSealError) {
       setError(carrierSealError)
+      abortSubmit()
       return
     }
 
@@ -348,12 +369,15 @@ export default function TransferCreatePage() {
     )
     if (denomResult.error) {
       setError(denomResult.error)
+      abortSubmit()
       return
     }
     const effDenominations = denomResult.denominations
 
     if (requiresSupervisorPin && !pinVerified && !pendingTransferAfterPin) {
       setShowSupervisorPin(true)
+      // A PIN-modal alatt a gomb nem maradhat letiltva — a PIN után új hívás jön (pinVerified=true).
+      abortSubmit()
       return
     }
     setPendingTransferAfterPin(false)
@@ -372,17 +396,18 @@ export default function TransferCreatePage() {
             setError(
               `Nincs ennyi készlet! ${cur.code}: elérhető ${available.toLocaleString('hu-HU')}, kért ${ln.amount.toLocaleString('hu-HU')}`,
             )
+            abortSubmit()
             return
           }
         }
       } catch {
         setError('Készlet-ellenőrzés sikertelen. Próbálja újra!')
+        abortSubmit()
         return
       }
     }
 
     try {
-      setLoading(true)
       setError(null)
 
       // A.1: a sorok valutakóddal dúsítva — az offline lista + bizonylat internet nélkül
@@ -568,6 +593,7 @@ export default function TransferCreatePage() {
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
+      submittingRef.current = false
       setLoading(false)
     }
   }
