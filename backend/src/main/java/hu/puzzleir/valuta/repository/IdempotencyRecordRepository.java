@@ -27,6 +27,13 @@ public interface IdempotencyRecordRepository extends JpaRepository<IdempotencyRe
      * varakozik, majd a frissitett (PROCESSING) statust olvassa.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    /**
+     * FKH-028 7. kör: a beragadt (régóta PROCESSING) dedup-rekordok monitorozásához —
+     * a TransferDedupStuckRecordWarningJob riasztó lekérdezése (read-only).
+     */
+    java.util.List<IdempotencyRecord> findByEndpointAndStatusAndCreatedAtBefore(
+            String endpoint, IdempotencyRecord.Status status, java.time.Instant createdBefore);
+
     @Query("SELECT r FROM IdempotencyRecord r " +
            "WHERE r.companyId = :companyId " +
            "AND r.endpoint = :endpoint " +

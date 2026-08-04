@@ -77,24 +77,30 @@ class TransferCreateDedupGuardFkh028Test {
     }
 
     @Test
-    @DisplayName("MEDIUM (kompenzáció): a friss PROCESSING konfliktus, de a BERAGADT (küszöbnél régebbi) PROCESSING átvehető — a false-conflict ablak nem a 2 órás TTL/cleanup")
-    void staleProcessing_isTakenOver_freshProcessingConflicts() {
-        // Friss PROCESSING → konfliktus (ez a normál dupla-beküldés védelem).
+    @DisplayName("7. kör (Codex BLOCKING után): PROCESSING rekordra MINDIG 409 — az automatikus stale-átvétel kivezetve, a régi (20 perces) PROCESSING sem vehető át")
+    void processingRecord_alwaysConflicts_regardlessOfAge() {
+        // SPEC-VÁLTÁS (7. kör, dokumentált döntés): a 6. körben bevezetett 10 perces
+        // automatikus stale-átvételre a Codex BLOCKING-ot adott (nincs garancia, hogy a
+        // legitim kérés 10 percnél rövidebb, és a release nem tulajdonos-alapú — az
+        // "ellopott" rekordot az eredeti kérés felülírhatná). A beragadt rekord feloldása
+        // mostantól MANUÁLIS admin-eljárás (docs/ops/idempotency-stuck-record-recovery.md),
+        // a monitorozást a TransferDedupStuckRecordWarningJob adja.
+
+        // Friss PROCESSING → konfliktus (normál dupla-beküldés védelem).
         when(repository.findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(
                 companyId, TransferCreateDedupGuard.ENDPOINT, KEY))
                 .thenReturn(Optional.of(record(IdempotencyRecord.Status.PROCESSING, Instant.now(), null)));
         assertThatThrownBy(() -> guard.acquire(companyId, KEY))
                 .isInstanceOf(ConflictException.class);
 
-        // Beragadt PROCESSING (pl. release()-hiba/crash után): a küszöbnél régebbi kulcs
-        // átvehető — a legitim kérés nem kap órákig hamis konfliktust.
+        // RÉGI (20 perces) PROCESSING → TOVÁBBRA IS konfliktus, nincs automatikus átvétel.
         when(repository.findByCompanyIdAndEndpointAndIdempotencyKeyForUpdate(
                 companyId, TransferCreateDedupGuard.ENDPOINT, KEY))
                 .thenReturn(Optional.of(record(IdempotencyRecord.Status.PROCESSING,
                         Instant.now().minus(20, ChronoUnit.MINUTES), null)));
-        assertThatCode(() -> guard.acquire(companyId, KEY))
-                .as("A beragadt PROCESSING kulcs átvehető, nem hamis konfliktus")
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> guard.acquire(companyId, KEY))
+                .as("A régi PROCESSING rekord sem vehető át automatikusan")
+                .isInstanceOf(ConflictException.class);
     }
 
     @Test

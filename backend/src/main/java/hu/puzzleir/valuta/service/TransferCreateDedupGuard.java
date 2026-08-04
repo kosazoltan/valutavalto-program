@@ -50,8 +50,8 @@ public class TransferCreateDedupGuard {
 
     /** A frissen COMPLETED kulcs még ennyi ideig számít duplikátumnak (az FK 2-3 mp irányszáma). */
     static final long RECENT_COMPLETED_WINDOW_MS = 3000;
-    /** A dedup-rekordok endpoint-scope-ja az idempotency_record táblában. */
-    static final String ENDPOINT = "TRANSFER_CREATE_DEDUP";
+    /** A dedup-rekordok endpoint-scope-ja az idempotency_record táblában (a monitor-job is használja). */
+    public static final String ENDPOINT = "TRANSFER_CREATE_DEDUP";
     /** Rövid TTL a cleanup-jobnak — a dedup-rekord percek után már irreleváns. */
     private static final Duration TTL = Duration.ofHours(1);
     /**
