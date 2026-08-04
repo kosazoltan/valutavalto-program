@@ -21,19 +21,19 @@ public interface IdempotencyRecordRepository extends JpaRepository<IdempotencyRe
             UUID companyId, String endpoint, String idempotencyKey);
 
     /**
+     * FKH-028 7. kör: a beragadt (régóta PROCESSING) dedup-rekordok monitorozásához —
+     * a TransferDedupStuckRecordWarningJob riasztó lekérdezése (read-only, lock nélkül).
+     */
+    java.util.List<IdempotencyRecord> findByEndpointAndStatusAndCreatedAtBefore(
+            String endpoint, IdempotencyRecord.Status status, java.time.Instant createdBefore);
+
+    /**
      * Codex P1 PR #358 follow-up: pesszimista row-level lock a FAILED -> PROCESSING
      * atmenethez. Ket konkurens retry kozul csak EGY tudja olvasni FAILED-kent
      * es uj PROCESSING-re allitani — a masik a `SELECT FOR UPDATE` blokkjaban
      * varakozik, majd a frissitett (PROCESSING) statust olvassa.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    /**
-     * FKH-028 7. kör: a beragadt (régóta PROCESSING) dedup-rekordok monitorozásához —
-     * a TransferDedupStuckRecordWarningJob riasztó lekérdezése (read-only).
-     */
-    java.util.List<IdempotencyRecord> findByEndpointAndStatusAndCreatedAtBefore(
-            String endpoint, IdempotencyRecord.Status status, java.time.Instant createdBefore);
-
     @Query("SELECT r FROM IdempotencyRecord r " +
            "WHERE r.companyId = :companyId " +
            "AND r.endpoint = :endpoint " +
