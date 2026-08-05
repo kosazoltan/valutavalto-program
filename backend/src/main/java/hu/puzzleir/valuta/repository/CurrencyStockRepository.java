@@ -55,6 +55,14 @@ public interface CurrencyStockRepository extends JpaRepository<CurrencyStock, Lo
     List<CurrencyStock> findByCompanyIdAndEntityType(UUID companyId, String entityType);
 
     /**
+     * FKH-029 kieg. (Sourcery): egy entitás (pl. vault-territory) sorai közvetlenül, cég-szűrten —
+     * a per-territory olvasóknál kiváltja a cég-szintű VAULT-scant és a kód-oldali entityId-szűrést.
+     * A cégszintű batch (findByCompanyIdAndEntityType) a StockSnapshotService-ben szándékosan marad:
+     * ott az összes vault egy lekérdezésben kell.
+     */
+    List<CurrencyStock> findByCompanyIdAndEntityTypeAndEntityId(UUID companyId, String entityType, String entityId);
+
+    /**
      * Iroda (CASHIER típusú entitás) készlete valutanem szerint (nyitó egyenleg fallback).
      *
      * Az entityId a branch UUID string-je.

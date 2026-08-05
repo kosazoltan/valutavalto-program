@@ -240,13 +240,15 @@ class ClosingWizardServiceTest {
                     Currency.builder().code("EUR").build(),
                     Currency.builder().code("USD").build()));
             // V371 után a vault cash_balance sorai 0-k — a nonZero cash_balance-szűrő vaultra üres
-            // lenne. A valós készlet a currency_stock VAULT sorokban van (saját territory!).
-            when(currencyStockRepository.findByCompanyIdAndEntityType(COMPANY_ID, "VAULT")).thenReturn(List.of(
-                    vaultStockRow("12", "EUR", "1000"),
-                    vaultStockRow("12", "USD", "0"),      // nulla készlet → nem kerül be
-                    vaultStockRow("13", "GBP", "500")));  // másik territory → nem szivárog át
+            // lenne. A valós készlet a currency_stock VAULT sorokban van; a territory-szűrés a
+            // dedikált repo-query dolga (Sourcery-kör), a pontos argumentumot verify garantálja.
+            when(currencyStockRepository.findByCompanyIdAndEntityTypeAndEntityId(COMPANY_ID, "VAULT", "12"))
+                    .thenReturn(List.of(
+                            vaultStockRow("12", "EUR", "1000"),
+                            vaultStockRow("12", "USD", "0"))); // nulla készlet → nem kerül be
 
             assertThat(service.getCurrenciesWithBalance(BRANCH_ID)).containsExactly("HUF", "EUR");
+            verify(currencyStockRepository).findByCompanyIdAndEntityTypeAndEntityId(COMPANY_ID, "VAULT", "12");
             verify(cashBalanceRepository, never()).findCurrencyCodesWithNonZeroBalance(any(), any());
         }
     }

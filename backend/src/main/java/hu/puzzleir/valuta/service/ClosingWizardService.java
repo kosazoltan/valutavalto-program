@@ -926,8 +926,8 @@ public class ClosingWizardService {
             return new ArrayList<>(List.of("HUF"));
         }
         String territoryEntityId = branch.getVaultTerritoryId().toString();
-        Set<String> nonZero = currencyStockRepository.findByCompanyIdAndEntityType(companyId, "VAULT").stream()
-                .filter(cs -> territoryEntityId.equals(cs.getEntityId()))
+        Set<String> nonZero = currencyStockRepository
+                .findByCompanyIdAndEntityTypeAndEntityId(companyId, "VAULT", territoryEntityId).stream()
                 .filter(cs -> cs.getQuantity() != null && cs.getQuantity().signum() != 0)
                 .map(CurrencyStock::getCurrencyCode)
                 .filter(Objects::nonNull)

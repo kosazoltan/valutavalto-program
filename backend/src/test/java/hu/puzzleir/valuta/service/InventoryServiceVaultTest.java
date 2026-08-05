@@ -262,10 +262,10 @@ class InventoryServiceVaultTest {
     @Test
     @DisplayName("FKH-029 kieg.: getCurrentStock vault branch-re a currency_stock VAULT soraiból ad készletet, nem a 0-s cash_balance-ból")
     void getCurrentStock_vaultBranch_readsCurrencyStock() {
-        when(currencyStockRepository.findByCompanyIdAndEntityType(COMPANY_ID, "VAULT")).thenReturn(List.of(
-                vaultStockRow("12", "EUR", "5000.00"),
-                vaultStockRow("13", "USD", "999.00") // másik territory — nem szivároghat át
-        ));
+        // Sourcery-kör: a territory-szűrés a dedikált repo-query dolga — a szivárgás-mentességet
+        // a PONTOS territory-argumentum verify-je garantálja.
+        when(currencyStockRepository.findByCompanyIdAndEntityTypeAndEntityId(COMPANY_ID, "VAULT", "12"))
+                .thenReturn(List.of(vaultStockRow("12", "EUR", "5000.00")));
         when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of(eur));
 
         List<CashBalance> result = inventoryService.getCurrentStock(VAULT_BRANCH_ID);
@@ -274,6 +274,7 @@ class InventoryServiceVaultTest {
         assertThat(result.get(0).getCurrency().getCode()).isEqualTo("EUR");
         assertThat(result.get(0).getCurrentBalance()).isEqualByComparingTo("5000.00");
         assertThat(result.get(0).getBranch().getId()).isEqualTo(VAULT_BRANCH_ID);
+        verify(currencyStockRepository).findByCompanyIdAndEntityTypeAndEntityId(COMPANY_ID, "VAULT", "12");
         verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
     }
 
@@ -288,20 +289,18 @@ class InventoryServiceVaultTest {
         List<CashBalance> result = inventoryService.getCurrentStock(CASHIER_BRANCH_ID);
 
         assertThat(result).containsExactly(cb);
-        verify(currencyStockRepository, never()).findByCompanyIdAndEntityType(any(), any());
+        verify(currencyStockRepository, never()).findByCompanyIdAndEntityTypeAndEntityId(any(), any(), any());
     }
 
     @Test
     @DisplayName("FKH-029 kieg.: getCurrentStock vault branch-re vault_territory_id nélkül üres listát ad (fail-closed, nincs kivétel)")
     void getCurrentStock_vaultBranchWithoutTerritory_returnsEmpty() {
         vaultBranch.setVaultTerritoryId(null);
-        when(currencyStockRepository.findByCompanyIdAndEntityType(COMPANY_ID, "VAULT")).thenReturn(List.of(
-                vaultStockRow("13", "USD", "999.00")
-        ));
 
         List<CashBalance> result = inventoryService.getCurrentStock(VAULT_BRANCH_ID);
 
         assertThat(result).isEmpty();
+        verify(currencyStockRepository, never()).findByCompanyIdAndEntityTypeAndEntityId(any(), any(), any());
         verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
     }
 

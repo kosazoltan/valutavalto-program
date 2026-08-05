@@ -677,8 +677,8 @@ public class InventoryService {
         Map<String, Currency> currencyByCode = currencyRepository.findAllActiveOrdered().stream()
                 .filter(c -> c.getCode() != null)
                 .collect(Collectors.toMap(Currency::getCode, c -> c, (a, b) -> a));
-        return currencyStockRepository.findByCompanyIdAndEntityType(companyId, "VAULT").stream()
-                .filter(cs -> territoryEntityId.equals(cs.getEntityId()))
+        return currencyStockRepository
+                .findByCompanyIdAndEntityTypeAndEntityId(companyId, "VAULT", territoryEntityId).stream()
                 .filter(cs -> cs.getCurrencyCode() != null)
                 .map(cs -> CashBalance.builder()
                         .company(branch.getCompany())
