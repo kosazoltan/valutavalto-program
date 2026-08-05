@@ -86,4 +86,32 @@ describe('penztarSettings (G20)', () => {
   it('savePenztarSettings: sikeres mentésnél true', () => {
     expect(savePenztarSettings(DEFAULT_PENZTAR_SETTINGS)).toBe(true)
   })
+
+  it('printer mezők (SP500): default üres string, normalize átengedi a stringet', () => {
+    expect(DEFAULT_PENZTAR_SETTINGS.printerDeviceName).toBe('')
+    expect(DEFAULT_PENZTAR_SETTINGS.printerSerialPort).toBe('')
+    const n = normalize({ printerDeviceName: 'Star SP500', printerSerialPort: 'COM3' })
+    expect(n.printerDeviceName).toBe('Star SP500')
+    expect(n.printerSerialPort).toBe('COM3')
+  })
+
+  it('printer mezők: nem-string érték → default (üres)', () => {
+    const n = normalize({
+      printerDeviceName: 42 as never,
+      printerSerialPort: { com: 3 } as never,
+    })
+    expect(n.printerDeviceName).toBe('')
+    expect(n.printerSerialPort).toBe('')
+  })
+
+  it('printer mezők túlélik a save → load körutat', () => {
+    savePenztarSettings({
+      ...DEFAULT_PENZTAR_SETTINGS,
+      printerDeviceName: 'Star SP500',
+      printerSerialPort: 'COM3',
+    })
+    const loaded = loadPenztarSettings()
+    expect(loaded.printerDeviceName).toBe('Star SP500')
+    expect(loaded.printerSerialPort).toBe('COM3')
+  })
 })

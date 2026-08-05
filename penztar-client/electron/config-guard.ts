@@ -17,12 +17,19 @@ export const CONFIG_READ_ALLOWLIST = [
   'camera_configs',
   // Shared bundle — rate-maker flavor uses this (exchange-rates.ts:562); DO NOT REMOVE without verifying tree-shaking doesn't strip the call site in penztar builds.
   'rate_maker_device_id',
+  // SP500 nyomtató-konfiguráció: a beállítás-oldal mentés utáni visszaolvasása.
+  // A main-process print-receipt handler NEM ezen a guardon át olvas.
+  'printer.deviceName',
+  'printer.serialPort',
 ] as const;
 
 export const CONFIG_WRITE_ALLOWLIST = [
   'camera_configs',
   // Shared bundle — rate-maker flavor uses this (exchange-rates.ts:562); DO NOT REMOVE without verifying tree-shaking doesn't strip the call site in penztar builds.
   'rate_maker_device_id',
+  // SP500 nyomtató-konfiguráció: üres string = nincs beállítva (fail-closed marad).
+  'printer.deviceName',
+  'printer.serialPort',
 ] as const;
 
 export function isConfigKeyReadable(key: string): boolean {

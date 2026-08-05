@@ -1789,3 +1789,26 @@ export async function printReceipt(
     return false;
   }
 }
+
+/**
+ * Nyomtatás a SQLite config-ban tárolt beállítással (printer.deviceName /
+ * printer.serialPort) — a print-receipt IPC handler belépési pontja.
+ * FAIL-CLOSED: tárolt konfiguráció nélkül nincs nyomtatás; a Windows default
+ * printer fallback tiltott (PDF-mentés veszély, 2026-07-11).
+ * A sqlite dinamikus importtal töltődik, hogy a tisztán tartalom-generáló
+ * tesztutak ne húzzák be a DB-réteget.
+ */
+export async function printReceiptWithStoredConfig(data: PrintReceiptData): Promise<boolean> {
+  const { getConfig } = await import('./sqlite');
+  const printerName = getConfig(PRINTER_CONFIG_KEY)?.trim() || undefined;
+  const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY)?.trim() || undefined;
+  if (!printerName && !serialPort) {
+    log.error(
+      `[PRINTER][FAIL-CLOSED] print-receipt megtagadva receiptNumber=${data.receiptNumber}: ` +
+        'sem printer.deviceName, sem printer.serialPort nincs konfigurálva. ' +
+        'Windows default printer fallback TILTVA (PDF-mentés veszély).',
+    );
+    return false;
+  }
+  return printReceipt(data, printerName, serialPort);
+}
