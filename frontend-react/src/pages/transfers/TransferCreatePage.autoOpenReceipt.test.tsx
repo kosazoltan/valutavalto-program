@@ -4,10 +4,13 @@ import { vi, describe, beforeEach, afterEach, it, expect } from 'vitest'
 import TransferCreatePage from './TransferCreatePage'
 
 /**
- * Copilot PR #1100 (storno-minta átvezetés): a szállítólevél-előnézet
- * (ReceiptPreviewModal) CSAK sikeres nyomtatás után zárhat be (2s auto-close).
- * Sikertelen nyomtatásnál az onPrint THROW-val zárul, így a modal nyitva marad
- * és a nyomtatás újrapróbálható.
+ * Transfer-flow egységesítés (Tomi döntése, 2026-08-05 — a csendes auto-print
+ * terv elvetve): a TransferReceiptModal (szállítólevél-előnézet) sikeres
+ * létrehozás után AUTOMATIKUSAN megnyílik — ugyanúgy, ahogy a
+ * CashierTransactionPage (openReceiptModal) és a ShipmentNewPage
+ * (buildAndShowReceipt → setShowReceiptModal(true)) ma teszi. A modal
+ * "Nyomtatás" gombja VÁLTOZATLANUL kézi kattintásra indítja a printReceipt-et
+ * — automatikus/néma nyomtatás NINCS.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -20,6 +23,9 @@ const mocks = vi.hoisted(() => ({
   listActive: vi.fn(),
   cashBalanceList: vi.fn(),
   printReceipt: vi.fn(),
+  saveAndSyncPendingTransfer: vi.fn(),
+  // Electron offline-queue ág kapcsolója (tesztenként állítható)
+  flags: { electronQueue: false },
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
 }))
 
@@ -58,9 +64,9 @@ vi.mock('../../stores/authStore', () => {
 })
 
 vi.mock('../../utils/electronTransactions', () => ({
-  isElectronQueueAvailable: () => false,
+  isElectronQueueAvailable: () => mocks.flags.electronQueue,
   recordLocalAuditEvent: vi.fn(),
-  saveAndSyncPendingTransfer: vi.fn(),
+  saveAndSyncPendingTransfer: mocks.saveAndSyncPendingTransfer,
 }))
 
 vi.mock('../../utils/localQueue', () => ({
@@ -127,7 +133,7 @@ const CREATE_RESULT = {
   toBranchCode: 'BR001',
   toBranchName: 'Budapesti értéktár',
   fromWorkerName: 'Fabulya Zsuzsanna',
-  transferDate: '2026-06-12',
+  transferDate: '2026-08-05',
   transferTime: '10:00:00',
   currencyCode: 'EUR',
   amount: 100,
@@ -136,14 +142,12 @@ const CREATE_RESULT = {
   sealNumber: 'PL-12345',
 }
 
-// A globális Window.electronAPI a teljes ElectronAPI felületet várja — a teszthez
-// csak a printReceipt kell, ezért unknown-on át szűkítünk.
 const electronWindow = window as unknown as {
   electronAPI?: { printReceipt?: (data: string) => Promise<boolean> }
 }
 
-/** Új kimenő átadás rögzítése a REST úton → siker-banner → Nyomtatás → modal nyílik. */
-async function createTransferAndOpenReceiptModal() {
+/** Új kimenő EUR átadás kitöltése és beküldése (modal-interakció NÉLKÜL). */
+async function createTransfer() {
   render(
     <MemoryRouter>
       <TransferCreatePage />
@@ -160,21 +164,12 @@ async function createTransferAndOpenReceiptModal() {
   })
   fireEvent.change(screen.getByPlaceholderText('Plombaszám...'), { target: { value: 'PL-12345' } })
   fireEvent.click(screen.getByText('Átadás létrehozása'))
-
-  // Spec-változás (Tomi, 2026-08-05, Cashier/Shipment-minta): a szállítólevél-előnézet
-  // sikeres létrehozás után AUTOMATIKUSAN nyílik — a banner Nyomtatás gombjára nincs szükség.
-  // A tesztek kontraktusa (hibánál nyitva maradó modal + kézi retry) változatlan.
-  await screen.findByText('Átadás létrehozva: AT105000042')
-  await screen.findByText('Mégse (ESC)')
-
-  // a banner ÉS a modal gombja is 'Nyomtatás' — a modal a DOM végén renderelődik
-  const printButtons = screen.getAllByRole('button', { name: 'Nyomtatás' })
-  return printButtons[printButtons.length - 1]!
 }
 
-describe('TransferCreatePage — sikertelen nyomtatásnál a szállítólevél-modal nyitva marad (PR #1100 minta)', () => {
+describe('TransferCreatePage — a szállítólevél-előnézet automatikusan megnyílik sikeres létrehozás után', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.flags.electronQueue = false
     mocks.getOutgoing.mockResolvedValue([])
     mocks.getIncoming.mockResolvedValue([])
     mocks.getPending.mockResolvedValue([])
@@ -190,68 +185,46 @@ describe('TransferCreatePage — sikertelen nyomtatásnál a szállítólevél-m
     delete electronWindow.electronAPI
   })
 
-  it('printReceipt=false → error toast, a modal NYITVA marad, majd az újrapróbált sikeres nyomtatás zárja be', async () => {
-    mocks.printReceipt.mockResolvedValueOnce(false)
-    const printButton = await createTransferAndOpenReceiptModal()
+  it('online (REST) ág: a modal gombnyomás nélkül megnyílik; a nyomtatás KÉZI marad — csak a modal Nyomtatás gombjára indul', async () => {
+    mocks.printReceipt.mockResolvedValue(true)
+    await createTransfer()
 
-    fireEvent.click(printButton)
-    await waitFor(() =>
-      expect(mocks.toast.error).toHaveBeenCalledWith(
-        'Nyomtatás sikertelen',
-        'Ellenőrizze a nyomtatót (Beállítások > Nyomtatás).',
-      ),
-    )
+    await screen.findByText('Átadás létrehozva: AT105000042')
 
-    // a 2s auto-close CSAK sikeres nyomtatásnál indul — hibánál a modal 2s után is nyitva van
-    await new Promise((resolve) => setTimeout(resolve, 2200))
-    expect(screen.getByText('Mégse (ESC)')).toBeInTheDocument()
+    // A modal AUTOMATIKUSAN nyílik — a siker-banner Nyomtatás gombját NEM nyomtuk meg
+    await screen.findByText('Mégse (ESC)')
 
-    // újrapróbálás: most sikeres → success toast + 2s múlva auto-close
-    mocks.printReceipt.mockResolvedValueOnce(true)
-    const retryButtons = screen.getAllByRole('button', { name: 'Nyomtatás' })
-    const retryButton = retryButtons[retryButtons.length - 1]!
-    expect(retryButton).toBeEnabled()
-    fireEvent.click(retryButton)
-    await waitFor(() =>
-      expect(mocks.toast.success).toHaveBeenCalledWith(
-        'Nyomtatás elindítva',
-        'Bizonylat: AT105000042',
-      ),
-    )
-    await waitFor(() => expect(screen.queryByText('Mégse (ESC)')).not.toBeInTheDocument(), {
-      timeout: 3000,
+    // Automatikus/néma nyomtatás NINCS: a printReceipt csak kézi kattintásra fut
+    expect(mocks.printReceipt).not.toHaveBeenCalled()
+
+    // A modal Nyomtatás gombja változatlanul működik (a banner gombja is 'Nyomtatás' —
+    // a modal a DOM végén renderelődik, ezért az utolsót kattintjuk)
+    const printButtons = screen.getAllByRole('button', { name: 'Nyomtatás' })
+    fireEvent.click(printButtons[printButtons.length - 1]!)
+    await waitFor(() => expect(mocks.printReceipt).toHaveBeenCalledTimes(1))
+    const payload = JSON.parse(mocks.printReceipt.mock.calls[0]![0] as string)
+    expect(payload.receiptNumber).toBe('AT105000042')
+  }, 15000)
+
+  it('offline (Electron queue) ág: a modal a helyi rögzítés után is gombnyomás nélkül megnyílik, néma nyomtatás nélkül', async () => {
+    mocks.flags.electronQueue = true
+    mocks.saveAndSyncPendingTransfer.mockResolvedValue({
+      savedIds: [7],
+      syncedCount: 1,
+      pendingCount: 0,
+      allSavedSynced: true,
+      syncErrors: [],
+      localReferenceNumbers: ['AT105000099'],
     })
-  }, 15000)
+    await createTransfer()
 
-  it('printReceipt kivételt dob → error toast és a modal nyitva marad', async () => {
-    mocks.printReceipt.mockRejectedValueOnce(new Error('IPC hiba'))
-    const printButton = await createTransferAndOpenReceiptModal()
+    await screen.findByText('Átadás helyileg rögzítve és azonnal szinkronizálva')
 
-    fireEvent.click(printButton)
-    await waitFor(() =>
-      expect(mocks.toast.error).toHaveBeenCalledWith(
-        'Nyomtatás sikertelen',
-        'A nyomtatási parancs nem futott le.',
-      ),
-    )
+    // A modal AUTOMATIKUSAN nyílik az offline ágon is
+    await screen.findByText('Mégse (ESC)')
 
-    await new Promise((resolve) => setTimeout(resolve, 2200))
-    expect(screen.getByText('Mégse (ESC)')).toBeInTheDocument()
-  }, 15000)
-
-  it('hiányzó electronAPI → "Nyomtatás nem elérhető" warning és a modal nyitva marad', async () => {
-    delete electronWindow.electronAPI
-    const printButton = await createTransferAndOpenReceiptModal()
-
-    fireEvent.click(printButton)
-    await waitFor(() =>
-      expect(mocks.toast.warning).toHaveBeenCalledWith(
-        'Nyomtatás nem elérhető',
-        expect.stringContaining('Electron preload'),
-      ),
-    )
-
-    await new Promise((resolve) => setTimeout(resolve, 2200))
-    expect(screen.getByText('Mégse (ESC)')).toBeInTheDocument()
+    // Néma nyomtatás itt sincs
+    expect(mocks.printReceipt).not.toHaveBeenCalled()
+    expect(mocks.create).not.toHaveBeenCalled()
   }, 15000)
 })
