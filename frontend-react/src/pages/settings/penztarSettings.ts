@@ -57,6 +57,10 @@ export interface PenztarSettings {
   futofenySebesseg: number // 1–10 sebesség-skála
   cardPaymentEnabled: boolean // FR-12
   adOnDisplay: boolean // FR-13
+  // SP500 blokknyomtató: az Electron SQLite printer.deviceName / printer.serialPort
+  // operatív kulcsok tükre a háromrétegű perzisztenciában; üres string = nincs beállítva.
+  printerDeviceName: string
+  printerSerialPort: string
 }
 
 export const FREQUENCY_MIN = 0
@@ -82,6 +86,8 @@ export const DEFAULT_PENZTAR_SETTINGS: PenztarSettings = {
   futofenySebesseg: 5,
   cardPaymentEnabled: false,
   adOnDisplay: false,
+  printerDeviceName: '',
+  printerSerialPort: '',
 }
 
 const STORAGE_KEY = 'penztar-settings'
@@ -205,5 +211,9 @@ export function normalize(s: Partial<PenztarSettings>): PenztarSettings {
     cardPaymentEnabled:
       typeof s.cardPaymentEnabled === 'boolean' ? s.cardPaymentEnabled : d.cardPaymentEnabled,
     adOnDisplay: typeof s.adOnDisplay === 'boolean' ? s.adOnDisplay : d.adOnDisplay,
+    printerDeviceName:
+      typeof s.printerDeviceName === 'string' ? s.printerDeviceName : d.printerDeviceName,
+    printerSerialPort:
+      typeof s.printerSerialPort === 'string' ? s.printerSerialPort : d.printerSerialPort,
   }
 }

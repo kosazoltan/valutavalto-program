@@ -55,6 +55,15 @@ export default function PenztarSettingsPage() {
   const [loading, setLoading] = useState(true)
   const workstationCodeRef = useRef<string>('UNKNOWN')
 
+  // SP500 nyomtató-konfiguráció: elérhető Windows-nyomtatók és soros portok (Electron)
+  const [printers, setPrinters] = useState<Array<{ name: string; displayName: string }>>([])
+  const [serialPorts, setSerialPorts] = useState<
+    Array<{ path: string; manufacturer?: string; friendlyName?: string }>
+  >([])
+  // Kompenzáló rollbackhez: a betöltéskor (ill. utolsó sikeres mentéskor)
+  // érvényes operatív SQLite-értékek ('' = nincs beállítva)
+  const sqlitePrinterRef = useRef({ device: '', serial: '' })
+
   // FR-14: Betöltéskor backend érték nyeri, localStorage fallback (offline)
   useEffect(() => {
     let cancelled = false
@@ -75,9 +84,44 @@ export default function PenztarSettingsPage() {
         // dailyReportPasswordSet jelzőt a UI-ban felhasználhatjuk (jelenleg megjelenítjük)
       } catch {
         // Offline → localStorage fallback
-      } finally {
-        if (!cancelled) setLoading(false)
       }
+
+      // SP500: nyomtató-/portlista + az Electron SQLite operatív értékei
+      // (printer.deviceName / printer.serialPort). A backend-merge UTÁN fut,
+      // mert nyomtatáskor a main process a SQLite-ból olvas — az nyer a kijelzésben.
+      const api = window.electronAPI
+      if (api?.getPrinters) {
+        try {
+          const [printerList, portList, storedDevice, storedPort] = await Promise.all([
+            api.getPrinters().catch(() => []),
+            api.listSerialPorts().catch(() => []),
+            api.getConfig('printer.deviceName').catch(() => null),
+            api.getConfig('printer.serialPort').catch(() => null),
+          ])
+          if (!cancelled) {
+            setPrinters(printerList)
+            setSerialPorts(portList)
+            // Az SQLite az operatív igazságforrás: a tárolt érték (az explicit
+            // üres string is!) felülírja a backend/localStorage állapotot;
+            // csak hiányzó kulcs (null) esetén marad az örökölt érték.
+            sqlitePrinterRef.current = {
+              device: typeof storedDevice === 'string' ? storedDevice.trim() : '',
+              serial: typeof storedPort === 'string' ? storedPort.trim() : '',
+            }
+            setS((prev) => ({
+              ...prev,
+              printerDeviceName:
+                typeof storedDevice === 'string' ? storedDevice.trim() : prev.printerDeviceName,
+              printerSerialPort:
+                typeof storedPort === 'string' ? storedPort.trim() : prev.printerSerialPort,
+            }))
+          }
+        } catch {
+          // Electron IPC hiba → a mezők a localStorage/backend értéken maradnak
+        }
+      }
+
+      if (!cancelled) setLoading(false)
     }
     void loadFromBackend()
     return () => {
@@ -127,7 +171,38 @@ export default function PenztarSettingsPage() {
       return
     }
 
-    // 1. réteg: localStorage
+    // Operatív réteg (SP500) ELŐSZÖR: Electron SQLite config — nyomtatáskor a main
+    // process print-receipt handlere EBBŐL olvas (fail-closed); üres string = nincs
+    // beállítva. A localStorage/backend csak sikeres SQLite-írás után frissül, így a
+    // rétegek nem csúszhatnak szét. Két kulcs, nincs batch-IPC: hiba esetén az első
+    // kulcs kompenzáló rollbackkel áll vissza (végállapot: mindkét kulcs régi VAGY új).
+    const api = window.electronAPI
+    if (api?.setConfig) {
+      const nextDevice = s.printerDeviceName.trim()
+      const nextSerial = s.printerSerialPort.trim()
+      let deviceWritten = false
+      try {
+        await api.setConfig('printer.deviceName', nextDevice)
+        deviceWritten = true
+        await api.setConfig('printer.serialPort', nextSerial)
+      } catch {
+        if (deviceWritten) {
+          try {
+            await api.setConfig('printer.deviceName', sqlitePrinterRef.current.device)
+          } catch {
+            // best-effort rollback — a hibajelzés alább így is megtörténik
+          }
+        }
+        toast.error(
+          'Nyomtató-beállítás mentési hiba',
+          'A nyomtató-beállítás lokális (Electron) mentése nem sikerült — a beállítások NEM kerültek mentésre, kérjük, próbálja újra.',
+        )
+        return
+      }
+      sqlitePrinterRef.current = { device: nextDevice, serial: nextSerial }
+    }
+
+    // localStorage réteg (csak a sikeres operatív írás után)
     const ok = savePenztarSettings(s)
     if (!ok) {
       toast.error(
@@ -485,6 +560,69 @@ export default function PenztarSettingsPage() {
           ],
           (v) => set('printerPort', v),
         )}
+        {/* SP500 blokknyomtató: Windows-nyomtató és/vagy soros COM-port kiválasztása.
+            Elég az egyik; nyomtatáskor a soros út fut először, utána a Windows-driveres. */}
+        <div>
+          <label className="form-label" htmlFor="printerDeviceName">
+            Windows-nyomtató (blokknyomtató)
+          </label>
+          {window.electronAPI ? (
+            <select
+              id="printerDeviceName"
+              className="form-input w-full"
+              value={s.printerDeviceName}
+              onChange={(e) => set('printerDeviceName', e.target.value)}
+            >
+              <option value="">— nincs kiválasztva —</option>
+              {[
+                ...new Set([
+                  ...printers.map((p) => p.name),
+                  ...(s.printerDeviceName ? [s.printerDeviceName] : []),
+                ]),
+              ].map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="text-xs text-muted-foreground">
+              A nyomtatóválasztás csak a telepített (Electron) kliensben érhető el.
+            </div>
+          )}
+        </div>
+        <div>
+          <label className="form-label" htmlFor="printerSerialPort">
+            Soros port (COM) — Star SP500 blokknyomtató
+          </label>
+          {window.electronAPI ? (
+            <select
+              id="printerSerialPort"
+              className="form-input w-full"
+              value={s.printerSerialPort}
+              onChange={(e) => set('printerSerialPort', e.target.value)}
+            >
+              <option value="">— nincs kiválasztva —</option>
+              {[
+                ...new Set([
+                  ...serialPorts.map((p) => p.path),
+                  ...(s.printerSerialPort ? [s.printerSerialPort] : []),
+                ]),
+              ].map((path) => {
+                const port = serialPorts.find((p) => p.path === path)
+                return (
+                  <option key={path} value={path}>
+                    {port?.friendlyName ? `${path} — ${port.friendlyName}` : path}
+                  </option>
+                )
+              })}
+            </select>
+          ) : (
+            <div className="text-xs text-muted-foreground">
+              A soros port választás csak a telepített (Electron) kliensben érhető el.
+            </div>
+          )}
+        </div>
         <div>
           <label className="form-label" htmlFor="scanner">
             Szkenner driver

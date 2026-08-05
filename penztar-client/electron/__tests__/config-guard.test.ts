@@ -81,6 +81,28 @@ describe('config-guard — allowlist and deny-pattern consistency', () => {
   });
 });
 
+describe('config-guard — printer kulcsok (SP500 nyomtató-konfiguráció)', () => {
+  it.each(['printer.deviceName', 'printer.serialPort'])('renderer-ből írható: `%s`', (key) => {
+    expect(isConfigKeyWritable(key)).toBe(true);
+  });
+
+  it.each(['printer.deviceName', 'printer.serialPort'])(
+    'renderer-ből olvasható (mentés utáni visszaolvasáshoz): `%s`',
+    (key) => {
+      expect(isConfigKeyReadable(key)).toBe(true);
+    },
+  );
+
+  it('a printer-bővítés nem nyit meg más kulcsot', () => {
+    expect(isConfigKeyWritable('printer.unknown')).toBe(false);
+    expect(isConfigKeyWritable('printer')).toBe(false);
+    expect(isConfigKeyWritable('app_mode')).toBe(false);
+    expect(isConfigKeyWritable('bootstrap_password')).toBe(false);
+    expect(isConfigKeyWritable('auth_token')).toBe(false);
+    expect(isConfigKeyWritable('server_url')).toBe(false);
+  });
+});
+
 describe('config-guard — stored server URL', () => {
   it.each([
     ['  https://backend.local/api/v1  ', 'https://backend.local/api/v1'],

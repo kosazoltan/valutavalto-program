@@ -118,9 +118,8 @@ import {
   getCachedWorkerTimestamp,
 } from './sqlite';
 import {
-  printReceipt,
+  printReceiptWithStoredConfig,
   type PrintReceiptData,
-  PRINTER_CONFIG_KEY,
   SERIAL_PORT_CONFIG_KEY,
 } from './printer';
 import { syncEngine } from './sync-engine';
@@ -390,17 +389,9 @@ function createWindow(): void {
 ipcMain.handle('print-receipt', async (_event, dataJson: string): Promise<boolean> => {
   try {
     const data = JSON.parse(dataJson) as PrintReceiptData;
-    const printerName = getConfig(PRINTER_CONFIG_KEY)?.trim() || undefined;
-    const serialPort = getConfig(SERIAL_PORT_CONFIG_KEY)?.trim() || undefined;
-    if (!printerName && !serialPort) {
-      console.error(
-        `[IPC][FAIL-CLOSED] print-receipt megtagadva receiptNumber=${data.receiptNumber}: ` +
-          'sem printer.deviceName, sem printer.serialPort ' +
-          'nincs konfigurálva. Windows default printer fallback TILTVA (PDF-mentés veszély).',
-      );
-      return false;
-    }
-    return await printReceipt(data, printerName, serialPort);
+    // Config-feloldás + fail-closed a printer.ts-ben (printReceiptWithStoredConfig) —
+    // ott tesztelt: tárolt printer.deviceName / printer.serialPort nélkül nincs nyomtatás.
+    return await printReceiptWithStoredConfig(data);
   } catch (err) {
     console.error('[IPC] print-receipt hiba:', err);
     return false;

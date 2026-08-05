@@ -80,6 +80,7 @@ export interface ElectronAPI {
       isDefault: boolean
     }>
   >
+  listSerialPorts(): Promise<Array<{ path: string; manufacturer?: string; friendlyName?: string }>>
 
   // --- Offline tranzakciók ---
   savePendingTransaction(
