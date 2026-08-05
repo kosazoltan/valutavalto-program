@@ -290,6 +290,57 @@ class CashBalanceServiceTest {
     }
 
     @Test
+    @DisplayName("FKH-029 kieg.: getCompanyTotals a vault-kizáró queryt hívja — az értéktári könyvelési sorok nem folynak be a pénztári összesítőbe")
+    void getCompanyTotals_excludesVault() {
+        UUID companyId = UUID.randomUUID();
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
+        CashBalance penztarEur = CashBalance.builder().currency(eur).currentBalance(new BigDecimal("100")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            when(cashBalanceRepository.findByCompanyIdExcludingVault(companyId))
+                    .thenReturn(List.of(penztarEur));
+
+            var totals = service.getCompanyTotals();
+
+            // FKH-029 kieg. (FR-6 kiterjesztés): a V371 óta minden Értéktárnak van cash_balance
+            // KÖNYVELÉSI sora, és a Transfer forgalmat is könyvel rá. A pénztári cégösszesítő
+            // (GET /cash-balances/company-totals — TreasuryDashboard valutaszám-kártya) ezért a
+            // vault+VAULT_COUNTERPARTY-kizáró queryből aggregál, különben a vault-forgalom
+            // beömlene, és a /treasury/dashboard (FR-6-szűrt) számaival is szétcsúszna.
+            verify(cashBalanceRepository).findByCompanyIdExcludingVault(companyId);
+            verify(cashBalanceRepository, never()).findByCompanyId(companyId);
+            assertThat(totals).hasSize(1);
+            assertThat(totals.get(0).getCurrencyCode()).isEqualTo("EUR");
+            assertThat(totals.get(0).getTotalBalance()).isEqualByComparingTo("100");
+        }
+    }
+
+    @Test
+    @DisplayName("FKH-029 kieg.: getCompanyCashPosition a vault-kizáró queryt hívja — a fő „Összes készletérték\" pénztár-only")
+    void getCompanyCashPosition_excludesVault() {
+        UUID companyId = UUID.randomUUID();
+        Currency huf = Currency.builder().id(1L).code("HUF").build();
+        Branch penztar = Branch.builder().id(BRANCH_ID).build();
+        CashBalance hufRow = CashBalance.builder()
+                .currency(huf).branch(penztar).currentBalance(new BigDecimal("1000")).build();
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            when(cashBalanceRepository.findByCompanyIdExcludingVault(companyId))
+                    .thenReturn(List.of(hufRow));
+
+            var pos = service.getCompanyCashPosition();
+
+            // A TreasuryDashboard fő számának (GET /cash-balances/company-position) forrása —
+            // a /treasury/dashboard FR-6-kizárásával konzisztensen vault nélkül aggregál.
+            verify(cashBalanceRepository).findByCompanyIdExcludingVault(companyId);
+            verify(cashBalanceRepository, never()).findByCompanyId(companyId);
+            assertThat(pos.getGrandTotalHuf()).isEqualByComparingTo("1000");
+        }
+    }
+
+    @Test
     @DisplayName("FK-038: initializeBranchBalances ÉRTÉKTÁR fiókra 0-t ad és NEM hoz létre cash_balance-t")
     void initializeBranchBalances_vaultBranch_skipped() {
         UUID vaultBranchId = UUID.randomUUID();
@@ -613,7 +664,8 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            when(cashBalanceRepository.findByCompanyId(companyId)).thenReturn(List.of(b1, b2));
+            // FKH-029 kieg.: a totals a vault-kizáró queryből aggregál (spec-váltás, ld. lentebb).
+            when(cashBalanceRepository.findByCompanyIdExcludingVault(companyId)).thenReturn(List.of(b1, b2));
 
             var totals = service.getCompanyTotals();
 
@@ -639,7 +691,8 @@ class CashBalanceServiceTest {
 
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            when(cashBalanceRepository.findByCompanyId(companyId)).thenReturn(List.of(b1, b2));
+            // FKH-029 kieg.: a position a vault-kizáró queryből aggregál (spec-váltás, ld. lentebb).
+            when(cashBalanceRepository.findByCompanyIdExcludingVault(companyId)).thenReturn(List.of(b1, b2));
             // A production a csoport ELSŐ elemének branch-ét használja az árfolyam-lekéréshez (b1 = BRANCH_ID).
             when(exchangeRateRepository.findLatestRate(companyId, 4L, BRANCH_ID))
                     .thenReturn(Optional.of(er));

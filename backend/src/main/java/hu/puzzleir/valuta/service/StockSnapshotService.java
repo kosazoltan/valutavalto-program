@@ -24,6 +24,7 @@ public class StockSnapshotService {
 
     private final BranchRepository branchRepository;
     private final CashBalanceRepository cashBalanceRepository;
+    private final CurrencyStockRepository currencyStockRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final WuBalanceRepository wuBalanceRepository;
     private final ReservationRepository reservationRepository;
@@ -101,6 +102,16 @@ public class StockSnapshotService {
                 .filter(cb -> cb.getBranch() != null && activeBranchIds.contains(cb.getBranch().getId()))
                 .collect(Collectors.toList());
 
+        // FKH-029 kieg.: a vault (is_vault=TRUE) branch-ek KÉSZLET-értéke a currency_stock VAULT
+        // soraiból jön — a cash_balance a V371 óta 0 nyitóértékről induló KÖNYVELÉSI réteg, ami a
+        // fizikai készlettel a baseline-eltérés miatt nem egyezik. Egy batch query, territory
+        // (entity_id = vault_territory_id::TEXT, ld. VaultStockFlowService konvenció) szerint bontva.
+        Map<String, Map<String, CurrencyStock>> vaultStockByTerritory = currencyStockRepository
+                .findByCompanyIdAndEntityType(companyId, "VAULT").stream()
+                .filter(cs -> cs.getEntityId() != null && cs.getCurrencyCode() != null)
+                .collect(Collectors.groupingBy(CurrencyStock::getEntityId,
+                        Collectors.toMap(CurrencyStock::getCurrencyCode, cs -> cs, (a, b) -> a)));
+
         List<String> codes = resolveCurrencyCodes(companyBalances);
 
         if (branches.isEmpty()) {
@@ -137,7 +148,8 @@ public class StockSnapshotService {
         // füleken nem jelennek meg, de a cégösszesítőből nem esnek ki.
         Map<String, List<BranchSnapshotDto>> branchesByRegion = new LinkedHashMap<>();
         for (Branch branch : branches) {
-            BranchSnapshotDto branchDto = buildBranchSnapshot(companyId, branch, balancesByBranch, wuByBranch, today, codes);
+            BranchSnapshotDto branchDto = buildBranchSnapshot(
+                    companyId, branch, balancesByBranch, vaultStockByTerritory, wuByBranch, today, codes);
             String regionCode = branch.getRegion() != null
                     ? REGION_CODE_BY_NAME.get(normalizeRegion(branch.getRegion()))
                     : null;
@@ -228,6 +240,7 @@ public class StockSnapshotService {
             UUID companyId,
             Branch branch,
             Map<UUID, List<CashBalance>> balancesByBranch,
+            Map<String, Map<String, CurrencyStock>> vaultStockByTerritory,
             Map<UUID, WuBalance> wuByBranch, LocalDate today, List<String> codes) {
 
         UUID branchId = branch.getId();
@@ -236,6 +249,17 @@ public class StockSnapshotService {
         Map<String, CashBalance> stockMap = balances.stream()
                 .filter(cb -> cb.getCurrency() != null && cb.getCurrency().getCode() != null)
                 .collect(Collectors.toMap(cb -> cb.getCurrency().getCode(), cb -> cb, (a, b) -> a));
+
+        // FKH-029 kieg.: vault branch-nél a currency_stock a készlet-forrás; a cash_balance
+        // könyvelési sorai itt NEM számítanak (0 baseline — hamis „magabiztos 0"-t mutatnának).
+        // Hiányzó vault_territory_id (törzsadat-hiba) esetén nem dobunk: a cégszintű snapshot
+        // nem dőlhet el egy rossz vault-konfiguráció miatt — az adott branch 0-t mutat.
+        boolean vaultBranch = Boolean.TRUE.equals(branch.getIsVault());
+        Map<String, CurrencyStock> vaultStocks = Map.of();
+        if (vaultBranch && branch.getVaultTerritoryId() != null) {
+            vaultStocks = vaultStockByTerritory.getOrDefault(
+                    branch.getVaultTerritoryId().toString(), Map.of());
+        }
 
         Map<String, Long> reservedByCode = new HashMap<>();
         for (Object[] row : reservationRepository.getReservedStockByBranch(branchId)) {
@@ -248,7 +272,18 @@ public class StockSnapshotService {
         for (String code : codes) {
             CashBalance cb = stockMap.get(code);
             long stock = 0, stockHuf = 0;
-            if (cb != null) {
+            if (vaultBranch) {
+                CurrencyStock cs = vaultStocks.get(code);
+                if (cs != null) {
+                    BigDecimal quantity = cs.getQuantity() != null ? cs.getQuantity() : BigDecimal.ZERO;
+                    stock = quantity.longValue();
+                    stockHuf = roundHuf(calculateHufValueByCode(companyId, code, quantity));
+                    if (cs.getLastUpdated() != null
+                            && (lastUpdated == null || cs.getLastUpdated().isAfter(lastUpdated))) {
+                        lastUpdated = cs.getLastUpdated();
+                    }
+                }
+            } else if (cb != null) {
                 BigDecimal currentBalance = cb.getCurrentBalance() != null ? cb.getCurrentBalance() : BigDecimal.ZERO;
                 stock = currentBalance.longValue();
                 stockHuf = roundHuf(calculateHufValue(companyId, cb.getCurrency(), currentBalance));
@@ -368,15 +403,23 @@ public class StockSnapshotService {
     }
 
     private BigDecimal calculateHufValue(UUID companyId, Currency currency, BigDecimal amount) {
-        if (currency == null || currency.getCode() == null || amount == null) {
+        if (currency == null) {
             return BigDecimal.ZERO;
         }
-        if ("HUF".equals(currency.getCode())) {
+        return calculateHufValueByCode(companyId, currency.getCode(), amount);
+    }
+
+    /** FKH-029 kieg.: kód-alapú változat — a currency_stock sorokban nincs Currency entitás. */
+    private BigDecimal calculateHufValueByCode(UUID companyId, String currencyCode, BigDecimal amount) {
+        if (currencyCode == null || amount == null) {
+            return BigDecimal.ZERO;
+        }
+        if ("HUF".equals(currencyCode)) {
             return amount.setScale(0, RoundingMode.HALF_UP);
         }
-        Optional<BigDecimal> midRate = exchangeRateRepository.findLatestMidRateByCurrencyCode(companyId, currency.getCode());
+        Optional<BigDecimal> midRate = exchangeRateRepository.findLatestMidRateByCurrencyCode(companyId, currencyCode);
         if (midRate.isEmpty()) {
-            log.warn("Nem található árfolyam a snapshot HUF érték számításhoz: companyId={}, currency={}", companyId, currency.getCode());
+            log.warn("Nem található árfolyam a snapshot HUF érték számításhoz: companyId={}, currency={}", companyId, currencyCode);
             return BigDecimal.ZERO;
         }
         return amount.multiply(midRate.get()).setScale(0, RoundingMode.HALF_UP);

@@ -96,8 +96,9 @@ public class CashBalanceService {
      * V334/FK-036 invariáns szerint értéktárnak nincs is cash_balance sora. Defense-in-depth: ha
      * mégis „beszivárogna" ilyen sor (mint a V247-bugnál a BR020-ba), a widget akkor se listázza
      * tévesen az értéktárat. A FK-036 mintát (InventoryService.getAllStock activeNonVaultBranch)
-     * követi: a kizárás a fogyasztó-specifikus metódusban, nem a megosztott findByCompanyId-ben
-     * (azt a totals/position aggregátumok is használják — szándékosan változatlan).
+     * követi: a kizárás a fogyasztó-specifikus metódusban, nem a megosztott findByCompanyId-ben.
+     * FKH-029 kieg. óta a totals/position aggregátumok IS a kizáró queryt használják — a V371
+     * után a vault cash_balance sorok könyvelési rétegként léteznek, nem pénztári készletként.
      */
     @Transactional(readOnly = true)
     public List<CashBalance> getCompanyBalances() {
@@ -394,12 +395,20 @@ public class CashBalanceService {
     }
 
     /**
-     * Kassza összesítő (összes iroda)
+     * Kassza összesítő (összes PÉNZTÁRI iroda).
+     *
+     * FKH-029 kieg. (FR-6 kiterjesztés): a V371 óta minden Értéktárnak van cash_balance
+     * KÖNYVELÉSI sora, és a Transfer forgalmat is könyvel rá — a korábbi „szándékosan sima
+     * findByCompanyId" döntés ezért megfordult. A pénztári cégösszesítő
+     * (GET /cash-balances/company-totals — TreasuryDashboard valutaszám-kártya) a
+     * vault+VAULT_COUNTERPARTY-kizáró queryből aggregál, konzisztensen a
+     * TreasuryDashboardService.isExcludedFromCashierTotals (FKH-029 FR-6) szűrésével.
+     * A vault-készlet helyes megjelenítési helye a currency_stock-alapú vault-nézet.
      */
     @Transactional(readOnly = true)
     public List<CurrencyTotalBalance> getCompanyTotals() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
+        List<CashBalance> allBalances = cashBalanceRepository.findByCompanyIdExcludingVault(companyId);
 
         return allBalances.stream()
                 .collect(Collectors.groupingBy(
@@ -541,13 +550,18 @@ public class CashBalanceService {
     }
 
     /**
-     * Cég szintű pillanat állás (összes iroda összesítve)
+     * Cég szintű pillanat állás (összes PÉNZTÁRI iroda összesítve).
+     *
+     * FKH-029 kieg.: a TreasuryDashboard fő „Összes készletérték" számának forrása
+     * (GET /cash-balances/company-position). Vault+VAULT_COUNTERPARTY-kizárással aggregál,
+     * különben az értéktári könyvelési sorok az első valós vault-forgalomnál beömlenének, és a
+     * /treasury/dashboard (FR-6-szűrt) számaival szétcsúszna ugyanazon az oldalon.
      */
     @Transactional(readOnly = true)
     public CompanyCashPosition getCompanyCashPosition() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        List<CashBalance> allBalances = cashBalanceRepository.findByCompanyId(companyId);
+        List<CashBalance> allBalances = cashBalanceRepository.findByCompanyIdExcludingVault(companyId);
 
         // Csoportosítás valutánként
         List<CompanyCurrencyPosition> currencyPositions = allBalances.stream()

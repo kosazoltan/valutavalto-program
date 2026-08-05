@@ -891,19 +891,59 @@ public class ClosingWizardService {
     }
 
     /**
-     * FK-063 FR-1: pénznem-kódok, amelyekre a pénztári becímletezésnek szekciót kell
-     * nyitnia — a branch nem-nulla {@code cash_balance} készletű pénznemei, plusz a
-     * HUF mindig (akkor is, ha az egyenlege éppen 0). Cég-szűrt (cross-tenant
-     * branchId üres készletet ad — csak a kötelező HUF marad).
+     * FK-063 FR-1: pénznem-kódok, amelyekre a becímletezésnek szekciót kell nyitnia —
+     * a branch nem-nulla készletű pénznemei, plusz a HUF mindig (akkor is, ha az
+     * egyenlege éppen 0). Cég-szűrt (cross-tenant branchId üres készletet ad — csak
+     * a kötelező HUF marad).
+     *
+     * <p>FKH-029 kieg.: vault (is_vault=TRUE) branch-nél a forrás a currency_stock VAULT
+     * rétege — a cash_balance a V371 óta 0-ról induló könyvelési réteg, amin a nem-nulla
+     * szűrő a valós készlet ellenére üresen jönne vissza (vault-usernek csak HUF látszott).
+     * A branch-feloldás szándékosan lenient: ismeretlen/idegen branchId a pénztári ágra
+     * esik, ahol a cég-szűrt query üres listát ad (a fail-closed kontraktus változatlan).</p>
      */
     @Transactional(readOnly = true)
     public List<String> getCurrenciesWithBalance(UUID branchId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Branch branch = branchRepository.findByIdAndCompanyId(branchId, companyId).orElse(null);
+        if (isVaultContext(branch)) {
+            return vaultCurrenciesWithBalance(companyId, branch);
+        }
         List<String> codes = new ArrayList<>(
                 cashBalanceRepository.findCurrencyCodesWithNonZeroBalance(branchId, companyId));
         if (!codes.contains("HUF")) {
             codes.add(0, "HUF");
         }
+        return codes;
+    }
+
+    /** FKH-029 kieg.: a vault nem-nulla currency_stock pénznemei, HUF elöl (FK-063 kontraktus). */
+    private List<String> vaultCurrenciesWithBalance(UUID companyId, Branch branch) {
+        if (branch.getVaultTerritoryId() == null) {
+            // Törzsadat-hiba: territory nélkül nincs feloldható vault-készlet — fail-closed, csak HUF.
+            log.warn("getCurrenciesWithBalance: vault branch ({}) vault_territory_id nélkül → csak HUF",
+                    branch.getCode());
+            return new ArrayList<>(List.of("HUF"));
+        }
+        String territoryEntityId = branch.getVaultTerritoryId().toString();
+        Set<String> nonZero = currencyStockRepository.findByCompanyIdAndEntityType(companyId, "VAULT").stream()
+                .filter(cs -> territoryEntityId.equals(cs.getEntityId()))
+                .filter(cs -> cs.getQuantity() != null && cs.getQuantity().signum() != 0)
+                .map(CurrencyStock::getCurrencyCode)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        // Aktív törzs display_order szerinti sorrend (a calculateDifferences vault-ágának mintája),
+        // a törzsben nem szereplő nem-nulla leftover kódok utána ábécében.
+        List<String> codes = new ArrayList<>();
+        for (hu.puzzleir.valuta.entity.Currency currency : currencyRepository.findAllActiveOrdered()) {
+            String code = currency.getCode();
+            if (code != null && nonZero.remove(code)) {
+                codes.add(code);
+            }
+        }
+        codes.addAll(new TreeSet<>(nonZero));
+        codes.remove("HUF");
+        codes.add(0, "HUF");
         return codes;
     }
 

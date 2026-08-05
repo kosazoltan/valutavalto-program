@@ -644,12 +644,52 @@ public class InventoryService {
 
     /**
      * Egy iroda készlete (CashBalance lista).
+     *
+     * <p>FKH-029 kieg.: vault (is_vault=TRUE) branch-nél a készlet a currency_stock VAULT
+     * soraiból jön (entity_id = vault_territory_id::TEXT). A cash_balance a V371 óta 0-ról
+     * induló KÖNYVELÉSI réteg — abból olvasva az értéktáros a valós készlet helyett hamis
+     * nullákat látott (InventoryPage „220M Ft + minden 0" tünet). A visszaadott lista vault
+     * esetén szintetikus (nem perzisztált) CashBalance sorokból áll, hogy a controller
+     * DTO-mappelése és a hívók változatlanok maradhassanak.</p>
      */
     @Transactional(readOnly = true)
     public List<CashBalance> getCurrentStock(UUID branchId) {
         Branch branch = findBranch(branchId.toString());
         assertBranchAllowedForCurrentTerritory(branch, null, "INVENTORY_STOCK_READ");
+        if (Boolean.TRUE.equals(branch.getIsVault())) {
+            return buildVaultStockAsCashBalances(branch);
+        }
         return cashBalanceRepository.findByBranchIdAndCompanyId(branchId, branch.getCompany().getId());
+    }
+
+    /** FKH-029 kieg.: a vault currency_stock sorai szintetikus CashBalance-ként (csak olvasásra). */
+    private List<CashBalance> buildVaultStockAsCashBalances(Branch branch) {
+        Integer territoryId = branch.getVaultTerritoryId();
+        if (territoryId == null) {
+            // Törzsadat-hiba: territory nélkül a vault-készlet nem oldható fel — fail-closed,
+            // üres lista (a getVaultStockFlow ugyanígy nem tudná feloldani).
+            log.warn("getCurrentStock: vault branch ({}) vault_territory_id nélkül → üres készlet (fail-closed)",
+                    branch.getCode());
+            return List.of();
+        }
+        String territoryEntityId = territoryId.toString();
+        UUID companyId = branch.getCompany().getId();
+        Map<String, Currency> currencyByCode = currencyRepository.findAllActiveOrdered().stream()
+                .filter(c -> c.getCode() != null)
+                .collect(Collectors.toMap(Currency::getCode, c -> c, (a, b) -> a));
+        return currencyStockRepository.findByCompanyIdAndEntityType(companyId, "VAULT").stream()
+                .filter(cs -> territoryEntityId.equals(cs.getEntityId()))
+                .filter(cs -> cs.getCurrencyCode() != null)
+                .map(cs -> CashBalance.builder()
+                        .company(branch.getCompany())
+                        .branch(branch)
+                        .currency(currencyByCode.getOrDefault(cs.getCurrencyCode(),
+                                Currency.builder().code(cs.getCurrencyCode()).name(cs.getCurrencyCode()).build()))
+                        .currentBalance(cs.getQuantity() != null ? cs.getQuantity() : BigDecimal.ZERO)
+                        .openingBalance(BigDecimal.ZERO)
+                        .updatedAt(cs.getLastUpdated())
+                        .build())
+                .toList();
     }
 
     /**

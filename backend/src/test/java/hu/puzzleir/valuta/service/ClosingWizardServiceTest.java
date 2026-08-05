@@ -34,6 +34,8 @@ class ClosingWizardServiceTest {
     @Mock private TransactionRepository transactionRepository;
     @Mock private DailyClosingService dailyClosingService;
     @Mock private ObjectMapper objectMapper;
+    @Mock private CurrencyRepository currencyRepository;
+    @Mock private CurrencyStockRepository currencyStockRepository;
     @InjectMocks private ClosingWizardService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -225,5 +227,48 @@ class ClosingWizardServiceTest {
 
             assertThat(service.getCurrenciesWithBalance(UUID.randomUUID())).containsExactly("HUF");
         }
+    }
+
+    @Test
+    @DisplayName("FKH-029 kieg.: getCurrenciesWithBalance vault branch-re a currency_stock nem-nulla valutáit adja + HUF elöl")
+    void getCurrenciesWithBalance_vaultBranch_readsCurrencyStock() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            Branch vault = Branch.builder().id(BRANCH_ID).isVault(true).vaultTerritoryId(12).build();
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(vault));
+            when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of(
+                    Currency.builder().code("EUR").build(),
+                    Currency.builder().code("USD").build()));
+            // V371 után a vault cash_balance sorai 0-k — a nonZero cash_balance-szűrő vaultra üres
+            // lenne. A valós készlet a currency_stock VAULT sorokban van (saját territory!).
+            when(currencyStockRepository.findByCompanyIdAndEntityType(COMPANY_ID, "VAULT")).thenReturn(List.of(
+                    vaultStockRow("12", "EUR", "1000"),
+                    vaultStockRow("12", "USD", "0"),      // nulla készlet → nem kerül be
+                    vaultStockRow("13", "GBP", "500")));  // másik territory → nem szivárog át
+
+            assertThat(service.getCurrenciesWithBalance(BRANCH_ID)).containsExactly("HUF", "EUR");
+            verify(cashBalanceRepository, never()).findCurrencyCodesWithNonZeroBalance(any(), any());
+        }
+    }
+
+    @Test
+    @DisplayName("FKH-029 kieg.: vault branch vault_territory_id nélkül csak HUF-ot ad (fail-closed)")
+    void getCurrenciesWithBalance_vaultBranchWithoutTerritory_hufOnly() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            Branch vault = Branch.builder().id(BRANCH_ID).isVault(true).vaultTerritoryId(null).build();
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(vault));
+
+            assertThat(service.getCurrenciesWithBalance(BRANCH_ID)).containsExactly("HUF");
+        }
+    }
+
+    private CurrencyStock vaultStockRow(String territoryEntityId, String currencyCode, String quantity) {
+        return CurrencyStock.builder()
+                .entityType("VAULT")
+                .entityId(territoryEntityId)
+                .currencyCode(currencyCode)
+                .quantity(new java.math.BigDecimal(quantity))
+                .build();
     }
 }
