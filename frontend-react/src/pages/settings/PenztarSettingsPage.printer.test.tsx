@@ -170,12 +170,16 @@ describe('PenztarSettingsPage — SP500 nyomtató-konfiguráció', () => {
     await waitFor(() => expect(serialSelect).toHaveValue(''))
   })
 
-  it('Codex MEDIUM#2: részleges SQLite-írási hiba → rollback az első kulcsra, hibajelzés, mentés megszakad', async () => {
+  it('Codex MEDIUM#2: részleges SQLite-írási hiba → rollback-HÍVÁS az első kulcsra, hibajelzés, a localStorage/backend réteg nem frissül', async () => {
     // Választott kontraktus: az operatív SQLite-írás fut ELŐSZÖR; ha a második
-    // kulcs írása hibázik, az első visszaáll a betöltéskor olvasott értékre
-    // (kompenzáló rollback), a mentés megszakad (nincs localStorage/backend
-    // frissítés), a felhasználó hibaüzenetet kap. Végállapot: mindkét kulcs
-    // régi VAGY mindkét kulcs új — részleges konfiguráció nem maradhat.
+    // kulcs írása hibázik, kompenzáló rollback-hívás megy az első kulcsra a
+    // betöltéskor olvasott értékkel, a mentés megszakad (nincs localStorage/
+    // backend frissítés), a felhasználó hibaüzenetet kap.
+    //
+    // Ez a teszt PONTOSAN ennyit bizonyít: (a) a rollback-hívás megtörtént,
+    // (b) hibajelzés volt, (c) a többi réteg nem frissült. NEM bizonyítja a
+    // két kulcs TÉNYLEGES SQLite-végállapotának konzisztenciáját — ld. a
+    // KNOWN LIMITATION megjegyzést és az it.todo-t a teszt után.
     electronAPI.getConfig.mockImplementation(async (key: string) => {
       if (key === 'printer.deviceName') return 'Old-Device'
       if (key === 'printer.serialPort') return 'COM1'
@@ -207,6 +211,21 @@ describe('PenztarSettingsPage — SP500 nyomtató-konfiguráció', () => {
     expect(mocks.machinePut).not.toHaveBeenCalled()
     expect(localStorage.getItem('penztar-settings') ?? '').not.toContain('Star SP500')
   })
+
+  // KNOWN LIMITATION — dokumentált, tudatosan elfogadott maradvány-kockázat
+  // (PR #1559 Codex kézi review 2. kör, 2026-08-05, Tomi döntése):
+  // A fenti MEDIUM#2 teszt mockolt setConfig-ja nem tárol állapotot, ezért a
+  // teljes két-kulcsos SQLite-végállapot (atomicitás) ezen a szinten NEM
+  // verifikált. A production-oldali korlát: a renderer rollback best-effort
+  // (a hibája elnyelődik), a sqlite.ts setConfig pedig előbb in-memory
+  // módosít és csak utána perzisztál — valódi atomicitáshoz sqlite.ts-szintű
+  // tranzakció-támogatás kellene, ami minden config-írást érint (follow-up).
+  // Elfogadás indoka: ritka admin-művelet, a legrosszabb részleges állapot
+  // ismételt mentéssel manuálisan helyrehozható, és a fail-closed elv miatt
+  // nyomtatási kockázatot nem hordoz.
+  it.todo(
+    'follow-up: két-kulcsos SQLite-írás valódi atomicitása (sqlite.ts tranzakció-támogatás) — állapottartó mockkal verifikálandó',
+  )
 
   it('kiválasztás nélkül üres értéket ír (a fail-closed állapot megmarad)', async () => {
     const user = userEvent.setup()
