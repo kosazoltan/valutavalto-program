@@ -218,9 +218,23 @@ test('sikeres átadás után a szállítólevél-előnézet automatikusan megny�
   // A bizonylat-szám megjelenik az előnézeten
   await expect(page.getByText('AT105000042').nth(1)).toBeVisible()
 
-  // Render-minőség: a modal gombja a viewporton belül van, nincs levágás
+  // Render-minőség: a modal gombjai a viewporton belül vannak, nincs levágás.
+  // Codex MEDIUM (PR #1561): a primer "Nyomtatás" akciógomb is ellenőrizve — a
+  // siker-banner azonos feliratú gombja miatt a modal-overlay-re szűkítünk.
+  const modalOverlay = page.locator('div.fixed.inset-0')
+  const printButton = modalOverlay.getByRole('button', { name: 'Nyomtatás', exact: true })
+  await expect(printButton).toBeVisible()
+  const printBox = await printButton.boundingBox()
+  expect(printBox).not.toBeNull()
+  expect(printBox!.y).toBeGreaterThanOrEqual(0)
+  expect(printBox!.x).toBeGreaterThanOrEqual(0)
+  expect(printBox!.y + printBox!.height).toBeLessThanOrEqual(800)
+  expect(printBox!.x + printBox!.width).toBeLessThanOrEqual(1280)
+
   const cancelBox = await cancelButton.boundingBox()
   expect(cancelBox).not.toBeNull()
+  expect(cancelBox!.y).toBeGreaterThanOrEqual(0)
+  expect(cancelBox!.x).toBeGreaterThanOrEqual(0)
   expect(cancelBox!.y + cancelBox!.height).toBeLessThanOrEqual(800)
   expect(cancelBox!.x + cancelBox!.width).toBeLessThanOrEqual(1280)
 
