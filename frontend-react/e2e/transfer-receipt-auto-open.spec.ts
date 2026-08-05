@@ -138,6 +138,33 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/features') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      })
+    }
+
+    // resolveTransferRate: elszámoló árfolyam a deviza-átadólap forintosított értékéhez
+    if (path.endsWith('/exchange-rates') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            currencyId: 1,
+            currencyCode: 'EUR',
+            currencyName: 'Euró',
+            baseBuyRate: 391.5,
+            baseSellRate: 398.5,
+            officialRate: 395,
+            active: true,
+          },
+        ]),
+      })
+    }
+
     if (path.endsWith('/cash-balances') && method === 'GET') {
       return route.fulfill({
         status: 200,
@@ -173,7 +200,16 @@ async function mockApis(page: Page) {
       })
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+    // Sourcery (PR #1561): a nem kezelt /api/v1 route NE csússzon át némán sikeresként —
+    // explicit 404 + felismerhető hibaüzenet, hogy egy jövőbeli váratlan API-hívás
+    // láthatóan bukjon (a hívó komponens hibaága fut, nem hamis-zöld út).
+    return route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: `Nem várt /api/v1 hívás az e2e mockban: ${method} ${path} — vedd fel a mockApis route-listájába`,
+      }),
+    })
   })
 }
 
