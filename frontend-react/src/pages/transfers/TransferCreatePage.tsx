@@ -537,6 +537,9 @@ export default function TransferCreatePage() {
           denominations: receiptDenominations, // FR-17..19 (offline: lokális adatokból)
           transferLines: receiptTransferLines, // A.1: több-valutás sorok a bizonylaton
         })
+        // Cashier/Shipment-minta (2026-08-05, Tomi): az előnézet automatikusan nyílik,
+        // a nyomtatás a modal gombjára kötött kézi művelet marad.
+        setShowReceiptModal(true)
       } else {
         const result = await transferApi.create(request)
         setSuccess(
@@ -576,6 +579,9 @@ export default function TransferCreatePage() {
                   }))
                 : receiptTransferLines,
           })
+          // Cashier/Shipment-minta (2026-08-05, Tomi): az előnézet automatikusan nyílik,
+          // a nyomtatás a modal gombjára kötött kézi művelet marad.
+          setShowReceiptModal(true)
         }
       }
 

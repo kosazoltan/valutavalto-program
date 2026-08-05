@@ -161,9 +161,10 @@ async function createTransferAndOpenReceiptModal() {
   fireEvent.change(screen.getByPlaceholderText('Plombaszám...'), { target: { value: 'PL-12345' } })
   fireEvent.click(screen.getByText('Átadás létrehozása'))
 
-  // siker-banner a Nyomtatás gombbal → kattintásra nyílik a szállítólevél-előnézet
+  // Spec-változás (Tomi, 2026-08-05, Cashier/Shipment-minta): a szállítólevél-előnézet
+  // sikeres létrehozás után AUTOMATIKUSAN nyílik — a banner Nyomtatás gombjára nincs szükség.
+  // A tesztek kontraktusa (hibánál nyitva maradó modal + kézi retry) változatlan.
   await screen.findByText('Átadás létrehozva: AT105000042')
-  fireEvent.click(screen.getByRole('button', { name: 'Nyomtatás' }))
   await screen.findByText('Mégse (ESC)')
 
   // a banner ÉS a modal gombja is 'Nyomtatás' — a modal a DOM végén renderelődik
