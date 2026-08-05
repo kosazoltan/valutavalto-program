@@ -8,8 +8,10 @@ import hu.puzzleir.valuta.dto.inventory.InventoryMovementDto;
 import hu.puzzleir.valuta.dto.inventory.ReceiveMovementDto;
 import hu.puzzleir.valuta.entity.AuditLog;
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.CurrencyStock;
 import hu.puzzleir.valuta.entity.InventoryMovement;
 import hu.puzzleir.valuta.entity.MovementStatus;
 import hu.puzzleir.valuta.entity.MovementType;
@@ -40,6 +42,7 @@ import org.mockito.quality.Strictness;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -252,6 +255,64 @@ class InventoryServiceVaultTest {
         assertThat(result.getStatus()).isEqualTo("PENDING");
         verify(stockAccessor).getBalance(vaultBranch, eur);
         verify(movementRepository).save(any(InventoryMovement.class));
+    }
+
+    // ============ FKH-029 kieg.: getCurrentStock vault-delegálás ============
+
+    @Test
+    @DisplayName("FKH-029 kieg.: getCurrentStock vault branch-re a currency_stock VAULT soraiból ad készletet, nem a 0-s cash_balance-ból")
+    void getCurrentStock_vaultBranch_readsCurrencyStock() {
+        // Sourcery-kör: a territory-szűrés a dedikált repo-query dolga — a szivárgás-mentességet
+        // a PONTOS territory-argumentum verify-je garantálja.
+        when(currencyStockRepository.findByCompanyIdAndEntityTypeAndEntityId(COMPANY_ID, "VAULT", "12"))
+                .thenReturn(List.of(vaultStockRow("12", "EUR", "5000.00")));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of(eur));
+
+        List<CashBalance> result = inventoryService.getCurrentStock(VAULT_BRANCH_ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getCurrency().getCode()).isEqualTo("EUR");
+        assertThat(result.get(0).getCurrentBalance()).isEqualByComparingTo("5000.00");
+        assertThat(result.get(0).getBranch().getId()).isEqualTo(VAULT_BRANCH_ID);
+        verify(currencyStockRepository).findByCompanyIdAndEntityTypeAndEntityId(COMPANY_ID, "VAULT", "12");
+        verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
+    }
+
+    @Test
+    @DisplayName("FKH-029 kieg.: getCurrentStock pénztári branch-re változatlanul cash_balance-ból olvas")
+    void getCurrentStock_cashierBranch_unchangedCashBalancePath() {
+        CashBalance cb = CashBalance.builder()
+                .branch(cashierBranch).currency(eur).currentBalance(new BigDecimal("100")).build();
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(CASHIER_BRANCH_ID, COMPANY_ID))
+                .thenReturn(List.of(cb));
+
+        List<CashBalance> result = inventoryService.getCurrentStock(CASHIER_BRANCH_ID);
+
+        assertThat(result).containsExactly(cb);
+        verify(currencyStockRepository, never()).findByCompanyIdAndEntityTypeAndEntityId(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("FKH-029 kieg.: getCurrentStock vault branch-re vault_territory_id nélkül üres listát ad (fail-closed, nincs kivétel)")
+    void getCurrentStock_vaultBranchWithoutTerritory_returnsEmpty() {
+        vaultBranch.setVaultTerritoryId(null);
+
+        List<CashBalance> result = inventoryService.getCurrentStock(VAULT_BRANCH_ID);
+
+        assertThat(result).isEmpty();
+        verify(currencyStockRepository, never()).findByCompanyIdAndEntityTypeAndEntityId(any(), any(), any());
+        verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
+    }
+
+    private CurrencyStock vaultStockRow(String territoryEntityId, String currencyCode, String quantity) {
+        return CurrencyStock.builder()
+                .company(company)
+                .entityType("VAULT")
+                .entityId(territoryEntityId)
+                .currencyCode(currencyCode)
+                .quantity(new BigDecimal(quantity))
+                .lastUpdated(java.time.LocalDateTime.now())
+                .build();
     }
 
     private InventoryMovement movement(MovementType type, MovementStatus status,

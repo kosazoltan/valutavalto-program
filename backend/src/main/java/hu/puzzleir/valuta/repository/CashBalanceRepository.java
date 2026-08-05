@@ -136,8 +136,9 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
      *
      * A predikátum a {@link BranchRepository#findRateCreationAssignableCashierBranches(UUID)}
      * (FK02-C) bevált is_vault=false szűrőjét tükrözi. A branch JOIN FETCH-elt, így OSIV-off
-     * mellett is biztonságos (a totals/position aggregátumok szándékosan a sima findByCompanyId-n
-     * maradnak — az külön üzleti döntés).
+     * mellett is biztonságos. FKH-029 kieg.: a totals/position aggregátumok
+     * (getCompanyTotals/getCompanyCashPosition) IS erre a queryre álltak át — a V371 óta a vault
+     * cash_balance sorok könyvelési rétegként léteznek, és nem pénztári készletek.
      */
     @Query("SELECT cb FROM CashBalance cb " +
            "JOIN FETCH cb.branch " +

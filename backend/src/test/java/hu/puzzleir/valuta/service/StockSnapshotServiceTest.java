@@ -130,6 +130,21 @@ class StockSnapshotServiceTest {
         when(cashBalanceRepository.findByCompanyId(COMPANY_ID)).thenReturn(Arrays.asList(balances));
     }
 
+    private CurrencyStock createVaultStock(String territoryEntityId, String currencyCode, String quantity) {
+        return CurrencyStock.builder()
+                .entityType("VAULT")
+                .entityId(territoryEntityId)
+                .currencyCode(currencyCode)
+                .quantity(new BigDecimal(quantity))
+                .lastUpdated(LocalDateTime.now())
+                .build();
+    }
+
+    private void setVaultStocks(CurrencyStock... stocks) {
+        when(currencyStockRepository.findByCompanyIdAndEntityType(COMPANY_ID, "VAULT"))
+                .thenReturn(Arrays.asList(stocks));
+    }
+
     private void setMidRate(String currencyCode, String rate) {
         midRates.put(currencyCode, new BigDecimal(rate));
     }
@@ -223,13 +238,20 @@ class StockSnapshotServiceTest {
         assertThat(codes).doesNotContain("DKK");
     }
 
+    // FKH-029 kieg. SPEC-VÁLTÁS: korábban snapshot_returns_cash_balance_not_currency_stock néven
+    // a verifyNoInteractions(currencyStockRepository)-t kodifikálta. A vault-értékek currency_stock
+    // forrása miatt a snapshot mostantól EGY batch VAULT-queryt futtat; a megőrzött garancia az,
+    // hogy a PÉNZTÁRI branch értéke továbbra is kizárólag a cash_balance-ból jön, és a vault-készlet
+    // nem szivárog át rá.
     @Test
-    @DisplayName("snapshot_returns_cash_balance_not_currency_stock")
-    void snapshot_returns_cash_balance_not_currency_stock() {
+    @DisplayName("FKH-029 kieg.: pénztári branch értéke cash_balance-ból jön, a currency_stock nem szivárog rá")
+    void snapshot_cashier_branch_returns_cash_balance_not_currency_stock() {
         Branch branch = createBranch(BRANCH_1_ID, "B01", "Iroda 1", "10");
         when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(branch));
         setMidRate("EUR", "395.50");
         setCompanyBalances(createCashBalance(branch, "EUR", "500"));
+        // Létező vault-készlet a cégben — a pénztári branch értékét NEM befolyásolhatja.
+        setVaultStocks(createVaultStock("20", "EUR", "9999"));
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -237,7 +259,7 @@ class StockSnapshotServiceTest {
         CurrencyStockDetailDto eurDetail = findCurrency(result.getRegions().get(0).getBranches().get(0).getCurrencies(), "EUR");
         assertThat(eurDetail.getStock()).isEqualTo(500);
         assertThat(eurDetail.getStockHuf()).isEqualTo(197750);
-        verifyNoInteractions(currencyStockRepository);
+        verify(cashBalanceRepository).findByCompanyId(COMPANY_ID);
     }
 
     @Test
@@ -278,9 +300,13 @@ class StockSnapshotServiceTest {
         verify(exchangeRateRepository, never()).findLatestMidRateByCurrencyCode(any(), eq("HUF"));
     }
 
+    // FKH-029 kieg. SPEC-VÁLTÁS: korábban snapshot_vault_branch_returns_cash_balance néven a
+    // cash_balance-forrást kodifikálta. A V371 után a vault cash_balance KÖNYVELÉSI réteg
+    // (0 baseline), a valós készlet a currency_stock VAULT sorokban él — a snapshot vault-értéke
+    // ezért mostantól onnan jön. Tudatos spec-módosítás, nem regresszió (részletek a PR-leírásban).
     @Test
-    @DisplayName("snapshot_vault_branch_returns_cash_balance")
-    void snapshot_vault_branch_returns_cash_balance() {
+    @DisplayName("FKH-029 kieg.: snapshot_vault_branch_returns_currency_stock — vault készlet a currency_stock-ból, a 0-s könyvelési sor nem számít")
+    void snapshot_vault_branch_returns_currency_stock() {
         Company company = createCompany(COMPANY_ID, "TEST", "Test Company");
         Branch vault = Branch.builder()
                 .id(BRANCH_1_ID)
@@ -291,10 +317,13 @@ class StockSnapshotServiceTest {
                 .company(company)
                 .isVault(true)
                 .isActive(true)
+                .vaultTerritoryId(20)
                 .build();
         when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(vault));
         setMidRate("USD", "370");
-        setCompanyBalances(createCashBalance(vault, "USD", "1000"));
+        // V371 utáni valós állapot: a vault cash_balance sora 0 — nem ez a készlet-forrás.
+        setCompanyBalances(createCashBalance(vault, "USD", "0"));
+        setVaultStocks(createVaultStock("20", "USD", "1000"));
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -304,6 +333,45 @@ class StockSnapshotServiceTest {
         CurrencyStockDetailDto usdDetail = findCurrency(branchDto.getCurrencies(), "USD");
         assertThat(usdDetail.getStock()).isEqualTo(1000);
         assertThat(usdDetail.getStockHuf()).isEqualTo(370000);
+    }
+
+    @Test
+    @DisplayName("FKH-029 kieg.: vault branch currency_stock adat nélkül 0-t mutat (nincs kivétel)")
+    void snapshot_vault_branch_without_currency_stock_shows_zero() {
+        Company company = createCompany(COMPANY_ID, "TEST", "Test Company");
+        Branch vault = Branch.builder()
+                .id(BRANCH_1_ID).code("BR020").name("Szeged Értéktár")
+                .regionCode("20").region("SZEGED").company(company)
+                .isVault(true).isActive(true).vaultTerritoryId(20)
+                .build();
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(vault));
+        setCompanyBalances(createCashBalance(vault, "USD", "0"));
+        // nincs currency_stock sor — a findByCompanyIdAndEntityType üres listát ad (default mock)
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        CurrencyStockDetailDto usdDetail = findCurrency(
+                result.getRegions().get(0).getBranches().get(0).getCurrencies(), "USD");
+        assertThat(usdDetail.getStock()).isZero();
+    }
+
+    @Test
+    @DisplayName("FKH-029 kieg.: vault branch vault_territory_id nélkül 0-t mutat, nem dob kivételt és nem szivárog át más territory készlete")
+    void snapshot_vault_branch_missing_territory_shows_zero() {
+        Company company = createCompany(COMPANY_ID, "TEST", "Test Company");
+        Branch vault = Branch.builder()
+                .id(BRANCH_1_ID).code("BR020").name("Szeged Értéktár")
+                .regionCode("20").region("SZEGED").company(company)
+                .isVault(true).isActive(true).vaultTerritoryId(null)
+                .build();
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(vault));
+        setVaultStocks(createVaultStock("13", "USD", "777"));
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        CurrencyStockDetailDto usdDetail = findCurrency(
+                result.getRegions().get(0).getBranches().get(0).getCurrencies(), "USD");
+        assertThat(usdDetail.getStock()).isZero();
     }
 
     @Test
@@ -319,6 +387,7 @@ class StockSnapshotServiceTest {
                 .company(company)
                 .isVault(true)
                 .isActive(true)
+                .vaultTerritoryId(20)
                 .build();
         Branch cashier = Branch.builder()
                 .id(BRANCH_2_ID)
@@ -333,10 +402,12 @@ class StockSnapshotServiceTest {
         when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
                 .thenReturn(List.of(cashier, vault));
         setMidRate("USD", "370");
+        // FKH-029 kieg.: a vault értéke a currency_stock-ból jön, a pénztárié a cash_balance-ból.
         setCompanyBalances(
-                createCashBalance(vault, "USD", "1000"),
+                createCashBalance(vault, "USD", "0"),
                 createCashBalance(cashier, "USD", "500")
         );
+        setVaultStocks(createVaultStock("20", "USD", "1000"));
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
@@ -415,13 +486,17 @@ class StockSnapshotServiceTest {
                 .company(company)
                 .isActive(true)
                 .isVault(true)
+                .vaultTerritoryId(20)
                 .build();
         when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID)).thenReturn(List.of(cashier, vault));
         setMidRate("USD", "365");
+        // FKH-029 kieg.: a cégösszesítőben a vault hozzájárulása a currency_stock-ból számít,
+        // a 0-s cash_balance könyvelési sora nem duplázódik rá.
         setCompanyBalances(
                 createCashBalance(cashier, "USD", "1000"),
-                createCashBalance(vault, "USD", "500")
+                createCashBalance(vault, "USD", "0")
         );
+        setVaultStocks(createVaultStock("20", "USD", "500"));
 
         StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
 
