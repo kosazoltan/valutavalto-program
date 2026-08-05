@@ -60,6 +60,9 @@ export default function PenztarSettingsPage() {
   const [serialPorts, setSerialPorts] = useState<
     Array<{ path: string; manufacturer?: string; friendlyName?: string }>
   >([])
+  // Kompenzáló rollbackhez: a betöltéskor (ill. utolsó sikeres mentéskor)
+  // érvényes operatív SQLite-értékek ('' = nincs beállítva)
+  const sqlitePrinterRef = useRef({ device: '', serial: '' })
 
   // FR-14: Betöltéskor backend érték nyeri, localStorage fallback (offline)
   useEffect(() => {
@@ -98,10 +101,19 @@ export default function PenztarSettingsPage() {
           if (!cancelled) {
             setPrinters(printerList)
             setSerialPorts(portList)
+            // Az SQLite az operatív igazságforrás: a tárolt érték (az explicit
+            // üres string is!) felülírja a backend/localStorage állapotot;
+            // csak hiányzó kulcs (null) esetén marad az örökölt érték.
+            sqlitePrinterRef.current = {
+              device: typeof storedDevice === 'string' ? storedDevice.trim() : '',
+              serial: typeof storedPort === 'string' ? storedPort.trim() : '',
+            }
             setS((prev) => ({
               ...prev,
-              printerDeviceName: storedDevice?.trim() || prev.printerDeviceName,
-              printerSerialPort: storedPort?.trim() || prev.printerSerialPort,
+              printerDeviceName:
+                typeof storedDevice === 'string' ? storedDevice.trim() : prev.printerDeviceName,
+              printerSerialPort:
+                typeof storedPort === 'string' ? storedPort.trim() : prev.printerSerialPort,
             }))
           }
         } catch {
@@ -159,7 +171,38 @@ export default function PenztarSettingsPage() {
       return
     }
 
-    // 1. réteg: localStorage
+    // Operatív réteg (SP500) ELŐSZÖR: Electron SQLite config — nyomtatáskor a main
+    // process print-receipt handlere EBBŐL olvas (fail-closed); üres string = nincs
+    // beállítva. A localStorage/backend csak sikeres SQLite-írás után frissül, így a
+    // rétegek nem csúszhatnak szét. Két kulcs, nincs batch-IPC: hiba esetén az első
+    // kulcs kompenzáló rollbackkel áll vissza (végállapot: mindkét kulcs régi VAGY új).
+    const api = window.electronAPI
+    if (api?.setConfig) {
+      const nextDevice = s.printerDeviceName.trim()
+      const nextSerial = s.printerSerialPort.trim()
+      let deviceWritten = false
+      try {
+        await api.setConfig('printer.deviceName', nextDevice)
+        deviceWritten = true
+        await api.setConfig('printer.serialPort', nextSerial)
+      } catch {
+        if (deviceWritten) {
+          try {
+            await api.setConfig('printer.deviceName', sqlitePrinterRef.current.device)
+          } catch {
+            // best-effort rollback — a hibajelzés alább így is megtörténik
+          }
+        }
+        toast.error(
+          'Nyomtató-beállítás mentési hiba',
+          'A nyomtató-beállítás lokális (Electron) mentése nem sikerült — a beállítások NEM kerültek mentésre, kérjük, próbálja újra.',
+        )
+        return
+      }
+      sqlitePrinterRef.current = { device: nextDevice, serial: nextSerial }
+    }
+
+    // localStorage réteg (csak a sikeres operatív írás után)
     const ok = savePenztarSettings(s)
     if (!ok) {
       toast.error(
@@ -167,22 +210,6 @@ export default function PenztarSettingsPage() {
         'A beállítások mentése nem sikerült (böngésző tárhely / privát mód).',
       )
       return
-    }
-
-    // Operatív réteg (SP500): Electron SQLite config — nyomtatáskor a main process
-    // print-receipt handlere EBBŐL olvas (fail-closed). Üres string = nincs beállítva.
-    const api = window.electronAPI
-    if (api?.setConfig) {
-      try {
-        await api.setConfig('printer.deviceName', s.printerDeviceName.trim())
-        await api.setConfig('printer.serialPort', s.printerSerialPort.trim())
-      } catch {
-        toast.error(
-          'Nyomtató-beállítás mentési hiba',
-          'A nyomtató-beállítás lokális (Electron) mentése nem sikerült — a bizonylat-nyomtatás enélkül nem működik.',
-        )
-        return
-      }
     }
 
     // 2. réteg: Backend (async, nem blokkoló — offline esetén silent fail)

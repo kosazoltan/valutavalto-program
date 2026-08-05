@@ -141,6 +141,73 @@ describe('PenztarSettingsPage — SP500 nyomtató-konfiguráció', () => {
     await waitFor(() => expect(serialSelect).toHaveValue('COM3'))
   })
 
+  it('Codex MEDIUM#1 regresszió: az SQLite explicit üres értéke felülírja a backend/localStorage nem-üres értékét', async () => {
+    // Az SQLite az operatív igazságforrás: explicit üres ('') = a nyomtató NINCS
+    // beállítva (fail-closed) — a backend/localStorage örökölt értéke nem
+    // mutathat "konfigurált" állapotot.
+    localStorage.setItem(
+      'penztar-settings',
+      JSON.stringify({ printerDeviceName: 'Epson-Legacy', printerSerialPort: 'COM9' }),
+    )
+    mocks.machineGet.mockResolvedValue({
+      config: JSON.stringify({ printerDeviceName: 'Epson-Legacy', printerSerialPort: 'COM9' }),
+      dailyReportPasswordSet: false,
+      updatedAt: null,
+      updatedBy: null,
+    })
+    electronAPI.getConfig.mockImplementation(async (key: string) => {
+      if (key === 'printer.deviceName') return ''
+      if (key === 'printer.serialPort') return ''
+      if (key === 'branch_code') return 'BR001'
+      return null
+    })
+
+    renderPage()
+
+    const printerSelect = await screen.findByLabelText(/Windows-nyomtató/)
+    await waitFor(() => expect(printerSelect).toHaveValue(''))
+    const serialSelect = await screen.findByLabelText(/Soros port/)
+    await waitFor(() => expect(serialSelect).toHaveValue(''))
+  })
+
+  it('Codex MEDIUM#2: részleges SQLite-írási hiba → rollback az első kulcsra, hibajelzés, mentés megszakad', async () => {
+    // Választott kontraktus: az operatív SQLite-írás fut ELŐSZÖR; ha a második
+    // kulcs írása hibázik, az első visszaáll a betöltéskor olvasott értékre
+    // (kompenzáló rollback), a mentés megszakad (nincs localStorage/backend
+    // frissítés), a felhasználó hibaüzenetet kap. Végállapot: mindkét kulcs
+    // régi VAGY mindkét kulcs új — részleges konfiguráció nem maradhat.
+    electronAPI.getConfig.mockImplementation(async (key: string) => {
+      if (key === 'printer.deviceName') return 'Old-Device'
+      if (key === 'printer.serialPort') return 'COM1'
+      if (key === 'branch_code') return 'BR001'
+      return null
+    })
+    electronAPI.setConfig.mockImplementation(async (key: string, value: string) => {
+      if (key === 'printer.serialPort' && value === 'COM3') {
+        throw new Error('IPC write failure')
+      }
+    })
+
+    const user = userEvent.setup()
+    renderPage()
+
+    const printerSelect = await screen.findByLabelText(/Windows-nyomtató/)
+    await waitFor(() => expect(printerSelect).toHaveValue('Old-Device'))
+    await user.selectOptions(printerSelect, 'Star SP500')
+    const serialSelect = await screen.findByLabelText(/Soros port/)
+    await user.selectOptions(serialSelect, 'COM3')
+
+    await user.click(screen.getByRole('button', { name: /Rögzítés és kilépés/ }))
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+    // Rollback: az első kulcs visszaáll a betöltéskor olvasott SQLite-értékre
+    expect(electronAPI.setConfig).toHaveBeenCalledWith('printer.deviceName', 'Old-Device')
+    // A mentés megszakadt: sem a backend-szinkron, sem a localStorage nem
+    // kapta meg az új értékeket (rétegek nem csúszhatnak szét)
+    expect(mocks.machinePut).not.toHaveBeenCalled()
+    expect(localStorage.getItem('penztar-settings') ?? '').not.toContain('Star SP500')
+  })
+
   it('kiválasztás nélkül üres értéket ír (a fail-closed állapot megmarad)', async () => {
     const user = userEvent.setup()
     renderPage()
