@@ -211,15 +211,27 @@ public class CashBalanceService {
             }
         }
 
-        // FK-038 (2026-06-21): ÉRTÉKTÁR (is_vault=TRUE) branch-nek NEM szabad cash_balance
-        // (pénztár-kassza) sora legyen — az értéktár-készlet a currency_stock/vault_territory
-        // úton él (V334/FK-036 invariáns). Ez a write-oldali GYÖKÉR-gate: a branch-létrehozás
-        // (BranchService), a bulk-init (initializeAllBranchBalancesForCurrentCompany) és a
-        // session-nyitás lazy-init útvonala mind ezen a metóduson megy át, ezért itt EGY ponton
-        // megakadályozzuk, hogy értéktár cash_balance sort kapjon (a V247-típusú szivárgás megelőzése).
+        // FK-038-gát VÉGLEGES FELÜLVIZSGÁLATA (FK-074 TBD-5, 2026-08-06): az eredeti FK-038
+        // (2026-06-21) write-oldali gyökér-gate az is_vault=TRUE branch-eket HAGYTA KI, a
+        // V334 „értéktárnak nincs cash_balance sora" invariánsa alapján. Azt az invariánst az
+        // FKH-029/V371 architektúra-fordulat (2026-08-04/05) MEGDÖNTÖTTE: az Értéktáraknak
+        // VAN cash_balance KÖNYVELÉSI rétegük, és a TransferService a vault-mozgásokat arra
+        // könyveli. A régi gát ezért ma már HIBÁS: egy újonnan létrehozott értéktár-branch
+        // initjét némán megakadályozná, pontosan visszahozva az FKH-029 által javított
+        // „Kassza egyenleg nem található" osztályt (BR075-típusú beragadás minden új vaultnál).
+        //
+        // A gát HELYES utódja a még mindig érvényes FK-032 invariáns: a VAULT_COUNTERPARTY
+        // virtuális partnereknek (MNB, Raiffeisen alszámlák, Úton lévő pénztár stb. —
+        // V277 seed, is_vault=FALSE) NEM lehet cash_balance soruk (nincs készletük, tisztán
+        // könyvelési entitások). A bulk-init útvonal eddig is a repository-szűrésen
+        // (findByCompanyIdAndIsActiveTrueExcludingCounterparties) keresztül védett, de a
+        // KÖZVETLEN hívások (init-branch endpoint, BranchService.create) előtt ez a pont volt
+        // az egyetlen gyökér-védelem — most már a helyes diszkriminátorral.
         // Idempotens szemantika: 0 = nem jött létre rekord.
-        if (Boolean.TRUE.equals(branch.getIsVault())) {
-            log.info("initializeBranchBalances: ÉRTÉKTÁR branch (id={}, {}) kihagyva — értéktárnak nincs cash_balance (FK-038 invariáns)",
+        if (branch.getBranchType() != null
+                && "VAULT_COUNTERPARTY".equals(branch.getBranchType().getCode())) {
+            log.info("initializeBranchBalances: VAULT_COUNTERPARTY virtuális partner (id={}, {}) kihagyva — "
+                    + "könyvelési entitásnak nincs cash_balance (FK-032 invariáns, FK-074 TBD-5 felülvizsgálat)",
                     branchId, branch.getName());
             return 0;
         }
@@ -294,14 +306,13 @@ public class CashBalanceService {
      * sor-létrehozás az aktiváló felhasználó cégének MINDEN AKTÍV branch-ére —
      * ÉRTÉKTÁRAKRA (is_vault=TRUE) IS — ha az adott valutára még nincs sor.
      *
-     * <p><b>Miért NEM a {@link #initializeBranchBalances(UUID)} mintát hívja:</b> az az
-     * FK-038-gátat (vault-kihagyás, ~193-197. sor) is tartalmazza, amit ez az FR NEM
-     * örökölhet — a 2026-08-05-én bemergelt FKH-029/V371 architektúra-fordulat óta az
-     * Értéktáraknak VAN cash_balance könyvelési rétegük, és a kihagyásuk új deviza
-     * aktiválásakor visszahozná a „Kassza egyenleg nem található" hibát
-     * (TransferService increase/decreaseCashBalance). Ezért EZ a metódus saját,
-     * vault-t is bevonó útvonal: {@link CashBalanceRepository#insertIfAbsent}
-     * branch-enként, a {@code findByCompanyIdAndIsActiveTrueExcludingCounterparties}
+     * <p><b>Miért NEM a {@link #initializeBranchBalances(UUID)} mintát hívja:</b> az
+     * fordított alakú (egy branch minden aktív valutájára initializál), míg itt EGY valuta
+     * minden aktív branch-ére kell sor. (Az FK-038-gátat a TBD-5 felülvizsgálat eltávolította
+     * onnan, így az eredeti öröklési érv már nem áll fenn — de a metódus-alak továbbra is
+     * különbözik.) Ez a metódus ezért saját, vault-t is bevonó útvonal:
+     * {@link CashBalanceRepository#insertIfAbsent} branch-enként, a
+     * {@code findByCompanyIdAndIsActiveTrueExcludingCounterparties}
      * (FK-032: VAULT_COUNTERPARTY virtuális partnerek kizárva) aktív branch-halmazán.</p>
      *
      * <p><b>Idempotencia (NFR-2/FR-5):</b> {@code INSERT ... ON CONFLICT (branch_id,
