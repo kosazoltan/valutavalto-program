@@ -1244,8 +1244,11 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
 <head>
   <meta charset="UTF-8">
   <style>
+    /* Lapméret: a tényleges nyomtató-forma (print settings) adja — fix mm-szélesség
+       tilos, mert az SP512 nyomtatható szélessége 62,7 mm (a korábbi 80/76 mm levágást
+       vagy üres lapot okozott); a body a teljes nyomtatható szélességet tölti ki. */
     @page {
-      size: 80mm auto;
+      size: auto;
       margin: 2mm;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1253,7 +1256,6 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
       font-family: 'Courier New', monospace;
       font-size: 11px;
       line-height: 1.4;
-      width: 76mm;
       color: #000;
     }
     .center { text-align: center; }
@@ -1657,12 +1659,16 @@ async function printViaElectron(
     // HTML tartalom betöltése data URL-ként
     await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
-    // Nyomtatási opciók — csendes nyomtatás (nincs dialógus)
+    // Nyomtatási opciók — csendes nyomtatás (nincs dialógus).
+    // Lapméret: a nyomtató driver-alapértelmezett formája (SP512: "63mm x Receipt",
+    // 62,7 mm nyomtatható szélesség, változó hossz). Hardcode-olt mikron-pageSize
+    // TILOS: a 80mm × 297mm érték egyetlen SP512-formával sem egyezett, ezért a
+    // driver üres lapot adott ki (2026-08-06 fizikai teszt).
     const printOptions: Electron.WebContentsPrintOptions = {
       silent: true,
       printBackground: true,
       margins: { marginType: 'none' },
-      pageSize: { width: 80000, height: 297000 }, // 80mm x 297mm mikronban
+      usePrinterDefaultPageSize: true,
       deviceName: printerName,
     };
 
