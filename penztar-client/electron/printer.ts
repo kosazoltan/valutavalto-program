@@ -1256,6 +1256,9 @@ export async function generateReceiptHtml(data: PrintReceiptData): Promise<strin
       font-family: 'Courier New', monospace;
       font-size: 11px;
       line-height: 1.4;
+      /* Széles (pl. A4) driver-forma esetén ne terüljön szét a bizonylat; az SP512
+         nyomtatható szélességét (62,7 mm < 80 mm) nem korlátozza. */
+      max-width: 80mm;
       color: #000;
     }
     .center { text-align: center; }

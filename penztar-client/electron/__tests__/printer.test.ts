@@ -760,7 +760,13 @@ describe('printer — SP512 papírméret: driver-default form, nem hardcode-olt 
 
     expect(html).not.toMatch(/size:\s*80mm/);
     expect(html).not.toMatch(/width:\s*76mm/);
+    // Codex review javaslat: generikus tiltás minden jövőbeli fix mm-szélességre.
+    // A (?<!max-) lookbehind a max-width: 80mm mitigációt engedi (széles driver-forma
+    // elleni korlát), a tartalmi px-szélességeket (QR 100px, aláírás-vonal 90px) a
+    // mm-egység kizárja.
+    expect(html).not.toMatch(/(?<!max-)width:\s*\d+mm/);
     expect(html).toMatch(/size:\s*auto/);
+    expect(html).toMatch(/max-width:\s*80mm/);
   });
 });
 
