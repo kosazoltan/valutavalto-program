@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -211,5 +211,96 @@ describe('CashDeskPage', () => {
     expect(screen.getByText('Napi változás')).toBeInTheDocument()
     expect(screen.getByText('Kód ellenőrzés')).toBeInTheDocument()
     expect(screen.queryByText('Limit')).not.toBeInTheDocument()
+  })
+
+  it('FK-075 TBD-3: a nyitott részletpanel követi a pollingot — lista-frissülésre a részletek CSENDben újratöltődnek', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(mocks.balanceList).toHaveBeenCalled())
+    await user.click(await screen.findByRole('row', { name: /EUR/ }))
+    expect(await screen.findByText('EUR pénzkészlet részletek')).toBeInTheDocument()
+    // A panelnyitás EGY fetch-párt indít — a frissítő effect első futása kihagyott
+    // (nincs duplikált hívás a kattintáskori fetch mellé).
+    expect(mocks.getByCurrencyId).toHaveBeenCalledTimes(1)
+    // A panel a kattintáskori értéket mutatja (a listában is ott van — 2 előfordulás).
+    expect(screen.getAllByText('1200').length).toBeGreaterThanOrEqual(2)
+
+    // Polling-ciklus szimulálása: a 30 mp-es interval és a visibility-change is ugyanazt
+    // a loadData-t hívja; a fő lista frissülése a részletpanelt is újratölti.
+    mocks.getByCurrencyId.mockResolvedValueOnce({
+      id: 1,
+      branchId: 'branch-1',
+      branchName: 'Szeged',
+      currencyId: 1,
+      currencyCode: 'EUR',
+      currencyName: 'Euró',
+      currentBalance: 1500,
+      openingBalance: 1000,
+      dailyChange: 500,
+      minBalance: 100,
+      maxBalance: 5000,
+      createdAt: '2026-06-19T08:00:00',
+    })
+    mocks.getByCurrencyCode.mockResolvedValueOnce({
+      id: 1,
+      branchId: 'branch-1',
+      branchName: 'Szeged',
+      currencyId: 1,
+      currencyCode: 'EUR',
+      currencyName: 'Euró',
+      currentBalance: 1500,
+      openingBalance: 1000,
+      dailyChange: 500,
+      minBalance: 100,
+      maxBalance: 5000,
+      createdAt: '2026-06-19T08:00:00',
+    })
+    fireEvent(document, new Event('visibilitychange'))
+
+    // A második fetch-pár megjött, és a panel az ÚJ értéket mutatja (nem a befagyottat).
+    await waitFor(() => expect(mocks.getByCurrencyId).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('1500')).toBeInTheDocument()
+    // A polling-frissítés CSENDben történik: nincs hibaüzenet, nincs toast-meghívás.
+    expect(screen.queryByText(/részletek betöltése sikertelen/)).not.toBeInTheDocument()
+  })
+
+  it('FK-075 TBD-3: a panel bezárása után a lista-frissítés NEM indít többé részletes fetch-et', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(mocks.balanceList).toHaveBeenCalled())
+    await user.click(await screen.findByRole('row', { name: /EUR/ }))
+    expect(await screen.findByText('EUR pénzkészlet részletek')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Részletek bezárása' }))
+    expect(screen.queryByText('EUR pénzkészlet részletek')).not.toBeInTheDocument()
+
+    const callsBeforeRefresh = mocks.getByCurrencyId.mock.calls.length
+    fireEvent(document, new Event('visibilitychange'))
+    await waitFor(() => expect(mocks.balanceList).toHaveBeenCalledTimes(2))
+    // A bezárt panelre nem fut részletes fetch.
+    expect(mocks.getByCurrencyId).toHaveBeenCalledTimes(callsBeforeRefresh)
+  })
+
+  it('FK-075 TBD-3: sikertelen nyitás után a polling sikeres frissítése TÖRLI a hibaüzenetet', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(mocks.balanceList).toHaveBeenCalled())
+    // Az első betöltés hibára fut → a hibaüzenet megjelenik.
+    mocks.getByCurrencyId.mockRejectedValueOnce(new Error('network'))
+    mocks.getByCurrencyCode.mockRejectedValueOnce(new Error('network'))
+    await user.click(await screen.findByRole('row', { name: /EUR/ }))
+    expect(await screen.findByText('EUR részletek betöltése sikertelen')).toBeInTheDocument()
+
+    // A következő polling-kör már sikeres → a részletek betöltődnek, és a korábbi
+    // hibaüzenet törlődik (nem maradhat a friss adatok mellett — ellenor1 review).
+    fireEvent(document, new Event('visibilitychange'))
+    await waitFor(() => expect(mocks.getByCurrencyId).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('EUR pénzkészlet részletek')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByText(/részletek betöltése sikertelen/)).not.toBeInTheDocument(),
+    )
   })
 })

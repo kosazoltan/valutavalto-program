@@ -89,9 +89,15 @@ export default function CashDeskPage() {
   const [summary, setSummary] = useState<BranchBalanceSummary | null>(null)
   const [selectedBalance, setSelectedBalance] = useState<CashBalance | null>(null)
   const [codeCheckBalance, setCodeCheckBalance] = useState<CashBalance | null>(null)
+  // FK-075 TBD-3 (2026-08-06): a nyitott panel AZONOSÍTÓJA külön state-ben él, hogy a
+  // 30 mp-es polling lista-frissülései csendben újratölthessék a részleteket.
+  const [selectedCurrency, setSelectedCurrency] = useState<{ currencyId: number; currency: string } | null>(null)
   const [detailLoadingCurrency, setDetailLoadingCurrency] = useState<string | null>(null)
   const [detailError, setDetailError] = useState<string | null>(null)
   const loadingRef = useRef(false)
+  // FK-075 TBD-3: a panel NYITÁSÁT kísérő első effect-futás kihagyása — a kattintáskori
+  // fetchet a handleBalanceDetails már elvégezte (duplikált hívás nélkül).
+  const detailRefreshPrimedRef = useRef(false)
 
   const loadData = useCallback(async () => {
     if (loadingRef.current) return
@@ -193,6 +199,8 @@ export default function CashDeskPage() {
   const handleBalanceDetails = async (item: CashDeskBalanceItem) => {
     setDetailLoadingCurrency(item.currency)
     setDetailError(null)
+    detailRefreshPrimedRef.current = false
+    setSelectedCurrency({ currencyId: item.currencyId, currency: item.currency })
     try {
       const [byId, byCode] = await Promise.all([
         cashBalanceApi.getByCurrencyId(item.currencyId),
@@ -208,6 +216,46 @@ export default function CashDeskPage() {
       setDetailLoadingCurrency(null)
     }
   }
+
+  // FK-075 TBD-3 (2026-08-06): a nyitott valuta-részletek panel KÖVESSE a 30 mp-es
+  // pollingot. Korábban a panel a kattintáskori értékeket mutatta „befagyva", amíg a
+  // felhasználó újra nem kattintott, miközben a fő lista már frissült. Most a fő lista
+  // minden frissülésénél a kiválasztott valuta részletei is CSENDben újratöltődnek:
+  // nincs loading-spinner és nincs hiba-toast sem (polling-hibánál a panel a legutóbbi
+  // sikeres értéket tartja, és a következő kör próbálja újra).
+  useEffect(() => {
+    if (!selectedCurrency) {
+      detailRefreshPrimedRef.current = false
+      return
+    }
+    if (!detailRefreshPrimedRef.current) {
+      // A nyitást kísérő első futás: a fetch már a handleBalanceDetails-ben megtörtént.
+      detailRefreshPrimedRef.current = true
+      return
+    }
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const [byId, byCode] = await Promise.all([
+          cashBalanceApi.getByCurrencyId(selectedCurrency.currencyId),
+          cashBalanceApi.getByCurrencyCode(selectedCurrency.currency),
+        ])
+        if (!cancelled) {
+          setSelectedBalance(byId)
+          setCodeCheckBalance(byCode)
+          // A sikeres frissítés törli az esetleges korábbi betöltési hibajelzést
+          // (ellenkező esetben a hibaüzenet a friss adatok mellett is látszana).
+          setDetailError(null)
+        }
+      } catch {
+        // Szándékosan csendben: a következő polling-kör újra próbálja.
+      }
+    }
+    void refresh()
+    return () => {
+      cancelled = true
+    }
+  }, [status.balances, selectedCurrency])
 
   const fallbackHufBalance = status.balances.find((item) => item.currency === 'HUF')?.balance ?? 0
   const codeCheckMatches =
@@ -411,6 +459,7 @@ export default function CashDeskPage() {
               onClick={() => {
                 setSelectedBalance(null)
                 setCodeCheckBalance(null)
+                setSelectedCurrency(null)
               }}
               className="inline-flex h-7 w-7 items-center justify-center rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
               title="Részletek bezárása"

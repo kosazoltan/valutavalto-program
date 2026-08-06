@@ -174,6 +174,36 @@ public class SystemParameterService {
         }
     }
 
+    /**
+     * FK-073 TBD-6 (2026-08-06): TARTÓS admin-védelem a globális CLOSING_TOLERANCE_*
+     * sorok aktivási állapotára. A 0-tolerancia zárási kapu (FK-073/V373) működésének
+     * feltétele, hogy a GLOBÁLIS (company_id IS NULL) tolerancia-sor AKTÍV legyen:
+     * az {@link #findEffective} is_active-szűrése (4a0e39d0) miatt egy inaktivált sor
+     * csendben a kód-fallbackre ejtené a kiértékelést (HUF→1, {@code >} operátor),
+     * ami NÉMÁN kioltaná a 0-toleranciát — épp azt a viselkedést, amit az FK-073 bevezetett.
+     *
+     * <p>Ez a guard ezért még ADMIN elől is tiltja a globális tolerancia-sor
+     * inaktiválását és törlését (szereptől független üzleti invariáns — nem auth-kérdés,
+     * ezért {@link ValidationException}, nem AccessDeniedException). AZ ÉRTÉK MÓDOSÍTÁSA
+     * (update) ADMIN-nak TOVÁBBRA IS engedélyezett — a küszöb állítása legit operáció,
+     * a védett művelet kizárólag a sor effektívból való kiejtése (toggle/delete), illetve
+     * eleve inaktív globális sor létrehozása (create). A FEATURE_* kulcsokra NEM vonatkozik:
+     * a feature-flagek inaktiválása azok rendeltetése. Cég-scope-olt sorokra sem vonatkozik:
+     * a céges override inaktiválása a globális sorra való visszatérést jelenti (tervezett).
+     */
+    private static void assertGlobalToleranceRowStaysEffective(String parameterKey, UUID companyId, String operation) {
+        boolean globalRow = companyId == null;
+        boolean toleranceKey = parameterKey != null
+                && parameterKey.startsWith(ClosingToleranceService.KEY_PREFIX);
+        if (globalRow && toleranceKey) {
+            throw new ValidationException(
+                    "A globális " + parameterKey + " tolerancia-paraméter " + operation + " tiltott: "
+                            + "a záráskori 0-tolerancia kapu (FK-073) csak aktív globális sorral működik. "
+                            + "Inaktiválás/törlés helyett az érték módosítása engedélyezett; "
+                            + "céges felülíráshoz használj cég-szintű sort.");
+        }
+    }
+
     // ── security-standards.md §3: "Minden írás auditálva" ────────────────────
 
     private static final String AUDIT_ENTITY_TYPE = "SystemParameter";
@@ -343,6 +373,13 @@ public class SystemParameterService {
     public SystemParameter create(String key, String value, String type, String category,
                                   String description, Boolean isActive) {
         assertGlobalFinancialControlKeyWriteAllowed(key, null);
+        // FK-073 TBD-6: eleve inaktív GLOBÁLIS tolerancia-sor létrehozása tiltott —
+        // az ilyen sor nem effektív, és a 0-tolerancia kaput csendben fallbackre ejtené.
+        // Aktív (vagy isActive=null → aktívként létrejövő) sor továbbra is létrehozható:
+        // az a V373 insert-if-missing mintájával megegyező helyreállítási útvonal.
+        if (isActive != null && !isActive) {
+            assertGlobalToleranceRowStaysEffective(key, null, "inaktívként történő létrehozása");
+        }
         SystemParameter p = SystemParameter.builder()
                 .parameterKey(key).parameterValue(value).parameterType(type)
                 .category(category).description(description)
@@ -379,6 +416,11 @@ public class SystemParameterService {
         // a korábbi `!p.getIsActive()` ezen a soron unboxing-NPE-vel elszállt.
         // Az audit before_value-ja ettől függetlenül a TÉNYLEGES (null) értéket őrzi meg.
         boolean effectivelyActive = !Boolean.FALSE.equals(previousActive);
+        // FK-073 TBD-6: az inaktiválás tiltott a globális tolerancia-soron (még ADMIN-nak is);
+        // a reaktiválás (inactive → active) engedélyezett — az az invariáns helyreállítása.
+        if (effectivelyActive) {
+            assertGlobalToleranceRowStaysEffective(p.getParameterKey(), p.getCompanyId(), "inaktiválása");
+        }
         p.setIsActive(!effectivelyActive);
         SystemParameter saved = repo.save(p);
         audit("UPDATE", saved.getId(), beforeJson, auditSnapshot(saved),
@@ -392,6 +434,10 @@ public class SystemParameterService {
     public void delete(UUID id) {
         SystemParameter p = findOrThrow(id);
         assertGlobalFinancialControlKeyWriteAllowed(p.getParameterKey(), p.getCompanyId());
+        // FK-073 TBD-6: a globális tolerancia-sor törlése tiltott — a sor eltűnése az
+        // effektív lookupból a kód-fallbackre ejti a 0-tolerancia kaput (ugyanaz a néma
+        // kioltás, mint az inaktiválás). Érték-módosítás a helyes operáció.
+        assertGlobalToleranceRowStaysEffective(p.getParameterKey(), p.getCompanyId(), "törlése");
         String beforeJson = auditSnapshot(p);
         UUID deletedId = p.getId();
         repo.delete(p);
