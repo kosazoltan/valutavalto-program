@@ -243,6 +243,9 @@ export default function CashDeskPage() {
         if (!cancelled) {
           setSelectedBalance(byId)
           setCodeCheckBalance(byCode)
+          // A sikeres frissítés törli az esetleges korábbi betöltési hibajelzést
+          // (ellenkező esetben a hibaüzenet a friss adatok mellett is látszana).
+          setDetailError(null)
         }
       } catch {
         // Szándékosan csendben: a következő polling-kör újra próbálja.

@@ -282,4 +282,25 @@ describe('CashDeskPage', () => {
     // A bezárt panelre nem fut részletes fetch.
     expect(mocks.getByCurrencyId).toHaveBeenCalledTimes(callsBeforeRefresh)
   })
+
+  it('FK-075 TBD-3: sikertelen nyitás után a polling sikeres frissítése TÖRLI a hibaüzenetet', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(mocks.balanceList).toHaveBeenCalled())
+    // Az első betöltés hibára fut → a hibaüzenet megjelenik.
+    mocks.getByCurrencyId.mockRejectedValueOnce(new Error('network'))
+    mocks.getByCurrencyCode.mockRejectedValueOnce(new Error('network'))
+    await user.click(await screen.findByRole('row', { name: /EUR/ }))
+    expect(await screen.findByText('EUR részletek betöltése sikertelen')).toBeInTheDocument()
+
+    // A következő polling-kör már sikeres → a részletek betöltődnek, és a korábbi
+    // hibaüzenet törlődik (nem maradhat a friss adatok mellett — ellenor1 review).
+    fireEvent(document, new Event('visibilitychange'))
+    await waitFor(() => expect(mocks.getByCurrencyId).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('EUR pénzkészlet részletek')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByText(/részletek betöltése sikertelen/)).not.toBeInTheDocument(),
+    )
+  })
 })
