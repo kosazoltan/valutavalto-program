@@ -732,6 +732,56 @@ describe('printer — FAIL-CLOSED (default printer/PDF fallback tiltás)', () =>
   );
 });
 
+// SP512 papírméret (2026-08-06 fizikai teszt): a Star SP500/SP512 Windows-driver
+// KIZÁRÓLAG saját, névvel ellátott formákat kínál (alapértelmezett: "63mm x Receipt",
+// 62,7 mm nyomtatható szélesség, változó hossz) — 80 mm-es forma nem létezik. A korábbi
+// hardcode-olt pageSize {80mm × 297mm} + fix 76mm body-szélesség üres lapot + feedet
+// adott (a Windows-tesztoldal driver-szinten hibátlan volt). A javítás: a print hívás
+// a nyomtató SAJÁT alapértelmezett formájára deferál (usePrinterDefaultPageSize),
+// a HTML pedig nem rögzít lapszélességet — mikron-érték találgatása TILOS.
+describe('printer — SP512 papírméret: driver-default form, nem hardcode-olt pageSize', () => {
+  beforeEach(() => {
+    (BrowserWindow as unknown as Mock).mockClear();
+    printMock.mockClear();
+    (printReceiptToSerial as Mock).mockReset().mockResolvedValue(false);
+  });
+
+  it('a webContents.print a nyomtató alapértelmezett lapméretét használja (usePrinterDefaultPageSize), pageSize nélkül', async () => {
+    // Sourcery nitpick (PR #1576): a describe témájához illő nyomtatónév — csak erre az
+    // egy getPrinters-hívásra (Once), a közös EPSON-os fixture-t nem módosítja.
+    getPrintersMock.mockResolvedValueOnce([
+      {
+        name: 'Star SP500 TearBar (SP512)',
+        displayName: 'Star SP500 TearBar (SP512)',
+        description: '',
+        status: 0,
+        isDefault: true,
+      },
+    ]);
+    const result = await printReceipt(baseData, 'Star SP500 TearBar (SP512)');
+
+    expect(result).toBe(true);
+    const opts = printMock.mock.calls[0][0] as Record<string, unknown>;
+    expect(opts.usePrinterDefaultPageSize).toBe(true);
+    expect(opts).not.toHaveProperty('pageSize');
+    expect(opts.deviceName).toBe('Star SP500 TearBar (SP512)');
+  });
+
+  it('a bizonylat-HTML nem rögzít 80mm-es lap- és 76mm-es body-szélességet, a @page a driver-formára deferál', async () => {
+    const html = await generateReceiptHtml(baseData);
+
+    expect(html).not.toMatch(/size:\s*80mm/);
+    expect(html).not.toMatch(/width:\s*76mm/);
+    // Codex review javaslat: generikus tiltás minden jövőbeli fix mm-szélességre.
+    // A (?<!max-) lookbehind a max-width: 80mm mitigációt engedi (széles driver-forma
+    // elleni korlát), a tartalmi px-szélességeket (QR 100px, aláírás-vonal 90px) a
+    // mm-egység kizárja.
+    expect(html).not.toMatch(/(?<!max-)width:\s*\d+mm/);
+    expect(html).toMatch(/size:\s*auto/);
+    expect(html).toMatch(/max-width:\s*80mm/);
+  });
+});
+
 describe('printer — fejléc-javítás FR-7: HUF transfer dupla példány', () => {
   beforeEach(() => {
     (BrowserWindow as unknown as Mock).mockClear();
