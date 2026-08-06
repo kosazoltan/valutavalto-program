@@ -1202,8 +1202,26 @@ public class ClosingWizardService {
         item.put("expected", expected);
         item.put("actual", actual);
         item.put("difference", diff);
-        item.put("status", diff.compareTo(BigDecimal.ZERO) == 0 ? "OK" : "DISCREPANCY");
+        // FK-073 (FR-1): a státusz a valódi, pénznemenkénti ClosingTolerance.blocks()
+        // kiértékelés — ugyanaz, amit a finalizeClosing() enforce-ága a
+        // ClosingToleranceService-en keresztül már használ (FR-6: egyetlen közös forrás,
+        // a puha kapu nem implementál saját diff==0 összehasonlítást). 0-küszöbnél
+        // (FR-3) bármilyen nem-nulla eltérés DISCREPANCY; nulla eltérés soha nem blokkol.
+        // Ez táplálja a getClosingStatus exactMatch-mezejét is, így mindkét vault-kapu
+        // (finalizeClosing, ensureClosingCanBeSent) ugyanabból a döntésből indul ki.
+        item.put("status", toleranceBlocks(code, diff) ? "DISCREPANCY" : "OK");
         return item;
+    }
+
+    /**
+     * FK-073 (FR-1): közös blokkolási döntési pont az eltérés-táblázat státuszához —
+     * a {@link ClosingToleranceService}-en keresztül ugyanazt a pénznemenkénti
+     * {@link ClosingTolerance#blocks} kiértékelést hívja, amit a {@code finalizeClosing()}
+     * már használ, hogy a látvány (eltérés-táblázat) és a valós blokkolás (véglegesítés)
+     * mindig egybeessen (NFR-1).
+     */
+    private boolean toleranceBlocks(String currencyCode, BigDecimal diff) {
+        return closingToleranceService.getToleranceFor(currencyCode).blocks(diff);
     }
 
     private boolean isVaultContext(Branch branch) {

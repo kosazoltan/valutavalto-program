@@ -784,4 +784,74 @@ describe('ClosingWizardPage', () => {
       expect(finalizeBtn).toBeDisabled()
     })
   })
+
+  // ========== FK-073: ZÁRÁSKORI TOLERANCIA — status-alapú blokkolás ==========
+
+  describe('FK-073 eltérés-blokkolás a backend status alapján', () => {
+    it('FR-2a: status OK sor NEM blokkol pénznemtől függetlenül (még HUF kis eltérésnél is)', async () => {
+      const user = await runStep1()
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+      // A backend tolerancia-kiértékelése minden sort OK-nak minősített,
+      // pedig a HUF-sorban van nem nulla (≤1 Ft) eltérés.
+      mocks.closingWizardApiCalculateDifferences.mockResolvedValue([
+        { currencyCode: 'HUF', expected: 100000, actual: 100001, difference: 1, status: 'OK' },
+        { currencyCode: 'EUR', expected: 500, actual: 500, difference: 0, status: 'OK' },
+        { currencyCode: 'USD', expected: 200, actual: 200, difference: 0, status: 'OK' },
+      ])
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, '3')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('closing-readiness-banner')).toHaveTextContent(
+          'Kész a beküldésre',
+        )
+        expect(screen.getByText('Minden címletezés rendben')).toBeInTheDocument()
+      })
+      const finalizeBtn = screen.getByRole('button', { name: /Napzárás végrehajtása/i })
+      expect(finalizeBtn).not.toBeDisabled()
+    })
+
+    it('FR-2b: status DISCREPANCY HUF ≤1 eltéréssel IS blokkol (a régi HUF-kivétel megszűnt)', async () => {
+      const user = await runStep1()
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+      // 1 Ft-os HUF-eltérés, amit a backend DISCREPANCY-nek minősített:
+      // a korábbi kézzel bedrótozott frontend HUF ≤1 kivétel ezt már nem védheti fel.
+      mocks.closingWizardApiCalculateDifferences.mockResolvedValue([
+        {
+          currencyCode: 'HUF',
+          expected: 100000,
+          actual: 100001,
+          difference: 1,
+          status: 'DISCREPANCY',
+        },
+      ])
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.clear(inputs[0]!)
+      await user.type(inputs[0]!, '3')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        expect(mocks.closingWizardApiNavigate).toHaveBeenCalledTimes(9)
+      })
+      await waitFor(() => {
+        expect(screen.queryByText('Minden címletezés rendben')).not.toBeInTheDocument()
+        expect(
+          screen.getByText('Megoldatlan eltérés van az eltérés-táblázatban'),
+        ).toBeInTheDocument()
+        const banner = screen.getByTestId('closing-readiness-banner')
+        expect(banner).toHaveTextContent('Van teendő')
+        expect(banner).toHaveTextContent('eltérés-táblázat')
+      })
+      const finalizeBtn = screen.getByRole('button', { name: /Minden lépés szükséges/i })
+      expect(finalizeBtn).toBeDisabled()
+    })
+  })
 })

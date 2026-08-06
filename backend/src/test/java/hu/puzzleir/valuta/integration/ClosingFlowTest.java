@@ -63,6 +63,9 @@ class ClosingFlowTest {
     @Mock private hu.puzzleir.valuta.repository.DenominationRepository denominationRepository;
     @Mock private hu.puzzleir.valuta.repository.DenominationBalanceRepository denominationBalanceRepository;
     @Mock private hu.puzzleir.valuta.repository.CurrencyRepository currencyRepository;
+    // FK-073 (§9.3): a differenceItem-státusz a valódi ClosingTolerance.blocks()-ot hívja —
+    // mock nélkül NPE lenne a testClosingWizard_calculateDifferences futásánál.
+    @Mock private hu.puzzleir.valuta.service.ClosingToleranceService closingToleranceService;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -239,6 +242,14 @@ class ClosingFlowTest {
 
             when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
             when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(List.of(eurBal, hufBal));
+
+            // FK-073 (FR-1/§9.3): a státusz-számítás a valódi ClosingTolerance.blocks()-ot
+            // hívja — a 0-küszöbű végállapotot (FR-3) szimuláljuk: explicit 0-toleranciánál
+            // bármilyen nem-nulla eltérés blokkol (EUR -10 → DISCREPANCY), a nulla nem (HUF 0 → OK).
+            when(closingToleranceService.getToleranceFor("EUR"))
+                    .thenReturn(hu.puzzleir.valuta.service.ClosingTolerance.explicitOf(BigDecimal.ZERO));
+            when(closingToleranceService.getToleranceFor("HUF"))
+                    .thenReturn(hu.puzzleir.valuta.service.ClosingTolerance.explicitOf(BigDecimal.ZERO));
 
             Map<String, BigDecimal> physicalCounts = Map.of(
                     "EUR", new BigDecimal("4990"),
