@@ -1040,7 +1040,9 @@ function formatRate(value: number | undefined): string {
 // ============================================================================
 
 /**
- * Bizonylat HTML generálása — 80mm szélességre optimalizált.
+ * Bizonylat HTML generálása — a nyomtató driver-alapértelmezett papírformájára
+ * illeszkedik (@page size: auto + usePrinterDefaultPageSize; SP512: "63mm x Receipt",
+ * 62,7 mm nyomtatható szélesség), szélesebb nyomtatóknál max-width: 80mm korláttal.
  * Ezt rendereli a rejtett BrowserWindow a rendszer nyomtató felé.
  */
 // Copilot PR #1102: exportált a HTML-útvonal unit-tesztjeihez (deviza-státusz + JOGCÍM blokk).
