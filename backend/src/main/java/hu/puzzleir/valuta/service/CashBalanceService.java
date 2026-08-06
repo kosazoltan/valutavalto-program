@@ -55,12 +55,18 @@ public class CashBalanceService {
 
     /**
      * Aktuális iroda összes egyenlegének lekérése
+     *
+     * <p>FK-074 FR-1/FR-2 (2026-08-06): a pénztári „Kassza / készlet" lista
+     * ({@code GET /api/v1/cash-balances} → CashDeskPage) SZŰRVE: az inaktív
+     * valutájú, nulla egyenlegű sorok nem jelennek meg; az inaktív, de nem nulla
+     * egyenlegű sorok igen (adatvesztés elleni védelem). A szűrés MANDATÓRIUSAN
+     * backend-oldali (FK-074 §9.4) — a frontend (CashDeskPage.tsx) változatlan.</p>
      */
     @Transactional(readOnly = true)
     public List<CashBalance> getCurrentBranchBalances() {
         UUID branchId = SecurityUtils.getCurrentBranchId();
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId);
+        return cashBalanceRepository.findByBranchIdAndCompanyIdForCashDesk(branchId, companyId);
     }
 
     /**
@@ -260,6 +266,62 @@ public class CashBalanceService {
      * (single-sourced totalCreated, nem kell a controller-ben újraszámolni).
      */
     public record BulkInitResult(Map<UUID, Integer> perBranch, int totalCreated, int branchCount) {}
+
+    /**
+     * FK-074 FR-3 (2026-08-06): valuta aktiválásakor automatikus {@code cash_balance}
+     * sor-létrehozás az aktiváló felhasználó cégének MINDEN AKTÍV branch-ére —
+     * ÉRTÉKTÁRAKRA (is_vault=TRUE) IS — ha az adott valutára még nincs sor.
+     *
+     * <p><b>Miért NEM a {@link #initializeBranchBalances(UUID)} mintát hívja:</b> az az
+     * FK-038-gátat (vault-kihagyás, ~193-197. sor) is tartalmazza, amit ez az FR NEM
+     * örökölhet — a 2026-08-05-én bemergelt FKH-029/V371 architektúra-fordulat óta az
+     * Értéktáraknak VAN cash_balance könyvelési rétegük, és a kihagyásuk új deviza
+     * aktiválásakor visszahozná a „Kassza egyenleg nem található" hibát
+     * (TransferService increase/decreaseCashBalance). Ezért EZ a metódus saját,
+     * vault-t is bevonó útvonal: {@link CashBalanceRepository#insertIfAbsent}
+     * branch-enként, a {@code findByCompanyIdAndIsActiveTrueExcludingCounterparties}
+     * (FK-032: VAULT_COUNTERPARTY virtuális partnerek kizárva) aktív branch-halmazán.</p>
+     *
+     * <p><b>Idempotencia (NFR-2/FR-5):</b> {@code INSERT ... ON CONFLICT (branch_id,
+     * currency_id) DO NOTHING} — dupla aktiválás NEM duplikál sort, meglévő egyenleget
+     * NEM ír felül.</p>
+     *
+     * <p><b>Tranzakcionalitás (NFR-4):</b> a Propagation alap (REQUIRED), így a hívó
+     * (AdminCurrencyService.setActive) tranzakciójában fut — bármely branch hibája
+     * az egész aktiválást (az {@code is_active} állítást is) visszagörgeti.</p>
+     *
+     * <p><b>Cross-tenant (§6.b):</b> kizárólag a JWT-ből feloldott
+     * {@code SecurityUtils.getCurrentCompanyId()} cég branch-jeit érinti.</p>
+     *
+     * <p><b>Audit (§3, KAT=TX):</b> aktiválási eseményenként EGY audit_log bejegyzés,
+     * amely jelzi, hány fiókban jött létre új sor.</p>
+     *
+     * @param currency az épp aktivált valuta
+     * @return az újonnan létrehozott cash_balance sorok száma (0 = minden már létezett)
+     */
+    public int initializeCurrencyBalancesForActiveBranches(Currency currency) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Branch> branches =
+                branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId);
+        int created = 0;
+        for (Branch branch : branches) {
+            created += cashBalanceRepository.insertIfAbsent(companyId, branch.getId(), currency.getId());
+        }
+        auditLogService.log("CASH_BALANCE_AUTO_INIT",
+                "FK-074: valuta aktiválása (" + sanitizeForAudit(currency.getCode())
+                        + ") — automatikus cash_balance inicializálás: " + created
+                        + " új sor " + branches.size() + " aktív fiókból (Értéktárakat is beleértve)",
+                currency.getId());
+        log.info("FK-074 CASH_BALANCE_AUTO_INIT: currency={} company={} — {} új cash_balance sor {} aktív fiókból",
+                sanitizeForAudit(currency.getCode()), companyId, created, branches.size());
+        return created;
+    }
+
+    /** CodeQL log/audit-injection guard: CRLF + control character stripping (AdminCurrencyService mintája). */
+    private static String sanitizeForAudit(String value) {
+        if (value == null) return "<null>";
+        return value.replaceAll("[\\r\\n\\t\\x00-\\x1F\\x7F]", "_");
+    }
 
     /**
      * HIGH FIX #9: Negatív készlet ellenőrzés ELADÁSNÁL.

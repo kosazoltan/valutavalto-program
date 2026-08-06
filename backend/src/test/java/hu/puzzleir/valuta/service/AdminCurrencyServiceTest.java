@@ -39,6 +39,8 @@ class AdminCurrencyServiceTest {
     private CurrencyAuditLogRepository auditRepository;
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
+    @Mock
+    private CashBalanceService cashBalanceService;
     @InjectMocks
     private AdminCurrencyService service;
 
@@ -170,5 +172,76 @@ class AdminCurrencyServiceTest {
         assertThat(createdAt.getType())
                 .as("CurrencyAuditLog.createdAt-nak LocalDateTime-nak kell lennie (timestamptz/OffsetDateTime tiltott — 500-bug)")
                 .isEqualTo(LocalDateTime.class);
+    }
+
+    // =================================================================
+    // FK-074 (2026-08-06): valuta-aktiválás → automatikus cash_balance
+    // inicializálás wiring-tesztjei (FR-3/FR-4/FR-5 + NFR-4)
+    // =================================================================
+
+    @Test
+    @DisplayName("FK-074 FR-3: inaktív→aktív váltás PONTOSAN EGYSZER inicializálja a cash_balance-okat")
+    void setActive_activation_initializesCashBalancesExactlyOnce() {
+        Currency c = Currency.builder().id(11L).code("USD").name("Amerikai dollár").active(false).build();
+        when(currencyRepository.findById(11L)).thenReturn(Optional.of(c));
+        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(cashBalanceService.initializeCurrencyBalancesForActiveBranches(any(Currency.class))).thenReturn(3);
+
+        Currency result = service.setActive(11L, true, "FK-074 aktiválás");
+
+        assertThat(result.getActive()).isTrue();
+        ArgumentCaptor<Currency> initCaptor = ArgumentCaptor.forClass(Currency.class);
+        org.mockito.Mockito.verify(cashBalanceService, org.mockito.Mockito.times(1))
+                .initializeCurrencyBalancesForActiveBranches(initCaptor.capture());
+        assertThat(initCaptor.getValue().getId()).isEqualTo(11L);
+        assertThat(initCaptor.getValue().getActive())
+                .as("az inicializálás a már AKTÍVRA állított valutát kapja")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("FK-074 FR-4: deaktiválás SOHA nem inicializál (meglévő sorok érintetlenek)")
+    void setActive_deactivation_neverInitializes() {
+        Currency c = Currency.builder().id(12L).code("DKK").name("Dán Korona").active(true).build();
+        when(currencyRepository.findById(12L)).thenReturn(Optional.of(c));
+        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Currency result = service.setActive(12L, false, "FK-074 deaktiválás");
+
+        assertThat(result.getActive()).isFalse();
+        org.mockito.Mockito.verifyNoInteractions(cashBalanceService);
+    }
+
+    @Test
+    @DisplayName("FK-074 FR-5: már aktív valuta 'aktiválása' no-op — nincs inicializálás, nincs mentés")
+    void setActive_alreadyActive_noOpNeverInitializes() {
+        Currency c = Currency.builder().id(13L).code("EUR").name("Euró").active(true).build();
+        when(currencyRepository.findById(13L)).thenReturn(Optional.of(c));
+
+        Currency result = service.setActive(13L, true, null);
+
+        assertThat(result.getActive()).isTrue();
+        org.mockito.Mockito.verify(currencyRepository, org.mockito.Mockito.never()).save(any(Currency.class));
+        org.mockito.Mockito.verifyNoInteractions(cashBalanceService);
+    }
+
+    @Test
+    @DisplayName("FK-074 NFR-4: az inicializálás hibája kivételként TERJED (a @Transactional az aktiválást visszagörgeti)")
+    void setActive_initializationFailure_propagates() {
+        Currency c = Currency.builder().id(14L).code("GBP").name("Angol font").active(false).build();
+        when(currencyRepository.findById(14L)).thenReturn(Optional.of(c));
+        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(cashBalanceService.initializeCurrencyBalancesForActiveBranches(any(Currency.class)))
+                .thenThrow(new IllegalStateException("cash_balance insert meghiusult"));
+
+        assertThatThrownBy(() -> service.setActive(14L, true, "FK-074 hiba-teszt"))
+                .as("az inicializálás hibájának a setActive hívóhoz kell terjednie — "
+                        + "a @Transactional (rollbackFor) így az egész aktiválást visszagörgeti")
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cash_balance");
+        // Az audit az írásáig eljutott (a writeAudit a hiba ELŐTT fut) — a rollback a
+        // tranzakció-interceptor feladata, amit a propagált kivétel vált ki (NFR-4).
+        org.mockito.Mockito.verify(auditRepository).save(any(CurrencyAuditLog.class));
+        org.mockito.Mockito.verify(cashBalanceService).initializeCurrencyBalancesForActiveBranches(any(Currency.class));
     }
 }
