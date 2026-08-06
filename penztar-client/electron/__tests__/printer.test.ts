@@ -747,12 +747,24 @@ describe('printer — SP512 papírméret: driver-default form, nem hardcode-olt 
   });
 
   it('a webContents.print a nyomtató alapértelmezett lapméretét használja (usePrinterDefaultPageSize), pageSize nélkül', async () => {
-    const result = await printReceipt(baseData, 'EPSON TM-T88V');
+    // Sourcery nitpick (PR #1576): a describe témájához illő nyomtatónév — csak erre az
+    // egy getPrinters-hívásra (Once), a közös EPSON-os fixture-t nem módosítja.
+    getPrintersMock.mockResolvedValueOnce([
+      {
+        name: 'Star SP500 TearBar (SP512)',
+        displayName: 'Star SP500 TearBar (SP512)',
+        description: '',
+        status: 0,
+        isDefault: true,
+      },
+    ]);
+    const result = await printReceipt(baseData, 'Star SP500 TearBar (SP512)');
 
     expect(result).toBe(true);
     const opts = printMock.mock.calls[0][0] as Record<string, unknown>;
     expect(opts.usePrinterDefaultPageSize).toBe(true);
     expect(opts).not.toHaveProperty('pageSize');
+    expect(opts.deviceName).toBe('Star SP500 TearBar (SP512)');
   });
 
   it('a bizonylat-HTML nem rögzít 80mm-es lap- és 76mm-es body-szélességet, a @page a driver-formára deferál', async () => {
