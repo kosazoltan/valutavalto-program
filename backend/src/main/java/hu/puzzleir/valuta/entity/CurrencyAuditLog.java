@@ -83,4 +83,27 @@ public class CurrencyAuditLog {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * {@code created_at} védőháló — az {@link AuditLog#applyCreatedAtFallback()} bevált mintája.
+     * A mező {@code nullable = false}, az értéket viszont kizárólag a {@code @CreatedDate}
+     * auditing tölti. Repo-szabály: a {@code TestApplication}-alapú Spring-kontextusokban az
+     * {@code @EnableJpaAuditing} TILOS (suite-szintű törést okozott — a többi tesztosztály
+     * kézi createdAt-seedelését írta felül, ld. EntityCreatedAtAuditingRegressionPostgresIT),
+     * tehát az auditing nélküli útvonal NOT NULL-sértéssel esne el, holott az auditálandó
+     * esemény hibátlan. Egy audit-bejegyzés nem veszhet el emiatt.
+     *
+     * <p><b>Élesben ez sosem sül el:</b> a {@code ValutaBackendApplication} hordozza az
+     * {@code @EnableJpaAuditing}-et, és a JPA-spec szerint az {@code @EntityListeners}
+     * callbackjei az entitás saját callbackjei ELŐTT futnak — ide érve a {@code createdAt}
+     * már ki van töltve, a null-check no-op.
+     *
+     * <p>Kizárólag null-check + kitöltés: meglévő értéket SOHA nem ír felül.
+     */
+    @PrePersist
+    void applyCreatedAtFallback() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
 }

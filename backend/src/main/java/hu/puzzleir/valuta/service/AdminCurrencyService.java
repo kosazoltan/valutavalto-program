@@ -41,6 +41,12 @@ public class AdminCurrencyService {
     private final CurrencyRepository currencyRepository;
     private final CurrencyAuditLogRepository auditRepository;
     private final ObjectMapper objectMapper;
+    /**
+     * FK-074 FR-3 (2026-08-06): valuta-aktiváláskor automatikus cash_balance
+     * inicializálás az aktív fiókokra (Értéktárakra is). Nincs körkörös függőség:
+     * a CashBalanceService nem függ az AdminCurrencyService-től.
+     */
+    private final CashBalanceService cashBalanceService;
 
     private static final VVLogger VV_LOG = VVLogger.of(AdminCurrencyService.class);
 
@@ -129,6 +135,14 @@ public class AdminCurrencyService {
         Currency saved = currencyRepository.save(currency);
         String action = active ? "ACTIVATE" : "DEACTIVATE";
         writeAudit(saved, action, oldSnapshot, saved, note);
+        // FK-074 FR-3/FR-5 (2026-08-06): aktiváláskor automatikus 0-s cash_balance sorok
+        // létrehozása MINDEN aktív fióknál (Értéktárakat is beleértve), idempotens módon.
+        // Deaktiváláskor a meglévő sorok érintetlenek maradnak (FR-4) — ezért csak
+        // aktív irányban hívjuk. NFR-4: ugyanabban a tranzakcióban fut (REQUIRED
+        // propagáció), így az inicializálás hibája az egész aktiválást visszagörgeti.
+        if (active) {
+            cashBalanceService.initializeCurrencyBalancesForActiveBranches(saved);
+        }
         // CodeQL log-injection fix (PR #697 review): explicit sanitize a
         // user-input-tol fuggo mezokre (currency.code + note kontrolalhato).
         log.info("AdminCurrency: {} code={} workerId={} note={}",

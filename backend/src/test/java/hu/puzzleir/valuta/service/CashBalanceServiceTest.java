@@ -105,7 +105,7 @@ class CashBalanceServiceTest {
     }
 
     @Test
-    @DisplayName("getCurrentBranchBalances — lista visszaadas")
+    @DisplayName("getCurrentBranchBalances — lista visszaadas (FK-074 FR-1/FR-2: SZŰRT cashdesk-query)")
     void testGetCurrentBranchBalances() {
         CashBalance b1 = CashBalance.builder().currentBalance(BigDecimal.TEN).build();
         CashBalance b2 = CashBalance.builder().currentBalance(BigDecimal.ONE).build();
@@ -113,10 +113,17 @@ class CashBalanceServiceTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
-            when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(List.of(b1, b2));
+            // FK-074 (2026-08-06): a pénztári „Kassza / készlet" lista (GET /cash-balances)
+            // a SZŰRT queryt használja — inaktív+nulla sorok rejtve, inaktív+nem-nulla látszik.
+            when(cashBalanceRepository.findByBranchIdAndCompanyIdForCashDesk(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(List.of(b1, b2));
 
             List<CashBalance> result = service.getCurrentBranchBalances();
             assertThat(result).hasSize(2);
+            // A pénztári lista NEM térhet vissza a szűretlen queryre (ClosingWizard/riportoké) —
+            // különben az inaktív+nulla sorok újra megjelennének a Kassza oldalon.
+            verify(cashBalanceRepository).findByBranchIdAndCompanyIdForCashDesk(BRANCH_ID, COMPANY_ID);
+            verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID);
         }
     }
 

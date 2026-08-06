@@ -100,6 +100,28 @@ public interface CashBalanceRepository extends JpaRepository<CashBalance, Long> 
             @Param("branchId") UUID branchId, @Param("companyId") UUID companyId);
 
     /**
+     * FK-074 FR-1/FR-2 (2026-08-06): a pénztári „Kassza / készlet" oldal SZŰRT listája —
+     * az INAKTÍV valutájú, NULLA egyenlegű sorok rejtve maradnak, de az inaktív valutájú,
+     * NEM NULLA egyenlegű sorok továbbra is megjelennek (adatvesztés elleni védelem).
+     *
+     * <p>A szűrés MANDATÓRIUSAN query-szintű (FK-074 §9.4): a párhuzamosan futó
+     * „Kassza / készlet redesign" kérés ugyanazt a CashDeskPage.tsx-et módosítja,
+     * ezért frontend-oldali szűrés ütközne — a backend-út a frontendet nem érinti.</p>
+     *
+     * <p>A szűretlen párja ({@link #findByBranchIdAndCompanyId(UUID, UUID)}) változatlanul
+     * a zárás/riport útvonalaké (ClosingWizard, DailyClosing, DailyReportGenerator, summary).</p>
+     */
+    @Query("SELECT cb FROM CashBalance cb " +
+           "JOIN FETCH cb.branch " +
+           "JOIN FETCH cb.currency " +
+           "JOIN FETCH cb.company " +
+           "WHERE cb.branch.id = :branchId AND cb.company.id = :companyId " +
+           "AND (cb.currency.active = true OR cb.currentBalance <> 0) " +
+           "ORDER BY cb.currency.displayOrder")
+    List<CashBalance> findByBranchIdAndCompanyIdForCashDesk(
+            @Param("branchId") UUID branchId, @Param("companyId") UUID companyId);
+
+    /**
      * Issue #110 / Sourcery feedback: létezik-e cash_balance erre a branch-re?
      *
      * Könnyebb query — csak COUNT, nem lekéri az összes rekordot.
