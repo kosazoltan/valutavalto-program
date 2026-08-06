@@ -1338,17 +1338,14 @@ function formatNumber(value: number | undefined | null): string {
 }
 
 /**
- * FK-064 / PR #1483 review: blokkoló-e egy eltérés-sor? A backend
- * checkEveningDenomination HUF-toleranciájának (|diff| ≤ 1 Ft, kerekítés) tükre —
- * enélkül a frontend 1 Ft-os HUF-eltérésnél is blokkolna, miközben a backend átengedi.
+ * FK-073 (FR-2): blokkoló-e egy eltérés-sor? A backend által visszaadott,
+ * tolerancia-alapú {@code status} mező dönt ({@code status !== 'OK'} blokkol).
+ * A korábbi, kézzel bedrótozott HUF ≤1 kivétel megszűnt: a tolerancia egyetlen
+ * forrása a backend ClosingTolerance.blocks() kiértékelése, így az eltérés-táblázat
+ * és a véglegesítés-gomb mindig ugyanazt az eredményt adja (NFR-1).
  */
 function isBlockingDifference(d: ClosingWizardDifference): boolean {
-  if (d.status === 'OK') return false
-  if (d.currencyCode === 'HUF') {
-    const diff = typeof d.difference === 'number' ? d.difference : Number(d.difference)
-    if (Number.isFinite(diff) && Math.abs(diff) <= 1) return false
-  }
-  return true
+  return d.status !== 'OK'
 }
 
 /**

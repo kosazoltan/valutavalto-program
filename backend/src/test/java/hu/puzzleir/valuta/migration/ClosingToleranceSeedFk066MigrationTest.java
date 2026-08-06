@@ -40,6 +40,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>Meglévő (üzemeltető által testre szabott) globális sort a migráció NEM ír
  *       felül (SEED-DÖNTÉS: nincs update-if-different ág).</li>
  * </ul>
+ *
+ * <p>FK-073 (dokumentált spec-változás, NEM teszt-gyengítés): a V373 migráció az
+ * egyszeri üzleti döntés alapján TUDATOSAN felülírja a fenti „nincs update-ág”
+ * szerződést — a végállapot mindhárom globális sorra érték=0, is_active=true.
+ * Az alábbi tesztek ezért a V373 utáni végállapotot (0/0/0) asszertálják.
  */
 @Testcontainers
 class ClosingToleranceSeedFk066MigrationTest {
@@ -86,15 +91,15 @@ class ClosingToleranceSeedFk066MigrationTest {
     }
 
     @Test
-    @DisplayName("FK-066 FR-4: friss DB-n a seed globális HUF='5'/EUR='1'/USD='1' sorokat hoz létre, és csak azokat")
+    @DisplayName("FK-066 FR-4 + FK-073: friss DB-n a globális sorok végállapota HUF='0'/EUR='0'/USD='0' (V364 seed + V373 felülírás), és csak azok")
     void freshDatabaseSeedsGlobalRows() throws Exception {
         migrateToLatest();
 
         try (Connection connection = openConnection()) {
             for (String[] expected : new String[][]{
-                    {"CLOSING_TOLERANCE_HUF", "5"},
-                    {"CLOSING_TOLERANCE_EUR", "1"},
-                    {"CLOSING_TOLERANCE_USD", "1"}}) {
+                    {"CLOSING_TOLERANCE_HUF", "0"},
+                    {"CLOSING_TOLERANCE_EUR", "0"},
+                    {"CLOSING_TOLERANCE_USD", "0"}}) {
                 assertThat(queryForString(connection, """
                         SELECT parameter_value || '|' || parameter_type || '|' || category
                                || '|' || is_active::text
@@ -131,11 +136,11 @@ class ClosingToleranceSeedFk066MigrationTest {
             assertThat(queryForString(connection, """
                     SELECT parameter_value FROM system_parameter
                      WHERE parameter_key = 'CLOSING_TOLERANCE_HUF' AND company_id IS NULL
-                    """)).isEqualTo("5");
+                    """)).isEqualTo("0");
             assertThat(queryForString(connection, """
                     SELECT parameter_value FROM system_parameter
                      WHERE parameter_key = 'CLOSING_TOLERANCE_EUR' AND company_id IS NULL
-                    """)).isEqualTo("1");
+                    """)).isEqualTo("0");
         }
     }
 
@@ -162,11 +167,12 @@ class ClosingToleranceSeedFk066MigrationTest {
         migrateToLatest();
 
         try (Connection connection = openConnection()) {
-            // A globális seedek a céges override-tól FÜGGETLENÜL létrejönnek:
+            // A globális seedek a céges override-tól FÜGGETLENÜL létrejönnek;
+            // FK-073: a V373 utáni végállapot 0/0/0 (a céges override-ot nem érinti):
             for (String[] expected : new String[][]{
-                    {"CLOSING_TOLERANCE_HUF", "5"},
-                    {"CLOSING_TOLERANCE_EUR", "1"},
-                    {"CLOSING_TOLERANCE_USD", "1"}}) {
+                    {"CLOSING_TOLERANCE_HUF", "0"},
+                    {"CLOSING_TOLERANCE_EUR", "0"},
+                    {"CLOSING_TOLERANCE_USD", "0"}}) {
                 assertThat(queryForString(connection, """
                         SELECT parameter_value FROM system_parameter
                          WHERE parameter_key = '%s' AND company_id IS NULL
@@ -190,7 +196,7 @@ class ClosingToleranceSeedFk066MigrationTest {
     }
 
     @Test
-    @DisplayName("FK-066 SEED-DÖNTÉS: meglévő testre szabott globális értéket ('3') a migráció nem ír felül")
+    @DisplayName("FK-073: a V373 az egyszeri üzleti döntés alapján a testre szabott globális értéket ('3') is 0-ra írja (a V364 'nincs update-ág' szerződésének tudatos felülírása)")
     void existingCustomValueIsPreserved() throws Exception {
         int seedVersion = seedVersionOf(resolveSeedMigration());
         migrateToVersion(seedVersion - 1);
@@ -211,21 +217,22 @@ class ClosingToleranceSeedFk066MigrationTest {
                     SELECT parameter_value FROM system_parameter
                      WHERE parameter_key = 'CLOSING_TOLERANCE_HUF' AND company_id IS NULL
                     """))
-                    .as("A V307-mintától eltérően NINCS update-ág — a '3' nem íródhat felül '5'-re")
-                    .isEqualTo("3");
+                    .as("FK-073 (dokumentált spec-változás): a V373 TUDATOSAN felülírja a V364 "
+                            + "'nincs update-ág' szerződését — a '3' egyszeri üzleti döntéssel '0'-ra változik")
+                    .isEqualTo("0");
             assertThat(queryForLong(connection, """
                     SELECT COUNT(*) FROM system_parameter
                      WHERE parameter_key = 'CLOSING_TOLERANCE_HUF'
                     """)).isEqualTo(1L);
-            // A hiányzó EUR/USD sorokat a migráció ettől függetlenül seedeli:
+            // A hiányzó EUR/USD sorokat a migráció ettől függetlenül seedeli (V373 után 0 értékkel):
             assertThat(queryForString(connection, """
                     SELECT parameter_value FROM system_parameter
                      WHERE parameter_key = 'CLOSING_TOLERANCE_EUR' AND company_id IS NULL
-                    """)).isEqualTo("1");
+                    """)).isEqualTo("0");
             assertThat(queryForString(connection, """
                     SELECT parameter_value FROM system_parameter
                      WHERE parameter_key = 'CLOSING_TOLERANCE_USD' AND company_id IS NULL
-                    """)).isEqualTo("1");
+                    """)).isEqualTo("0");
         }
     }
 
