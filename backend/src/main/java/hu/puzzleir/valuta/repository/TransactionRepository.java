@@ -228,6 +228,66 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("type") TransactionType type
     );
 
+    /**
+     * FK-075 FR-5/FR-6 (2026-08-06): élő „Mai statisztika" — a mai napra és az aktuális
+     * fiókra szűrt, COMPLETED státuszú tranzakciók darabszáma a megadott típus-halmazra.
+     *
+     * <p>Tenant-szűrés: azonos a {@link #sumDailyTurnover} mintájával (companyId + branchId
+     * + transactionDate). Csak COMPLETED tranzakciók számítanak — a sztornózott (REVERSED)
+     * tételek így NEM növelik az élő statisztikát (eltérés a tárolt DailySession-számlálóktól,
+     * lásd a service-oldali dokumentációt).</p>
+     */
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.transactionType IN :types " +
+           "AND t.status = 'COMPLETED'")
+    long countCompletedByBranchAndDateAndTypes(
+        @Param("companyId") UUID companyId,
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("types") java.util.Collection<TransactionType> types
+    );
+
+    /**
+     * FK-075 FR-5/FR-6 (2026-08-06): élő „Mai statisztika" — HUF forgalom összegzése.
+     *
+     * <p>Header-szintű összegzés: a multi-line bizonylatok FEJ-sora (hufAmount = a bizonylat
+     * TELJES HUF összege, {@code TransactionMultiLineService}) egyszer számít — tételsorokat
+     * NEM adunk hozzá, így nincs dupla-számolás. (A Codex #903 multi-line caveat a
+     * valutánkénti currencyAmount-összesítésekre vonatkozik, a HUF header-összegre nem.)</p>
+     */
+    @Query("SELECT COALESCE(SUM(t.hufAmount), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.transactionType IN :types " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumCompletedTurnoverByBranchAndDateAndTypes(
+        @Param("companyId") UUID companyId,
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("types") java.util.Collection<TransactionType> types
+    );
+
+    /**
+     * FK-075 FR-5/FR-6 (2026-08-06): élő „Mai statisztika" — beszedett kezelési díj összegzése.
+     * Header-szintű (multi-line fej sorában a teljes díj szerepel), csak COMPLETED tételek.
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.transactionType IN :types " +
+           "AND t.status = 'COMPLETED'")
+    BigDecimal sumCompletedHandlingFeeByBranchAndDateAndTypes(
+        @Param("companyId") UUID companyId,
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("types") java.util.Collection<TransactionType> types
+    );
+
     // A korábbi header-alapú sumDailyTurnoverByCurrency / sumDailyTurnoverHufByCurrency query-k
     // ELTÁVOLÍTVA (Codex #903): multi-valutás (multiLine) bizonylatnál az első valutára számolták a
     // teljes összeget. Helyettük a sumDailySingleLineTurnover* (lent, multi-line kizárva) + a

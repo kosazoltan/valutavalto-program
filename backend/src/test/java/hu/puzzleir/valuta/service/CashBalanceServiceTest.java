@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.ExchangeRate;
+import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
@@ -12,6 +13,7 @@ import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,9 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +43,7 @@ class CashBalanceServiceTest {
     @Mock private BranchRepository branchRepository;
     @Mock private ExchangeRateRepository exchangeRateRepository;
     @Mock private AuditLogService auditLogService;
+    @Mock private TransactionRepository transactionRepository;
     @InjectMocks private CashBalanceService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
@@ -729,6 +735,95 @@ class CashBalanceServiceTest {
 
             CashBalance result = service.getBalanceByCurrency(4L);
             assertThat(result.getCurrentBalance()).isEqualByComparingTo("777");
+        }
+    }
+
+    @Test
+    @DisplayName("getTodayStats — élő Mai statisztika: mai nap, aktuális fiók, cég-szűrt tranzakció-összesítés (FK-075 FR-5/FR-6)")
+    void getTodayStats_liveAggregation() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            when(transactionRepository.countCompletedByBranchAndDateAndTypes(
+                    org.mockito.ArgumentMatchers.eq(COMPANY_ID),
+                    org.mockito.ArgumentMatchers.eq(BRANCH_ID),
+                    org.mockito.ArgumentMatchers.any(LocalDate.class),
+                    org.mockito.ArgumentMatchers.anyCollection()))
+                    .thenReturn(5L);
+            when(transactionRepository.sumCompletedTurnoverByBranchAndDateAndTypes(
+                    org.mockito.ArgumentMatchers.eq(COMPANY_ID),
+                    org.mockito.ArgumentMatchers.eq(BRANCH_ID),
+                    org.mockito.ArgumentMatchers.any(LocalDate.class),
+                    org.mockito.ArgumentMatchers.anyCollection()))
+                    .thenReturn(new BigDecimal("100000"), new BigDecimal("90000"));
+            when(transactionRepository.sumCompletedHandlingFeeByBranchAndDateAndTypes(
+                    org.mockito.ArgumentMatchers.eq(COMPANY_ID),
+                    org.mockito.ArgumentMatchers.eq(BRANCH_ID),
+                    org.mockito.ArgumentMatchers.any(LocalDate.class),
+                    org.mockito.ArgumentMatchers.anyCollection()))
+                    .thenReturn(new BigDecimal("2500"));
+
+            CashBalanceService.TodayStats stats = service.getTodayStats();
+
+            assertThat(stats.getTransactions()).isEqualTo(5);
+            assertThat(stats.getBuyTotal()).isEqualByComparingTo("100000");
+            assertThat(stats.getSellTotal()).isEqualByComparingTo("90000");
+            assertThat(stats.getHandlingFee()).isEqualByComparingTo("2500");
+
+            // Tenant-szűrés (companyId+branchId) és a DailySession-szemantikának megfelelő
+            // típus-halmazok ellenőrzése.
+            LocalDate today = LocalDate.now();
+            List<TransactionType> expectedBuy =
+                    Arrays.stream(TransactionType.values()).filter(TransactionType::isBuyType).toList();
+            List<TransactionType> expectedSell =
+                    Arrays.stream(TransactionType.values()).filter(TransactionType::isSellType).toList();
+            List<TransactionType> expectedAll = new ArrayList<>(expectedBuy);
+            expectedAll.addAll(expectedSell);
+
+            verify(transactionRepository)
+                    .countCompletedByBranchAndDateAndTypes(COMPANY_ID, BRANCH_ID, today, expectedAll);
+            verify(transactionRepository)
+                    .sumCompletedTurnoverByBranchAndDateAndTypes(COMPANY_ID, BRANCH_ID, today, expectedBuy);
+            verify(transactionRepository)
+                    .sumCompletedTurnoverByBranchAndDateAndTypes(COMPANY_ID, BRANCH_ID, today, expectedSell);
+            verify(transactionRepository)
+                    .sumCompletedHandlingFeeByBranchAndDateAndTypes(COMPANY_ID, BRANCH_ID, today, expectedAll);
+        }
+    }
+
+    @Test
+    @DisplayName("getTodayStats — tranzakciómentes nap: nulla értékek (COALESCE)")
+    void getTodayStats_emptyDay_returnsZeros() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentBranchId).thenReturn(BRANCH_ID);
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            when(transactionRepository.countCompletedByBranchAndDateAndTypes(
+                    org.mockito.ArgumentMatchers.eq(COMPANY_ID),
+                    org.mockito.ArgumentMatchers.eq(BRANCH_ID),
+                    org.mockito.ArgumentMatchers.any(LocalDate.class),
+                    org.mockito.ArgumentMatchers.anyCollection()))
+                    .thenReturn(0L);
+            when(transactionRepository.sumCompletedTurnoverByBranchAndDateAndTypes(
+                    org.mockito.ArgumentMatchers.eq(COMPANY_ID),
+                    org.mockito.ArgumentMatchers.eq(BRANCH_ID),
+                    org.mockito.ArgumentMatchers.any(LocalDate.class),
+                    org.mockito.ArgumentMatchers.anyCollection()))
+                    .thenReturn(BigDecimal.ZERO);
+            when(transactionRepository.sumCompletedHandlingFeeByBranchAndDateAndTypes(
+                    org.mockito.ArgumentMatchers.eq(COMPANY_ID),
+                    org.mockito.ArgumentMatchers.eq(BRANCH_ID),
+                    org.mockito.ArgumentMatchers.any(LocalDate.class),
+                    org.mockito.ArgumentMatchers.anyCollection()))
+                    .thenReturn(BigDecimal.ZERO);
+
+            CashBalanceService.TodayStats stats = service.getTodayStats();
+
+            assertThat(stats.getTransactions()).isZero();
+            assertThat(stats.getBuyTotal()).isEqualByComparingTo("0");
+            assertThat(stats.getSellTotal()).isEqualByComparingTo("0");
+            assertThat(stats.getHandlingFee()).isEqualByComparingTo("0");
         }
     }
 
