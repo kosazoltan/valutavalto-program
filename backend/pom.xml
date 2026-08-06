@@ -35,7 +35,7 @@
         <!-- CVE-2026-34478/34480/34481 fix: log4j explicit override 2.24.3 -> 2.25.4 -->
         <log4j2.version>2.25.4</log4j2.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
-        <grpc.version>1.83.0</grpc.version>
+        <grpc.version>1.83.1</grpc.version>
         <!-- AI review fix Codex P1 #263 (2026-04-29): a `<tomcat.version>10.1.54</tomcat.version>`
              override SB 3.5-re volt szükséges (CVE-2026-34483/34486/34487 fix), de SB 4.0.6
              Servlet 6.1 stack-et céloz, ami Tomcat 11.x. A 10.1.x override Servlet 6.0
@@ -51,7 +51,7 @@
         <jacoco.version>0.8.15</jacoco.version>
         <pitest.version>1.25.8</pitest.version>
         <pitest.junit5.version>1.2.3</pitest.junit5.version>
-        <cyclonedx.version>2.9.2</cyclonedx.version>
+        <cyclonedx.version>2.9.3</cyclonedx.version>
         <!-- CVE-2026-41293/43512/43515/41284/43513/42498/43514 + CVE-2026-53404/53434/
              55276/55955/55956/59083/59084 fix: Tomcat 11.0.22 -> 11.0.24.
              Azonos 11.0.x Servlet-6.1 line, security point-release. -->
@@ -126,7 +126,7 @@
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
-            <version>1.22.2</version>
+            <version>1.23.1</version>
         </dependency>
 
         <!-- Lombok -->
@@ -170,7 +170,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.0.3</version>
+            <version>3.1.0</version>
         </dependency>
 
         <!-- Webcam capture for USB cameras -->
@@ -225,7 +225,7 @@
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.49.0</version>
+            <version>1.50.0</version>
         </dependency>
 
         <dependency>
