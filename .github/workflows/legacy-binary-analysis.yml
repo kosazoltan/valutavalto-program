@@ -68,7 +68,7 @@ jobs:
 
       - name: Riport-artifact feltöltése (ha készült)
         if: hashFiles('docs/legacy-analysis/generated/legacy-binary-analysis.json') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: legacy-binary-analysis
           path: docs/legacy-analysis/generated/

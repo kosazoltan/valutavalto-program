@@ -230,7 +230,7 @@ jobs:
           "jar_name=$($jar.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Upload backend JAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-jar-${{ needs.preflight.outputs.version }}
           path: backend/target/valuta-backend-*.jar
@@ -415,7 +415,7 @@ jobs:
           }
 
       - name: Upload Penztar artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: penztar-signed-${{ needs.preflight.outputs.version }}
           path: |
@@ -524,7 +524,7 @@ jobs:
           }
 
       - name: Upload Kozponti artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kozponti-signed-${{ needs.preflight.outputs.version }}
           path: kozponti-client/release/Kozponti-Munkaallomas-Setup-*.exe

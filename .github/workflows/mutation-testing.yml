@@ -33,7 +33,7 @@ jobs:
         run: cd backend && mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage --no-transfer-progress
       - name: PIT riport artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pit-mutation-report
           path: backend/target/pit-reports/
