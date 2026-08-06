@@ -10,6 +10,8 @@ import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
@@ -52,6 +55,25 @@ public class CashBalanceService {
     private final BranchRepository branchRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final AuditLogService auditLogService;
+    // FK-075 FR-5/FR-6: élő „Mai statisztika" — tranzakció-alapú összesítés a mai napra.
+    private final TransactionRepository transactionRepository;
+
+    /**
+     * FK-075: a „Mai statisztika" típus-halmazai a DailySession-szemantikából
+     * ({@link TransactionType#isBuyType()} / {@link TransactionType#isSellType()}) származtatva:
+     * BUY/WU_RECEIVE/MG_RECEIVE illetve SELL/WU_SEND/MG_SEND.
+     */
+    private static final List<TransactionType> BUY_TYPES =
+            Arrays.stream(TransactionType.values()).filter(TransactionType::isBuyType).toList();
+    private static final List<TransactionType> SELL_TYPES =
+            Arrays.stream(TransactionType.values()).filter(TransactionType::isSellType).toList();
+    private static final List<TransactionType> BUY_AND_SELL_TYPES = buildBuyAndSellTypes();
+
+    private static List<TransactionType> buildBuyAndSellTypes() {
+        List<TransactionType> all = new ArrayList<>(BUY_TYPES);
+        all.addAll(SELL_TYPES);
+        return List.copyOf(all);
+    }
 
     /**
      * Aktuális iroda összes egyenlegének lekérése
@@ -519,6 +541,57 @@ public class CashBalanceService {
     }
 
     /**
+     * FK-075 FR-5/FR-6 (2026-08-06): élő „Mai statisztika" a CashDeskPage-nek.
+     *
+     * <p>A pénztári „Kassza / készlet" oldal Mai statisztika panelje korábban a tárolt
+     * napi-munkamenet-számlálókból (DailySession.transactionCount / buyTurnoverHuf /
+     * sellTurnoverHuf / handlingFeeTotal) élt. Ez a metódus Ehelyett a mai nap tényleges,
+     * aktuális fiókra szűrt tranzakcióiból számol ÉLŐBEN — a {@code GET /daily-sessions/current}
+     * végpont változatlan marad (MainLayout fejléc is használja).</p>
+     *
+     * <p>Szemantika (DailySession.addTransaction mintájára):</p>
+     * <ul>
+     *   <li>Tranzakció-darabszám: BUY/SELL típuscsalád ({@link TransactionType#isBuyType()} /
+     *       {@link TransactionType#isSellType()}) — a panel Vétel/Eladás összegeivel koherens
+     *       halmaz. A konverzió BUY+SELL lábai külön-külön számítanak (ahogy a DailySessionnél).</li>
+     *   <li>Vétel/Eladás összesen: header-szintű hufAmount összeg (multi-line fej = teljes HUF).</li>
+     *   <li>Kezelési díj: header-szintű handlingFee összeg ugyanerre a halmazra — megegyezik a
+     *       DailySession.handlingFeeTotal képzési szabályával (a sztornó 0 díjat ad).</li>
+     * </ul>
+     *
+     * <p>Tudatos eltérések a tárolt DailySession-számlálóktól (dokumentált döntés):</p>
+     * <ul>
+     *   <li>Csak {@code COMPLETED} státuszú tranzakciók számítanak — a sztornózott
+     *       ({@code REVERSED}) tételek nem növelik az élő statisztikát, míg a tárolt
+     *       számlálókat a sztornó nem csökkentette.</li>
+     *   <li>A darabszám a BUY/SELL családra szűk — REVERSAL/PARTIAL_REFUND/TRANSFER stb.
+     *       nem szerepel benne (a tárolt transactionCount ezeket is számolta).</li>
+     * </ul>
+     */
+    @Transactional(readOnly = true)
+    public TodayStats getTodayStats() {
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate today = LocalDate.now();
+
+        long transactions = transactionRepository.countCompletedByBranchAndDateAndTypes(
+                companyId, branchId, today, BUY_AND_SELL_TYPES);
+        BigDecimal buyTotal = transactionRepository.sumCompletedTurnoverByBranchAndDateAndTypes(
+                companyId, branchId, today, BUY_TYPES);
+        BigDecimal sellTotal = transactionRepository.sumCompletedTurnoverByBranchAndDateAndTypes(
+                companyId, branchId, today, SELL_TYPES);
+        BigDecimal handlingFee = transactionRepository.sumCompletedHandlingFeeByBranchAndDateAndTypes(
+                companyId, branchId, today, BUY_AND_SELL_TYPES);
+
+        return TodayStats.builder()
+                .transactions(transactions)
+                .buyTotal(buyTotal)
+                .sellTotal(sellTotal)
+                .handlingFee(handlingFee)
+                .build();
+    }
+
+    /**
      * Részletes pillanat állás HUF egyenértékekkel
      *
      * Legacy: PILLALL - pillanat állás részletes
@@ -716,6 +789,21 @@ public class CashBalanceService {
         private int lowBalanceAlerts;
         private int highBalanceAlerts;
         private List<CashBalance> balances;
+    }
+
+    /**
+     * FK-075 FR-5/FR-6 (2026-08-06): a Mai statisztika panel élő, tranzakció-alapú adatai.
+     * JSON: { transactions, buyTotal, sellTotal, handlingFee }.
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class TodayStats {
+        private long transactions;
+        private BigDecimal buyTotal;
+        private BigDecimal sellTotal;
+        private BigDecimal handlingFee;
     }
 
     @lombok.Data

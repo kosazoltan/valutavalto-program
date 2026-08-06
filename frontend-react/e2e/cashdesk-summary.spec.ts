@@ -109,6 +109,13 @@ async function mockCashDeskApis(page: Page) {
       },
       '/api/v1/cash-balances/currency/1': eurBalance,
       '/api/v1/cash-balances/code/EUR': eurBalance,
+      // FK-075 FR-5/FR-6: a Mai statisztika új, dedikált végpontja
+      '/api/v1/cash-balances/today-stats': {
+        transactions: 3,
+        buyTotal: 100000,
+        sellTotal: 90000,
+        handlingFee: 2500,
+      },
       '/api/v1/daily-sessions/current': {
         status: 'OPEN',
         openedAt: '2026-06-19T08:00:00',
@@ -160,7 +167,13 @@ test('pénztár mobil viewporton használja a cash balance summary és detail v�
 
   await expect(page.getByText('HUF készlet')).toBeVisible()
   await expect(page.getByText(/250\s*000\s+Ft/)).toBeVisible()
-  await expect(page.getByText('Alacsony jelzés')).toBeVisible()
+  // FK-075 FR-9: új H1 cím; FR-2: a jelzés-csempék eltávolítva
+  await expect(
+    page.getByRole('heading', { name: 'Pillanatnyi pénztárállás' }),
+  ).toBeVisible()
+  await expect(page.getByText('Alacsony jelzés')).toHaveCount(0)
+  // FK-075 FR-6: "Beszedett kezelési díj" csempe a Mai statisztika panelben
+  await expect(page.getByText('Beszedett kezelési díj')).toBeVisible()
 
   const byIdRequest = page.waitForRequest(
     (request) =>
@@ -172,12 +185,15 @@ test('pénztár mobil viewporton használja a cash balance summary és detail v�
       request.method() === 'GET' &&
       new URL(request.url()).pathname === '/api/v1/cash-balances/code/EUR',
   )
-  await page.getByRole('button', { name: 'EUR részletek' }).click()
+  // FK-075 FR-3: nincs külön info-gomb, a teljes táblázat-sor kattintható
+  await page.getByRole('row', { name: /EUR/ }).click()
   await byIdRequest
   await byCodeRequest
 
   await expect(page.getByText('EUR pénzkészlet részletek')).toBeVisible()
   await expect(page.getByText('ID és kód egyezik')).toBeVisible()
+  // FK-075 FR-4: a részletek panelből a "Limit" mező eltávolítva
+  await expect(page.getByText('Limit')).toHaveCount(0)
 
   const horizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,

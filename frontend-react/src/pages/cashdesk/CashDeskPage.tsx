@@ -1,21 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Vault,
-  Lock,
-  Unlock,
-  Plus,
-  Minus,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  FileCheck,
-  Info,
-  X,
-} from 'lucide-react'
-import { NumberInput } from '../../components/NumberInput'
+import { Vault, Lock, CheckCircle, Clock, FileCheck, X } from 'lucide-react'
 import { cashBalanceApi, dailySessionApi } from '../../services/api/index'
-import type { BranchBalanceSummary, CashBalance, DailySession } from '../../services/api/index'
+import type {
+  BranchBalanceSummary,
+  CashBalance,
+  DailySession,
+  TodayStats,
+} from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
@@ -35,19 +27,29 @@ interface CashDeskStatus {
   openedAt: string
   openedBy: string
   balances: CashDeskBalanceItem[]
-  todayStats: { transactions: number; buyTotal: number; sellTotal: number; profit: number }
+  todayStats: TodayStats
+}
+
+/**
+ * FK-075 FR-5/FR-6 (2026-08-06): a Mai statisztika panel adatai mostantól az új,
+ * dedikált GET /cash-balances/today-stats végpontról érkeznek (élő, tranzakció-alapú
+ * összesítés), NEM a tárolt napi-munkamenet-számlálókból. Hiba esetén nullázott
+ * értékkel folytatjuk ( ugyanaz a hibaturő minta, mint a többi loadData hívás).
+ */
+const EMPTY_TODAY_STATS: TodayStats = {
+  transactions: 0,
+  buyTotal: 0,
+  sellTotal: 0,
+  handlingFee: 0,
 }
 
 const cashDeskLabels = {
   currencies: 'Valuták',
   hufStock: 'HUF készlet',
-  lowAlert: 'Alacsony jelzés',
-  highAlert: 'Magas jelzés',
   detailSuffix: 'pénzkészlet részletek',
   current: 'Aktuális',
   opening: 'Nyitó',
   dailyChange: 'Napi változás',
-  limit: 'Limit',
   codeCheck: 'Kód ellenőrzés',
   codeCheckOk: 'ID és kód egyezik',
   codeCheckMismatch: 'Eltérés vagy hiány',
@@ -81,13 +83,9 @@ export default function CashDeskPage() {
     openedAt: '',
     openedBy: '',
     balances: [],
-    todayStats: { transactions: 0, buyTotal: 0, sellTotal: 0, profit: 0 },
+    todayStats: EMPTY_TODAY_STATS,
   })
   const [_loading, setLoading] = useState(true)
-  const [showMovementDialog, setShowMovementDialog] = useState(false)
-  const [movementType, setMovementType] = useState<'in' | 'out'>('in')
-  const [movementCurrency, setMovementCurrency] = useState('HUF')
-  const [movementAmount, setMovementAmount] = useState('')
   const [summary, setSummary] = useState<BranchBalanceSummary | null>(null)
   const [selectedBalance, setSelectedBalance] = useState<CashBalance | null>(null)
   const [codeCheckBalance, setCodeCheckBalance] = useState<CashBalance | null>(null)
@@ -100,16 +98,34 @@ export default function CashDeskPage() {
     loadingRef.current = true
     setLoading(true)
     try {
-      const [balances, session, branchSummary]: [
+      // FK-075 FR-5/FR-6: a dailySessionApi.getCurrent() mostantól CSAK a
+      // nyitva/zárva állapothoz kell (isOpen/openedAt/openedBy) — a Mai
+      // statisztika adatait az új GET /cash-balances/today-stats adja.
+      // (A GET /daily-sessions/current-ot más felület, pl. MainLayout is
+      // használja, ezért nem módosítható — lásd FK-075 §7.)
+      const [balances, session, branchSummary, todayStatsRaw]: [
         CashBalance[],
         DailySession | null,
         BranchBalanceSummary | null,
+        TodayStats,
       ] = await Promise.all([
         cashBalanceApi.list().catch(() => [] as CashBalance[]),
         dailySessionApi.getCurrent().catch(() => null),
         cashBalanceApi.getSummary().catch(() => null),
+        cashBalanceApi.getTodayStats().catch(() => EMPTY_TODAY_STATS),
       ])
       setSummary(branchSummary)
+
+      // Védőháló: a mai-statisztika mezők mező-szintű normalizálása. A .catch() csak a
+      // hálózati hibát kezeli; ha a végpont 200-zal, de nem a várt alakkal válaszol
+      // (pl. E2E catch-all mock), a hiányzó szám-mezők undefined-ek lennének és a
+      // .toLocaleString() render-crash-t okozna (FK-075, relay-full.spec tanulsága).
+      const safeTodayStats: TodayStats = {
+        transactions: todayStatsRaw.transactions ?? 0,
+        buyTotal: todayStatsRaw.buyTotal ?? 0,
+        sellTotal: todayStatsRaw.sellTotal ?? 0,
+        handlingFee: todayStatsRaw.handlingFee ?? 0,
+      }
 
       setStatus({
         isOpen: !!session && session.status === 'OPEN',
@@ -122,14 +138,7 @@ export default function CashDeskPage() {
           minBalance: b.minBalance ?? 0,
           maxBalance: b.maxBalance ?? 999999999,
         })),
-        todayStats: session
-          ? {
-              transactions: session.transactionCount ?? 0,
-              buyTotal: session.buyTurnoverHuf ?? 0,
-              sellTotal: session.sellTurnoverHuf ?? 0,
-              profit: session.handlingFeeTotal ?? 0,
-            }
-          : { transactions: 0, buyTotal: 0, sellTotal: 0, profit: 0 },
+        todayStats: safeTodayStats,
       })
     } catch (error) {
       logger.error('CashDeskPage', 'Adatok betöltése sikertelen:', error)
@@ -173,38 +182,12 @@ export default function CashDeskPage() {
     }
   }, [loadData])
 
+  // FK-075 FR-3: a min/max küszöbök backend-logikája megmarad (TILOS lista),
+  // itt csak a sor színezéséhez használjuk — oszlop/ikon formájában nem jelenik meg.
   const getBalanceStatus = (balance: number, min: number, max: number) => {
     if (balance < min) return 'low'
     if (balance > max) return 'high'
     return 'ok'
-  }
-
-  const handleMovement = async () => {
-    const amount = parseFloat(movementAmount)
-    if (!amount || amount <= 0) {
-      toast.warning('Érvénytelen összeg', 'Adjon meg pozitív összeget')
-      return
-    }
-    try {
-      const currencyBalance = status.balances.find((b) => b.currency === movementCurrency)
-      if (!currencyBalance) {
-        toast.error('Hiba', 'Ismeretlen valutanem')
-        return
-      }
-      await cashBalanceApi.adjust({
-        currencyId: currencyBalance.currencyId,
-        amount,
-        incoming: movementType === 'in',
-        reason: `${movementType === 'in' ? 'Bevét' : 'Kiadás'}: ${amount} ${movementCurrency}`,
-      })
-      toast.success('Sikeres', `${movementType === 'in' ? 'Bevét' : 'Kiadás'} rögzítve`)
-      setShowMovementDialog(false)
-      setMovementAmount('')
-      void loadData()
-    } catch (error) {
-      logger.error('CashDeskPage', 'Pénzmozgás hiba:', error)
-      toast.error('Hiba', 'Pénzmozgás rögzítése sikertelen')
-    }
   }
 
   const handleBalanceDetails = async (item: CashDeskBalanceItem) => {
@@ -242,9 +225,10 @@ export default function CashDeskPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-base font-bold text-gray-800 flex items-center gap-2">
           <Vault size={18} />
-          {t('branch.branch')}
+          {t('cashdesk.pageTitle')}
         </h1>
         <div className="flex gap-1.5">
+          {/* FK-075 FR-8: "Pénztár zárás"/"Pénztár nyitás" eltávolítva, "Napi zárás" marad */}
           <button
             onClick={() => navigate('/closing/wizard')}
             className="form-button-primary flex items-center gap-1 h-7 text-xs px-2"
@@ -252,17 +236,6 @@ export default function CashDeskPage() {
             <FileCheck size={14} />
             {t('misc.napiZaras')}
           </button>
-          {status.isOpen ? (
-            <button className="form-button flex items-center gap-1 text-red-600 h-7 text-xs px-2">
-              <Lock size={14} />
-              {t('cashdesk.penztarZaras')}
-            </button>
-          ) : (
-            <button className="form-button-primary flex items-center gap-1 h-7 text-xs px-2">
-              <Unlock size={14} />
-              {t('cashdesk.penztarNyitas')}
-            </button>
-          )}
         </div>
       </div>
 
@@ -305,7 +278,8 @@ export default function CashDeskPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      {/* FK-075 FR-2: "Alacsony jelzés"/"Magas jelzés" csempék eltávolítva — 2 oszlopos rács */}
+      <div className="grid grid-cols-2 gap-2">
         <div className="form-panel p-2">
           <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.currencies}</div>
           <div className="text-base font-bold text-gray-900">
@@ -318,18 +292,6 @@ export default function CashDeskPage() {
             {(summary?.hufBalance ?? fallbackHufBalance).toLocaleString('hu-HU')} {t('common.ft')}
           </div>
         </div>
-        <div className="form-panel p-2">
-          <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.lowAlert}</div>
-          <div className="text-base font-bold text-orange-700">
-            {summary?.lowBalanceAlerts ?? 0}
-          </div>
-        </div>
-        <div className="form-panel p-2">
-          <div className="text-[10px] text-gray-500 uppercase">{cashDeskLabels.highAlert}</div>
-          <div className="text-base font-bold text-yellow-700">
-            {summary?.highBalanceAlerts ?? 0}
-          </div>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
@@ -337,28 +299,6 @@ export default function CashDeskPage() {
         <div className="lg:col-span-2 form-panel p-0">
           <div className="flex justify-between items-center px-3 py-1.5 border-b border-gray-200">
             <h2 className="text-sm font-semibold text-gray-700">{t('cashdesk.penzkeszlet')}</h2>
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => {
-                  setMovementType('in')
-                  setShowMovementDialog(true)
-                }}
-                className="form-button flex items-center gap-1 h-6 text-[11px] px-2"
-              >
-                <Plus size={12} />
-                {t('cashdesk.bevet')}
-              </button>
-              <button
-                onClick={() => {
-                  setMovementType('out')
-                  setShowMovementDialog(true)
-                }}
-                className="form-button flex items-center gap-1 h-6 text-[11px] px-2"
-              >
-                <Minus size={12} />
-                {t('cashdesk.kivet')}
-              </button>
-            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -367,12 +307,6 @@ export default function CashDeskPage() {
                 <tr className="text-[10px] uppercase text-gray-500">
                   <th className="px-3 py-1 text-left w-16">{t('common.currency')}</th>
                   <th className="px-2 py-1 text-right">{t('cashdesk.keszlet')}</th>
-                  <th className="px-2 py-1 text-right text-gray-400 w-24">
-                    {t('cashdesk.minMax')}
-                  </th>
-                  <th className="px-2 py-1 text-center w-16">
-                    <span className="sr-only">{t('common.status')}</span>
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -382,10 +316,19 @@ export default function CashDeskPage() {
                     item.minBalance,
                     item.maxBalance,
                   )
+                  const isDetailLoading = detailLoadingCurrency === item.currency
                   return (
+                    // FK-075 FR-3: MIN-MAX oszlop és (i) info-oszlop eltávolítva;
+                    // a teljes sor kattintható (cursor-pointer + hover-kiemelés),
+                    // az alacsony/magas sor-színezés megmarad. Betöltés alatt a
+                    // kattintás no-op (korábbi disabled-gomb viselkedés).
                     <tr
                       key={item.currency}
-                      className={`border-b border-gray-100 last:border-0 ${
+                      onClick={() => {
+                        if (!isDetailLoading) void handleBalanceDetails(item)
+                      }}
+                      title={`${item.currency} részletek`}
+                      className={`border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-100 ${
                         balanceStatus === 'low'
                           ? 'bg-orange-50'
                           : balanceStatus === 'high'
@@ -402,34 +345,6 @@ export default function CashDeskPage() {
                         <span className="font-mono font-bold text-sm">
                           {item.balance.toLocaleString('hu-HU')}
                         </span>
-                      </td>
-                      <td className="px-2 py-1 text-right text-[10px] text-gray-400 font-mono">
-                        {item.minBalance.toLocaleString('hu-HU')} -{' '}
-                        {item.maxBalance.toLocaleString('hu-HU')}
-                      </td>
-                      <td className="px-2 py-1 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {balanceStatus === 'low' && (
-                            <span title={t('cashdesk.alacsonyKeszlet')}>
-                              <AlertTriangle size={12} className="text-orange-500 inline" />
-                            </span>
-                          )}
-                          {balanceStatus === 'high' && (
-                            <span title={t('cashdesk.magasKeszlet')}>
-                              <AlertTriangle size={12} className="text-yellow-500 inline" />
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => void handleBalanceDetails(item)}
-                            className="inline-flex h-5 w-5 items-center justify-center rounded border border-gray-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                            title={`${item.currency} részletek`}
-                            aria-label={`${item.currency} részletek`}
-                            disabled={detailLoadingCurrency === item.currency}
-                          >
-                            <Info size={12} />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   )
@@ -468,10 +383,13 @@ export default function CashDeskPage() {
                 {status.todayStats.sellTotal.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
+            {/* FK-075 FR-6: "Napi eredmény" -> "Beszedett kezelési díj", élő értékkel */}
             <div className="bg-purple-50 px-2.5 py-1.5 rounded">
-              <div className="text-[10px] text-purple-600">{t('cashdesk.napiEredmeny')}</div>
+              <div className="text-[10px] text-purple-600">
+                {t('cashdesk.beszedettKezelesiDij')}
+              </div>
               <div className="text-sm font-bold text-purple-800">
-                {status.todayStats.profit.toLocaleString('hu-HU')} {t('common.ft')}
+                {status.todayStats.handlingFee.toLocaleString('hu-HU')} {t('common.ft')}
               </div>
             </div>
           </div>
@@ -501,7 +419,8 @@ export default function CashDeskPage() {
               <X size={14} />
             </button>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 pt-2 text-xs">
+          {/* FK-075 FR-4: "Limit" mező eltávolítva — 4 oszlopos rács */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2 text-xs">
             <div>
               <div className="text-gray-500">{cashDeskLabels.current}</div>
               <div className="font-mono font-bold text-gray-900">
@@ -521,92 +440,12 @@ export default function CashDeskPage() {
               </div>
             </div>
             <div>
-              <div className="text-gray-500">{cashDeskLabels.limit}</div>
-              <div className="font-mono font-bold text-gray-900">
-                {(selectedBalance.minBalance ?? 0).toLocaleString('hu-HU')} -{' '}
-                {(selectedBalance.maxBalance ?? 0).toLocaleString('hu-HU')}
-              </div>
-            </div>
-            <div>
               <div className="text-gray-500">{cashDeskLabels.codeCheck}</div>
               <div
                 className={`font-semibold ${codeCheckMatches ? 'text-green-700' : 'text-orange-700'}`}
               >
                 {codeCheckMatches ? cashDeskLabels.codeCheckOk : cashDeskLabels.codeCheckMismatch}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Denomination Panel — compact */}
-      <div className="form-panel p-2">
-        <h2 className="text-sm font-semibold text-gray-700 mb-1">{t('cashdesk.cimletekHuf')}</h2>
-        <div className="grid grid-cols-8 gap-1.5">
-          {[20000, 10000, 5000, 2000, 1000, 500, 200, 100].map((denom) => (
-            <div key={denom} className="text-center p-1 bg-gray-50 rounded border">
-              <div className="text-xs font-semibold font-mono">{denom.toLocaleString('hu-HU')}</div>
-              <NumberInput
-                value="0,00"
-                onChange={() => {}}
-                className="form-input w-full text-center text-xs mt-0.5 py-0.5"
-                allowDecimals={true}
-                allowNegative={false}
-                min={0}
-                step="0.01"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Movement Dialog */}
-      {showMovementDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-4 w-96">
-            <h3 className="text-lg font-bold mb-4">
-              {movementType === 'in' ? 'Pénz bevét' : 'Pénz kivét'}
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="form-label">{t('common.currency')}</label>
-                <select
-                  value={movementCurrency}
-                  onChange={(e) => setMovementCurrency(e.target.value)}
-                  className="form-input"
-                >
-                  <option value="HUF">{t('cashdesk.hufMagyarForint')}</option>
-                  <option value="EUR">{t('cashdesk.eurEuro')}</option>
-                  <option value="USD">{t('cashdesk.usdUsaDollar')}</option>
-                  <option value="GBP">{t('cashdesk.gbpAngolFont')}</option>
-                  <option value="CHF">{t('cashdesk.chfSvajciFrank')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label">{t('common.amount')}</label>
-                <NumberInput
-                  value={movementAmount}
-                  onChange={(val) => setMovementAmount(val)}
-                  className="form-input"
-                  placeholder="0,00"
-                  allowDecimals={true}
-                  allowNegative={false}
-                  min={0}
-                  step="0.01"
-                />
-              </div>
-              <div>
-                <label className="form-label">{t('common.note')}</label>
-                <textarea className="form-input" rows={2} placeholder="Opcionális..." />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setShowMovementDialog(false)} className="form-button">
-                {t('common.cancel')}
-              </button>
-              <button onClick={handleMovement} className="form-button-primary">
-                {movementType === 'in' ? 'Bevételezés' : 'Kivételezés'}
-              </button>
             </div>
           </div>
         </div>

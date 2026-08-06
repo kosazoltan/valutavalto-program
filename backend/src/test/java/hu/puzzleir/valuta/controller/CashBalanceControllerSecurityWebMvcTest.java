@@ -3,7 +3,6 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.mapper.CashBalanceMapper;
 import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.CashBalanceService;
-import hu.puzzleir.valuta.util.IdempotencyGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,11 +53,11 @@ class CashBalanceControllerSecurityWebMvcTest {
 
         @Bean
         CashBalanceController cashBalanceController(CashBalanceService cashBalanceService) {
+            // FK-075 FR-1: IdempotencyGuard-injekció eltávolítva (adjust végpont 410 Gone).
             return new CashBalanceController(
                     cashBalanceService,
                     mock(CashBalanceMapper.class),
-                    mock(AccessScopeService.class),
-                    mock(IdempotencyGuard.class));
+                    mock(AccessScopeService.class));
         }
     }
 

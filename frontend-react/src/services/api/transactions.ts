@@ -689,11 +689,16 @@ export interface CashBalance {
   updatedAt?: string
 }
 
-export interface AdjustBalanceRequest {
-  currencyId: number
-  amount: number
-  incoming: boolean
-  reason?: string
+/**
+ * FK-075 FR-5/FR-6 (2026-08-06): a "Mai statisztika" panel élő, tranzakció-alapú
+ * adatai — GET /cash-balances/today-stats (a tárolt napi-munkamenet-számláló
+ * helyett). Backend: CashBalanceService.TodayStats.
+ */
+export interface TodayStats {
+  transactions: number
+  buyTotal: number
+  sellTotal: number
+  handlingFee: number
 }
 
 export interface BranchBalanceSummary {
@@ -789,8 +794,11 @@ export const cashBalanceApi = {
     const response = await api.get<CashBalance[]>('/cash-balances/alerts/high')
     return response.data
   },
-  adjust: async (data: AdjustBalanceRequest): Promise<CashBalance> => {
-    const response = await api.post<CashBalance>('/cash-balances/adjust', data)
+  getTodayStats: async (): Promise<TodayStats> => {
+    // FK-075 FR-5/FR-6: élő, tranzakció-alapú Mai statisztika (darabszám,
+    // BUY/SELL összesen, beszedett kezelési díj) — dedikált végpont, mert a
+    // GET /daily-sessions/current-ot más felület (MainLayout) is használja.
+    const response = await api.get<TodayStats>('/cash-balances/today-stats')
     return response.data
   },
   getSummary: async (): Promise<BranchBalanceSummary> => {

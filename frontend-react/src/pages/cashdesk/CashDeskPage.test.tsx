@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   getSummary: vi.fn(),
   getByCurrencyId: vi.fn(),
   getByCurrencyCode: vi.fn(),
-  adjust: vi.fn(),
+  getTodayStats: vi.fn(),
   getCurrentSession: vi.fn(),
 }))
 
@@ -25,7 +25,7 @@ vi.mock('../../services/api/index', () => ({
     getSummary: mocks.getSummary,
     getByCurrencyId: mocks.getByCurrencyId,
     getByCurrencyCode: mocks.getByCurrencyCode,
-    adjust: mocks.adjust,
+    getTodayStats: mocks.getTodayStats,
   },
   dailySessionApi: {
     getCurrent: mocks.getCurrentSession,
@@ -94,14 +94,24 @@ describe('CashDeskPage', () => {
       highBalanceAlerts: 0,
       balances: [],
     })
+    // FK-075 FR-5: a daily session mostantól CSAK a nyitva/zárva állapothoz kell —
+    // szándékosan eltérő számlálókat adunk, hogy bizonyítsuk: a Mai statisztika
+    // NEM innen, hanem az új today-stats végpontból jön.
     mocks.getCurrentSession.mockResolvedValue({
       status: 'OPEN',
       openedAt: '2026-06-19T08:00:00',
       openedByWorkerName: 'Teszt Elek',
-      transactionCount: 3,
-      buyTurnoverHuf: 100000,
-      sellTurnoverHuf: 90000,
-      handlingFeeTotal: 2500,
+      transactionCount: 99,
+      buyTurnoverHuf: 111111,
+      sellTurnoverHuf: 222222,
+      handlingFeeTotal: 333333,
+    })
+    // FK-075 FR-5/FR-6: új, dedikált GET /cash-balances/today-stats végpont.
+    mocks.getTodayStats.mockResolvedValue({
+      transactions: 3,
+      buyTotal: 100000,
+      sellTotal: 90000,
+      handlingFee: 2500,
     })
     const detail = {
       id: 1,
@@ -121,16 +131,15 @@ describe('CashDeskPage', () => {
     mocks.getByCurrencyCode.mockResolvedValue(detail)
   })
 
-  it('megjeleníti a branch summary választ és részletező hívást indít valuta ID/kód alapján', async () => {
+  it('megjeleníti a branch summary választ és sor-kattintásra részletező hívást indít valuta ID/kód alapján', async () => {
     const user = userEvent.setup()
     renderPage()
 
     await waitFor(() => expect(mocks.getSummary).toHaveBeenCalled())
     expect(await screen.findByText('250 000 common.ft')).toBeInTheDocument()
-    expect(screen.getByText('Alacsony jelzés')).toBeInTheDocument()
-    expect(screen.getByText('1')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'EUR részletek' }))
+    // FK-075 FR-3: nincs külön (i) info-gomb, a teljes sor kattintható.
+    await user.click(screen.getByRole('row', { name: /EUR/ }))
 
     await waitFor(() => {
       expect(mocks.getByCurrencyId).toHaveBeenCalledWith(1)
@@ -138,5 +147,69 @@ describe('CashDeskPage', () => {
     })
     expect(await screen.findByText('EUR pénzkészlet részletek')).toBeInTheDocument()
     expect(screen.getByText('ID és kód egyezik')).toBeInTheDocument()
+  })
+
+  it('FK-075 FR-1/FR-2/FR-7/FR-8: nincs Bevét/Kivét gomb, jelzés-csempe, Címletek rács és pénztár nyitás/zárás gomb', async () => {
+    renderPage()
+
+    await waitFor(() => expect(mocks.balanceList).toHaveBeenCalled())
+    await screen.findByText('250 000 common.ft')
+
+    // FR-1: kézi pénzmozgatás gombjai eltávolítva
+    expect(screen.queryByText('cashdesk.bevet')).not.toBeInTheDocument()
+    expect(screen.queryByText('cashdesk.kivet')).not.toBeInTheDocument()
+    // FR-2: Alacsony/Magas jelzés KPI-csempék eltávolítva
+    expect(screen.queryByText('Alacsony jelzés')).not.toBeInTheDocument()
+    expect(screen.queryByText('Magas jelzés')).not.toBeInTheDocument()
+    // FR-7: Címletek (HUF) rács eltávolítva
+    expect(screen.queryByText('cashdesk.cimletekHuf')).not.toBeInTheDocument()
+    // FR-8: Pénztár zárás/nyitás eltávolítva, Napi zárás megmarad
+    expect(screen.queryByText('cashdesk.penztarZaras')).not.toBeInTheDocument()
+    expect(screen.queryByText('cashdesk.penztarNyitas')).not.toBeInTheDocument()
+    expect(screen.getByText('misc.napiZaras')).toBeInTheDocument()
+  })
+
+  it('FK-075 FR-9: az oldal H1 címe az új cashdesk.pageTitle kulcsot használja', async () => {
+    renderPage()
+
+    await waitFor(() => expect(mocks.balanceList).toHaveBeenCalled())
+    // A mock t(key) = key: az új dedikált kulcs jelenik meg, NEM a megosztott branch.branch.
+    expect(await screen.findByText('cashdesk.pageTitle')).toBeInTheDocument()
+    expect(screen.queryByText('branch.branch')).not.toBeInTheDocument()
+  })
+
+  it('FK-075 FR-5/FR-6: a Mai statisztika az új today-stats végpont értékeit mutatja (nem a session számlálóit)', async () => {
+    renderPage()
+
+    await waitFor(() => expect(mocks.getTodayStats).toHaveBeenCalled())
+
+    // A today-stats mock értékei jelennek meg...
+    expect(await screen.findByText('3')).toBeInTheDocument()
+    expect(screen.getByText('100 000 common.ft')).toBeInTheDocument()
+    expect(screen.getByText('90 000 common.ft')).toBeInTheDocument()
+    // FR-6: "Beszedett kezelési díj" felirat + élő handlingFee érték
+    // (hu-HU: minimumGroupingDigits=2 miatt a 4 jegyű 2500 nincs csoportosítva)
+    expect(screen.getByText('cashdesk.beszedettKezelesiDij')).toBeInTheDocument()
+    expect(screen.getByText('2500 common.ft')).toBeInTheDocument()
+
+    // ...és a session eltérő számlálói NEM jelennek meg (adatforrás-csere bizonyítva).
+    expect(screen.queryByText('99')).not.toBeInTheDocument()
+    expect(screen.queryByText('cashdesk.napiEredmeny')).not.toBeInTheDocument()
+  })
+
+  it('FK-075 FR-3/FR-4: sor-kattintás részletek panelt nyit "Limit" mező nélkül', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(mocks.balanceList).toHaveBeenCalled())
+    await user.click(await screen.findByRole('row', { name: /EUR/ }))
+
+    expect(await screen.findByText('EUR pénzkészlet részletek')).toBeInTheDocument()
+    // FR-4: a panel mezői — Limit NINCS
+    expect(screen.getByText('Aktuális')).toBeInTheDocument()
+    expect(screen.getByText('Nyitó')).toBeInTheDocument()
+    expect(screen.getByText('Napi változás')).toBeInTheDocument()
+    expect(screen.getByText('Kód ellenőrzés')).toBeInTheDocument()
+    expect(screen.queryByText('Limit')).not.toBeInTheDocument()
   })
 })

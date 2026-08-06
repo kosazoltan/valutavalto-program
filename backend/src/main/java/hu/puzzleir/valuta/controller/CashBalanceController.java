@@ -1,21 +1,18 @@
 package hu.puzzleir.valuta.controller;
 
-import hu.puzzleir.valuta.dto.cashbalance.AdjustBalanceDto;
 import hu.puzzleir.valuta.dto.cashbalance.CashBalanceDto;
 import hu.puzzleir.valuta.entity.CashBalance;
+import hu.puzzleir.valuta.exception.ErrorResponse;
 import hu.puzzleir.valuta.mapper.CashBalanceMapper;
 import hu.puzzleir.valuta.service.AccessScopeService;
 import hu.puzzleir.valuta.service.CashBalanceService;
-import hu.puzzleir.valuta.util.IdempotencyGuard;
-import hu.puzzleir.valuta.util.OptimisticLockRetry;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -35,9 +32,8 @@ public class CashBalanceController {
     private final CashBalanceService cashBalanceService;
     private final CashBalanceMapper cashBalanceMapper;
     private final AccessScopeService accessScopeService;
-    private final IdempotencyGuard idempotencyGuard;
-
-    private static final String ENDPOINT_ADJUST = "cash-balances/adjust";
+    // FK-075 FR-1: az IdempotencyGuard-injekció eltávolítva — az egyetlen fogyasztója a
+    // letiltott POST /cash-balances/adjust volt (410 Gone).
 
     /**
      * Aktuális iroda egyenlegei
@@ -126,42 +122,31 @@ public class CashBalanceController {
     }
 
     /**
-     * Egyenleg kézi módosítása (feltöltés/levétel)
+     * Egyenleg kézi módosítása (feltöltés/levétel) — LETILTVA.
      *
      * POST /api/v1/cash-balances/adjust
      *
-     * Csak MANAGER, ADMIN
+     * FK-075 FR-1 (2026-08-06): a kézi, szabad pénzmozgatás (Bevét/Kivét) kivezetésre került —
+     * a pénztári „Kassza / készlet" oldalról a gomb és a modál eltávolítva, ez a végpont pedig
+     * 410 Gone-nal utasít el minden közvetlen hívást (a Fázis 0 grep megerősítette: egyetlen
+     * frontend-hívója a CashDeskPage.tsx volt, más kliens nem használja).
+     *
+     * Megjegyzés: a {@code cashBalanceService.adjustBalance(...)} service-metódus szándékosan
+     * NEM került törlésre (audit-nyomvonal + esetleges jövőbeli, szabályozott újraengedés);
+     * HTTP-szinten a végpont elérhetetlen. A letiltás ténye egyszeri audit-bejegyzésként
+     * ebben a kódkommentben és a kapcsolódó PR/commit üzenetben dokumentált.
      */
     @PostMapping("/adjust")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public ResponseEntity<CashBalanceDto> adjustBalance(
-            @Valid @RequestBody AdjustBalanceDto dto,
-            HttpServletRequest request) {
-        String idempotencyKey = resolveIdempotencyKey(request);
-        IdempotencyGuard.Acquired<CashBalanceDto> acquired =
-                idempotencyGuard.tryAcquire(idempotencyKey, ENDPOINT_ADJUST, dto, CashBalanceDto.class);
-        if (acquired.cachedResult() != null) {
-            return ResponseEntity.ok(acquired.cachedResult());
-        }
-        try {
-            CashBalance balance = OptimisticLockRetry.execute(
-                    () -> cashBalanceService.adjustBalance(cashBalanceMapper.toServiceRequest(dto)),
-                    "adjustBalance");
-            CashBalanceDto result = cashBalanceMapper.toDto(balance);
-            idempotencyGuard.complete(acquired, result);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            idempotencyGuard.fail(acquired);
-            throw e;
-        }
-    }
-
-    private String resolveIdempotencyKey(HttpServletRequest request) {
-        String key = request.getHeader("Idempotency-Key");
-        if (StringUtils.hasText(key)) {
-            return key;
-        }
-        return request.getHeader("X-Idempotency-Key");
+    public ResponseEntity<ErrorResponse> adjustBalance() {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(ErrorResponse.builder()
+                        .timestamp(LocalDateTime.now())
+                        .status(HttpStatus.GONE.value())
+                        .error("Gone")
+                        .message("A kézi egyenleg-módosítás (Bevét/Kivét) megszűnt (FK-075). "
+                                + "A pénztárállást a tranzakciók és a napi zárás módosítják.")
+                        .build());
     }
 
     /**
@@ -173,6 +158,20 @@ public class CashBalanceController {
     public ResponseEntity<CashBalanceService.BranchBalanceSummary> getBranchSummary() {
         CashBalanceService.BranchBalanceSummary summary = cashBalanceService.getBranchSummary();
         return ResponseEntity.ok(summary);
+    }
+
+    /**
+     * FK-075 FR-5/FR-6 (2026-08-06): a „Mai statisztika" panel ÉLŐ, tranzakció-alapú adatai.
+     *
+     * GET /api/v1/cash-balances/today-stats
+     *
+     * Dedikált végpont — a {@code GET /daily-sessions/current} változatlan marad, mert a
+     * MainLayout fejléc is fogyasztja. A számítás a mai nap és az aktuális fiók (JWT scope)
+     * tranzakcióiból történik, nem tárolt napi-munkamenet-számlálókból.
+     */
+    @GetMapping("/today-stats")
+    public ResponseEntity<CashBalanceService.TodayStats> getTodayStats() {
+        return ResponseEntity.ok(cashBalanceService.getTodayStats());
     }
 
     /**
