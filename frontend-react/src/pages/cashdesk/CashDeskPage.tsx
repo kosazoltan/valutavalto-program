@@ -103,7 +103,7 @@ export default function CashDeskPage() {
       // statisztika adatait az új GET /cash-balances/today-stats adja.
       // (A GET /daily-sessions/current-ot más felület, pl. MainLayout is
       // használja, ezért nem módosítható — lásd FK-075 §7.)
-      const [balances, session, branchSummary, todayStats]: [
+      const [balances, session, branchSummary, todayStatsRaw]: [
         CashBalance[],
         DailySession | null,
         BranchBalanceSummary | null,
@@ -116,6 +116,17 @@ export default function CashDeskPage() {
       ])
       setSummary(branchSummary)
 
+      // Védőháló: a mai-statisztika mezők mező-szintű normalizálása. A .catch() csak a
+      // hálózati hibát kezeli; ha a végpont 200-zal, de nem a várt alakkal válaszol
+      // (pl. E2E catch-all mock), a hiányzó szám-mezők undefined-ek lennének és a
+      // .toLocaleString() render-crash-t okozna (FK-075, relay-full.spec tanulsága).
+      const safeTodayStats: TodayStats = {
+        transactions: todayStatsRaw.transactions ?? 0,
+        buyTotal: todayStatsRaw.buyTotal ?? 0,
+        sellTotal: todayStatsRaw.sellTotal ?? 0,
+        handlingFee: todayStatsRaw.handlingFee ?? 0,
+      }
+
       setStatus({
         isOpen: !!session && session.status === 'OPEN',
         openedAt: session?.openedAt ?? '',
@@ -127,7 +138,7 @@ export default function CashDeskPage() {
           minBalance: b.minBalance ?? 0,
           maxBalance: b.maxBalance ?? 999999999,
         })),
-        todayStats,
+        todayStats: safeTodayStats,
       })
     } catch (error) {
       logger.error('CashDeskPage', 'Adatok betöltése sikertelen:', error)
