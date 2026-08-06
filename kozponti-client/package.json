@@ -24,7 +24,7 @@
     "sql.js": "^1.11.0"
   },
   "devDependencies": {
-    "@types/node": "^20.11.20",
+    "@types/node": "^26.1.2",
     "@types/sql.js": "^1.4.11",
     "concurrently": "^9.2.4",
     "electron": "^42.0.1",
