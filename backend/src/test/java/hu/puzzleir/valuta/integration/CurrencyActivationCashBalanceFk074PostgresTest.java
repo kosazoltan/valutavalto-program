@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -61,10 +60,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * §6.b cross-tenant izoláció.
  */
 @Testcontainers
-// MnbSettlementRatePostgresIT-minta: az AdminCurrencyService.writeAudit CurrencyAuditLog-ot
-// ír, amelynek created_at oszlopa NOT NULL + @CreatedDate — auditing nélkül a beszúrás
-// megsérülne. A kézi createdAt-seedeket az auditing NEM írja felül (csak a null-t tölti).
-@EnableJpaAuditing
+// SZÁNDÉKOSAN NINCS @EnableJpaAuditing (repo-szabály, ld. EntityCreatedAtAuditingRegressionPostgresIT
+// és DailyClosingNineStepsFk068PostgresTest:97-101): a mvn-test-suite egy JVM-en osztozik, és az
+// auditing a többi tesztosztály kézi createdAt-seedelését írta felül — CI-bukást okozva
+// (ShipmentHandlingFee/HufDaybook osztályok). A CurrencyAuditLog.created_at NOT NULL-jét ehelyett
+// a CurrencyAuditLog.applyCreatedAtFallback() @PrePersist védőháló tölti (az AuditLog bevált mintája),
+// így az audit-bejegyzés itt is perzisztálódik és közvetlenül assertálható (§6.b, KAT=TX).
 @Import({
         AdminCurrencyService.class,
         CashBalanceService.class,
