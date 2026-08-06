@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -354,19 +355,46 @@ class CashBalanceServiceTest {
     }
 
     @Test
-    @DisplayName("FK-038: initializeBranchBalances ÉRTÉKTÁR fiókra 0-t ad és NEM hoz létre cash_balance-t")
-    void initializeBranchBalances_vaultBranch_skipped() {
+    @DisplayName("FK-074 TBD-5: initializeBranchBalances ÉRTÉKTÁR fiókra INICIALIZÁL (FKH-029 invariáns-fordulat — a régi FK-038 vault-skip eltávolítva)")
+    void initializeBranchBalances_vaultBranch_initializes() {
         UUID vaultBranchId = UUID.randomUUID();
         Company company = Company.builder().id(UUID.randomUUID()).build();
         Branch vault = Branch.builder().id(vaultBranchId).company(company).name("Szeged Értéktár").isVault(true).build();
+        Currency eur = Currency.builder().id(4L).code("EUR").build();
 
-        // startup/async path (nincs authentikáció) → a tenant-guard kihagyva, egyből a vault-skiphez ér.
-        // FK-038 invariáns: értéktárnak nincs cash_balance — a write-oldali gyökér-gate itt áll, így a
-        // branch-létrehozás / bulk-init / lazy-init egyike sem hoz létre vault cash_balance sort.
+        // startup/async path (nincs authentikáció) → a tenant-guard kihagyva.
+        // FK-074 TBD-5 (2026-08-06): a régi FK-038 vault-skip gátat a végleges felülvizsgálat
+        // ELTÁVOLÍTOTTA — az FKH-029/V371 óta az értéktáraknak VAN cash_balance könyvelési
+        // rétegük; egy újonnan létrehozott vault initjének futnia kell (különben a
+        // TransferService „Kassza egyenleg nem található" hibája visszatérne).
         org.springframework.security.core.context.SecurityContextHolder.clearContext();
         when(branchRepository.findById(vaultBranchId)).thenReturn(Optional.of(vault));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of(eur));
+        when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(vaultBranchId, 4L, company.getId()))
+                .thenReturn(Optional.empty());
 
         int created = service.initializeBranchBalances(vaultBranchId);
+
+        assertThat(created).isEqualTo(1);
+        verify(cashBalanceRepository).save(any(CashBalance.class));
+        verify(currencyRepository).findAllActiveOrdered();
+    }
+
+    @Test
+    @DisplayName("FK-074 TBD-5: initializeBranchBalances VAULT_COUNTERPARTY virtuális partnert KIHAGY (FK-032 invariáns — a gát helyes utódja)")
+    void initializeBranchBalances_vaultCounterparty_skipped() {
+        UUID cpBranchId = UUID.randomUUID();
+        Company company = Company.builder().id(UUID.randomUUID()).build();
+        Branch counterparty = Branch.builder()
+                .id(cpBranchId).company(company).name("MNB alszámla")
+                .isVault(false) // V277 seed: a partnerek is_vault=FALSE-ként élnek
+                .branchType(Dictionary.builder().category("BRANCH_TYPE").code("VAULT_COUNTERPARTY").name("Vault counterparty").build())
+                .build();
+
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        when(branchRepository.findById(cpBranchId)).thenReturn(Optional.of(counterparty));
+
+        int created = service.initializeBranchBalances(cpBranchId);
 
         assertThat(created).isZero();
         verify(cashBalanceRepository, never()).save(any());
