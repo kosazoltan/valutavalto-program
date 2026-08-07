@@ -6,6 +6,7 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
 import hu.puzzleir.valuta.entity.ShipmentRequestItem;
+import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.entity.Transfer;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
@@ -238,23 +239,46 @@ public class CashFlowReportService {
         String category = partnerCategory(partner, code);
         String receiptNumber = shipment.getRequestNumber() != null ? shipment.getRequestNumber() : "";
 
+        // FR-11: a sztornó-ág a shipment oldalon a cancelledAt kitöltöttségén él. A
+        // ShipmentRequest-nek nincs isCancelled logikai mezője (a transfer-rel ellentétben):
+        // a visszavonás jelölése a status=CANCELLED + cancelledAt pár. A REJECTED (elutasítás)
+        // SZÁNDÉKOSAN nem sztornó — az külön folyamat (rejectionReason/rejectedByWorkerId),
+        // és nem tölt cancelledAt-ot, tehát ide nem is esik be.
+        boolean storno = shipment.getCancelledAt() != null
+                && ShipmentRequestStatus.CANCELLED.equals(shipment.getStatus());
+
         List<SortableRow> result = new ArrayList<>();
         for (ShipmentRequestItem item : shipmentItems(shipment)) {
             BigDecimal amount = shipmentItemAmount(item);
-            CashFlowReportRowDto row = CashFlowReportRowDto.builder()
-                    .date(shipment.getRequestDate() != null ? shipment.getRequestDate().toString() : null)
-                    .receiptNumber(receiptNumber)
-                    .partnerCode(code)
-                    .partnerCategory(category)
-                    .currency(currencyCodes.get(item.getCurrencyId()))
-                    .receivedAmount(handedOver ? null : amount)
-                    .handedOverAmount(handedOver ? amount : null)
-                    .storno(false)
-                    .build();
-            result.add(new SortableRow(shipment.getRequestDate(), shipment.getCreatedAt(),
-                    receiptNumber, row));
+            result.add(shipmentRow(shipment, item, currencyCodes, receiptNumber, code, category,
+                    handedOver, amount, false));
+            if (storno) {
+                // A sztornó-pár a Naplókönyv és a fenti transfer-ág mintájára külön, ELŐJELES
+                // sorként jelenik meg — enélkül a visszavont szállítmány az eredeti, pozitív
+                // összegével felfelé torzítaná a pénzforgalmi összesítőt.
+                result.add(shipmentRow(shipment, item, currencyCodes, receiptNumber, code, category,
+                        handedOver, amount.negate(), true));
+            }
         }
         return result;
+    }
+
+    private SortableRow shipmentRow(ShipmentRequest shipment, ShipmentRequestItem item,
+                                    Map<Long, String> currencyCodes, String receiptNumber,
+                                    String code, String category, boolean handedOver,
+                                    BigDecimal amount, boolean storno) {
+        CashFlowReportRowDto row = CashFlowReportRowDto.builder()
+                .date(shipment.getRequestDate() != null ? shipment.getRequestDate().toString() : null)
+                .receiptNumber(storno ? receiptNumber + "-SZ" : receiptNumber)
+                .partnerCode(code)
+                .partnerCategory(category)
+                .currency(currencyCodes.get(item.getCurrencyId()))
+                .receivedAmount(handedOver ? null : amount)
+                .handedOverAmount(handedOver ? amount : null)
+                .storno(storno)
+                .build();
+        LocalDateTime eventTime = storno ? shipment.getCancelledAt() : shipment.getCreatedAt();
+        return new SortableRow(shipment.getRequestDate(), eventTime, row.getReceiptNumber(), row);
     }
 
     private static List<ShipmentRequestItem> shipmentItems(ShipmentRequest shipment) {
