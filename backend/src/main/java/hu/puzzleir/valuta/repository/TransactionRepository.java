@@ -1116,6 +1116,38 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
+     * FKH-028 kiegeszites (A resz): egy Transfer-bizonylathoz tartozo, MEG NEM sztornozott
+     * EREDETI tranzakciok — irany-fuggetlenul.
+     *
+     * <p>A {@code stornoPending} ut (atvetel elotti Transfer-visszavonas) eddig NEM allitotta at
+     * az eredeti tranzakcio statuszat, ezert a Tranzakciolistaban a visszavont tetel tovabbra is
+     * "Feltoltve"-kent latszott, mikozben az Ertektari "Mozgasok" nezet mar helyesen mutatta a
+     * visszavonast (FR-A1/FR-A2).</p>
+     *
+     * <p>SZANDEKOSAN nincs branch- es tipus-szures: a create iranyonkent MAST hoz letre
+     * ({@code F} → TRANSFER_OUT a kuldonel, {@code U} → TRANSFER_IN a kuldonel,
+     * {@code FF} → TRANSFER_OUT MINDKET fioknal), es mindegyik ugyanazt a
+     * {@code referenceNumber}-t (= transfer szama) kapja. Egyetlen, ceg-scope-olt lekerdezes
+     * igy mind a harom PENDING-kepes iranyt egysegesen lefedi.</p>
+     *
+     * <p>Ket biztonsagi szures:
+     * <ul>
+     *   <li>{@code company} — a {@code transfer_number} csak cegen belul egyedi (multi-tenant);</li>
+     *   <li>{@code COMPLETED} — idempotencia: ismetelt hivas nem ir felul mar REVERSED sort.</li>
+     * </ul>
+     * A {@code -SZ} kompenzalo sor NEM talalat: az sajat, {@code "-SZ"} vegu
+     * {@code referenceNumber}-t kap, az egyenloseg-feltetel kizarja.</p>
+     */
+    @Query("SELECT t FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.referenceNumber = :referenceNumber " +
+           "AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED")
+    List<Transaction> findCompletedByCompanyAndReferenceNumber(
+        @Param("companyId") UUID companyId,
+        @Param("referenceNumber") String referenceNumber
+    );
+
+    /**
      * Összes tranzakció egy irodához (készlet regeneráláshoz)
      */
     @Query("SELECT t FROM Transaction t WHERE t.branch.id = :branchId ORDER BY t.transactionDate")

@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.TestApplication;
 import hu.puzzleir.valuta.dto.transfer.CreateTransferDto;
 import hu.puzzleir.valuta.dto.transfer.TransferDto;
+import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.dto.transfer.TransferLineDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
@@ -242,6 +243,81 @@ class TransferPendingStornoPostgresTest {
 
         assertThat(balanceOf(fx.companyId(), fx.fromBranchId(), fx.eurId()))
                 .as("U-sztornó után a fogadó fiók egyenlege a create előtti értékre áll vissza")
+                .isEqualByComparingTo(OPENING);
+    }
+
+    // =====================================================================
+    // FKH-028 kiegeszites (A resz) — FR-A1/A2/A3: az EREDETI tranzakcio statusza
+    // =====================================================================
+
+    @Test
+    @DisplayName("FR-A1/F: PENDING F sztornó után az eredeti TRANSFER_OUT tranzakció REVERSED")
+    void pendingStorno_directionF_marksOriginalTransactionReversed() {
+        Fixture fx = seed("A1F");
+        authenticateAs(fx.companyId(), fx.fromBranchId(), fx.fromWorkerId());
+
+        TransferDto created = transferService.create(
+                dto(fx.toBranchId(), fx.eurId(), AMOUNT, "F"), fx.fromWorkerId());
+        String transferNumber = created.getTransferNumber();
+
+        // Elofeltetel: a create COMPLETED tranzakciot hozott letre — ez latszott
+        // "Feltoltve"-kent a Tranzakciolistaban a visszavonas UTAN is (a hiba lenyege).
+        assertThat(originalTxStatuses(fx.companyId(), transferNumber))
+                .as("create utan az eredeti tranzakcio COMPLETED")
+                .containsExactly(TransactionStatus.COMPLETED);
+
+        transferService.storno(created.getId(), REASON);
+
+        assertThat(originalTxStatuses(fx.companyId(), transferNumber))
+                .as("FR-A1: a visszavonas utan az eredeti tranzakcio REVERSED (megjelenitve: Sztornozott)")
+                .containsExactly(TransactionStatus.REVERSED);
+    }
+
+    @Test
+    @DisplayName("FR-A1/FF: PENDING FF sztornó után MINDKÉT eredeti tranzakció REVERSED")
+    void pendingStorno_directionFF_marksBothOriginalTransactionsReversed() {
+        Fixture fx = seed("A1FF");
+        authenticateAs(fx.companyId(), fx.fromBranchId(), fx.fromWorkerId());
+
+        TransferDto created = transferService.create(
+                dto(fx.toBranchId(), fx.eurId(), AMOUNT, "FF"), fx.fromWorkerId());
+        String transferNumber = created.getTransferNumber();
+
+        // Az FF create MINDKET fioknal letrehoz egy-egy TRANSFER_OUT-ot, azonos
+        // referenceNumber-rel — ezert szur a repository ceg+referencia szerint, nem branch+tipus.
+        assertThat(originalTxStatuses(fx.companyId(), transferNumber))
+                .as("FF create ket eredeti tranzakciot hoz letre")
+                .containsExactly(TransactionStatus.COMPLETED, TransactionStatus.COMPLETED);
+
+        transferService.storno(created.getId(), REASON);
+
+        assertThat(originalTxStatuses(fx.companyId(), transferNumber))
+                .as("FR-A1: FF-nel MINDKET eredeti tranzakcio REVERSED lesz")
+                .containsExactly(TransactionStatus.REVERSED, TransactionStatus.REVERSED);
+    }
+
+    @Test
+    @DisplayName("FR-A3: a kompenzáló -SZ tranzakció COMPLETED marad, a kassza-egyenleg helyreáll")
+    void pendingStorno_doesNotReverseCompensatingTransaction() {
+        Fixture fx = seed("A3F");
+        authenticateAs(fx.companyId(), fx.fromBranchId(), fx.fromWorkerId());
+
+        TransferDto created = transferService.create(
+                dto(fx.toBranchId(), fx.eurId(), AMOUNT, "F"), fx.fromWorkerId());
+        String transferNumber = created.getTransferNumber();
+
+        transferService.storno(created.getId(), REASON);
+
+        // Kontroll-teszt: ha a statusz-iras tul tag szurest hasznalna (pl. LIKE a
+        // referenceNumber-re), a frissen letrehozott kompenzalo sort is REVERSED-de tenne —
+        // ami elrejtene a visszapotlast a forgalombol.
+        assertThat(compensatingTxStatuses(fx.companyId(), transferNumber))
+                .as("FR-A3: a -SZ kompenzalo tranzakcio ERINTETLEN marad")
+                .isNotEmpty()
+                .containsOnly(TransactionStatus.COMPLETED);
+
+        assertThat(balanceOf(fx.companyId(), fx.fromBranchId(), fx.eurId()))
+                .as("FR-A3: a kassza-egyenleg pontosan ugyanugy all helyre, mint a javitas elott")
                 .isEqualByComparingTo(OPENING);
     }
 
@@ -524,6 +600,33 @@ class TransferPendingStornoPostgresTest {
 
     private Transfer.TransferStatus statusOf(Long transferId) {
         return reloadTransfer(transferId).getStatus();
+    }
+
+    /**
+     * FKH-028/A: az adott bizonylathoz tartozo EREDETI tranzakciok statuszai.
+     * A {@code -SZ} kompenzalo sort a referenceNumber-egyenloseg kizarja.
+     */
+    private java.util.List<hu.puzzleir.valuta.entity.TransactionStatus> originalTxStatuses(
+            UUID companyId, String transferNumber) {
+        return transactionTemplate.execute(status -> entityManager.createQuery(
+                        "SELECT t.status FROM Transaction t "
+                                + "WHERE t.company.id = :companyId AND t.referenceNumber = :ref",
+                        hu.puzzleir.valuta.entity.TransactionStatus.class)
+                .setParameter("companyId", companyId)
+                .setParameter("ref", transferNumber)
+                .getResultList());
+    }
+
+    /** FKH-028/A: a kompenzalo {@code -SZ} tranzakciok statuszai (ezek NEM valhatnak REVERSED-de). */
+    private java.util.List<hu.puzzleir.valuta.entity.TransactionStatus> compensatingTxStatuses(
+            UUID companyId, String transferNumber) {
+        return transactionTemplate.execute(status -> entityManager.createQuery(
+                        "SELECT t.status FROM Transaction t "
+                                + "WHERE t.company.id = :companyId AND t.referenceNumber = :ref",
+                        hu.puzzleir.valuta.entity.TransactionStatus.class)
+                .setParameter("companyId", companyId)
+                .setParameter("ref", transferNumber + "-SZ")
+                .getResultList());
     }
 
     private Transfer reloadTransfer(Long transferId) {
