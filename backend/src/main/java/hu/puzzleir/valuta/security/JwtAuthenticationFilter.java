@@ -83,6 +83,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authorities.add(new SimpleGrantedAuthority("ROLE_" + activeRoleAuthority));
                 }
 
+                // FK-076 (B1 + appMode-szures): a `grantedRoles` claim MINDEN canonical
+                // szerepkoret authority-va tesszuk. Korabban csak `ROLE_<worker.role>` +
+                // `ROLE_<activeRole>` keletkezett, mikozben a frontend a login-valasz teljes
+                // canonical listajaval kapuzott -> a UI engedte, a szerver 403-azott
+                // (AML threshold, discount apply, HANDLING_FEE mentes).
+                // A claim mar a login/role-select/refresh againal appMode-ra van szurve, ezert
+                // a penztargep-token itt sem kaphat ertektar-authority-t. Regi, claim nelkuli
+                // tokeneknel a lista ures -> a fenti ket authority marad (backward compat).
+                for (String grantedRole : jwtTokenProvider.getGrantedRolesFromToken(jwt)) {
+                    String grantedAuthority = normalizeOperationalRoleForAuthority(grantedRole);
+                    if (grantedAuthority != null) {
+                        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + grantedAuthority);
+                        if (!authorities.contains(authority)) {
+                            authorities.add(authority);
+                        }
+                    }
+                }
+
                 List<String> permissions = jwtTokenProvider.getPermissionsFromToken(jwt);
                 if (permissions != null) {
                     for (String perm : permissions) {

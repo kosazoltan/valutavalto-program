@@ -174,7 +174,7 @@ class GoogleLoginServiceTest {
         when(workerRepository.findByGoogleSubject("g-sub-1")).thenReturn(java.util.Optional.empty());
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("penztar"));
         when(workerRoleService.getPermissionCodesForRole("penztar")).thenReturn(List.of("TRANSACTION_BUY"));
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList()))
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn("jwt-token");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id-1");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -247,7 +247,7 @@ class GoogleLoginServiceTest {
         when(workerRepository.findGoogleLoginCandidatesByEmail("user@gmail.com")).thenReturn(List.of(w));
         when(workerRoleService.getRoleCodesForWorker(42L))
                 .thenReturn(List.of("penztar", "ertektar"));
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList()))
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn("jwt-token");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-token")).thenReturn("token-id-1");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -289,7 +289,7 @@ class GoogleLoginServiceTest {
         when(branchRepository.findByCompanyIdAndIsActiveTrue(w.getCompany().getId()))
                 .thenReturn(List.of(fallbackBranch));
         when(sessionBranchResolver.resolveSessionBranch(w, null)).thenReturn(fallbackBranch);
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList())).thenAnswer(inv -> {
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList())).thenAnswer(inv -> {
             Branch sessionBranch = inv.getArgument(1);
             assertThat(sessionBranch).isEqualTo(fallbackBranch);
             return "jwt-legacy";
@@ -319,7 +319,7 @@ class GoogleLoginServiceTest {
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("szerepkör");
 
-        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList());
+        verify(jwtTokenProvider, never()).generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList());
         verify(sessionRepository, never()).save(any());
     }
 
@@ -333,7 +333,7 @@ class GoogleLoginServiceTest {
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("foertektar"));
         when(workerRoleService.getPermissionCodesForRole("foertektar"))
                 .thenReturn(List.of("VAULT_RECEIVE", "RATE_CREATE"));
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList()))
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn("jwt-helga");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-helga")).thenReturn("token-id-helga");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -359,7 +359,7 @@ class GoogleLoginServiceTest {
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("teruleti_vezeto"));
         when(workerRoleService.getPermissionCodesForRole("teruleti_vezeto"))
                 .thenReturn(List.of("CAMERA_VIEW", "CAMERA_DOWNLOAD"));
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList()))
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn("jwt-tv");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-tv")).thenReturn("token-id-tv");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -383,7 +383,7 @@ class GoogleLoginServiceTest {
         when(workerRoleService.getRoleCodesForWorker(42L)).thenReturn(List.of("biztonsagi_vezeto"));
         when(workerRoleService.getPermissionCodesForRole("biztonsagi_vezeto"))
                 .thenReturn(List.of("CAMERA_VIEW", "CAMERA_SETUP"));
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList()))
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn("jwt-sec");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-sec")).thenReturn("token-id-sec");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -452,7 +452,7 @@ class GoogleLoginServiceTest {
         when(workerRepository.findSelectableVaultWorkers(any(), any())).thenReturn(List.of());
         when(workerRoleService.getRoleCodesForWorker(1000L)).thenReturn(List.of("ertektar"));
         when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_VIEW"));
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList()))
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn("jwt-institutional");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-institutional")).thenReturn("tid-inst");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -476,7 +476,7 @@ class GoogleLoginServiceTest {
         when(workerRepository.findGoogleLoginCandidatesByEmail("szeged.ebc@gmail.com")).thenReturn(List.of(institutional));
         when(workerRoleService.getRoleCodesForWorker(1000L)).thenReturn(List.of("ertektar"));
         when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_VIEW"));
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList()))
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn("jwt-old");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-old")).thenReturn("tid-old");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -504,7 +504,7 @@ class GoogleLoginServiceTest {
         when(workerRoleService.getRoleCodesForWorker(77L)).thenReturn(List.of("ertektar"));
         when(workerRoleService.getPermissionCodesForRole("ertektar")).thenReturn(List.of("VAULT_VIEW"));
         when(passwordEncoder.matches("sajat-jelszo", personal.getPasswordHash())).thenReturn(true);
-        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList()))
+        when(jwtTokenProvider.generateToken(any(Worker.class), any(Branch.class), any(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn("jwt-personal");
         when(jwtTokenProvider.getTokenIdFromToken("jwt-personal")).thenReturn("tid-personal");
         when(workerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

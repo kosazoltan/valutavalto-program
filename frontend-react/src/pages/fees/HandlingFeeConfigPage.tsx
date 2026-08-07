@@ -43,6 +43,11 @@ export default function HandlingFeeConfigPage() {
     'admin',
   ])
   const [config, setConfig] = useState<HandlingFeeConfig | null>(null)
+  // FK-076 (C): az ezrelek-input nyers szovege szerkesztes kozben. A `parseFloat(...) || 0`
+  // miatt a mezo kiuritese azonnal 0-ra ugrott, igy nem lehetett ujra beirni az erteket
+  // (pl. "5" -> torles -> "0" -> a gepelt "2" "02"-t adott). A draft csak a MEGJELENITEST
+  // vezerli; a mentendo `config.perMilleRate` tovabbra is szam marad.
+  const [perMilleRateDraft, setPerMilleRateDraft] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingBrackets, setSavingBrackets] = useState(false)
@@ -589,11 +594,15 @@ export default function HandlingFeeConfigPage() {
                 type="number"
                 step="0.1"
                 min="0"
-                value={config.perMilleRate}
+                value={perMilleRateDraft ?? String(config.perMilleRate)}
                 disabled={!canEdit}
-                onChange={(e) =>
-                  setConfig({ ...config, perMilleRate: parseFloat(e.target.value) || 0 })
-                }
+                onChange={(e) => {
+                  const raw = e.target.value
+                  setPerMilleRateDraft(raw)
+                  const parsed = parseFloat(raw)
+                  setConfig({ ...config, perMilleRate: Number.isFinite(parsed) ? parsed : 0 })
+                }}
+                onBlur={() => setPerMilleRateDraft(null)}
                 className="w-full border rounded px-3 py-2 disabled:bg-gray-50 disabled:text-gray-600"
               />
               <p className="text-xs text-gray-500 mt-1">Pl. 5 = a HUF összeg 5 ezreléke</p>

@@ -482,8 +482,12 @@ public class WorkerService {
 
         Branch sessionBranch = sessionBranchResolver.resolveSessionBranch(worker, activeRole);
 
+        // FK-076: canonical szerepkorok appMode-ra szurve -> ROLE_* authority a JwtAuthenticationFilterben.
+        List<String> grantedRoles = AppModeRoleConstants.grantedRolesForAppMode(
+                roleCodes, activeRole, dto.getAppMode());
+
         // JWT token generálás
-        String token = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, permissions);
+        String token = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, permissions, grantedRoles);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
         
         WorkerSession session = WorkerSession.builder()

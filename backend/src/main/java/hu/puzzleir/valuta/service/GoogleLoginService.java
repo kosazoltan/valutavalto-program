@@ -339,8 +339,11 @@ public class GoogleLoginService {
 
         Branch sessionBranch = sessionBranchResolver.resolveSessionBranch(worker, activeRole);
 
+        // FK-076: canonical szerepkorok appMode-ra szurve -> ROLE_* authority a JwtAuthenticationFilterben.
+        List<String> grantedRoles = AppModeRoleConstants.grantedRolesForAppMode(roleCodes, activeRole, appMode);
+
         // 6. JWT + Session
-        String token = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, permissions);
+        String token = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, permissions, grantedRoles);
         String tokenId = jwtTokenProvider.getTokenIdFromToken(token);
         String clientIp = clientIpResolver.resolveClientIp(httpRequest);
 

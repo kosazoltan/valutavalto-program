@@ -50,6 +50,14 @@ public class RefreshToken {
     @Column(name = "active_role", length = 64)
     private String activeRole;
 
+    /**
+     * FK-076: a tokent kibocsato kliens appMode-ja. A silent refresh ebbol szuri ujra a JWT
+     * {@code grantedRoles} claim-et, kulonben a rotacio megkerulne az appMode-izolaciot.
+     * NULL = legacy/ismeretlen appMode (nincs szures, mint a login-agon).
+     */
+    @Column(name = "app_mode", length = 32)
+    private String appMode;
+
     @Column(name = "issued_at", nullable = false)
     private Instant issuedAt;
 

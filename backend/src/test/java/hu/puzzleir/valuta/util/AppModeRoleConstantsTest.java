@@ -250,4 +250,76 @@ class AppModeRoleConstantsTest {
                 List.of("ertektar"), WorkerRole.CASHIER, "ertektar"))
                 .isFalse();
     }
+
+    // --- FK-076 (B1 + appMode-szures): grantedRolesForAppMode ---
+
+    /**
+     * A hibajelentes alapesete: Fabulya Zsuzsa (prod worker id=273) 13 canonical szerepkorrel,
+     * legacy CASHIER enummal. Eddig a tokenbe csak ROLE_CASHIER + ROLE_PENZTAR kerult, ezert az
+     * AML threshold / discount apply / HANDLING_FEE mentes 403-at adott, mikozben a UI engedte.
+     */
+    @Test
+    void grantsFullCanonicalRoleSetForCashierInspectionRolesInPenztarMode() {
+        List<String> roles = List.of("penztar", "belso_ellenor", "foertektar", "ugyvezeto");
+
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(roles, "penztar", "penztar"))
+                .containsExactly("penztar", "belso_ellenor", "foertektar", "ugyvezeto");
+    }
+
+    /**
+     * A vedett uzleti szabaly (Kosa Zoltan 2026-05-26): penztargepen veletlenul se lehessen
+     * ertektarosként belepni. A grantedRoles claim NEM adhat olyan authority-t, ami az adott
+     * appMode-ban nem valaszthato — a `full`/browser szerepkorok a penztar modban is
+     * legitim ellenorzesi kor, de a `rate-maker`-only szerepkor mar nem szivarog at.
+     */
+    @Test
+    void filtersOutRolesNotSelectableInTheRequestedAppMode() {
+        List<String> roles = List.of("penztar", "ertektar", "foertektar");
+
+        // full (browser): a lokalis penztar/ertektar szerepkorok kiesnek
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(roles, "foertektar", "full"))
+                .containsExactly("foertektar");
+
+        // kamera: csak a KAMERA_CANONICAL_ROLES marad — az aktiv role kivetelevel semmi
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(
+                List.of("penztar", "ertektar"), null, "kamera"))
+                .isEmpty();
+    }
+
+    /** Az aktiv role akkor is bekerul, ha a szures kiejtene — azt a login mar validalta. */
+    @Test
+    void alwaysIncludesActiveRoleEvenWhenFilteredOut() {
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(
+                List.of("penztar"), "penztar", "kamera"))
+                .containsExactly("penztar");
+    }
+
+    /**
+     * Hianyzo appMode (sync-engine bootstrap-login) NEM szur — ez megegyezik a
+     * `selectableRolesForAppMode` es a login-agi viselkedessel ugyanezen bemenetre.
+     */
+    @Test
+    void doesNotFilterWhenAppModeIsMissing() {
+        List<String> roles = List.of("penztar", "ertektar", "foertektar");
+
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(roles, null, null))
+                .containsExactly("penztar", "ertektar", "foertektar");
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(roles, null, "  "))
+                .containsExactly("penztar", "ertektar", "foertektar");
+    }
+
+    /** Normalizalas + duplikacio-mentesseg: a claim tiszta, kisbetus, egyedi listat hordoz. */
+    @Test
+    void normalizesAndDeduplicatesGrantedRoles() {
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(
+                java.util.Arrays.asList(" Penztar ", "PENZTAR", "penztar", null, ""), "PENZTAR", "penztar"))
+                .containsExactly("penztar");
+    }
+
+    /** Ures/null bemenet nem dob es ures listat ad (a claim ilyenkor kimarad a tokenbol). */
+    @Test
+    void returnsEmptyListForNoRoles() {
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(null, null, "penztar")).isEmpty();
+        assertThat(AppModeRoleConstants.grantedRolesForAppMode(List.of(), null, "penztar")).isEmpty();
+    }
 }

@@ -111,6 +111,7 @@ public class AuthController {
                     request,
                     httpResponse,
                     response.getActiveRole(),
+                    dto.getAppMode(),
                     "HttpOnly refresh cookie kiadas bukott login utan",
                     "Belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
         } else {
@@ -222,7 +223,13 @@ public class AuthController {
             : List.of();
         hu.puzzleir.valuta.entity.Branch sessionBranch =
                 sessionBranchResolver.resolveSessionBranch(worker, activeRole);
-        String newAccess = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, perms);
+        // FK-076: a grantedRoles claim-et a KIBOCSATASKORI appMode-dal szurjuk ujra (a refresh
+        // keres nem hordoz appMode-ot). Igy a penztargepen inditott session rotalt tokenje sem
+        // szerez ertektar/vezetoi authority-t.
+        List<String> grantedRoles = AppModeRoleConstants.grantedRolesForAppMode(
+                roleCodes, activeRole, oldRefresh.getAppMode());
+        String newAccess = jwtTokenProvider.generateToken(
+                worker, sessionBranch, activeRole, perms, grantedRoles);
 
         // Token rotation - regi revoke + uj issue
         RefreshTokenService.IssuedToken newIssued = refreshTokenService.rotate(oldRefresh, worker, request, activeRole);
@@ -296,13 +303,18 @@ public class AuthController {
         // Új JWT generálás az aktív role-lal
         hu.puzzleir.valuta.entity.Branch sessionBranch =
                 sessionBranchResolver.resolveSessionBranch(worker, dto.getRoleCode());
-        String newToken = jwtTokenProvider.generateToken(worker, sessionBranch, dto.getRoleCode(), permissions);
+        // FK-076: canonical szerepkorok appMode-ra szurve -> ROLE_* authority a JwtAuthenticationFilterben.
+        List<String> grantedRoles = AppModeRoleConstants.grantedRolesForAppMode(
+                roleCodes, dto.getRoleCode(), dto.getAppMode());
+        String newToken = jwtTokenProvider.generateToken(
+                worker, sessionBranch, dto.getRoleCode(), permissions, grantedRoles);
 
         refreshCookieService.issueOrThrow(
                 worker,
                 request,
                 httpResponse,
                 dto.getRoleCode(),
+                dto.getAppMode(),
                 "HttpOnly refresh cookie kiadas bukott role select utan",
                 "Belépés nem véglegesíthető: a szerepkör-választás utáni biztonságos munkamenet cookie kiadása sikertelen.");
 
@@ -399,7 +411,15 @@ public class AuthController {
         // Új token generálás az aktív role megtartásával
         hu.puzzleir.valuta.entity.Branch sessionBranch =
                 sessionBranchResolver.resolveSessionBranch(worker, activeRole);
-        String newToken = jwtTokenProvider.generateToken(worker, sessionBranch, activeRole, permissions);
+        // FK-076: a bearer-refresh nem lat appMode-ot, ezert a REGI token grantedRoles halmazat
+        // visszük tovabb, DB-bol ujravalidalva (visszavont szerepkor nem maradhat bent). A halmaz
+        // igy csak szukulhet — refresh-sel senki nem szerezhet uj authority-t.
+        List<String> previousGrantedRoles = jwtTokenProvider.getGrantedRolesFromToken(token);
+        List<String> grantedRoles = previousGrantedRoles.stream()
+                .filter(granted -> roleCodes.stream().anyMatch(rc -> rc.equalsIgnoreCase(granted)))
+                .toList();
+        String newToken = jwtTokenProvider.generateToken(
+                worker, sessionBranch, activeRole, permissions, grantedRoles);
 
         // 🔴 Régi token blacklistelése (token rotation)
         tokenBlacklistService.blacklistToken(oldTokenId, workerId, TokenBlacklistService.REASON_REFRESH, blacklistExpiresAt);
