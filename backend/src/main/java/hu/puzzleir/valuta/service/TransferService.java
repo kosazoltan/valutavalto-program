@@ -617,6 +617,13 @@ public class TransferService {
                 ? transfer.getDirection() : Transfer.TransferDirection.UF;
         reversePendingCounterTransactions(transfer, actor, dir);
 
+        // FKH-028 kiegeszites (A resz, FR-A1): az EREDETI tranzakcio(k) statusza is REVERSED-re
+        // vall. Enelkul a Tranzakciolista a visszavont tetelt tovabbra is "Feltoltve"-kent mutatta,
+        // mikozben az Ertektari "Mozgasok" nezet mar helyesen jelezte a visszavonast (FR-A2, NFR-2).
+        // A COMPLETED-ag ezt regota megteszi (TransactionReversalService: original.setStatus(REVERSED)) —
+        // csak a PENDING-ut maradt le rola.
+        markOriginalTransactionsReversed(transfer);
+
         transferRepository.save(transfer);
 
         auditLogService.log("STORNO",
@@ -625,6 +632,50 @@ public class TransferService {
                 transfer.getId());
 
         return toDto(transfer);
+    }
+
+    /**
+     * FKH-028 kiegeszites (A resz, FR-A1): az atvetel elotti Transfer-visszavonaskor az EREDETI
+     * tranzakcio(k) {@code status} mezoje {@code REVERSED}-re vall.
+     *
+     * <p>A {@code REVERSED} enum megjelenitett neve "Sztornozott"
+     * ({@link hu.puzzleir.valuta.entity.TransactionStatus}), igy a Tranzakciolista a meglevo
+     * status-megjelenitesen keresztul automatikusan a helyes feliratot mutatja — FR-A2 nem igenyel
+     * kulon frontend-valtoztatast, es TBD-2 sem indokol uj enum-erteket (a COMPLETED-ag
+     * {@code TransactionReversalService:252} ugyanezt az erteket hasznalja ugyanerre az esemenyre).</p>
+     *
+     * <p>FR-A3 (kassza-egyenleg valtozatlansaga) teljesul: ez a metodus KIZAROLAG statuszt ir, a
+     * kassza-mozgast tovabbra is a {@code reversePendingCounterTransactions} vegzi. A statusz-iras
+     * SZANDEKOSAN AZUTAN fut, hogy a kompenzalo sorok elkeszultek — a lekerdezes COMPLETED-re szur,
+     * igy a frissen letrehozott {@code -SZ} kompenzalo tranzakciot nem erintheti (annak eltero,
+     * "-SZ" vegu {@code referenceNumber}-je amugy is kizarja).</p>
+     *
+     * <p>Idempotens: ismetelt hivas mar nem talal COMPLETED sort. Ha nincs talalat (pl. legacy
+     * bizonylat tranzakcio nelkul), csendben tovabblep — a visszavonas maga nem bukhat el emiatt.</p>
+     */
+    private void markOriginalTransactionsReversed(Transfer transfer) {
+        UUID companyId = transfer.getCompanyId();
+        if (companyId == null || transfer.getTransferNumber() == null) {
+            log.warn("FKH-028/A: hianyzo companyId vagy transferNumber — eredeti tranzakcio statusza nem frissitheto: {}",
+                    transfer.getTransferNumber());
+            return;
+        }
+
+        List<Transaction> originals = transactionRepository
+                .findCompletedByCompanyAndReferenceNumber(companyId, transfer.getTransferNumber());
+        if (originals.isEmpty()) {
+            log.debug("FKH-028/A: nincs COMPLETED eredeti tranzakcio a bizonylathoz: {}",
+                    transfer.getTransferNumber());
+            return;
+        }
+
+        for (Transaction original : originals) {
+            original.setStatus(TransactionStatus.REVERSED);
+            original.setReversalReason(transfer.getCancellationReason());
+        }
+        transactionRepository.saveAll(originals);
+        log.info("FKH-028/A: {} eredeti tranzakcio REVERSED-re allitva (bizonylat: {})",
+                originals.size(), transfer.getTransferNumber());
     }
 
     /**
