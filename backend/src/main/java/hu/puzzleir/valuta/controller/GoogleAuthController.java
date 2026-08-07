@@ -92,6 +92,7 @@ public class GoogleAuthController {
                     httpRequest,
                     httpResponse,
                     response.getActiveRole(),
+                    requestDto.getAppMode(),
                     "HttpOnly refresh cookie kiadas Google login utan bukott",
                     "Google belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
         } else {
@@ -129,6 +130,7 @@ public class GoogleAuthController {
                     httpRequest,
                     httpResponse,
                     response.getActiveRole(),
+                    requestDto.getAppMode(),
                     "HttpOnly refresh cookie kiadas ertektari belepes utan bukott",
                     "Értéktári belépés nem véglegesíthető: a biztonságos munkamenet cookie kiadása sikertelen.");
         } else {

@@ -44,8 +44,24 @@ public class RefreshCookieService {
             String activeRole,
             String logContext,
             String userMessage) {
+        issueOrThrow(worker, request, response, activeRole, null, logContext, userMessage);
+    }
+
+    /**
+     * FK-076: kibocsatas a kliens appMode-javal — a silent refresh ebbol szuri ujra a JWT
+     * {@code grantedRoles} claim-et, hogy a rotacio ne kerulje meg az appMode-izolaciot.
+     */
+    public void issueOrThrow(
+            Worker worker,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            String activeRole,
+            String appMode,
+            String logContext,
+            String userMessage) {
         try {
-            RefreshTokenService.IssuedToken issued = refreshTokenService.issue(worker, request, activeRole);
+            RefreshTokenService.IssuedToken issued =
+                    refreshTokenService.issue(worker, request, activeRole, appMode);
             addIssuedCookie(issued, request, response);
         } catch (Exception e) {
             log.error("{}: {}", logContext, e.getMessage(), e);

@@ -82,6 +82,18 @@ public class JwtTokenProvider {
     }
 
     public String generateToken(Worker worker, Branch sessionBranch, String activeRole, java.util.List<String> permissions) {
+        return generateToken(worker, sessionBranch, activeRole, permissions, null);
+    }
+
+    /**
+     * FK-076 (B1 + appMode-szures): JWT generalas a canonical szerepkor-listaval.
+     *
+     * @param grantedRoles az appMode-ra mar leszurt canonical szerepkorok
+     *                     ({@link hu.puzzleir.valuta.util.AppModeRoleConstants#grantedRolesForAppMode});
+     *                     null/ures eseten a claim kimarad (backward compat)
+     */
+    public String generateToken(Worker worker, Branch sessionBranch, String activeRole,
+                                java.util.List<String> permissions, java.util.List<String> grantedRoles) {
         Branch effectiveBranch = sessionBranch != null ? sessionBranch : worker.getBranch();
         Map<String, Object> claims = new HashMap<>();
         claims.put("workerId", worker.getId());
@@ -101,6 +113,10 @@ public class JwtTokenProvider {
         }
         if (permissions != null && !permissions.isEmpty()) {
             claims.put("permissions", permissions);
+        }
+        // FK-076: canonical szerepkorok (appMode-ra szurve) -> ROLE_* authority a filterben.
+        if (grantedRoles != null && !grantedRoles.isEmpty()) {
+            claims.put("grantedRoles", grantedRoles);
         }
         
         // Token ID (session tracking)
@@ -296,6 +312,20 @@ public class JwtTokenProvider {
         try {
             List<String> permissions = getClaimsSet(token).getStringListClaim("permissions");
             return permissions != null ? permissions : Collections.emptyList();
+        } catch (ParseException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * FK-076: az appMode-ra szurt canonical szerepkor-lista a tokenbol.
+     * Regi (claim nelkuli) tokeneknel ures lista — a filter ilyenkor a korabbi
+     * {@code role} + {@code activeRole} authority-parra esik vissza.
+     */
+    public java.util.List<String> getGrantedRolesFromToken(String token) {
+        try {
+            List<String> grantedRoles = getClaimsSet(token).getStringListClaim("grantedRoles");
+            return grantedRoles != null ? grantedRoles : Collections.emptyList();
         } catch (ParseException e) {
             return Collections.emptyList();
         }

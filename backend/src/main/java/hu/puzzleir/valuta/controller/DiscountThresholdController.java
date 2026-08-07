@@ -20,6 +20,12 @@ import java.util.Optional;
  *
  * Legacy: BIGARFVALT / KISARFVALT — automatikus kedvezmény/felár
  * a tranzakció összeg alapján.
+ *
+ * <p>FK-076 (2026-08-07): a `/resolve` és `/apply` a pénztári tranzakció-folyamat
+ * díjszámító lépései (a `CashierTransactionPage` minden összeg-változáskor hívja).
+ * A vezetői osztály-kör ezeket 403-mal dobta a pénztárosnak. Mindkettő mellékhatás
+ * nélküli olvasó számítás, ezért a {@link AmlController#TRANSACTION_FLOW_ROLES} kört
+ * kapják. Az `/active` (teljes kedvezmény-törzs listázása) vezetői körben marad.</p>
  */
 @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
@@ -31,6 +37,7 @@ public class DiscountThresholdController {
     private final DiscountThresholdService thresholdService;
 
     @GetMapping("/resolve")
+    @PreAuthorize(AmlController.TRANSACTION_FLOW_ROLES)
     @Operation(summary = "Kedvezmény/felár meghatározása összeg alapján")
     public ResponseEntity<Map<String, Object>> resolve(@RequestParam BigDecimal hufAmount) {
         Optional<FeeDiscount> discount = thresholdService.resolveDiscount(hufAmount);
@@ -50,6 +57,7 @@ public class DiscountThresholdController {
     }
 
     @GetMapping("/apply")
+    @PreAuthorize(AmlController.TRANSACTION_FLOW_ROLES)
     @Operation(summary = "Kedvezmény alkalmazása a kezelési díjra")
     public ResponseEntity<Map<String, Object>> apply(
             @RequestParam BigDecimal hufAmount,

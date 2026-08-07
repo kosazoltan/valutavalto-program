@@ -68,6 +68,15 @@ public class RefreshTokenService {
      */
     @Transactional
     public IssuedToken issue(Worker worker, HttpServletRequest request, String activeRole) {
+        return issue(worker, request, activeRole, null);
+    }
+
+    /**
+     * FK-076: kibocsatas a kliens appMode-javal egyutt. A silent refresh ebbol szuri ujra a
+     * JWT {@code grantedRoles} claim-et, hogy a rotacio ne kerulje meg az appMode-izolaciot.
+     */
+    @Transactional
+    public IssuedToken issue(Worker worker, HttpServletRequest request, String activeRole, String appMode) {
         String selector = randomUrlSafe(SELECTOR_BYTES);
         String verifier = randomUrlSafe(VERIFIER_BYTES);
         String rawCookie = selector + COOKIE_SEPARATOR + verifier;
@@ -81,6 +90,7 @@ public class RefreshTokenService {
             .workerId(worker.getId())
             .companyId(worker.getCompany().getId())
             .activeRole(normalizeActiveRole(activeRole))
+            .appMode(normalizeAppMode(appMode))
             .issuedAt(now)
             .expiresAt(expires)
             .userAgent(truncate(request.getHeader("User-Agent"), 512))
@@ -147,7 +157,9 @@ public class RefreshTokenService {
      */
     @Transactional
     public IssuedToken rotate(RefreshToken oldToken, Worker worker, HttpServletRequest request, String activeRole) {
-        IssuedToken newIssued = issue(worker, request, activeRole);
+        // FK-076: a rotacio megorzi a kibocsato appMode-ot, kulonben a kovetkezo token
+        // szuretlen grantedRoles listat kapna es kilyukasztana az appMode-izolaciot.
+        IssuedToken newIssued = issue(worker, request, activeRole, oldToken.getAppMode());
         oldToken.setRevokedAt(Instant.now());
         oldToken.setReplacedBy(newIssued.hash());
         repository.save(oldToken);
@@ -191,6 +203,14 @@ public class RefreshTokenService {
             return null;
         }
         return activeRole.trim();
+    }
+
+    /** FK-076: appMode normalizalas (trim + lowercase); blank -> null (nincs szures). */
+    public static String normalizeAppMode(String appMode) {
+        if (appMode == null || appMode.isBlank()) {
+            return null;
+        }
+        return appMode.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     /** Audit P0.3: URL-safe Base64 random a SecureRandom-bol (no padding). */

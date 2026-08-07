@@ -322,6 +322,42 @@ public final class AppModeRoleConstants {
                 || workerRole == WorkerRole.ADMIN;
     }
 
+    /**
+     * FK-076 (B1 + appMode-szures): a JWT-be kerulo canonical szerepkor-lista.
+     *
+     * <p>Eddig a backend csak {@code ROLE_<worker.role>} + {@code ROLE_<activeRole>} authority-t
+     * kepzett, mikozben a frontend a login-valasz TELJES canonical listajaval kapuzott
+     * ({@code authStore.hasCanonicalRole}). Az aszimmetria miatt a UI engedte a muveletet, a
+     * szerver viszont 403-at adott (pl. AML threshold, discount apply, HANDLING_FEE mentes).</p>
+     *
+     * <p>A lista appMode-ra SZURT: csak azok a szerepkorok kerulnek be, amelyek az adott
+     * programban egyaltalan valaszthatok ({@link #isRoleSelectableForAppMode}). Igy a
+     * penztargepen kapott token nem hordoz olyan authority-t, ami ott nem legitim, es a
+     * "penztargepen veletlenul se lehessen ertektarosként belepni" szabaly serulhetetlen marad
+     * (azt tovabbra is a WorkerService.login jelszo=penztaros kapuja zarja, MIELOTT ide erunk).</p>
+     *
+     * <p>Az {@code activeRole} mindig bekerul (ha nem blank), meg ha a szures kiejtene — a
+     * vegleges aktiv szerepkort a login/role-select mar validalta.</p>
+     *
+     * @param roleCodes  a workerhez tartozo canonical szerepkor-kodok
+     * @param activeRole a veglegesitett aktiv szerepkor (lehet null)
+     * @param appMode    a kliens appMode-ja (null/blank = nincs szures, pl. sync-engine bootstrap)
+     * @return normalizalt, duplikaciomentes canonical szerepkor-lista a JWT {@code grantedRoles} claim-hez
+     */
+    public static List<String> grantedRolesForAppMode(List<String> roleCodes, String activeRole, String appMode) {
+        List<String> granted = new ArrayList<>();
+        for (String roleCode : normalizeRoleCodes(roleCodes)) {
+            if (appMode == null || appMode.isBlank() || isRoleSelectableForAppMode(roleCode, appMode)) {
+                addIfAbsent(granted, roleCode);
+            }
+        }
+        String normalizedActiveRole = normalizeRoleCode(activeRole);
+        if (!normalizedActiveRole.isBlank()) {
+            addIfAbsent(granted, normalizedActiveRole);
+        }
+        return granted;
+    }
+
     private static List<String> normalizeRoleCodes(List<String> roleCodes) {
         if (roleCodes == null || roleCodes.isEmpty()) {
             return List.of();

@@ -17,12 +17,34 @@ import java.util.Map;
  * AML (Pénzmosás elleni) controller.
  *
  * 2017. évi LIII. tv. — Pénzmosás és terrorizmus finanszírozása megelőzéséről.
+ *
+ * <p>FK-076 (2026-08-07): a küszöb-ellenőrző végpontok (`/check`, `/check-all-thresholds`)
+ * a PÉNZTÁRI tranzakció-rögzítés KÖTELEZŐ lépései — a `CustomerPanel` minden ügyfél-
+ * kiválasztáskor hívja őket. Az osztály-szintű vezetői kör ezeket 403-mal dobta a
+ * pénztárosnak, a kliens fail-closed ága pedig „TRANZAKCIO BLOKKOLT — AML szabalysertes"
+ * üzenetre fordította: éles pénztárban MINDEN tranzakció blokkolt volt. A két olvasó
+ * (mellékhatás nélküli) végpont ezért a {@link #TRANSACTION_FLOW_ROLES} kört kapja, ami
+ * megegyezik a `TransactionController` rögzítési körével + a pénztár-ellenőrzésre jogosult
+ * kanonikus vezetői szerepkörökkel. A BEJELENTŐ és AUDIT végpontok (`/report`, `/pending`,
+ * `/overdue`, `/summary`, `/rolling-window-audit`, `/structuring-check`, `/customer-risk`)
+ * SZÁNDÉKOSAN vezetői körben maradnak.</p>
  */
 @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
 @RestController
 @RequestMapping("/api/v1/aml")
 @RequiredArgsConstructor
 public class AmlController {
+
+    /**
+     * A pénztári tranzakció-folyamat által hívott, mellékhatás nélküli AML-ellenőrzések köre.
+     * Tartalmazza a `TransactionController` rögzítési körét (CASHIER/SUPERVISOR/MANAGER/ADMIN),
+     * a kanonikus pénztáros szerepkört (PENZTAR), valamint a pénztár-ellenőrzésre jogosult
+     * vezetői/ellenőri szerepköröket (vö. {@code AppModeRoleConstants.CASHIER_INSPECTION_ROLES}).
+     */
+    static final String TRANSACTION_FLOW_ROLES =
+            "hasAnyRole('CASHIER', 'PENZTAR', 'SUPERVISOR', 'MANAGER', 'ADMIN', "
+                    + "'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO', 'IRODAVEZETO', "
+                    + "'BELSO_ELLENOR', 'TERULETI_VEZETO')";
 
     private final AmlService amlService;
 
@@ -31,6 +53,7 @@ public class AmlController {
      * POST /api/v1/aml/check
      */
     @PostMapping("/check")
+    @PreAuthorize(TRANSACTION_FLOW_ROLES)
     public ResponseEntity<AmlCheckResult> checkTransaction(
             @Valid @RequestBody AmlTransactionCheckRequest request) {
         AmlCheckResult result = amlService.checkAllThresholds(
@@ -98,6 +121,7 @@ public class AmlController {
      * Legacy: BIGCTRL.DLL — 6 szintű kockázati besorolás + heti/negyedéves/éves göngyölés
      */
     @GetMapping("/check-all-thresholds")
+    @PreAuthorize(TRANSACTION_FLOW_ROLES)
     public ResponseEntity<AmlCheckResult> checkAllThresholds(
             @RequestParam String customerId,
             @RequestParam java.math.BigDecimal hufAmount,
