@@ -46,6 +46,6 @@
   "overrides": {
     "tmp": "^0.2.6",
     "shell-quote": "^1.10.0",
-    "js-yaml": "4.3.0"
+    "js-yaml": "4.3.1"
   }
 }
