@@ -217,6 +217,8 @@ const TrbExportPage = lazy(() => import('./pages/treasury/TrbExportPage'))
 const CustomerTurnoverPage = lazy(() => import('./pages/treasury/CustomerTurnoverPage'))
 const BankTurnoverPage = lazy(() => import('./pages/treasury/BankTurnoverPage'))
 const DaybookPage = lazy(() => import('./pages/reports/DaybookPage'))
+// FKH-030: Pénzforgalom riport (Transfer + Shipment, dátumtartományra, körzet-szűrten).
+const CashFlowReportPage = lazy(() => import('./pages/reports/CashFlowReportPage'))
 const DailyTurnoverPage = lazy(() => import('./pages/reports/DailyTurnoverPage'))
 const EveningClosingPage = lazy(() => import('./pages/closing/EveningClosingPage'))
 const DailyChecklistPage = lazy(() => import('./pages/cashdesk/DailyChecklistPage'))
@@ -1025,6 +1027,7 @@ export default function App() {
                 <Route path="/darius" element={<DariusReportPage />} />
                 <Route path="/decade" element={<DecadeReportPage />} />
                 <Route path="/daybook" element={<DaybookPage />} />
+                <Route path="/reports/cash-flow" element={<CashFlowReportPage />} />
                 <Route path="/daily-turnover" element={<DailyTurnoverPage />} />
                 <Route path="/evening-closing" element={<EveningClosingPage />} />
                 <Route path="/daily-checklist" element={<DailyChecklistPage />} />
