@@ -339,6 +339,51 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
                                                   @Param("date") LocalDate date);
 
     /**
+     * FKH-030 FR-3/FR-6: Penzforgalom riport — transfer-tetelek DATUMTARTOMANYRA es
+     * BRANCH-HALMAZRA (nem egy napra es egy fiokra, mint a naplokonyv).
+     *
+     * <p>Elteresek a {@link #findHufDaybookTransfersForDate}-tol, mind szandekos:
+     * <ul>
+     *   <li><b>Tartomany:</b> {@code transferDate BETWEEN :from AND :to} (FR-2).</li>
+     *   <li><b>Branch-halmaz:</b> {@code IN :branchIds} — az Ertektaros teljes korzete
+     *       (FR-9, {@code AccessScopeService.vaultRegionBranchScopeOrNull}).</li>
+     *   <li><b>Prefix-kor:</b> a naplokonyv csak FF/UF-et nez; itt AT/AV IS bekerul
+     *       (FR-6), mert a penzforgalom a penztarak fele iranyulo mozgast is tartalmazza.
+     *       A KK (kezelesi dij) NEM transfer-prefix, igy FR-7 a Transfer-oldalon
+     *       automatikusan teljesul.</li>
+     * </ul>
+     *
+     * <p>VALTOZATLANUL atvett a naplokonyv-mintabol (FR-11, TBD-3): a {@code -SZ} sorok
+     * kizarasa (azok kulon, szamitott sorkent jelennek meg) es az ervenytelenitett
+     * bizonylatok kezelese — a CANCELLED/REJECTED tetel csak akkor latszik, ha valodi
+     * storno-uton szunt meg ({@code isCancelled AND cancellationReason IS NOT NULL}),
+     * mert olyankor ket valos kassza-mozgas tortent.</p>
+     *
+     * <p>Az irany (atadas/atvetel) meghatarozasa a SZOLGALTATAS dolga: ugyanaz a bizonylat
+     * a kuldo fioknal atadas, a fogadonal atvetel — ezert itt MINDKET oldalt visszaadjuk,
+     * ha barmelyik fiok a scope-ban van.</p>
+     */
+    @Query("""
+            SELECT DISTINCT t FROM Transfer t
+            JOIN FETCH t.fromBranch fb
+            JOIN FETCH t.toBranch tb
+            WHERE t.companyId = :companyId
+              AND t.transferDate BETWEEN :from AND :to
+              AND (fb.id IN :branchIds OR tb.id IN :branchIds)
+              AND (t.transferNumber LIKE 'AT-%' OR t.transferNumber LIKE 'AV-%'
+                OR t.transferNumber LIKE 'FF-%' OR t.transferNumber LIKE 'UF-%')
+              AND t.transferNumber NOT LIKE '%-SZ'
+              AND (t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
+                                    hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
+                OR (t.isCancelled = true AND t.cancellationReason IS NOT NULL))
+            ORDER BY t.transferDate ASC, t.createdAt ASC, t.transferNumber ASC
+            """)
+    List<Transfer> findCashFlowReportTransfers(@Param("companyId") UUID companyId,
+                                               @Param("branchIds") java.util.Collection<UUID> branchIds,
+                                               @Param("from") LocalDate from,
+                                               @Param("to") LocalDate to);
+
+    /**
      * FKH-022 FR-K6/10: a naplókönyv transfer-oldali SZTORNÓ-sorai. A sztornó-ág
      * kizárólag {@code isCancelled = true} esetén él (a kitöltött cancelledAt önmagában
      * NEM sztornó); a nap-hozzárendelés a cancelledAt alapján történik.

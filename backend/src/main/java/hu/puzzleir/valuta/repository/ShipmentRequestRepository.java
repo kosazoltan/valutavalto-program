@@ -156,6 +156,32 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
             @Param("branchId") UUID branchId,
             @Param("date") LocalDate date);
 
+    /**
+     * FKH-030 FR-3/FR-6/FR-7: Penzforgalom riport — shipment-tetelek DATUMTARTOMANYRA es
+     * BRANCH-HALMAZRA.
+     *
+     * <p>A {@code serialPrefix IN ('FF','UF')} szures VALTOZATLANUL atveve a naplokonyvbol,
+     * es ez teljesiti az FR-7-et: a KK (kezelesi dij) prefixu shipment-tetelek IGY NEM
+     * kerulnek be a riportba (kulon tema: FKH-025). A TBD-1-ben nyitva hagyott
+     * {@code SHR}/{@code AV} shipment-prefixek SZANDEKOSAN kimaradnak — a felterkepezes nem
+     * tudta megerositeni a jelentesuket, es a fail-closed valasztas az, hogy csak a
+     * bizonyitottan penzmozgas jellegu prefixek szerepeljenek.</p>
+     */
+    @Query("""
+            SELECT DISTINCT sr FROM ShipmentRequest sr
+            LEFT JOIN FETCH sr.items
+            WHERE sr.companyId = :companyId
+              AND sr.serialPrefix IN ('FF', 'UF')
+              AND sr.requestDate BETWEEN :from AND :to
+              AND (sr.fromBranchId IN :branchIds OR sr.toBranchId IN :branchIds)
+            ORDER BY sr.requestDate ASC, sr.createdAt ASC, sr.serialNumber ASC
+            """)
+    List<ShipmentRequest> findCashFlowReportShipments(
+            @Param("companyId") UUID companyId,
+            @Param("branchIds") java.util.Collection<UUID> branchIds,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
     @Query("""
             SELECT DISTINCT sr FROM ShipmentRequest sr
             LEFT JOIN FETCH sr.items

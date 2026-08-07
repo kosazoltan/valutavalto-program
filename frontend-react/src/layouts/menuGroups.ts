@@ -225,6 +225,10 @@ export const menuGroups: MenuGroup[] = [
       // FK-ÉRTÉKTÁR (V285): új személyes értéktári munkatárs felvétele (név + jelszó).
       { path: '/vault-workers/new', label: 'Új munkatárs felvétele', icon: Users },
       { path: '/daybook', label: 'Naplókönyv', icon: FileText },
+      // FKH-030 FR-1: Pénzforgalom riport — Bank/Terület/Pénztár mozgások tetszőleges
+      // dátumtartományra. A Naplókönyv mellé kerül: ugyanaz az adatkör (Transfer+Shipment),
+      // de tartományra és a teljes körzetre, nem egy napra és egy fiókra.
+      { path: '/reports/cash-flow', label: 'Pénzforgalom riport', icon: FileText },
       { path: '/evening-closing', label: 'Napi zárás', icon: FileText },
       // FK-061 FR-1: a zárási varázsló ("Napzárás") értéktári módban is elérhető a menüből.
       // A /closing/wizard route gate nélkül, mindkét módban kiszolgál (App.tsx változatlan).

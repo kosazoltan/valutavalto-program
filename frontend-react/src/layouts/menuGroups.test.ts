@@ -223,6 +223,8 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       'Új pénztár felrögzítése',
       'Új munkatárs felvétele',
       'Naplókönyv',
+      // FKH-030 FR-1: uj menupont a Naplokonyv mellett (Penzforgalom riport).
+      'Pénzforgalom riport',
       'Napi zárás',
       'Napzárás',
       'Havi zárás',
@@ -270,6 +272,8 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       'Új pénztár felrögzítése',
       'Új munkatárs felvétele',
       'Naplókönyv',
+      // FKH-030 FR-1: uj menupont a Naplokonyv mellett (Penzforgalom riport).
+      'Pénzforgalom riport',
       'Napi zárás',
       'Napzárás',
       'Havi zárás',

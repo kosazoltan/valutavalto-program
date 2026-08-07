@@ -1961,6 +1961,31 @@ export const dailyReportApi = {
     (await api.get(`/daybook/${branchId}/${date}`)).data,
 }
 
+// ================== CASH FLOW REPORT API (FKH-030) ==================
+// A terület-szűrést a BACKEND alkalmazza (AccessScopeService) — a kliens SOHA nem
+// küld scope-ot, így nem is tágíthatja (FR-9, biztonsági követelmény).
+export interface CashFlowReportRow {
+  date: string
+  receiptNumber: string
+  partnerCode: string | null
+  partnerCategory: string
+  currency: string | null
+  receivedAmount: number | null
+  handedOverAmount: number | null
+  storno: boolean
+}
+
+export interface CashFlowReport {
+  from: string
+  to: string
+  rows: CashFlowReportRow[]
+}
+
+export const cashFlowReportApi = {
+  get: async (from: string, to: string): Promise<CashFlowReport> =>
+    (await api.get('/reports/cash-flow', { params: { from, to } })).data,
+}
+
 // ================== TURNOVER API ==================
 export const turnoverApi = {
   byPeriod: async (period: string, branchId: string, date: string) => {
