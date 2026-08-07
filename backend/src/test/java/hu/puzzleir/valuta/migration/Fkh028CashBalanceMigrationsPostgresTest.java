@@ -205,7 +205,7 @@ class Fkh028CashBalanceMigrationsPostgresTest {
     @Test
     @DisplayName("V375: a V370 utani 5797-es egyenleget a levezetett 3797-re korrigálja")
     void v375KorrigaljaATulkorrigaltEgyenleget() throws Exception {
-        migrateToVersion(version(V375_FILE_PATTERN) - 1);
+        migrateToVersion(previousExistingVersion(V375_FILE_PATTERN));
 
         UUID branchId;
         try (Connection connection = openConnection()) {
@@ -227,7 +227,7 @@ class Fkh028CashBalanceMigrationsPostgresTest {
     @Test
     @DisplayName("V375/TBD-4: eltérő kiinduló egyenleghez NEM nyúl (fail-closed állapot-ellenőrzés)")
     void v375NemNyulElteroKiindulasiAllapothoz() throws Exception {
-        migrateToVersion(version(V375_FILE_PATTERN) - 1);
+        migrateToVersion(previousExistingVersion(V375_FILE_PATTERN));
 
         UUID branchId;
         try (Connection connection = openConnection()) {
@@ -250,7 +250,7 @@ class Fkh028CashBalanceMigrationsPostgresTest {
     @Test
     @DisplayName("V375: idempotens — a már korrigált 3797-es egyenleget nem csökkenti tovább")
     void v375Idempotens() throws Exception {
-        migrateToVersion(version(V375_FILE_PATTERN) - 1);
+        migrateToVersion(previousExistingVersion(V375_FILE_PATTERN));
 
         UUID branchId;
         try (Connection connection = openConnection()) {
@@ -287,6 +287,30 @@ class Fkh028CashBalanceMigrationsPostgresTest {
         Matcher matcher = pattern.matcher(resolveMigration(pattern).getFileName().toString());
         assertThat(matcher.matches()).isTrue();
         return Integer.parseInt(matcher.group(1));
+    }
+
+    /**
+     * A megadott migracio ELOTTI, TENYLEGESEN LETEZO verzio.
+     *
+     * <p>A naiv {@code version(...) - 1} eltorik, ha a szamozasban LYUK van: a V375 elott a
+     * V374-et egy MASIK, meg nyitott PR (FK-076) foglalja, igy ezen az agon a V373 az elozo.
+     * A Flyway ilyenkor {@code No migration with a target version 374 could be found} hibat
+     * dob — lokalisan zold lehet (ha a masik ag fajlja ott van), CI-ben viszont bukik.
+     * Ezert a konyvtar tenyleges tartalmabol keressuk meg a kozvetlen elozmenyt.</p>
+     */
+    private static int previousExistingVersion(Pattern pattern) throws IOException {
+        int target = version(pattern);
+        Pattern anyMigration = Pattern.compile("(?i)^V(\\d+)__.*\\.sql$");
+        try (Stream<Path> files = Files.list(MIGRATION_DIR)) {
+            return files
+                    .map(p -> anyMigration.matcher(p.getFileName().toString()))
+                    .filter(Matcher::matches)
+                    .map(m -> Integer.parseInt(m.group(1)))
+                    .filter(v -> v < target)
+                    .max(Integer::compareTo)
+                    .orElseThrow(() -> new AssertionError(
+                            "Nincs a(z) V" + target + " elotti migracio a konyvtarban"));
+        }
     }
 
     private static void migrateToVersion(int version) {
