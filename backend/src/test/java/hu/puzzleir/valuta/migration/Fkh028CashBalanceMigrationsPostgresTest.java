@@ -44,6 +44,9 @@ class Fkh028CashBalanceMigrationsPostgresTest {
             Pattern.compile("(?i)^V(\\d+)__fkh028_br020.*\\.sql$");
     private static final Pattern V370_FILE_PATTERN =
             Pattern.compile("(?i)^V(\\d+)__fkh028_br035.*\\.sql$");
+    /** FKH-028/B: a V370 tulkorrekciojat rendezo migracio (-2000 USD). */
+    private static final Pattern V375_FILE_PATTERN =
+            Pattern.compile("(?i)^V(\\d+)__fkh028b_br035.*\\.sql$");
     private static final String MARKER = "[FKH-028 V370]";
 
     @Container
@@ -139,9 +142,13 @@ class Fkh028CashBalanceMigrationsPostgresTest {
         migrateToLatest();
 
         try (Connection connection = openConnection()) {
+            // FKH-028/B: a `migrateToLatest()` a V370 UTAN a V375-ot IS lefuttatja, ezert a
+            // vart vegallapot a TELJES lanc eredmenye: 4797 +1000 (V370) = 5797, majd
+            // -2000 (V375 tulkorrekcio-rendezes) = 3797. Ez egyben azt is bizonyitja, hogy a
+            // V375 allapot-ellenorzese a V370 altal eloallitott 5797-re HELYESEN illeszkedik.
             assertThat(balance(connection, branchId, "USD"))
-                    .as("BR035 USD a korrekció után +1000")
-                    .isEqualByComparingTo("5797.00");
+                    .as("BR035 USD a teljes V370+V375 lanc utan (4797 +1000 -2000)")
+                    .isEqualByComparingTo("3797.00");
 
             assertThat(markedTransfers(connection, companyId))
                     .as("Mindkét duplikált átadólap jelölést kapott")
@@ -157,8 +164,9 @@ class Fkh028CashBalanceMigrationsPostgresTest {
                 .anySatisfy(n -> assertThat(n).contains("mar alkalmazva"));
         try (Connection connection = openConnection()) {
             assertThat(balance(connection, branchId, "USD"))
-                    .as("A második futás NEM ad újabb +1000-et (marker-guard)")
-                    .isEqualByComparingTo("5797.00");
+                    .as("A második V370-futás NEM ad újabb +1000-et (marker-guard) — az érték a "
+                            + "V375-tel zárult lánc végállapotán marad")
+                    .isEqualByComparingTo("3797.00");
             String notes = queryForString(connection, """
                     SELECT notes FROM transfer WHERE company_id = ? AND transfer_number = 'AT-000009'
                     """, companyId);
@@ -186,6 +194,80 @@ class Fkh028CashBalanceMigrationsPostgresTest {
             assertThat(balance(connection, branchId, "USD"))
                     .as("A korrekció bizonylat-sorok nélkül is lefut")
                     .isEqualByComparingTo("1100.00");
+        }
+    }
+
+    // =====================================================================
+    // V375 — FKH-028/B: a V370 tulkorrekcio rendezese (-2000 USD),
+    // TBD-4 allapot-ellenorzessel (fail-closed)
+    // =====================================================================
+
+    @Test
+    @DisplayName("V375: a V370 utani 5797-es egyenleget a levezetett 3797-re korrigálja")
+    void v375KorrigaljaATulkorrigaltEgyenleget() throws Exception {
+        migrateToVersion(version(V375_FILE_PATTERN) - 1);
+
+        UUID branchId;
+        try (Connection connection = openConnection()) {
+            SeededBranch br035 = resolveSeededBranch(connection, "BR035");
+            branchId = br035.branchId();
+            // A prodban mert, V370 utani allapot eloallitasa.
+            upsertBalance(connection, br035.companyId(), branchId, "USD", new BigDecimal("5797.00"));
+        }
+
+        migrateToLatest();
+
+        try (Connection connection = openConnection()) {
+            assertThat(balance(connection, branchId, "USD"))
+                    .as("FR-B2: a BR035 USD-egyenleg a levezetett helyes ertekre all (5797 - 2000)")
+                    .isEqualByComparingTo("3797.00");
+        }
+    }
+
+    @Test
+    @DisplayName("V375/TBD-4: eltérő kiinduló egyenleghez NEM nyúl (fail-closed állapot-ellenőrzés)")
+    void v375NemNyulElteroKiindulasiAllapothoz() throws Exception {
+        migrateToVersion(version(V375_FILE_PATTERN) - 1);
+
+        UUID branchId;
+        try (Connection connection = openConnection()) {
+            SeededBranch br035 = resolveSeededBranch(connection, "BR035");
+            branchId = br035.branchId();
+            // Idokozben megvaltozott adat: NEM a vart 5797. Pontosan ez a szituacio okozta a
+            // V370 tulkorrekciojat — a marker-alapu idempotencia ez ellen NEM vedett.
+            upsertBalance(connection, br035.companyId(), branchId, "USD", new BigDecimal("4200.00"));
+        }
+
+        migrateToLatest();
+
+        try (Connection connection = openConnection()) {
+            assertThat(balance(connection, branchId, "USD"))
+                    .as("TBD-4: ismeretlen kiindulo allapotnal a migracio NEM ir (fail-closed)")
+                    .isEqualByComparingTo("4200.00");
+        }
+    }
+
+    @Test
+    @DisplayName("V375: idempotens — a már korrigált 3797-es egyenleget nem csökkenti tovább")
+    void v375Idempotens() throws Exception {
+        migrateToVersion(version(V375_FILE_PATTERN) - 1);
+
+        UUID branchId;
+        try (Connection connection = openConnection()) {
+            SeededBranch br035 = resolveSeededBranch(connection, "BR035");
+            branchId = br035.branchId();
+            upsertBalance(connection, br035.companyId(), branchId, "USD", new BigDecimal("5797.00"));
+        }
+
+        migrateToLatest();
+        // Kezi ujrafuttatas a Flyway once-only szemantikajan TUL (NFR-4).
+        runRawCollectingNotices(V375_FILE_PATTERN);
+        runRawCollectingNotices(V375_FILE_PATTERN);
+
+        try (Connection connection = openConnection()) {
+            assertThat(balance(connection, branchId, "USD"))
+                    .as("NFR-4: tobbszori futas utan is pontosan 3797 (nem 1797, nem -203)")
+                    .isEqualByComparingTo("3797.00");
         }
     }
 
