@@ -578,13 +578,22 @@ public class ClosingWizardService {
                     // nincs benne a tablaban) — HUF-zaras semmilyen korulmenyek kozott nem
                     // utasithato el emiatt (NFR-6, dedikalt teszt bizonyitja).
                     if (!"HUF".equals(currency.getCode())) {
-                        UUID companyId = branch.getCompany() != null ? branch.getCompany().getId() : null;
+                        // ellenor1 WARNING-1 (FK-076 review): a companyId a SecurityUtils-bol jon,
+                        // NEM a branch.getCompany() lazy-proxy lancbol — ugyanaz a megbizhato
+                        // forras, amit a findBranchInCurrentCompany is hasznal. Fallback a
+                        // branch-re (batch/scheduler kontextus, ahol nincs SecurityContext).
+                        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+                        if (companyId == null && branch.getCompany() != null) {
+                            companyId = branch.getCompany().getId();
+                        }
                         boolean allowed = companyId != null
                                 && denominationAllowedRepository.existsAllowed(
                                         companyId, currency.getId(), faceValue);
                         if (!allowed) {
+                            // REQUIRES_NEW audit: a rollback ellenere is megmaradjon. A
+                            // companyId==null (fail-closed) ag is auditalando — korabban
+                            // AUDIT NELKUL utasitott el (ellenor1 WARNING-1).
                             if (companyId != null) {
-                                // REQUIRES_NEW audit: a rollback ellenere is megmaradjon.
                                 auditLogService.logInNewTransactionForCompany(
                                         "DENOMINATION_ALLOWED_REJECTED",
                                         String.format(
@@ -594,6 +603,10 @@ public class ClosingWizardService {
                                                 branchId, currency.getCode(), faceValue.toPlainString()),
                                         branchId.toString(),
                                         companyId);
+                            } else {
+                                log.warn("VV-VALID-006 elutasitas company-kontextus NELKUL "
+                                                + "(audit nem irhato): branch={}, currency={}, faceValue={}",
+                                        branchId, currency.getCode(), faceValue.toPlainString());
                             }
                             throw new ValidationException(
                                     "VV-VALID-006: Nem engedélyezett címlet-kombináció: "

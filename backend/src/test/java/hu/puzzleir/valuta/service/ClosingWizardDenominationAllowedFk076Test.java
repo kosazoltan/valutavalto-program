@@ -186,4 +186,36 @@ class ClosingWizardDenominationAllowedFk076Test {
             verify(denominationAllowedRepository, never()).existsAllowed(any(), anyLong(), any());
         }
     }
+
+    /**
+     * ellenor1 WARNING-1 (FK-076 review) regressziós védelme: a companyId a
+     * SecurityUtils-ból jön, NEM a {@code branch.getCompany()} lazy-proxy láncból.
+     * Korábban a lazy-proxy null-esete AUDIT NÉLKÜL utasított el.
+     */
+    @Test
+    @DisplayName("WARNING-1: a companyId a SecurityUtils-ból jön — a lazy branch.company nem befolyásolja az elutasítást/auditot")
+    void companyIdComesFromSecurityContextNotLazyBranchProxy() {
+        Branch branchWithoutCompany = Branch.builder().id(branchId).code("BR001").company(null).build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyId);
+            lenient().when(branchRepository.findByIdAndCompanyId(branchId, companyId))
+                    .thenReturn(Optional.of(branchWithoutCompany));
+            when(denominationAllowedRepository.existsAllowed(companyId, 5L, new BigDecimal("5")))
+                    .thenReturn(false);
+
+            assertThatThrownBy(() ->
+                    service.countDenominations(branchId, businessDate,
+                            Map.of("CHF", Map.of(5, 3))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("VV-VALID-006");
+
+            // A lenyeg: az elutasitas AUDITALVA van, noha a branch.company null.
+            verify(auditLogService).logInNewTransactionForCompany(
+                    org.mockito.ArgumentMatchers.eq("DENOMINATION_ALLOWED_REJECTED"),
+                    org.mockito.ArgumentMatchers.contains("VV-VALID-006"),
+                    org.mockito.ArgumentMatchers.eq(branchId.toString()),
+                    org.mockito.ArgumentMatchers.eq(companyId));
+            verify(denominationRepository, never()).save(any());
+        }
+    }
 }

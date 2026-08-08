@@ -273,9 +273,11 @@ public class DenominationService {
                         .active(true)
                         .build();
                 denominationRepository.save(denomination);
+                // ellenor1 NIT-1 (FK-076 review): a log CSAK a tenyleges INSERT-et naplozza —
+                // az if-en kivul minden mar letezo sorra is tuzelt (126 felrevezeto sor/branch).
+                log.debug("{} {} címlet inicializálva irodához: {}", foreignCurrency.getCode(),
+                        allowed.getFaceValue(), branch.getName());
             }
-            log.debug("{} {} címlet inicializálva irodához: {}", foreignCurrency.getCode(),
-                    allowed.getFaceValue(), branch.getName());
         }
     }
 

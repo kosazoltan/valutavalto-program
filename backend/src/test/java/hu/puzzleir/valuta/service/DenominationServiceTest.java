@@ -155,21 +155,36 @@ class DenominationServiceTest {
             when(denominationAllowedRepository.findActiveByCompanyId(TEST_COMPANY_ID))
                     .thenReturn(List.of(
                             allowed("EUR", "500", DenominationType.BANKNOTE),
-                            allowed("EUR", "2", DenominationType.COIN)));
+                            allowed("EUR", "2", DenominationType.COIN),
+                            // ellenor1 WARNING-2 (FK-076 review): tobb-devizas lefedettseg —
+                            // a multi-currency iteralo ag ne csak egyetlen valutaval legyen tesztelve.
+                            allowed("USD", "100", DenominationType.BANKNOTE),
+                            allowed("CHF", "1000", DenominationType.BANKNOTE),
+                            allowed("JPY", "10000", DenominationType.BANKNOTE)));
             when(denominationRepository.save(any(Denomination.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
             denominationService.initializeBranchDenominations(TEST_BRANCH_ID);
 
             ArgumentCaptor<Denomination> captor = ArgumentCaptor.forClass(Denomination.class);
-            verify(denominationRepository, times(2)).save(captor.capture());
+            verify(denominationRepository, times(5)).save(captor.capture());
             assertThat(captor.getAllValues())
                     .extracting(Denomination::getFaceValue, Denomination::getDenominationType)
                     .containsExactly(
                             org.assertj.core.groups.Tuple.tuple(
                                     new BigDecimal("500"), DenominationType.BANKNOTE),
                             org.assertj.core.groups.Tuple.tuple(
-                                    new BigDecimal("2"), DenominationType.COIN));
+                                    new BigDecimal("2"), DenominationType.COIN),
+                            org.assertj.core.groups.Tuple.tuple(
+                                    new BigDecimal("100"), DenominationType.BANKNOTE),
+                            org.assertj.core.groups.Tuple.tuple(
+                                    new BigDecimal("1000"), DenominationType.BANKNOTE),
+                            org.assertj.core.groups.Tuple.tuple(
+                                    new BigDecimal("10000"), DenominationType.BANKNOTE));
+            // Minden sor a sajat devizajahoz kerul (nem csusznak ossze egy valutara).
+            assertThat(captor.getAllValues())
+                    .extracting(d -> d.getCurrency().getCode())
+                    .containsExactly("EUR", "EUR", "USD", "CHF", "JPY");
         }
     }
 
