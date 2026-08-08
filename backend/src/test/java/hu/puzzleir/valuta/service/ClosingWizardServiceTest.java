@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import tools.jackson.databind.ObjectMapper;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -36,6 +37,7 @@ class ClosingWizardServiceTest {
     @Mock private ObjectMapper objectMapper;
     @Mock private CurrencyRepository currencyRepository;
     @Mock private CurrencyStockRepository currencyStockRepository;
+    @Mock private DenominationAllowedRepository denominationAllowedRepository;
     @InjectMocks private ClosingWizardService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();

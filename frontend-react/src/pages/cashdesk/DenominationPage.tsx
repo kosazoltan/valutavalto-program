@@ -88,6 +88,8 @@ export default function DenominationPage() {
   const [denominationSummary, setDenominationSummary] = useState<DenominationSummary | null>(null)
   const [editingQuantities, setEditingQuantities] = useState<Record<number, number>>({})
   const [loading, setLoading] = useState(false)
+  // FK-077 (FR-3): látható, magyar nyelvű betöltési hibaüzenet a csendes kiürülés helyett.
+  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null)
   const [suggestionAmount, setSuggestionAmount] = useState('')
   const [suggestionLoading, setSuggestionLoading] = useState(false)
   const [suggestionMessage, setSuggestionMessage] = useState<string | null>(null)
@@ -127,10 +129,13 @@ export default function DenominationPage() {
   })
   // Copilot #1109: az összesítő DERIVÁLT érték a szerkesztett darabszámokból — state-ként
   // tartva versenyhelyzetes/elcsúszó újraszámításokra volt érzékeny.
+  // FK-079 (FR-3): a tört névértékű sorok kimaradnak az összegzésből, hogy az összeg
+  // konzisztens legyen azzal, amit a felhasználó a táblázatban ténylegesen lát
+  // (a render is isAllowedFaceValue-vel szűr, FK-072 v2 óta).
   const calculatedTotal = useMemo(
     () =>
       denominations
-        .filter((d) => d.currencyId === selectedCurrencyId)
+        .filter((d) => d.currencyId === selectedCurrencyId && isAllowedFaceValue(d.faceValue))
         .reduce((sum, d) => sum + d.faceValue * (editingQuantities[d.id] ?? 0), 0),
     [denominations, selectedCurrencyId, editingQuantities],
   )
@@ -143,56 +148,71 @@ export default function DenominationPage() {
   const loadAll = useCallback(async () => {
     if (!selectedCashDeskId || !selectedCurrencyId) return
     setLoading(true)
-    try {
-      const selectedCurrencyCode = currencies.find((c) => c.id === selectedCurrencyId)?.code
-      const [denoms, allBalances, balances, persistedTotal, allMaster, lowStock, summary, byCode] =
-        await Promise.all([
-          denominationApi.getByCurrencyId(selectedCurrencyId),
-          denominationBalanceApi.getCashDeskDenominations(selectedCashDeskId),
-          denominationBalanceApi.getCashDeskDenominationsByCurrency(
-            selectedCashDeskId,
-            String(selectedCurrencyId),
-          ),
-          denominationBalanceApi.calculateTotalFromDenominations(
-            selectedCashDeskId,
-            String(selectedCurrencyId),
-          ),
-          denominationApi.list(),
-          denominationApi.getLowStockAlerts(),
-          denominationApi.getSummary(selectedCurrencyId),
-          selectedCurrencyCode
-            ? denominationApi.getByCurrencyCode(selectedCurrencyCode)
-            : Promise.resolve([] as Denomination[]),
-        ])
-      setDenominations(denoms)
-      setAllDenominationBalances(allBalances)
-      setDenominationBalances(balances)
-      setServerCalculatedTotal(persistedTotal)
-      setAllMasterDenominations(allMaster)
-      setLowStockDenominations(lowStock)
-      setDenominationSummary(summary)
-      setCodeDenominations(byCode)
+    setLoadErrorMessage(null)
+    const selectedCurrencyCode = currencies.find((c) => c.id === selectedCurrencyId)?.code
+    // FK-077 (FR-3): Promise.all helyett allSettled — korábban az ELSŐ elutasított hívás
+    // (pl. a requireOwnCashDesk 404-e) az egész oldalt csendben kiürítette, hibaüzenet
+    // nélkül. Most a sikeres részeredmények megjelennek, a hibáról a felhasználó
+    // magyar nyelvű, látható üzenetet kap.
+    const results = await Promise.allSettled([
+      denominationApi.getByCurrencyId(selectedCurrencyId),
+      denominationBalanceApi.getCashDeskDenominations(selectedCashDeskId),
+      denominationBalanceApi.getCashDeskDenominationsByCurrency(
+        selectedCashDeskId,
+        String(selectedCurrencyId),
+      ),
+      denominationBalanceApi.calculateTotalFromDenominations(
+        selectedCashDeskId,
+        String(selectedCurrencyId),
+      ),
+      denominationApi.list(),
+      denominationApi.getLowStockAlerts(),
+      denominationApi.getSummary(selectedCurrencyId),
+      selectedCurrencyCode
+        ? denominationApi.getByCurrencyCode(selectedCurrencyCode)
+        : Promise.resolve([] as Denomination[]),
+    ])
 
-      // Egyetlen, determinisztikus state-írás: minden címlet 0, felülírva a mentettekkel.
-      // (Az összesítő ebből DERIVÁLT useMemo — külön nem kell beállítani.)
-      const quantities: Record<number, number> = {}
-      denoms.forEach((d: Denomination) => {
-        quantities[d.id] = 0
-      })
-      balances.forEach((balance) => {
-        quantities[Number(balance.denominationId)] = balance.quantity
-      })
-      setEditingQuantities(quantities)
-    } catch (error) {
-      logger.error('DenominationPage', 'Címletezés betöltése sikertelen:', error)
-      setServerCalculatedTotal(null)
-      setAllMasterDenominations([])
-      setLowStockDenominations([])
-      setDenominationSummary(null)
-      setCodeDenominations([])
-    } finally {
-      setLoading(false)
+    const valueOf = <T,>(index: number, fallback: T): T => {
+      const r = results[index]
+      return r && r.status === 'fulfilled' ? (r.value as T) : fallback
     }
+    const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+
+    const denoms = valueOf<Denomination[]>(0, [])
+    const allBalances = valueOf<DenominationBalanceDTO[]>(1, [])
+    const balances = valueOf<DenominationBalanceDTO[]>(2, [])
+
+    setDenominations(denoms)
+    setAllDenominationBalances(allBalances)
+    setDenominationBalances(balances)
+    setServerCalculatedTotal(valueOf<number | null>(3, null))
+    setAllMasterDenominations(valueOf<Denomination[]>(4, []))
+    setLowStockDenominations(valueOf<Denomination[]>(5, []))
+    setDenominationSummary(valueOf<DenominationSummary | null>(6, null))
+    setCodeDenominations(valueOf<Denomination[]>(7, []))
+
+    // Egyetlen, determinisztikus state-írás: minden címlet 0, felülírva a mentettekkel.
+    // (Az összesítő ebből DERIVÁLT useMemo — külön nem kell beállítani.)
+    const quantities: Record<number, number> = {}
+    denoms.forEach((d: Denomination) => {
+      quantities[d.id] = 0
+    })
+    balances.forEach((balance) => {
+      quantities[Number(balance.denominationId)] = balance.quantity
+    })
+    setEditingQuantities(quantities)
+
+    if (failures.length > 0) {
+      failures.forEach((f) =>
+        logger.error('DenominationPage', 'Címletezés részleges betöltési hiba:', f.reason),
+      )
+      setLoadErrorMessage(
+        `A címletezés adatainak egy része nem tölthető be (${failures.length} hívás sikertelen). ` +
+          `Részlet: ${getErrorMessage(failures[0]?.reason)}`,
+      )
+    }
+    setLoading(false)
   }, [currencies, selectedCashDeskId, selectedCurrencyId])
 
   useEffect(() => {
@@ -255,8 +275,10 @@ export default function DenominationPage() {
     setSuggestionLoading(true)
     setSuggestionMessage(null)
     try {
+      // FK-079 (FR-1): a javaslat feldolgozásából a tört névértékű sorok kimaradnak —
+      // tört címlethez semmilyen úton nem kerülhet nem-nulla mennyiség a state-be.
       const currentDenominations = denominations.filter(
-        (d) => d.currencyId === selectedCurrencyId && d.active,
+        (d) => d.currencyId === selectedCurrencyId && d.active && isAllowedFaceValue(d.faceValue),
       )
       const suggestion = suggestionUsesStock
         ? await denominationCalculatorApi.suggestBalanced({
@@ -531,8 +553,12 @@ export default function DenominationPage() {
       // Batch2-A: a 0 darabszámot IS elküldjük — korábban a qty>0 szűrő miatt egy
       // címlet 0-ra állítása (korábbi érték törlése) sosem perzisztálódott.
       // Csak az aktuálisan kiválasztott valuta címleteit küldjük.
+      // FK-079 (FR-2): a beküldött lista tört névértékű sort NEM tartalmazhat — akkor sem,
+      // ha bármilyen úton (korábbi mentés, javaslat) nem-nulla mennyiség került a state-be.
       const currentIds = new Set(
-        denominations.filter((d) => d.currencyId === selectedCurrencyId).map((d) => d.id),
+        denominations
+          .filter((d) => d.currencyId === selectedCurrencyId && isAllowedFaceValue(d.faceValue))
+          .map((d) => d.id),
       )
       const updates: DenominationQuantityUpdateRequest[] = Object.entries(editingQuantities)
         .filter(([id]) => currentIds.has(Number(id)))
@@ -564,6 +590,17 @@ export default function DenominationPage() {
 
   return (
     <div className="space-y-2">
+      {/* FK-077 FR-3: látható betöltési hibaüzenet — csendes üres képernyő helyett. */}
+      {loadErrorMessage && (
+        <div
+          role="alert"
+          data-testid="denomination-load-error"
+          className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800"
+        >
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span>{loadErrorMessage}</span>
+        </div>
+      )}
       {/* Header + Currency Selector — egy sorban */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
@@ -1114,6 +1151,7 @@ export default function DenominationPage() {
                             onChange={(val) => handleQuantityChange(denomination.id, val)}
                             className="form-input w-24 text-center"
                             placeholder="0"
+                            data-testid={`denomination-qty-${denomination.id}`}
                             allowDecimals={false}
                             allowNegative={false}
                             min={0}
@@ -1135,7 +1173,10 @@ export default function DenominationPage() {
                     {t('cashdesk.osszesen2')}
                   </td>
                   <td className="text-right">
-                    <span className="font-mono text-base text-blue-600">
+                    <span
+                      className="font-mono text-base text-blue-600"
+                      data-testid="denomination-calculated-total"
+                    >
                       {formatDecimal(calculatedTotal, 2, 2)} {selectedCurrency?.code}
                     </span>
                   </td>

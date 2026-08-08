@@ -4,17 +4,20 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Denomination;
+import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -55,6 +58,7 @@ class DenominationServiceTest {
     @Mock private CurrencyRepository currencyRepository;
     @Mock private CompanyRepository companyRepository;
     @Mock private BranchRepository branchRepository;
+    @Mock private DenominationAllowedRepository denominationAllowedRepository;
 
     @InjectMocks
     private DenominationService denominationService;
@@ -102,58 +106,150 @@ class DenominationServiceTest {
     }
 
     // ============================================================
-    // Bug 2 + Batch2-A: külföldi címlet-katalógus (jegybanki besorolás)
+    // FK-076: az inicializálás a denomination_allowed torzsadatbol olvas
+    // (a torolt FOREIGN_DENOMINATIONS Map helyett — a korabbi katalogus-tesztek
+    // az FK-076 altal elirt viselkedesre lettek frissitve, nem torolve).
     // ============================================================
 
-    private static DenominationType catalogType(String currency, String faceValue) {
-        return DenominationService.FOREIGN_DENOMINATIONS.get(currency).stream()
-                .filter(s -> s.faceValue().compareTo(new BigDecimal(faceValue)) == 0)
-                .findFirst()
-                .orElseThrow(() -> new AssertionError(currency + " " + faceValue + " nincs a katalógusban"))
-                .type();
+    /** Segedo: DenominationAllowed sor epites. */
+    private static DenominationAllowed allowed(String code, String faceValue, DenominationType type) {
+        Currency currency = new Currency();
+        currency.setId((long) (code.hashCode() & 0x7fffffff));
+        currency.setCode(code);
+        currency.setActive(true);
+        return DenominationAllowed.builder()
+                .currency(currency)
+                .faceValue(new BigDecimal(faceValue))
+                .denominationType(type)
+                .active(true)
+                .build();
     }
 
     @Test
-    @DisplayName("katalógus: EUR 500 → BANKNOTE, EUR 2/1 → COIN (ECB)")
-    void eurCatalogTypesShouldMatchEcb() {
-        assertThat(catalogType("EUR", "500")).isEqualTo(DenominationType.BANKNOTE);
-        assertThat(catalogType("EUR", "2")).isEqualTo(DenominationType.COIN);
-        assertThat(catalogType("EUR", "1")).isEqualTo(DenominationType.COIN);
-        assertThat(catalogType("EUR", "0.01")).isEqualTo(DenominationType.COIN);
+    @DisplayName("FK-076 FR-2: init pontosan a denomination_allowed sorait hozza létre (EUR 500 BANKNOTE, EUR 2 COIN)")
+    void initShouldCreateExactlyTheAllowedCatalogRows() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(TEST_COMPANY_ID);
+
+            Company company = new Company();
+            Branch branch = new Branch();
+            branch.setName("Teszt Iroda");
+
+            Currency huf = new Currency();
+            huf.setId(1L);
+            huf.setCode("HUF");
+
+            when(companyRepository.findById(TEST_COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
+            // HUF mar letezik -> a HUF-ag nem ment; ez a teszt kizarolag a
+            // denomination_allowed-agat vizsgalja (HUF-init lefedve mashol).
+            when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(
+                    any(UUID.class), any(Long.class), any(BigDecimal.class)))
+                    .thenAnswer(invocation -> {
+                        Long currencyId = invocation.getArgument(1);
+                        return currencyId.equals(huf.getId())
+                                ? Optional.of(new Denomination())
+                                : Optional.empty();
+                    });
+            when(denominationAllowedRepository.findActiveByCompanyId(TEST_COMPANY_ID))
+                    .thenReturn(List.of(
+                            allowed("EUR", "500", DenominationType.BANKNOTE),
+                            allowed("EUR", "2", DenominationType.COIN)));
+            when(denominationRepository.save(any(Denomination.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            denominationService.initializeBranchDenominations(TEST_BRANCH_ID);
+
+            ArgumentCaptor<Denomination> captor = ArgumentCaptor.forClass(Denomination.class);
+            verify(denominationRepository, times(2)).save(captor.capture());
+            assertThat(captor.getAllValues())
+                    .extracting(Denomination::getFaceValue, Denomination::getDenominationType)
+                    .containsExactly(
+                            org.assertj.core.groups.Tuple.tuple(
+                                    new BigDecimal("500"), DenominationType.BANKNOTE),
+                            org.assertj.core.groups.Tuple.tuple(
+                                    new BigDecimal("2"), DenominationType.COIN));
+        }
     }
 
     @Test
-    @DisplayName("katalógus: USD 1 → BANKNOTE (Fed), CHF 5 → COIN (SNB), JPY 500 → COIN (BoJ)")
-    void mixedCatalogTypesShouldMatchCentralBanks() {
-        assertThat(catalogType("USD", "1")).isEqualTo(DenominationType.BANKNOTE);
-        assertThat(catalogType("CHF", "5")).isEqualTo(DenominationType.COIN);
-        assertThat(catalogType("JPY", "500")).isEqualTo(DenominationType.COIN);
+    @DisplayName("FK-076 FR-2: EUA-ra 0 sor (nincs EUA-sor a denomination_allowed-ban)")
+    void initShouldCreateZeroRowsForEua() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(TEST_COMPANY_ID);
+
+            Company company = new Company();
+            Branch branch = new Branch();
+            branch.setName("Teszt Iroda");
+
+            Currency huf = new Currency();
+            huf.setId(1L);
+            huf.setCode("HUF");
+
+            when(companyRepository.findById(TEST_COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
+            // HUF mar letezik -> a HUF-ag nem ment; ez a teszt kizarolag a
+            // denomination_allowed-agat vizsgalja.
+            when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(
+                    any(UUID.class), any(Long.class), any(BigDecimal.class)))
+                    .thenAnswer(invocation -> {
+                        Long currencyId = invocation.getArgument(1);
+                        return currencyId.equals(huf.getId())
+                                ? Optional.of(new Denomination())
+                                : Optional.empty();
+                    });
+            // Ures katalogus -> semmilyen kulfoldi sor nem jon letre (EUA-ra sem).
+            when(denominationAllowedRepository.findActiveByCompanyId(TEST_COMPANY_ID))
+                    .thenReturn(List.of());
+
+            denominationService.initializeBranchDenominations(TEST_BRANCH_ID);
+
+            verify(denominationRepository, never()).save(any(Denomination.class));
+            // A torolt EUA-kivetel nem kerulhet vissza: az EUA nem szuretheto ki
+            // semmilyen kulonleges uton — a tablabol egyszeruen nem olvashato sor.
+            verify(currencyRepository, never()).findByCode("EUA");
+        }
     }
 
     @Test
-    @DisplayName("katalógus: mind a 22 forgalmazott valuta + EUA benne van, a RUB-bal együtt (V327)")
-    void catalogShouldCoverTradedCurrenciesIncludingRub() {
-        assertThat(DenominationService.FOREIGN_DENOMINATIONS.keySet()).containsExactlyInAnyOrder(
-                "EUR", "EUA", "USD", "GBP", "CHF", "AUD", "CAD", "JPY", "CZK", "PLN", "RON",
-                "RSD", "ILS", "UAH", "RUB", "TRY", "CNY", "BAM", "THB", "BRL", "MXN", "NZD");
-        assertThat(DenominationService.FOREIGN_DENOMINATIONS).containsKey("RUB");
-    }
+    @DisplayName("FK-076 FR-2: inaktiv valuta sora kimarad az inicializalasbol")
+    void initShouldSkipInactiveCurrency() {
+        try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+            securityUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(TEST_COMPANY_ID);
 
-    @Test
-    @DisplayName("katalógus: RUB 5000 → BANKNOTE, RUB 50 → BANKNOTE, RUB 10/0.10 → COIN (V327, Bank of Russia)")
-    void rubCatalogTypesShouldMatchBankOfRussia() {
-        assertThat(catalogType("RUB", "5000")).isEqualTo(DenominationType.BANKNOTE);
-        assertThat(catalogType("RUB", "50")).isEqualTo(DenominationType.BANKNOTE);
-        assertThat(catalogType("RUB", "10")).isEqualTo(DenominationType.COIN);
-        assertThat(catalogType("RUB", "0.10")).isEqualTo(DenominationType.COIN);
-    }
+            Company company = new Company();
+            Branch branch = new Branch();
+            branch.setName("Teszt Iroda");
 
-    @Test
-    @DisplayName("katalógus: EUA (euró érme) kizárólag COIN sorokat tartalmaz")
-    void euaCatalogShouldBeCoinsOnly() {
-        assertThat(DenominationService.FOREIGN_DENOMINATIONS.get("EUA"))
-                .isNotEmpty()
-                .allSatisfy(spec -> assertThat(spec.type()).isEqualTo(DenominationType.COIN));
+            Currency huf = new Currency();
+            huf.setId(1L);
+            huf.setCode("HUF");
+
+            DenominationAllowed inactiveRow = allowed("RUB", "5000", DenominationType.BANKNOTE);
+            inactiveRow.getCurrency().setActive(false);
+
+            when(companyRepository.findById(TEST_COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
+            // HUF mar letezik -> a HUF-ag nem ment; ez a teszt kizarolag a
+            // denomination_allowed-agat vizsgalja.
+            when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(
+                    any(UUID.class), any(Long.class), any(BigDecimal.class)))
+                    .thenAnswer(invocation -> {
+                        Long currencyId = invocation.getArgument(1);
+                        return currencyId.equals(huf.getId())
+                                ? Optional.of(new Denomination())
+                                : Optional.empty();
+                    });
+            when(denominationAllowedRepository.findActiveByCompanyId(TEST_COMPANY_ID))
+                    .thenReturn(List.of(inactiveRow));
+
+            denominationService.initializeBranchDenominations(TEST_BRANCH_ID);
+
+            verify(denominationRepository, never()).save(any(Denomination.class));
+        }
     }
 
     // ============================================================
@@ -199,7 +295,7 @@ class DenominationServiceTest {
     }
 
     @Test
-    @DisplayName("initializeBranchDenominations: EUR inicializálódik ha létezik a DB-ben")
+    @DisplayName("initializeBranchDenominations: EUR a denomination_allowed-ból inicializálódik (FK-076), meglévő sor kihagyva")
     void initShouldCreateEurDenominationsIfCurrencyExists() {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             securityUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(TEST_COMPANY_ID);
@@ -216,33 +312,42 @@ class DenominationServiceTest {
             eur.setId(2L);
             eur.setCode("EUR");
 
+            DenominationAllowed eur500 = DenominationAllowed.builder()
+                    .currency(eur).faceValue(new BigDecimal("500"))
+                    .denominationType(DenominationType.BANKNOTE).active(true).build();
+            DenominationAllowed eur200 = DenominationAllowed.builder()
+                    .currency(eur).faceValue(new BigDecimal("200"))
+                    .denominationType(DenominationType.BANKNOTE).active(true).build();
+
             when(companyRepository.findById(TEST_COMPANY_ID)).thenReturn(Optional.of(company));
             when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(branch));
             when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
-            when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
-            when(currencyRepository.findByCode("USD")).thenReturn(Optional.empty());
-            when(currencyRepository.findByCode("GBP")).thenReturn(Optional.empty());
-            when(currencyRepository.findByCode("CHF")).thenReturn(Optional.empty());
-            when(currencyRepository.findByCode("CZK")).thenReturn(Optional.empty());
-
-            // Minden HUF létezik már, minden EUR nincs még meg
+            // HUF már létezik; EUR 500 létezik, EUR 200 még nincs.
             when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(
                     any(UUID.class), any(Long.class), any(BigDecimal.class)))
                     .thenAnswer(invocation -> {
                         Long currencyId = invocation.getArgument(1);
+                        BigDecimal faceValue = invocation.getArgument(2);
                         if (currencyId.equals(huf.getId())) {
                             return Optional.of(new Denomination()); // HUF már létezik
                         }
-                        return Optional.empty(); // EUR még nincs
+                        if (currencyId.equals(eur.getId())
+                                && faceValue.compareTo(new BigDecimal("500")) == 0) {
+                            return Optional.of(new Denomination()); // EUR 500 már létezik
+                        }
+                        return Optional.empty();
                     });
+            when(denominationAllowedRepository.findActiveByCompanyId(TEST_COMPANY_ID))
+                    .thenReturn(List.of(eur500, eur200));
 
             when(denominationRepository.save(any(Denomination.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
             denominationService.initializeBranchDenominations(TEST_BRANCH_ID);
 
-            // EUR: 15 db névérték (500, 200, 100, 50, 20, 10, 5, 2, 1, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01)
-            verify(denominationRepository, times(15)).save(any(Denomination.class));
+            // FK-076: kizárólag a denomination_allowed sorai — a teljes jegybanki
+            // katalogus (korabban 15 EUR ertek, tort ermekkel) mar nem jon letre.
+            verify(denominationRepository, times(1)).save(any(Denomination.class));
         }
     }
 

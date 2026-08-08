@@ -18,6 +18,7 @@ import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
@@ -62,6 +63,9 @@ public class ClosingWizardService {
     private final ClosingToleranceService closingToleranceService;
     // FK-065: beragadt munkamenet auto-lejárat + megszakítás auditja.
     private final AuditLogService auditLogService;
+    // FK-076 (FR-3): a nem-HUF auto-create ágat a denomination_allowed törzsadat ellen
+    // validáljuk — nem engedélyezett kombinációra elutasítás, nem csendes auto-create.
+    private final DenominationAllowedRepository denominationAllowedRepository;
 
     /** G3: a zárás-eltérés magyarázat-kötelezettség feature-flag SystemParameter kulcsa. */
     static final String CLOSING_DISCREPANCY_PARAM = "CLOSING_DISCREPANCY_EXPLANATION_REQUIRED";
@@ -567,6 +571,35 @@ public class ClosingWizardService {
                 .findByBranchIdAndCurrencyIdAndFaceValue(branchId, currency.getId(), faceValue)
                 .orElseGet(() -> {
                     Branch branch = findBranchInCurrentCompany(branchId);
+                    // FK-076 (FR-3): nem-HUF auto-create a save() elott a denomination_allowed
+                    // torzsadat (V376) ellen validal — nem engedelyezett kombinaciora
+                    // elutasitas, NEM csendes uj denomination-sor letrehozas.
+                    // HUF-ra ez a validacio explicit ki van kapcsolva (a HUF szandekosan
+                    // nincs benne a tablaban) — HUF-zaras semmilyen korulmenyek kozott nem
+                    // utasithato el emiatt (NFR-6, dedikalt teszt bizonyitja).
+                    if (!"HUF".equals(currency.getCode())) {
+                        UUID companyId = branch.getCompany() != null ? branch.getCompany().getId() : null;
+                        boolean allowed = companyId != null
+                                && denominationAllowedRepository.existsAllowed(
+                                        companyId, currency.getId(), faceValue);
+                        if (!allowed) {
+                            if (companyId != null) {
+                                // REQUIRES_NEW audit: a rollback ellenere is megmaradjon.
+                                auditLogService.logInNewTransactionForCompany(
+                                        "DENOMINATION_ALLOWED_REJECTED",
+                                        String.format(
+                                                "{\"KAT\":\"VALID\",\"error_code\":\"VV-VALID-006\","
+                                                        + "\"branch_id\":\"%s\",\"currency_code\":\"%s\","
+                                                        + "\"face_value\":\"%s\"}",
+                                                branchId, currency.getCode(), faceValue.toPlainString()),
+                                        branchId.toString(),
+                                        companyId);
+                            }
+                            throw new ValidationException(
+                                    "VV-VALID-006: Nem engedélyezett címlet-kombináció: "
+                                            + currency.getCode() + " " + faceValue.toPlainString());
+                        }
+                    }
                     // HUF szabaly: >= 200 Ft bankjegy, < 200 Ft erme; nem-HUF-ra is BANKNOTE default.
                     DenominationType denomType = faceValue.compareTo(BigDecimal.valueOf(200)) >= 0
                             ? DenominationType.BANKNOTE

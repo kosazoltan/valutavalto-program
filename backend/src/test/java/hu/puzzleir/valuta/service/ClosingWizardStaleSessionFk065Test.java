@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import tools.jackson.databind.ObjectMapper;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStatusDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -84,6 +85,7 @@ class ClosingWizardStaleSessionFk065Test {
     @Mock private SystemParameterService systemParameterService;
     /** FK-065: új service-függőség — az implementációs fázis veszi fel a konstruktorba. */
     @Mock private AuditLogService auditLogService;
+    @Mock private DenominationAllowedRepository denominationAllowedRepository;
     @InjectMocks private ClosingWizardService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();

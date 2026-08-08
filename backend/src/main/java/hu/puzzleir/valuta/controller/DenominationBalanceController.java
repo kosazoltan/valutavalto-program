@@ -31,7 +31,7 @@ public class DenominationBalanceController {
      * GET /api/v1/cash-desks/{cashDeskId}/denominations
      */
     @GetMapping("/{cashDeskId}/denominations")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<DenominationBalanceDto>> getCashDeskDenominations(
             @PathVariable UUID cashDeskId) {
         List<DenominationBalanceDto> result = denominationBalanceService.getCashDeskDenominations(cashDeskId);
@@ -44,7 +44,7 @@ public class DenominationBalanceController {
      * GET /api/v1/cash-desks/{cashDeskId}/denominations/currency/{currencyId}
      */
     @GetMapping("/{cashDeskId}/denominations/currency/{currencyId}")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<DenominationBalanceDto>> getCashDeskDenominationsByCurrency(
             @PathVariable UUID cashDeskId,
             @PathVariable Long currencyId) {
@@ -58,7 +58,7 @@ public class DenominationBalanceController {
      * PUT /api/v1/cash-desks/{cashDeskId}/denominations/{denominationId}?quantity=
      */
     @PutMapping("/{cashDeskId}/denominations/{denominationId}")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR')")
     public ResponseEntity<DenominationBalanceDto> updateQuantity(
             @PathVariable UUID cashDeskId,
             @PathVariable Long denominationId,
@@ -73,7 +73,7 @@ public class DenominationBalanceController {
      * POST /api/v1/cash-desks/{cashDeskId}/denominations/batch
      */
     @PostMapping("/{cashDeskId}/denominations/batch")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR')")
     public ResponseEntity<List<DenominationBalanceDto>> batchUpdate(
             @PathVariable UUID cashDeskId,
             @Valid @RequestBody List<DenominationQuantityUpdateRequestDto> updates) {
@@ -87,7 +87,7 @@ public class DenominationBalanceController {
      * GET /api/v1/cash-desks/{cashDeskId}/denominations/currency/{currencyId}/total
      */
     @GetMapping("/{cashDeskId}/denominations/currency/{currencyId}/total")
-    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<BigDecimal> calculateTotal(
             @PathVariable UUID cashDeskId,
             @PathVariable Long currencyId) {

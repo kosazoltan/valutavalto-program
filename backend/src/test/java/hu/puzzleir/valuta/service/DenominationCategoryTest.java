@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.entity.DenominationCategory;
 import hu.puzzleir.valuta.entity.DenominationCount;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -58,6 +59,7 @@ class DenominationCategoryTest {
     @Mock
     private BranchRepository branchRepository;
 
+    @Mock private DenominationAllowedRepository denominationAllowedRepository;
     @InjectMocks
     private DenominationService denominationService;
 

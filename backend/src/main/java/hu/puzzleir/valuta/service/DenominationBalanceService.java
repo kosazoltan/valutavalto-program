@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.denomination.DenominationBalanceDto;
 import hu.puzzleir.valuta.dto.denomination.DenominationQuantityUpdateRequestDto;
 import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationBalance;
+import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
@@ -33,13 +34,20 @@ public class DenominationBalanceService {
     private final DenominationBalanceRepository denominationBalanceRepository;
     private final DenominationRepository denominationRepository;
     private final CashRegisterDeviceRepository cashRegisterDeviceRepository;
+    private final BranchRepository branchRepository;
 
     /**
-     * Multi-tenant IDOR guard: a cashDeskId (= CashRegisterDevice id) a hivo cegehez
-     * tartozik-e. A DenominationBalance entity csak cashDeskId-t hordoz, a tenant-izolacio
-     * a CashRegisterDevice-on (company_id) el — ezert minden user-facing, cashDeskId-parameteres
-     * metodusnak ezen kell atmennie, mielott olvas/ir. Cross-tenant VAGY nem letezo eszkoz →
-     * ResourceNotFoundException (a letezes se szivarogjon).
+     * Multi-tenant IDOR guard: a cashDeskId a hivo cegehez tartozik-e.
+     *
+     * <p>FK-077 (FR-2): a {@code denomination_balance.cash_desk_id} oszlop szemantikaja
+     * a gyakorlatban FIOK (branch) UUID — a {@code ClosingWizardService.saveDenominationBalance}
+     * a {@code branchId}-t irja bele, es a frontend is a {@code worker.branchId}-t kuldi.
+     * A guard korabban KIZAROLAG a {@code cash_register_device} tabla PK-jat fogadta el,
+     * ezert minden valos hivast {@code ResourceNotFoundException}-nal utasitott el (404),
+     * amitol a Cimletezes oldal csendben kiurult. Ezert a guard mostantol MINDKET
+     * ervenyes szemantikat elfogadja — fiok-UUID VAGY penztargep-eszkoz-id —, de
+     * mindkettot a hivo cegere szurve, igy a tenant-izolacio valtozatlanul szoros
+     * (cross-tenant VAGY nem letezo azonosito → 404, a letezes se szivarogjon).</p>
      *
      * <p>Csak controller-utak hivjak (getCashDeskDenominations/...ByCurrency/updateQuantity/
      * batchUpdate/calculateTotal); nincs @Scheduled/@Async/auth nelkuli hivo, ezert a
@@ -47,8 +55,14 @@ public class DenominationBalanceService {
      */
     private void requireOwnCashDesk(UUID cashDeskId) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
-        if (cashDeskId == null || !cashRegisterDeviceRepository.existsByIdAndCompanyId(cashDeskId, companyId)) {
-            throw new ResourceNotFoundException("Pénztárgép nem található: " + cashDeskId);
+        if (cashDeskId == null) {
+            throw new ResourceNotFoundException("Pénztár nem található: " + cashDeskId);
+        }
+        boolean ownBranch = branchRepository.existsByIdAndCompanyId(cashDeskId, companyId);
+        boolean ownDevice = !ownBranch
+                && cashRegisterDeviceRepository.existsByIdAndCompanyId(cashDeskId, companyId);
+        if (!ownBranch && !ownDevice) {
+            throw new ResourceNotFoundException("Pénztár nem található: " + cashDeskId);
         }
     }
 

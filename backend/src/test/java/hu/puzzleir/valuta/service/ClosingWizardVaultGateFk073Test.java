@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import tools.jackson.databind.ObjectMapper;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStatusDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -60,6 +61,7 @@ class ClosingWizardVaultGateFk073Test {
     private static final LocalDate CLOSING_DATE = LocalDate.of(2026, 8, 5);
     private static final String VAULT_ENTITY_ID = "77";
 
+    @Mock private DenominationAllowedRepository denominationAllowedRepository;
     @InjectMocks private ClosingWizardService service;
 
     @Mock private ClosingWizardRepository closingWizardRepository;

@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import tools.jackson.databind.ObjectMapper;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
@@ -188,6 +189,7 @@ class ClosingWizardDailyStepCountFk068Test {
         @Mock private ClosingToleranceService closingToleranceService;
         @Mock private AuditLogService auditLogService;
         @Spy private ObjectMapper objectMapper = new ObjectMapper();
+        @Mock private DenominationAllowedRepository denominationAllowedRepository;
         @InjectMocks private ClosingWizardService service;
 
         private final UUID branchId = UUID.randomUUID();
