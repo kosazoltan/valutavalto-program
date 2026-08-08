@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.integration;
 
 import tools.jackson.databind.ObjectMapper;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -49,6 +50,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ClosingFlowTest {
 
+    @Mock private DenominationAllowedRepository denominationAllowedRepository;
     @InjectMocks
     private ClosingWizardService closingWizardService;
 
@@ -188,6 +190,11 @@ class ClosingFlowTest {
             eurC.setId(4L); eurC.setCode("EUR");
             when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufC));
             when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurC));
+
+            // FK-076 (FR-3): az EUR auto-create ág a denomination_allowed ellen validál —
+            // EUR 100 és EUR 50 a V376 seedben engedélyezett kombinációk.
+            when(denominationAllowedRepository.existsAllowed(eq(COMPANY_ID), eq(4L), any()))
+                    .thenReturn(true);
 
             // Denomination auto-create path: mindig ures Optional -> save-el ujat
             when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(eq(BRANCH_ID), any(), any()))

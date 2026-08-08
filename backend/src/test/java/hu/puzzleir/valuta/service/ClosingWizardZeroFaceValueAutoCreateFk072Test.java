@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
@@ -62,6 +63,7 @@ class ClosingWizardZeroFaceValueAutoCreateFk072Test {
     @Mock private SystemParameterService systemParameterService;
     @Mock private ClosingToleranceService closingToleranceService;
     @Mock private AuditLogService auditLogService;
+    @Mock private DenominationAllowedRepository denominationAllowedRepository;
     @InjectMocks private ClosingWizardService service;
 
     private final UUID branchId = UUID.randomUUID();
@@ -83,6 +85,11 @@ class ClosingWizardZeroFaceValueAutoCreateFk072Test {
         lenient().when(denominationBalanceRepository.findByCashDeskIdAndDenominationId(any(), any()))
                 .thenReturn(Optional.empty());
         lenient().when(denominationBalanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // FK-076 (FR-3): a nem-HUF auto-create ág most a denomination_allowed ellen
+        // validál. EUR 1 és EUR 2 valósan ENGEDÉLYEZETT kombinációk (V376 seed), ezért a
+        // korábbi "egész kulcsok mentődnek" regresszió hűen modellezhető true stubbal.
+        lenient().when(denominationAllowedRepository.existsAllowed(any(), any(), any()))
+                .thenReturn(true);
     }
 
     @Test
