@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -291,9 +292,17 @@ class DenominationAllowedFk076MigrationPostgresTest {
 
     /** Második tenant a multi-company seed bizonyításához (spec §4 edge case). */
     private static void insertSecondCompany() throws Exception {
-        try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
-            st.executeUpdate("INSERT INTO company (id, name, code, is_active, created_at) "
-                    + "VALUES ('" + UUID.randomUUID() + "', 'FK-076 Test Tenant', 'FK076T', true, NOW())");
+        // CodeQL java/concatenated-sql-query (HIGH): a UUID string-konkatenacio helyett
+        // PreparedStatement — a teszt sem epithet SQL-t osszefuzessel (a szabaly a
+        // teszt-forrasra is ervenyes, es ez az egyetlen helyes minta).
+        try (Connection connection = openConnection();
+             PreparedStatement ps = connection.prepareStatement(
+                     "INSERT INTO company (id, name, code, is_active, created_at) "
+                             + "VALUES (?, ?, ?, true, NOW())")) {
+            ps.setObject(1, UUID.randomUUID());
+            ps.setString(2, "FK-076 Test Tenant");
+            ps.setString(3, "FK076T");
+            ps.executeUpdate();
         }
     }
 
