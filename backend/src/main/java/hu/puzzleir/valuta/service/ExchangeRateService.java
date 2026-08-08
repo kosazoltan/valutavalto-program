@@ -73,6 +73,30 @@ public class ExchangeRateService {
     }
 
     /**
+     * FKH-032 FR-6: az arfolyam kora percben, a validateRateFreshness-szel AZONOS
+     * szamitassal (LocalDateTime.of(validDate, validTime) -> most). Nem dob, csak szamol —
+     * igy ugyanaz a logika hasznalhato a listazo valaszban (ExchangeRateMapper) is.
+     */
+    public static long calculateRateAgeMinutes(LocalDate validDate, LocalTime validTime, LocalDateTime now) {
+        if (validDate == null || validTime == null) {
+            return 0L;
+        }
+        return ChronoUnit.MINUTES.between(LocalDateTime.of(validDate, validTime), now);
+    }
+
+    /**
+     * FKH-032 FR-6: elavult-e az arfolyam a konfiguralt maxAgeHours szerint.
+     * Pontosan a validateRateFreshness zart (>=) osszehasonlitasa, dobas nelkul.
+     * maxAgeHours &lt;= 0 eseten nincs korhatar -> soha nem elavult.
+     */
+    public static boolean isRateStale(long minutesOld, int maxAgeHours) {
+        if (maxAgeHours <= 0) {
+            return false;
+        }
+        return minutesOld >= (long) maxAgeHours * 60L;
+    }
+
+    /**
      * Árfolyam frissesség validálása.
      * Ha az árfolyam régebbi mint a konfigurált max kor, elutasítjuk.
      */
@@ -80,13 +104,13 @@ public class ExchangeRateService {
         if (maxAgeHours <= 0) {
             return; // nincs korhatár
         }
-        LocalDateTime rateTimestamp = LocalDateTime.of(rate.getValidDate(), rate.getValidTime());
         // Audit 2026-05-31 (P2): a ChronoUnit.HOURS egész órára CSONKOL (24h59m → 24), így a szigorú
         // "> maxAgeHours" feltétel ~25 óráig elfogadta a lejárt rátát. Percalapú, ZÁRT (>=)
         // összehasonlítás → a határ pontosan maxAgeHours (24h00m-től lejárt, nincs ~1h tolerancia).
-        long minutesOld = ChronoUnit.MINUTES.between(rateTimestamp, LocalDateTime.now());
-        long maxAgeMinutes = (long) maxAgeHours * 60L;
-        if (minutesOld >= maxAgeMinutes) {
+        // FKH-032: a szamitas kozos segedmetodusba emelve (calculateRateAgeMinutes/isRateStale),
+        // hogy a listazo valasz isStale mezoje ugyanazt a hatart hasznalja.
+        long minutesOld = calculateRateAgeMinutes(rate.getValidDate(), rate.getValidTime(), LocalDateTime.now());
+        if (isRateStale(minutesOld, maxAgeHours)) {
             long hoursOld = minutesOld / 60L;
             log.warn("Lejárt árfolyam: {} — {} órás (max: {} óra)",
                     rate.getCurrency().getCode(), hoursOld, maxAgeHours);

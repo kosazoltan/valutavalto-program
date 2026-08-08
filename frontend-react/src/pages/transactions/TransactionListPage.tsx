@@ -84,6 +84,13 @@ export default function TransactionListPage() {
   const { isOnline } = useOnlineStatus()
   const [retryingIds, setRetryingIds] = useState<Set<number>>(new Set())
 
+  // FKH-031 FR-6: soha fel nem kuldott (PENDING) tetel "Megtekintes" gombja nem
+  // navigalhat a szerver-alapu reszletek nezetre (404 lenne) — a mar ismert helyi
+  // adatokat mutatjuk egy konnyu modalban.
+  const [localDetailTx, setLocalDetailTx] = useState<
+    (Transaction & { syncError?: string; syncAttempts?: number }) | null
+  >(null)
+
   const fetchTransactions = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -566,8 +573,21 @@ export default function TransactionListPage() {
                           )}
                           <button
                             className="toolbar-button"
-                            title="Megtekintés"
-                            onClick={() => navigate(`/transactions/${tx.receiptNumber || tx.id}`)}
+                            title={
+                              tx.status === 'PENDING'
+                                ? 'Helyi részletek (még nem került fel a szerverre)'
+                                : 'Megtekintés'
+                            }
+                            onClick={() => {
+                              // FKH-031 FR-6: PENDING tetel eseten NINCS szerver-navigacio.
+                              if (tx.status === 'PENDING') {
+                                setLocalDetailTx(
+                                  tx as Transaction & { syncError?: string; syncAttempts?: number },
+                                )
+                                return
+                              }
+                              navigate(`/transactions/${tx.receiptNumber || tx.id}`)
+                            }}
                             data-testid={`view-tx-${tx.id}`}
                           >
                             <Eye size={14} />
@@ -684,6 +704,73 @@ export default function TransactionListPage() {
                 {t('common.ft')}
               </strong>
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* FKH-031 FR-6: helyi (PENDING) tetel reszletei — nincs szerver-hivas, nincs 404. */}
+      {localDetailTx && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setLocalDetailTx(null)}
+          data-testid="local-pending-detail-overlay"
+        >
+          <div
+            className="w-full max-w-md rounded bg-white p-4 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="local-pending-detail"
+          >
+            <h2 className="mb-2 text-lg font-bold text-gray-800">Helyi tétel részletei</h2>
+            <p className="mb-3 text-xs text-gray-500">
+              Ez a tétel még nem került fel a szerverre, ezért csak a helyben tárolt adatok
+              láthatók.
+            </p>
+            <dl className="space-y-1 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-gray-500">Típus</dt>
+                <dd className="font-mono">{localDetailTx.transactionType}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-gray-500">Deviza</dt>
+                <dd className="font-mono">{localDetailTx.currencyCode}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-gray-500">Összeg</dt>
+                <dd className="font-mono">
+                  {formatNumber(localDetailTx.foreignAmount, 2)} {localDetailTx.currencyCode}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-gray-500">Árfolyam</dt>
+                <dd className="font-mono">{formatNumber(localDetailTx.exchangeRate, 4)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-gray-500">HUF</dt>
+                <dd className="font-mono">
+                  {formatNumber(localDetailTx.roundedHufAmount ?? localDetailTx.hufAmount, 0)}{' '}
+                  {t('common.ft')}
+                </dd>
+              </div>
+              {localDetailTx.syncAttempts !== undefined && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-gray-500">Küldési kísérletek</dt>
+                  <dd className="font-mono">{localDetailTx.syncAttempts}</dd>
+                </div>
+              )}
+            </dl>
+            {localDetailTx.syncError && (
+              <p
+                className="mt-3 rounded bg-red-50 p-2 text-xs text-red-700"
+                data-testid="local-pending-detail-error"
+              >
+                {sanitizeSyncErrorMessage(localDetailTx.syncError)}
+              </p>
+            )}
+            <div className="mt-4 flex justify-end">
+              <button className="form-button" onClick={() => setLocalDetailTx(null)}>
+                {t('common.close', 'Bezárás')}
+              </button>
+            </div>
           </div>
         </div>
       )}

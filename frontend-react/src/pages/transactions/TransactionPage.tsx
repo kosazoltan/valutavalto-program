@@ -484,16 +484,14 @@ function TransactionEntryPage() {
           },
         ])
 
-        // PR #116: 3-agu toast - sikeres sync / server-error / offline queue
+        // PR #116 + FKH-032 FR-4: 3-agu toast — azonnal konyvelve / konkret hiba / offline queue
         if (outcome.allSavedSynced) {
-          toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal szinkronizálva lett.')
+          toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal könyvelve lett.')
         } else if (outcome.syncErrors && outcome.syncErrors.length > 0) {
-          // Server-oldali hiba (pl. rate mismatch, insufficient balance)
+          // Server-oldali hiba (pl. rate mismatch, insufficient balance) — a célzott
+          // azonnali kísérlet tétel-szintű, konkrét oka.
           const firstError = outcome.syncErrors[0]
-          toast.error(
-            'Szinkron hiba - a tranzakció lokálisan mentve, de a szerver elutasitotta',
-            firstError,
-          )
+          toast.error('Azonnali könyvelés sikertelen — a tranzakció lokálisan mentve', firstError)
         } else {
           toast.warning(
             'Offline mentés megtörtént',

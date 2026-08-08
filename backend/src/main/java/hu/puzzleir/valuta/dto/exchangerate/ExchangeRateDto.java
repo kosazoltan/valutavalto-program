@@ -51,4 +51,17 @@ public class ExchangeRateDto {
     private Boolean active;
     private String createdBy;
     private LocalDateTime createdAt;
+
+    /**
+     * FKH-032 FR-6: az árfolyam kora órában (számított mező, nem perzisztált).
+     * A frontend ebből tudja kiírni, hány órás az árfolyam.
+     */
+    private Long ageHours;
+
+    /**
+     * FKH-032 FR-6: elavult-e az árfolyam a konfigurált {@code exchange-rate.max-age-hours}
+     * szerint (számított mező). A pénztári "Árfolyamok (nézet)" képernyő ez alapján ad
+     * feltűnő, aktív vizuális jelzést — még mielőtt bármilyen tranzakció elkezdődne.
+     */
+    private Boolean stale;
 }

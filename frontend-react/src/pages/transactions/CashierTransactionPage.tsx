@@ -56,6 +56,7 @@ import {
 } from '../../utils/rateBands'
 import RateAuthDialog from './components/RateAuthDialog'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { sanitizeSyncErrorMessage } from '../../utils/syncErrorSanitizer'
 import IncomeSourceDocCapture from '../../components/documents/IncomeSourceDocCapture'
 import ComplianceQuestionsBlock from './components/ComplianceQuestionsBlock'
 
@@ -1284,12 +1285,19 @@ export default function CashierTransactionPage() {
         if (outcome.allSavedSynced) {
           toast.success(
             'Bizonylat(ok) sikeresen rögzítve!',
-            `${filledRows.length} tétel azonnal szinkronizálva.`,
+            `${filledRows.length} tétel azonnal könyvelve.`,
+          )
+        } else if (outcome.syncErrors && outcome.syncErrors.length > 0) {
+          // FKH-032 FR-4: a célzott azonnali kísérlet TÉNYLEGES hibaoka látszik,
+          // nem csak egy általános "helyi queue-ba került" üzenet.
+          toast.error(
+            `Azonnali könyvelés sikertelen — ${outcome.pendingCount} tétel helyben mentve`,
+            sanitizeSyncErrorMessage(outcome.syncErrors[0] ?? ''),
           )
         } else {
           toast.warning(
             'Offline mentés megtörtént',
-            `${outcome.pendingCount} tétel helyi queue-ba került, ${outcome.syncedCount} tétel azonnal feltöltve.`,
+            `${outcome.pendingCount} tétel helyi queue-ba került, ${outcome.syncedCount} tétel azonnal könyvelve.`,
           )
         }
 

@@ -9,6 +9,8 @@ import {
   ChevronRight,
   X,
   Download,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react'
 import { receiptApi, Receipt } from '../../services/api/index'
 import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
@@ -23,7 +25,7 @@ import {
   printPendingReceiptDraft,
   type PendingReceiptDraft,
 } from '../../utils/localQueue'
-import { isElectron } from '../../utils/electron'
+import { isElectron, getElectronAPI } from '../../utils/electron'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import type { PrintReceiptData, TransactionReceiptLine } from '../../types/receipt'
@@ -384,6 +386,8 @@ export default function ReceiptPage() {
   }, [customerFilters])
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null)
   const [selectedDraft, setSelectedDraft] = useState<PendingReceiptDraft | null>(null)
+  /** FKH-031 FR-4: eppen futo ujrakuldesek (draft.id) — a gomb ilyenkor letiltott. */
+  const [retryingDraftIds, setRetryingDraftIds] = useState<Set<string>>(new Set())
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null)
   const [closingPdfId, setClosingPdfId] = useState('')
   const [closingPdfLoading, setClosingPdfLoading] = useState(false)
@@ -417,6 +421,39 @@ export default function ReceiptPage() {
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  /**
+   * FKH-031 FR-4: celzott ujrakuldes a bizonylat-vazlat listarol, a mar letezo
+   * `retryPendingTransaction` IPC-fuggveny ujrahasznositasaval (FK-071 minta).
+   * A lista nem blokkol; a gomb a futo kiserlet alatt letiltott, az eredmeny a
+   * frissitett pending sorbol jon vissza (a sync-engine tartosan rogziti).
+   */
+  const handleDraftRetry = useCallback(
+    async (draft: PendingReceiptDraft): Promise<void> => {
+      const api = getElectronAPI()
+      if (!api?.retryPendingTransaction || typeof draft.pendingTransactionId !== 'number') return
+      setRetryingDraftIds((prev) => new Set(prev).add(draft.id))
+      try {
+        const result = await api.retryPendingTransaction(draft.pendingTransactionId)
+        if (result?.success) {
+          toast.success('Újraküldés sikeres', `${draft.referenceNumber} feltöltve a szerverre.`)
+        } else {
+          toast.error('Újraküldés sikertelen', result?.error ?? 'Ismeretlen hiba')
+        }
+      } catch (err) {
+        logger.error('ReceiptPage', 'FKH-031 draft retry failed', err)
+        toast.error('Újraküldés sikertelen', getErrorMessage(err))
+      } finally {
+        setRetryingDraftIds((prev) => {
+          const next = new Set(prev)
+          next.delete(draft.id)
+          return next
+        })
+        await loadData()
+      }
+    },
+    [loadData],
+  )
 
   const filteredReceipts = useMemo(() => {
     const term = searchTerm.toLowerCase()
@@ -825,7 +862,24 @@ export default function ReceiptPage() {
                   <td>{draft.title}</td>
                   <td>{new Date(draft.createdAt).toLocaleString('hu-HU')}</td>
                   <td>
-                    <span className="badge badge-yellow">{draft.statusLabel}</span>
+                    {/* FKH-031 FR-3: hiba eseten a TENYLEGES ok latszik, piros jelzessel,
+                        nem a fix "szinkronra var" felirat. */}
+                    {draft.syncError ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="badge badge-red" data-testid={`draft-sync-error-${draft.id}`}>
+                          <AlertTriangle size={12} className="mr-1 inline" />
+                          {draft.statusLabel}
+                        </span>
+                        <span className="text-xs text-red-700">{draft.syncError}</span>
+                        {typeof draft.syncAttempts === 'number' && draft.syncAttempts > 0 && (
+                          <span className="text-xs text-gray-500">
+                            Sikertelen kísérletek: {draft.syncAttempts}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="badge badge-yellow">{draft.statusLabel}</span>
+                    )}
                   </td>
                   <td>
                     <div className="flex gap-2">
@@ -843,6 +897,22 @@ export default function ReceiptPage() {
                         <Printer size={12} />
                         {t('receipts.vazlatNyomtatas')}
                       </button>
+                      {/* FKH-031 FR-4: "Ujrakuldes" a mar meglevo retryPendingTransaction
+                          IPC-fuggveny ujrahasznositasaval, csak hibas TRANSACTION tetelre. */}
+                      {draft.syncError && typeof draft.pendingTransactionId === 'number' && (
+                        <button
+                          onClick={() => void handleDraftRetry(draft)}
+                          disabled={retryingDraftIds.has(draft.id)}
+                          className="form-button text-xs"
+                          data-testid={`draft-retry-${draft.id}`}
+                        >
+                          <RefreshCw
+                            size={12}
+                            className={retryingDraftIds.has(draft.id) ? 'animate-spin' : ''}
+                          />
+                          Újraküldés
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

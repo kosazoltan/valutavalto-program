@@ -299,6 +299,8 @@ export interface ElectronAPI {
   syncOffline(): Promise<number>
   /** FK-071 FR-3: egy pending tranzakció célzott, azonnali újraküldése (lokális SQLite id-val). */
   retryPendingTransaction(id: number): Promise<{ success: boolean; error?: string | null }>
+  /** FKH-032 FR-2: célzott azonnali könyvelési kísérlet EGY frissen mentett tételre. */
+  syncSingleTransactionImmediate?(id: number): Promise<{ success: boolean; error?: string | null }>
   getSyncStatus(): Promise<string>
 
   /** 2026-04-29 v2.3.11 (E-B6.2): renderer hívja, amikor az ablak inaktívvá válik */

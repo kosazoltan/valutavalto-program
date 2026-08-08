@@ -226,6 +226,14 @@ export interface ElectronQueueSyncOutcome {
    * nem ismeri a lekérdező IPC-t (offline-first fallback). Csak a vétel/eladás úton töltjük.
    */
   localReferenceNumbers: (string | null)[]
+  /**
+   * FKH-032 FR-4: tétel-szintű eredmény a MENTÉSKOR lefutó, célzott azonnali
+   * könyvelési kísérletről (`syncSingleTransactionImmediate`). Kulcs: a helyi
+   * pending id, érték: a konkrét hibaüzenet (siker esetén a tétel nem szerepel benne).
+   * Üres objektum, ha a futtatott Electron build még nem ismeri a célzott IPC-t
+   * (ekkor a régi, összesített `syncOffline()` útvonal futott — offline-first fallback).
+   */
+  immediateErrors: Record<number, string>
 }
 
 function getElectronAPI() {
@@ -316,16 +324,42 @@ async function finalizeSyncOutcome(
   savedIds: number[],
   listPendingIds: () => Promise<number[]>,
   localReferenceNumbers: (string | null)[] = [],
+  // FKH-032 FR-2: csak a vétel/eladás (pending_transactions) úton értelmezett —
+  // a savedIds ott helyi pending-tranzakció id, amit a célzott IPC vár.
+  useImmediateTargetedSync = false,
 ): Promise<ElectronQueueSyncOutcome> {
   const electronAPI = getElectronAPI()
   if (!electronAPI) {
     throw new Error('Electron API nem érhető el')
   }
 
-  try {
-    await electronAPI.syncOffline()
-  } catch {
-    // Ha az azonnali szinkron nem sikerül, a lokális mentés ettől még érvényes marad.
+  // FKH-032 FR-1/FR-2/FR-3/FR-4: a mentéskori kísérlet CÉLZOTT (csak a frissen mentett
+  // tételekre) és a main-process net.request csatornán megy, 5 mp timeouttal. A régi,
+  // teljes-sort küldő syncOffline() marad a fallback, ha a futtatott Electron build még
+  // nem ismeri a célzott IPC-t (régi telepítő) — offline-first kompatibilitás.
+  const immediateErrors: Record<number, string> = {}
+  const canTargetImmediate =
+    useImmediateTargetedSync &&
+    savedIds.length > 0 &&
+    typeof electronAPI.syncSingleTransactionImmediate === 'function'
+
+  if (canTargetImmediate) {
+    for (const id of savedIds) {
+      try {
+        const result = await electronAPI.syncSingleTransactionImmediate!(id)
+        if (!result?.success) {
+          immediateErrors[id] = result?.error || 'Ismeretlen hiba az azonnali könyvelésnél'
+        }
+      } catch (err) {
+        immediateErrors[id] = err instanceof Error ? err.message : String(err)
+      }
+    }
+  } else {
+    try {
+      await electronAPI.syncOffline()
+    } catch {
+      // Ha az azonnali szinkron nem sikerül, a lokális mentés ettől még érvényes marad.
+    }
   }
 
   const pendingIds = new Set(await listPendingIds())
@@ -342,6 +376,13 @@ async function finalizeSyncOutcome(
     logger.error('electronTransactions', 'Failed to read syncStatus', err)
   }
 
+  // FKH-032 FR-4: a célzott kísérlet konkrét hibái elsőbbséget élveznek az összesített,
+  // ciklus-szintű üzenetek felett — a felhasználó a TÉNYLEGES okot lássa.
+  const immediateErrorList = Object.values(immediateErrors)
+  if (immediateErrorList.length > 0) {
+    syncErrors = immediateErrorList
+  }
+
   return {
     savedIds,
     syncedCount: savedIds.length - pendingCount,
@@ -349,6 +390,7 @@ async function finalizeSyncOutcome(
     allSavedSynced: pendingCount === 0,
     syncErrors,
     localReferenceNumbers,
+    immediateErrors,
   }
 }
 
@@ -462,6 +504,8 @@ export async function saveAndSyncPendingBuySell(
         return pending.map((row) => row.id)
       },
       localReferenceNumbers,
+      // FKH-032 FR-2: a vétel/eladás úton célzott, egy-tételes azonnali kísérlet fut.
+      true,
     )
   })
 }
