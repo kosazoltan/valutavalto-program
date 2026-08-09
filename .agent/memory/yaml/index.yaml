@@ -1,4 +1,4 @@
-generated_at: 2026-08-09T18:30:11.774Z
+generated_at: 2026-08-09T20:57:10.372Z
 schema_version: 1
 source_count: 1053
 short_term:
@@ -7703,7 +7703,7 @@ long_term:
     title: Hang 005_sd.m4a
     type: long-term-reference
     path: vault/references/felmeres-kb/045-hang-005-sd-m4a.md
-    sha256: dac2040d95e26398214a49bdcc98448c35f1607ad3ee86e64d9adb8a37066351
+    sha256: 1f0b72ac157c342cfde16b2cd82b59f0095dab3db524741147dfb491c04082ac
     summary: "--- title: Hang 005_sd.m4a type: long-term-legacy source: felmeres-knowledge-base (recovered from git history) category: interju original_path: Felmérés/Valuta/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Hangfelvételek/Hang 005_sd.m4a doc_type: audio --- # Hang 005_sd.m4a **Kategoria:** interju | **Tipus:** audio | **Meret:** 41944.1 KB **Eredeti utvonal:** `"
     areas: [legacy, napzaras, penztar, specifikacio]
     keywords: [hang, 005_sd, m4a, title, type, long, term, legacy, source, felmeres, knowledge, base]
@@ -7831,7 +7831,7 @@ long_term:
     title: Hang 003_sd.m4a
     type: long-term-reference
     path: vault/references/felmeres-kb/189-hang-003-sd-m4a.md
-    sha256: 5d2dbc163b0ce465f1f0785fd9bbbaeb888fa47dcabfd8c8fe481835e1ebbc62
+    sha256: e46b88c451e05e594bc5d37a11857943a092c8150f9e774098307864d4492307
     summary: "--- title: Hang 003_sd.m4a type: long-term-legacy source: felmeres-knowledge-base (recovered from git history) category: interju original_path: Felmérés/Valuta/Kósa Szervezés/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Hangfelvételek/Hang 003_sd.m4a doc_type: audio --- # Hang 003_sd.m4a **Kategoria:** interju | **Tipus:** audio | **Meret:** 9974.5 KB **Ered"
     areas: [legacy, specifikacio]
     keywords: [hang, 003_sd, m4a, title, type, long, term, legacy, source, felmeres, knowledge, base]
@@ -7839,7 +7839,7 @@ long_term:
     title: Hang 004_sd.m4a
     type: long-term-reference
     path: vault/references/felmeres-kb/190-hang-004-sd-m4a.md
-    sha256: b4e796240435739dc0ccba4aa673b8c4f9515ca7b1453dac3d4130a05735dae0
+    sha256: a11ad17cb85161c5ea6d7228f678ff01f808214c9ee1570ef7eda839300f392d
     summary: "--- title: Hang 004_sd.m4a type: long-term-legacy source: felmeres-knowledge-base (recovered from git history) category: interju original_path: Felmérés/Valuta/Kósa Szervezés/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Hangfelvételek/Hang 004_sd.m4a doc_type: audio --- # Hang 004_sd.m4a **Kategoria:** interju | **Tipus:** audio | **Meret:** 82279.1 KB **Ere"
     areas: [cimletezes, ertektar, legacy, napzaras, penztar, specifikacio]
     keywords: [hang, 004_sd, m4a, title, type, long, term, legacy, source, felmeres, knowledge, base]
@@ -7847,7 +7847,7 @@ long_term:
     title: Hang 005_sd.m4a
     type: long-term-reference
     path: vault/references/felmeres-kb/191-hang-005-sd-m4a.md
-    sha256: a5c55696c6e8b091540d01fa33e170177600329bd361caa093b72974b76ee7f4
+    sha256: 6702feef4e2ab9bb8b55ded11fb484dec72c5a6d39c13801efcfd806b276e949
     summary: "--- title: Hang 005_sd.m4a type: long-term-legacy source: felmeres-knowledge-base (recovered from git history) category: interju original_path: Felmérés/Valuta/Kósa Szervezés/Cégcsoport felmérése/Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Hangfelvételek/Hang 005_sd.m4a doc_type: audio --- # Hang 005_sd.m4a **Kategoria:** interju | **Tipus:** audio | **Meret:** 41944.1 KB **Ere"
     areas: [legacy, napzaras, penztar, specifikacio]
     keywords: [hang, 005_sd, m4a, title, type, long, term, legacy, source, felmeres, knowledge, base]
