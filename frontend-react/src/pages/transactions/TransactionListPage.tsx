@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '../../utils/downloadBlob'
 import { getBlobErrorMessage } from '../../utils/errorHandling'
 import { sanitizeSyncErrorMessage } from '../../utils/syncErrorSanitizer'
+import { classifyPendingSyncState } from '../../utils/pendingSyncState'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 
 const PAGE_SIZE = 25
@@ -500,13 +501,24 @@ export default function TransactionListPage() {
                           const syncErr = (tx as Transaction & { syncError?: string }).syncError
                           if (tx.status === 'PENDING' && syncErr) {
                             const sanitizedErr = sanitizeSyncErrorMessage(syncErr)
+                            // FKH-031 NFR-1: 7 nap utan a sync-engine mar nem probalkozik
+                            // automatikusan — ezt a badge-nek is jeleznie kell, kulonben a
+                            // tetel nemaan elveszik.
+                            const manualRequired = classifyPendingSyncState({
+                              syncError: syncErr,
+                              createdAt: tx.createdAt,
+                            }).needsManualIntervention
                             return (
                               <div className="flex flex-col gap-0.5">
                                 <span
-                                  className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-700 cursor-help w-fit"
+                                  className={`px-1.5 py-0.5 text-xs rounded cursor-help w-fit ${
+                                    manualRequired
+                                      ? 'bg-red-200 text-red-900 font-semibold'
+                                      : 'bg-red-100 text-red-700'
+                                  }`}
                                   title={`Feltöltés sikertelen: ${sanitizedErr}`}
                                 >
-                                  Feltöltés hibás
+                                  {manualRequired ? 'Kézi beavatkozás kell' : 'Feltöltés hibás'}
                                 </span>
                                 <span
                                   data-testid={`sync-error-detail-${tx.id}`}

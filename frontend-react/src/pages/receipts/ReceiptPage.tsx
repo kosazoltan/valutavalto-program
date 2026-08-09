@@ -866,11 +866,26 @@ export default function ReceiptPage() {
                         nem a fix "szinkronra var" felirat. */}
                     {draft.syncError ? (
                       <div className="flex flex-col gap-1">
-                        <span className="badge badge-red" data-testid={`draft-sync-error-${draft.id}`}>
+                        <span
+                          className="badge badge-red"
+                          data-testid={`draft-sync-error-${draft.id}`}
+                        >
                           <AlertTriangle size={12} className="mr-1 inline" />
                           {draft.statusLabel}
                         </span>
                         <span className="text-xs text-red-700">{draft.syncError}</span>
+                        {/* FKH-031 NFR-1: a 7 napos automatikus ablak lejart — innentol
+                            CSAK a kezi "Ujrakuldes" viszi fel a tetelt. Ezt kulon ki kell
+                            mondani, kulonben a penztaros azt hiszi, a rendszer meg dolgozik rajta. */}
+                        {draft.needsManualIntervention && (
+                          <span
+                            className="text-xs font-semibold text-red-800"
+                            data-testid={`draft-manual-required-${draft.id}`}
+                          >
+                            A rendszer már nem próbálkozik automatikusan — kézi újraküldés
+                            szükséges.
+                          </span>
+                        )}
                         {typeof draft.syncAttempts === 'number' && draft.syncAttempts > 0 && (
                           <span className="text-xs text-gray-500">
                             Sikertelen kísérletek: {draft.syncAttempts}
