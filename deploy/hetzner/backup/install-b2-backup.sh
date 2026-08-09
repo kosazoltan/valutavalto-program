@@ -72,14 +72,27 @@ sudo -u postgres pg_dump -Fp valuta | gzip -9 > "\$FILE"
 SIZE=\$(du -h "\$FILE" | cut -f1)
 echo "[backup] \$FILE (\$SIZE)"
 
-# B2-re feltoltes (retention eleget a bucket lifecycle kezelheti)
-rclone copy "\$FILE" "b2:\$B2_BUCKET/db/" --progress --log-level INFO
-
-# Lokalis retention
+# Lokalis retention ELOSZOR fut (2026-08-09 javitas).
+# Korabban a feltoltes utan allt, es 'set -euo pipefail' mellett egy bukott
+# 'rclone copy' (pl. 403 storage_cap_exceeded) megolte a scriptet, mielott a
+# retention lefutott volna -> a lokalis dumpok korlatlanul gyultek (79 db 30 napnal
+# regebbi fajl, 530 MB), tehat egy TAVOLI kvotahiba egy LOKALIS lemez-szivargast
+# okozott. A retention nem fugg a feltoltestol, ezert elore kerul.
 find "\$BACKUP_DIR" -name "valuta-*.sql.gz" -mtime +$RETENTION_DAYS -delete
 
+# B2-re feltoltes. Best-effort a lokalis mentes vedelmeben (ugyanaz a minta, mint
+# lent az 'rclone size'-nal): a feltoltes bukasa NEM ervenytelenitheti a mar
+# elkeszult lokalis dumpot, de a service-nek BUKNIA kell, hogy a hiba lathato
+# maradjon -> UPLOAD_FAILED flag, es a script vegen nem-nulla exit.
+UPLOAD_FAILED=0
+rclone copy "\$FILE" "b2:\$B2_BUCKET/db/" --progress --log-level INFO || UPLOAD_FAILED=1
+if [ "\$UPLOAD_FAILED" = "1" ]; then
+  echo "[backup] FIGYELEM: a B2 feltoltes NEM sikerult — a lokalis dump (\$FILE) megvan, az off-site masolat HIANYZIK."
+fi
+
 # Egeszseg-ellenorzes: a bucket-ben levo friss file melyeke?
-LATEST=\$(rclone lsl "b2:\$B2_BUCKET/db/" | sort -k 2 | tail -1)
+# Best-effort: ez CSAK naplozas, egy listazasi hiba nem buktathatja a mentest.
+LATEST=\$(rclone lsl "b2:\$B2_BUCKET/db/" 2>/dev/null | sort -k 2 | tail -1) || LATEST="n/a (rclone lsl hiba)"
 echo "[backup] Legfrissebb B2-ben: \$LATEST"
 
 # Bucket osszmeret naplozasa - korai figyelmeztetes, ha a tarhasznalat no.
@@ -88,6 +101,13 @@ echo "[backup] Legfrissebb B2-ben: \$LATEST"
 # buktathatja el a mar sikeresen feltoltott backupot -> || fallback a hibas systemd-statusz ellen.
 BUCKET_SIZE=\$(rclone size "b2:\$B2_BUCKET" 2>/dev/null | tr '\n' ' ') || BUCKET_SIZE="n/a (rclone size hiba)"
 echo "[backup] B2 bucket (\$B2_BUCKET) ossz: \$BUCKET_SIZE"
+
+# A lokalis mentes es a retention ekkorra mar lefutott; ha az off-site masolat
+# hianyzik, a service BUKJON, hogy a systemd/monitoring jelezze.
+if [ "\$UPLOAD_FAILED" = "1" ]; then
+  echo "[backup] HIBA: off-site (B2) masolat nem keszult el."
+  exit 1
+fi
 BSEOF
 chmod +x /usr/local/bin/valuta-db-backup.sh
 

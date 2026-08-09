@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-09T20:57:10.372Z
+generated_at: 2026-08-09T22:19:54.930Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7359,6 +7359,13 @@ nodes:
     summary: "--- date: 2026-08-09 title: Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása type: session status: complete tags: [memory, legacy, excmd, felmeres-kb, agent-rules, recovery] --- # Handoff — a memória legacy-vakfoltjának megszüntetése ## A probléma (audit) A bundle 382 forrást indexelt, és a fejlesztéshez ténylegesen szükséges tudás szinte teljes egészében kimaradt. Git-trackelt fájlokhoz mért le"
     tags: [legacy, tudasbazis, beindexelese, elveszett, felmeresi, helyreallitasa, date, 2026, title, type]
     areas: [ertektar, legacy, riport, specifikacio]
+  - id: 5854e5999d2a6bf0
+    type: medium-term-episodic
+    title: "Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás"
+    source_path: vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md
+    summary: "# Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás ## Release: v2.28.73 (FKH-031 / V377) — KIADVA, élesben igazolva - main `a54e4890`; main CI 6/6 zöld; prod `/api/v1/version` → 2.28.73, health `ok:true`. - **Gate B 7/7 PASS** (`scripts/verify-fkh031-gate-b.sh`): V377 lefutott ÉS ÍRT (`[FKH-031 V377]` marker 2 soron), AA035100003→COMPLETED, AA035100004→CANCELLED, `cash_balance` BR035/BR020 USD"
+    tags: [handoff, 2026, release, ket, prod, uzemeltetesi, javitas, fkh, 031, v377]
+    areas: [deploy, napzaras]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22350,6 +22357,12 @@ edges:
   - from: be68989e6ea5a2e7
     to: area_specifikacio
     relation: belongs_to_area
+  - from: 5854e5999d2a6bf0
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 5854e5999d2a6bf0
+    to: area_napzaras
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22407,9 +22420,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 041d7a37f24f7cb9
-    to: repo_project_state
-    relation: informs
   - from: ec80bc2dacc727a0
     to: repo_project_state
     relation: informs
@@ -22639,6 +22649,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: be68989e6ea5a2e7
+    to: repo_project_state
+    relation: informs
+  - from: 5854e5999d2a6bf0
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58
