@@ -9,6 +9,8 @@
 set -uo pipefail
 
 SSH="ssh -o BatchMode=yes -o ConnectTimeout=15 -i /c/zk/.ssh/id_rsa root@95.216.191.162"
+# NOTE: `psql -At` renders booleans as true/false, NOT t/f (the t/f form is the ALIGNED
+# table output only). Cast booleans to text via a CASE or compare against 'true'.
 q() { $SSH "sudo -u postgres psql -d valuta -Atc \"$1\""; }
 
 fail=0
@@ -23,7 +25,7 @@ chk() { # chk <label> <actual> <expected>
 
 echo "=== 1. V377 ran (flyway_schema_history) ==="
 FW=$(q "SELECT success::text FROM flyway_schema_history WHERE version='377';")
-chk "V377 present and success" "${FW:-MISSING}" "t"
+chk "V377 present and success" "${FW:-MISSING}" "true"
 q "SELECT 'installed_on=' || installed_on FROM flyway_schema_history WHERE version='377';"
 
 echo
