@@ -106,6 +106,45 @@ Alap mukodes:
   `vault/feedback/prompt-caching-mandate-2026-06-10.md`. (Termek-kodban jelenleg nincs
   Claude API-integracio; a voice-assistant OpenAI Realtime, arra ez nem vonatkozik.)
 
+## 2.1 Aktiv repo-memoria (KOTELEZO read-gate)
+
+A repo-lokalis, tobbretegu memoria (`.agent/memory/`: qMD + YAML + Cognee-bundle +
+vector + Obsidian-tukor) nem passziv archivum. Terulet-cimkezett (`areas`), es
+celzottan keresheto, ezert nem serti a 2. szakasz tokenfegyelmet: teljes vaultot
+tovabbra sem olvasunk, csak a talalatokat.
+
+**Kotelezo BEOLVASAS (a munka elott).** Minden nem-trivialis valtozas elott
+(3+ fajl, penzugyi logika, tenant-izolacio, contract, DB-migracio, sync,
+installer/release) le kell futtatni a celterulet lekerdezeset:
+
+```bash
+npm run memory:query -- "<feladat kulcsszavai>" --area <terulet> --limit 8
+npm run memory:areas          # elerheto teruletek es talalatszamok
+```
+
+Teruletek: `ertektar penztar napzaras arfolyam cimletezes sync aml tenant riport
+database installer deploy security frontend legacy`.
+
+- Az implementacios tervben **hivatkozni kell** a talalatokra (path + a felhasznalt
+  teny), vagy explicit ki kell mondani, hogy a lekerdezes nem adott relevans tudast.
+- Korabban rogzitett mandate/tanulsag ellen dolgozni csak akkor lehet, ha a repo
+  aktualis allapota bizonyithatoan mast mond (lasd 2. szakasz utolso szabalya) —
+  ilyenkor az elavult memoriat javitani kell, nem csendben megkerulni.
+- Hibakeresesnel es regresszional kotelezo a `--area` szerinti lekerdezes, mert a
+  legtobb visszatero hiba mar rogzitett gyokerokkel szerepel.
+
+**Kotelezo IRAS (a munka utan).** Lezaraskor a handoff mellett:
+
+```bash
+npm run memory:build
+npm run memory:stale-check    # exit 1 = a bundle elavult, ujra kell buildelni
+```
+
+A `memory:stale-check` a `.agent/memory/reports/sources.json` teljes source-hash
+listajahoz kepest detektal driftet (added/changed/removed). Elavult bundle-lel
+munkat lezarni tilos, mert a kovetkezo session hamis tudast olvas be.
+Reszletes eljaras: `.agent/memory/qmd/mandatory-memory-after-workflow.qmd`.
+
 ## 3. Builder-first munkamod
 
 - Ne allj meg puszta tervnel, ha a feladat megvalosithato.

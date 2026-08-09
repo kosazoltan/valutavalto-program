@@ -105,7 +105,12 @@ Run-Check "electron-security" "python `"$Scripts\electron-security-scan.py`"" @(
 # ── 9. Flyway SQL tartalom audit ──────────────────────────────────────────────
 Run-Check "flyway-content-audit" "python `"$Scripts\flyway-content-audit.py`" --last 5 --fail-severity MEDIUM"
 
-# ── 10. (Opcionális, lassabb) ─────────────────────────────────────────────────
+# ── 10. Repo-memória frissesség (aktív memória write-gate) ────────────────────
+# A .agent/memory bundle nem lehet elavult: a következő session onnan olvas be
+# terület-tudást, elavult bundle = hamis tudás. AGENTS.md 2.1.
+Run-Check "memory-stale-check" "node `"$Root\scripts\repo-memory.mjs`" stale-check"
+
+# ── 11. (Opcionális, lassabb) ─────────────────────────────────────────────────
 if (-not $Fast) {
     Run-Check "complexity-scan"    "python `"$Scripts\complexity-scan.py`""
     Run-Check "layer-violations"   "python `"$Scripts\layer-violation-scan.py`""

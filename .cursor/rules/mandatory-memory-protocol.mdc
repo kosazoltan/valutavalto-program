@@ -1,15 +1,43 @@
 ---
-description: "Use when: the task depends on previous repo knowledge or creates durable new knowledge."
-alwaysApply: false
+description: "Use when: developing, debugging or reviewing any program area — the stored repo knowledge for that area must be read first, and durable new knowledge written back."
+alwaysApply: true
 ---
 
 # Memory Protocol
 
-Memory is useful only when it is short, factual, and relevant.
+Memory is active, not an archive. It is area-tagged and queryable, so relevance is
+targeted: query, then read only the hits. Never bulk-read `vault/**`.
 
-- Do not read every memory source at session start.
-- Use repo code and current files as stronger evidence than old memory.
-- Read `vault/**` only when the task names it or previous decisions are needed.
-- Save memory only for durable facts: verified root cause, reusable command,
-  project convention, or corrected stale knowledge.
-- Never store secrets or unverified guesses.
+## Before the work (mandatory read-gate)
+
+For any non-trivial change (3+ files, financial logic, tenant isolation, contract,
+DB migration, sync, installer/release) run the area query first:
+
+```bash
+npm run memory:query -- "<task keywords>" --area <area> --limit 8
+npm run memory:areas
+```
+
+Areas: `ertektar penztar napzaras arfolyam cimletezes sync aml tenant riport
+database installer deploy security frontend legacy`.
+
+- Cite the hits (path + the fact used) in the implementation plan, or state
+  explicitly that the query returned nothing relevant.
+- Debugging and regressions always require the `--area` query: most recurring
+  defects already have a recorded root cause.
+
+## Evidence order
+
+- Current repo code, migrations, tests and git state outrank stored memory.
+- When memory contradicts the repo, fix the stale memory entry — do not silently
+  work around it.
+
+## After the work (mandatory write)
+
+```bash
+npm run memory:build
+npm run memory:stale-check   # exit 1 = bundle stale, rebuild before closing
+```
+
+Save only durable facts: verified root cause, reusable command, project
+convention, corrected stale knowledge. Never store secrets or unverified guesses.

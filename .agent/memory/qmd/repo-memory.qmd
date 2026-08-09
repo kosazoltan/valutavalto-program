@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-05-12T20:06:26.116Z
+generated: 2026-08-09T16:29:20.247Z
 format: gfm
 ---
 
@@ -10,229 +10,253 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 ## Rovid Tavu Memoria
 
-- **AGENTS.md** (short-term-core)
+- **AGENTS.md - AI coding agent szabalyzat** (short-term-core)
   - source: `AGENTS.md`
-  - summary: # AGENTS.md - Modellfuggetlen AI coding agent szabalyzat > **Hatály:** MINDEN Anthropic + OpenAI + Gemini coding agent > **Source:** `docs/knowledge/memory/2026-04-23-multi-model-mandate-v2.qmd` + global memory `~/.claude/projects/.../memory/MULTIMODEL_GITHUB_QUALITY_MANDATE_V2.md` > **Mentesseg:** NINCS. Modellnev, vendor, tool mod, MCP, CLI NEM ad felmentest. > **Precedence:** AGENTS.md > CLAUDE.md / GEMINI.md / co
+  - summary: # AGENTS.md - AI coding agent szabalyzat > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPECET > KELL
 
-- **AI_CONSTITUTION.md — AI működési alkotmány** (short-term-core)
+- **AI_CONSTITUTION.md - mukodesi alapelvek** (short-term-core)
   - source: `AI_CONSTITUTION.md`
-  - summary: # AI_CONSTITUTION.md — AI működési alkotmány > **Nem-alkuképes szabályok minden AI-ügynök számára**, ami ebben a repositoryban dolgozik. > Forrás: *Új AI működési alapelvek: implementációs kézikönyv* (Kósa Zoltán, 2026-04-24). > Tovább: `docs/knowledge/memory/2026-04-24-ai-operating-constitution.qmd` ## 10 kötelező működési szabály 1. **Mindig bontsd a célt kis, ellenőrizhető feladatokra.** 2. **Minden tartós döntést
+  - summary: # AI_CONSTITUTION.md - mukodesi alapelvek > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPECET > KELL
 
-- **Valutaváltó ERP — Claude Code kontextus** (short-term-core)
+- **Valutavalto ERP - Claude/agent projektkontekstus** (short-term-core)
   - source: `CLAUDE.md`
-  - summary: # Valutaváltó ERP — Claude Code kontextus > ## ⚠️ NULLADIK PRIORITAS — NEM-INFORMATIKUS VÉGFELHASZNÁLÓ ALAPELV (2026-05-05) > > **A KOLLÉGÁK NEM informatikusok ÉS NEM programozók.** Ez a teljes deliverable-pipeline alapelv, **MINDEN** más szabály felett. > > **TILOS** a kollégának küldeni: parancssort (`ipconfig`, `netsh`, `Stop-Process`), manuális mappa-törlést (`Win+R %APPDATA%`), `.env`/`hosts` fájl-szerkesztést,
+  - summary: # Valutavalto ERP - Claude/agent projektkontekstus > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPEC
 
-- **AI Review Zero-Tolerance Mandate (v2.3.18+)** (short-term-preferences)
-  - source: `vault/feedback/ai-review-mandate-zero-tolerance.md`
-  - summary: --- date: 2026-04-29 type: mandate priority: P0 — KÖTELEZŐ ÉRVÉNYŰ source: User direktíva (Kósa Zoltán) 2026-04-29 20:55 CEST --- # AI Review Zero-Tolerance Mandate (v2.3.18+) ## A szabály > **Addig nem léphetsz tovább, amíg a GitHub Codex + Sourcery AI Botok jelentéseit > le nem kérted a GitHub-ról, és nem javítottad azokat a jelzett hibákat.** > > **Minden PR / Merge után KÖTELEZŐ:** > 1. **Várni** a Sourcery + Cod
+- **FK-006 – Visszajelzés a telepítés után** (short-term-preferences)
+  - source: `vault/feedback/FK-006_visszajelzes_telepites_utan.md`
+  - summary: # FK-006 – Visszajelzés a telepítés után **Dátum:** 2026. május 27. **Beküldő:** Kasza Helga – Főértéktár --- ## Fejlesztői visszajelzés A fejlesztő visszajelezte, hogy az FK-006 (prod-deploy: SUCCESS) és a többi kapcsolódó kérés is élesben van, backend frissítésként – frontend frissítő nem szükséges. ## Tapasztalt helyzet A képernyőképek alapján a változások **nem érvényesülnek minden felületen**. | Felület | Státus
+
+- **Aktiv agent mandate index** (short-term-preferences)
+  - source: `vault/feedback/_active_mandates.md`
+  - summary: # Aktiv agent mandate index Frissitve: 2026-06-08 Ez az index korabban tul sok always-on szabalyra hivatkozott. Az uj rendben az agent nem innen indul minden sessionben; ezt csak akkor kell olvasni, ha a feladat kifejezetten mandate-et vagy agent-mukodest erint. ## Aktiv forrasok 1. `AGENTS.md` - egyetlen operativ agent munkamod es precedence. 2. `AI_CONTRACT.md` - hard tiltasok: secret, teszt-integritas, git hygiene
+
+- **Kötelező AI ügynök utasítás — Push, CI, hibajelentés-beolvasás, automatikus javítás, Deploy, Merge** (short-term-preferences)
+  - source: `vault/feedback/ai-agent-push-ci-doctrine-2026-05-17.md`
+  - summary: # Kötelező AI ügynök utasítás — Push, CI, hibajelentés-beolvasás, automatikus javítás, Deploy, Merge **Készítette:** Kósa Zoltán kérésére **Készült:** 2026-05-17 **Hatály:** Minden AI ügynök (Claude Code, Codex, Copilot, junior agentek) ami kódot módosít, pushol, CI-t futtat, review-jelzéseket olvas, hibákat javít, deployt indít vagy merge-elési döntést készít. --- ## Rövid cél Az ügynök feladata nem az, hogy "megírj
+
+- **Kódaudit 2026-05-29 — tényalapú triage + javítások + dokumentált deferek** (short-term-preferences)
+  - source: `vault/feedback/audit-2026-05-29-triage-and-defers.md`
+  - summary: # Kódaudit 2026-05-29 — tényalapú triage + javítások + dokumentált deferek Forrás: külső GPT-5.3-Codex audit (F-001…F-010). Az AI-ügynök (Claude) tényalapon (kód-út+sor) ellenőrizte mindet, és NEM alkalmazta vakon a javaslatokat. Az alábbi a végrehajtás állapota. ## Javítva (PR) - **F-001** (Kritikus, auth takeover) — `#928`: admin setup-token kapu a bootstrap-lezárt utáni null-hash first-time-worker-setuphoz (V278 +
 
 - **KÖTELEZŐ ÉRVÉNYŰ: nem-informatikus végfelhasználó alapelv** (short-term-preferences)
   - source: `vault/feedback/auto-installer-everything-mandatory.md`
   - summary: --- created: 2026-05-05 priority: NULLADIK (legmagasabb) hatály: minden conversation, minden Valutaváltó deliverable forrás: Kósa Zoltán direkt utasítás trigger-szituáció: Borsi-Helga-Tomi-Heni manual-debug-ciklus 2026-05-04 --- # KÖTELEZŐ ÉRVÉNYŰ: nem-informatikus végfelhasználó alapelv ## Az alapszabály **A kollégák NEM informatikusok ÉS NEM programozók.** Pénztárosok, főértéktárosok, irodai dolgozók, terül eti vez
 
+- **TÖRVÉNY — Az autonómia a SAJÁT belső törvényem, NEM a user kérése (C.26)** (short-term-preferences)
+  - source: `vault/feedback/autonomy-is-internal-law-not-user-request-2026-05-20.md`
+  - summary: --- title: "TÖRVÉNY — Az autonómia a SAJÁT belső törvényem, NEM a user kérése (C.26)" status: active priority: P0 hatály: 2026-05-20+ CEST forrás: Kósa Zoltán user-korrekció (2026-05-20) — "Nem a user kérésére készíted elő a munkát, hanem a saját belső szabályzatod, törvényed, utasításod alapján." related: - vault/feedback/proactive-ai-review-polling-mandatory-2026-05-19.md (C.24) - vault/feedback/mandatory-pre-pr-se
+
+- **P2.1 Bank API integráció — scope tisztázás + Raiffeisen defer** (short-term-preferences)
+  - source: `vault/feedback/bank-api-p2-1-scope-2026-05-20.md`
+  - summary: --- title: "P2.1 Bank API integráció — scope tisztázás + Raiffeisen defer" status: active priority: P2 hatály: 2026-05-20+ forrás: Sprint 50-step S17-S19 (API_bank.docx beolvasás) related: vault/references/strategic-development-plan-v2-5-64-2026-05-19.md P2.1 --- # P2.1 Bank API — scope tisztázás ## API_bank.docx tartalom (beolvasva 2026-05-20) A `Felmérés/Valuta/Kósa Tervezés és fejlesztés/Bank API/API_bank.docx` (1
+
+- **Incidens-elemzés — „prompt cache hit rate dropped" Console-alert (2026-06-14)** (short-term-preferences)
+  - source: `vault/feedback/cache-hit-rate-drop-2026-06-14.md`
+  - summary: # Incidens-elemzés — „prompt cache hit rate dropped" Console-alert (2026-06-14) > Kiváltó: Anthropic Console értesítés (2026-06-14 ~04:59 UTC) az Exclusive Best Change Zrt. > org-ra: a prompt cache hit rate 43%-kal esett az előző héthez képest. > Vizsgálat: Kósa Zoltán + agent, 2026-06-14. No-hallucináció: minden alábbi állítás a > Console `usage/cache` dashboardon vagy a repo git-logján alapul. ## Megállapítások (té
+
 - **Szabály** (short-term-preferences)
   - source: `vault/feedback/cash-register-architecture.md`
   - summary: --- name: Pénztár regisztrálás + offline/online mód különválasztása description: Penztar-client telepítés első dolga a szerver-regisztráció; offline módban a SyncEngine nem spamelhet type: feedback --- # Szabály A penztar-client telepítés időben **online módban kell**, hogy regisztrálja a pénztárat a szerveren. Később, ha offline módba kerül (vagy azon marad), a SyncEngine NE próbáljon tranzakciókat uploadolni — ez H
+
+- **Claude Code korrekciós mandate — valutaváltó ERP** (short-term-preferences)
+  - source: `vault/feedback/claude-code-korrekcios-mandate-2026-05-17.md`
+  - summary: # Claude Code korrekciós mandate — valutaváltó ERP **Készítette:** Perplexity Computer (Kósa Zoltán kérésére) **Készült:** 2026-05-17 **Célja:** A `claude-code-mukodes-leiras-2026-05-16.md` (Claude Code önleírás) és a `valutavalto-program-mukodes-leiras-2026-05-16.md` (program-specifikáció) összevetése után konkrét, végrehajtható javítások a Claude Code-nak, hogy a tényleges üzleti / biztonsági / szabályozási követel
+
+- **Claude Code korrekciós mandate v2 — Valutaváltó program (EXZ-tanulságok alapján)** (short-term-preferences)
+  - source: `vault/feedback/claude-code-valutavalto-korrekcios-mandate-2026-05-17-v2.md`
+  - summary: # Claude Code korrekciós mandate v2 — Valutaváltó program (EXZ-tanulságok alapján) **Készítette:** Perplexity Computer (Kósa Zoltán kérésére) **Készült:** 2026-05-17 **Forrás:** Az "EXZ Codex működési korrekciós dokumentum (2026-05-17)" elvi felépítésének és módszertani gondolatainak átültetése a Valutaváltó programra. **Cél:** A Claude Code Valutaváltóhoz írt módszertanának azon hiányosságainak pótlása, amelyek az E
 
 - **Folyamatos tesztelési protokoll (KÖTELEZŐ)** (short-term-preferences)
   - source: `vault/feedback/continuous-testing-protocol-mandatory.md`
   - summary: --- title: Folyamatos tesztelési protokoll (KÖTELEZŐ) date: 2026-05-04 author: Kósa Zoltán priority: critical applyTo: all-ai-agents status: active hatalyba_lepes: 2026-05-04 --- # Folyamatos tesztelési protokoll — KÖTELEZŐ > **2026-05-04 user-direktíva (Kósa Zoltán):** > > "Ez az utasítás kötelező érvényű utasítás minden mesterséges intelligencia > ügynök számára. A repoban végzett fejlesztések során a fejlesztett p
 
+- **Dependabot major-verzió defer-napló — 2026-06-01** (short-term-preferences)
+  - source: `vault/feedback/dependabot-major-defer-2026-06-01.md`
+  - summary: # Dependabot major-verzió defer-napló — 2026-06-01 > **Cél:** a major Dependabot PR-ek döntésének tényalapú rögzítése (C.10/AI-review-mandate: > „minden findinget javítani VAGY dokumentált defer-indoklás a vaultban"). Token-ökonómia: > egy helyen, nem PR-enként szétszórva. ## Kontextus 5 nyitott major Dependabot PR került áttekintésre (rebase után mind MERGEABLE). Döntés: **3 mergelve, 2 dokumentált defer** (gyökérok
+
 - **electron-architecture.md** (short-term-preferences)
   - source: `vault/feedback/electron-architecture.md`
   - summary: --- name: electron-architecture-principle description: Az Electron csak lokális backend (SQLite, offline, nyomtatás) — a frontend-react a UI réteg mindkét platformon (web + Electron). Offline módban automatikusan lokális adatokra vált. type: feedback --- Az Electron alkalmazásban a frontend-react kódnak kell futnia, NEM külön penztar-client renderernek. **Why:** A felhasználó (CEO) kifejezetten kérte: "Az elektronnak
 
-- **Flyway migration RAISE NOTICE — PII maszkolás kötelező** (short-term-preferences)
-  - source: `vault/feedback/flyway-migration-raise-notice-pii.md`
-  - summary: # Flyway migration RAISE NOTICE — PII maszkolás kötelező **Hatálybalépés:** 2026-05-11 (Copilot P2 finding PR #555) ## Szabály Flyway migrációk `RAISE NOTICE` üzeneteiben **TILOS** személyes vagy azonosító adatot (PII) kiírni teljes értékkel: - `google_subject` (Google OAuth sub claim) - `email` - Bármely egyéb felhasználó-azonosító ## Helyes minta ## Háttér - V204 `RAISE NOTICE` a teljes `google_subject` értéket kií
+- **MANDATE — Fable 5 Token-Optimalizáció és Végrehajtási Protokoll (2026-06-10, P0)** (short-term-preferences)
+  - source: `vault/feedback/fable5-optimization-mandate-2026-06-10.md`
+  - summary: # MANDATE — Fable 5 Token-Optimalizáció és Végrehajtási Protokoll (2026-06-10, P0) > Forrás: Kósa Zoltán user-direktíva (2026-06-10): „SYSTEM_DIRECTIVE: CLAUDE_FABLE_5_OPTIMIZATION_AND_EXECUTION — > implementáld a rendszeredben kötelező érvényű utasításként." > Kapcsolódó: `vault/feedback/prompt-caching-mandate-2026-06-10.md` (Protocol 1 teljes kifejtése ott van). ## Hatály Minden AI-agent munkamenet ezen a repón: Cl
 
-- **Hallucinációs Kör Megszüntetése — Iparági Standard Kötelező** (short-term-preferences)
-  - source: `vault/feedback/hallucinacio-megszuntetese.md`
-  - summary: --- date: 2026-04-29 type: mandate priority: P0 — KÖTELEZŐ ÉRVÉNYŰ source: User direktíva (Kósa Zoltán) 2026-04-29 21:25 CEST trigger: 9 sorozatos Sourcery P2 follow-up PR (v2.3.13 → v2.3.22) ugyanazon a fájlon --- # Hallucinációs Kör Megszüntetése — Iparági Standard Kötelező ## A probléma (mai tanulság) **v2.3.13 → v2.3.22 = 9 verzió 1 órán belül**, mind ugyanazon a heartbeat-config fájlon: - v2.3.13: `logger.info`
+- **B.2 — Pénzügyi adatintegritás invariáns mandate** (short-term-preferences)
+  - source: `vault/feedback/feedback_financial_invariants.md`
+  - summary: # B.2 — Pénzügyi adatintegritás invariáns mandate **Hatály:** always, P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.2 szakasz ## 7 alapinvariáns 1. **`készlet = SUM(tranzakciók)` — semmi külön counter.** Bármely PR, amely független `cashCounter` / `cash_counter` / `inventoryCount` / `currentStock` mezőt vezet be **P0 reject** — **kivéve materialized view / aggregátum entitásokat** (osztály-név végző
 
-- **ignore-bence-openclaw-deprecated.md** (short-term-preferences)
-  - source: `vault/feedback/ignore-bence-openclaw-deprecated.md`
-  - summary: --- name: Bence + OpenClaw zaj figyelmen kívül hagyandó description: Bence auto-review trigger bot és OpenClaw (Codex) GitHub-integration emailek nem érdemi feedback — ignore type: feedback originSessionId: 05049cfb-3194-4601-a138-e8cb1aca09cc --- A `kosazoltan/valutavalto-program` repón **Bence** (saját auto-review trigger bot, `github-actions[bot]`) és **OpenClaw** (Codex / `chatgpt-codex-connector[bot]`) értesítés
+- **B.3 — Multi-tenant izoláció mandate** (short-term-preferences)
+  - source: `vault/feedback/feedback_multitenant_isolation.md`
+  - summary: # B.3 — Multi-tenant izoláció mandate **Hatály:** always, P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.3 szakasz ## 3 alapszabály 1. **Cross-tenant integration test** minden új repository / service / controller esetén. 2 különböző `companyId`-val futtatott szcenárió: a B cég dolgozója NEM láthatja az A cég adatait. 2. **`@PreAuthorize` minden endpoint-on.** PR-review-ban explicit ellenőrizendő, hog
 
-- **Lint CI Codex Sourcery Copilot — minden PR-en kotelezo, automatikus** (short-term-preferences)
-  - source: `vault/feedback/lint-ci-codex-sourcery-every-pr-mandatory.md`
-  - summary: --- name: Lint CI Codex Sourcery Copilot — kotelezo MINDEN PR-en automatikusan description: User-direktiva 2026-05-03 21:50 + 21:53 CEST. Minden PR utan a lint CI + Codex + Sourcery + Copilot review-k AUTOMATIKUS lekerdezese + javitasa, lustasag/hazugsag/mellebeszeles nelkul. NEM kerdezni meg a usert, NEM defer-elni P3-ra hivatkozva, NEM "majd kesobb"-ra tenni. type: feedback priority: P0 — felulirja a defaultokat cr
+- **B.4 — Local-first + offline + outbox garancia mandate** (short-term-preferences)
+  - source: `vault/feedback/feedback_offline_outbox.md`
+  - summary: # B.4 — Local-first + offline + outbox garancia mandate **Hatály:** always, P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.4 szakasz **Kapcsolódó:** `reference_local_first_architecture.md`, `feedback_eset_retry_pattern.md` ## 5 alapszabály 1. **Local SQLite write FIRST.** Minden tranzakció ELŐSZÖR a lokál DB-be, csak utána outbox → backend. A pénztáros NEM veszíthet adatot internet kiesésnél. 2. **Ou
 
-- **Helyi árfolyamkészítő architektúra döntés** (short-term-preferences)
-  - source: `vault/feedback/local-rate-maker-architecture-decision.md`
-  - summary: --- title: Helyi árfolyamkészítő architektúra döntés date: 2026-05-12 author: Kósa Zoltán priority: critical status: active --- # Helyi árfolyamkészítő architektúra döntés Felhasználói döntés: az árfolyamkészítő ne a szerveren fusson nyitott szerveroldali szerkesztőként. A főértéktáros külön, helyileg telepített árfolyamkészítő alkalmazásban készítse el az árfolyamot. A szerver szerepe: - hitelesített átvételi pont,
+- **B.1 — Pmt. (AML) invariáns mandate** (short-term-preferences)
+  - source: `vault/feedback/feedback_pmt_aml_invariants.md`
+  - summary: # B.1 — Pmt. (AML) invariáns mandate **Hatály:** always, P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.1 szakasz **Jogszabály:** 2017. évi LIII. tv. (pénzmosás és a terrorizmus finanszírozása megelőzéséről és megakadályozásáról) ## Tartalom A Pmt. küszöbértékei **backend-szinten enforced** invariánsok (jelenleg `AmlService.java` konstansokként, jövőben `@Value`-ként — lásd "Implementációs hivatkozás
 
-- **Kötelező memóriaírás minden befejezett munkafolyamat után** (short-term-preferences)
-  - source: `vault/feedback/mandatory-memory-after-each-workflow.md`
-  - summary: --- title: Kötelező memóriaírás minden befejezett munkafolyamat után created: 2026-05-07 type: feedback priority: P0 status: active source: user directive 2026-05-07 21:37 CEST --- # Kötelező memóriaírás minden befejezett munkafolyamat után Minden Valutaváltó munkafolyamat lezárásakor kötelező a memória frissítése. Hatókör: - Valutaváltó örökölt/Anti programhoz kapcsolódó elemzés - feldolgozott bizonylatok / receipt
+- **B.8 — Production-first vs. TDD reconciliation mandate** (short-term-preferences)
+  - source: `vault/feedback/feedback_prodfirst_vs_tdd.md`
+  - summary: # B.8 — Production-first vs. TDD reconciliation mandate **Hatály:** always, P1 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.8 szakasz ## Az ütközés A "production-first" elv (CLAUDE.md C.13) tiltja a divergens lokál seed-et: minden adat csak Flyway-migrációval kerülhet a sémába. A TDD elv viszont tesztkörnyezet-fixture-öket igényel. Ezek ütközhetnek, ha egy teszt új tábla / oszlop / adatszet kell. ## F
 
-- **Memóriahasználati és tudáskarbantartási protokoll (KÖTELEZŐ)** (short-term-preferences)
-  - source: `vault/feedback/memory-protocol-mandatory.md`
-  - summary: --- title: Memóriahasználati és tudáskarbantartási protokoll (KÖTELEZŐ) date: 2026-05-04 author: Kósa Zoltán priority: critical applyTo: all-ai-agents status: active hatalyba_lepes: 2026-05-04 --- # Memóriahasználati és tudáskarbantartási protokoll — KÖTELEZŐ > **2026-05-04 user-direktíva (Kósa Zoltán):** > > "Ez az utasítás kötelező érvényű minden mesterséges intelligencia ügynök számára. > A repoban végzett minden
+- **B.5 — Szabályozási kimenetek határidő-mandate** (short-term-preferences)
+  - source: `vault/feedback/feedback_regulatory_deadlines.md`
+  - summary: # B.5 — Szabályozási kimenetek határidő-mandate **Hatály:** always, P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.5 szakasz ## Határidős jelentések | Jelentés | Címzett | Határidő | Hibakor mit kell tenni | |---|---|---|---| | MNB napi árfolyam | Magyar Nemzeti Bank | minden munkanap **14:30** | **P0** escalation, manuális feltöltés azonnal | | NGM havi tranzakció-aggregátum | Nemzetgazdasági Minisz
 
-- **no-hallucination-lateral-thinking.md** (short-term-preferences)
-  - source: `vault/feedback/no-hallucination-lateral-thinking.md`
-  - summary: --- name: KOTELEZO ERVENYU - nincs halucinacio + lateralis gondolkodas dead-end-en description: Tilos halucinacio (csak verifikalt allitas) + tilos ertelmetlen ongerjeszto hibakereso hook + dead-end-en kotelezo perspektivavaltas type: feedback originSessionId: 05049cfb-3194-4601-a138-e8cb1aca09cc --- **Kotelezo ervenyu munkamod (user-direktiva 2026-04-27, valutavalto-program repo, minden Claude/Opus session-re).** ##
-
-- **Saját céges szerver adathozzáférés — kötelező direktíva** (short-term-preferences)
-  - source: `vault/feedback/own-server-data-access.md`
-  - summary: --- title: "Saját céges szerver adathozzáférés — kötelező direktíva" date: 2026-04-30 type: feedback priority: P0 --- # Saját céges szerver adathozzáférés **User-direktíva (2026-04-30, Kósa Zoltán):** Az `excvaluta.com` (Hetzner HA) a felhasználó **saját céges production szervere** (EBC Zrt. tulajdon). A fejlesztési munkához szükséges minden adat (API hívások, DB lekérdezések, logok, konfigurációk) **jogosan hozzáfér
-
-- **Session-zárási és visszaellenőrzési protokoll (KÖTELEZŐ)** (short-term-preferences)
-  - source: `vault/feedback/session-closing-protocol-mandatory.md`
-  - summary: --- title: Session-zárási és visszaellenőrzési protokoll (KÖTELEZŐ) date: 2026-05-04 author: Kósa Zoltán priority: critical applyTo: all-ai-agents status: active hatalyba_lepes: 2026-05-04 --- # Session-zárási és visszaellenőrzési protokoll — KÖTELEZŐ > **2026-05-04 user-direktíva (Kósa Zoltán):** > > "Az utasítás kötelező érvényű utasítás, kötelező végrehajtani, halucináció, > mellébeszélés, lustaság, halogatás, tév
+- **B.7 — Code-signing függő release mandate** (short-term-preferences)
+  - source: `vault/feedback/feedback_release_signing.md`
+  - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
 
-- **v2.3.60 release - Installer build + autonóm session FINAL** (medium-term-episodic)
-  - source: `vault/sessions/2026-04-30-v2.3.60-release-installer-FINAL.md`
-  - summary: --- date: 2026-04-30 title: v2.3.60 release - Installer build + autonóm session FINAL type: release duration: 22:00 (2026-04-29) → 06:05 (2026-04-30) CEST = 8h 5min status: closed total_prs: 30 final_version: 2.3.60 --- # v2.3.60 release — Installer build + autonóm session FINAL ## Telepítő fájlok v2.3.60 (LEGFRISSEBB) `installer/build/` + másolva `%USERPROFILE%\Downloads\`-ba: - **`Penztar-Setup-2.3.60-20260430.exe`
+- **Handoff — 2026-06-15 — AI biztonsági-audit doktrína + operating-fájl cleanup + módszertan-beépítés** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-06-15-ai-audit-doktrina-es-operating-cleanup.md`
+  - summary: # Handoff — 2026-06-15 — AI biztonsági-audit doktrína + operating-fájl cleanup + módszertan-beépítés ## Mi történt (3 PR, mind docs/agent-konfig — NINCS deploy, a futó backend bitre azonos) 1. **PR #1144** (main `330cb0fc`) — AI defenzív audit **doktrína**: új mandate `vault/feedback/security-audit-mandate-2026-06-15.md` + playbook + `docs/security/ai-audit-profile.yaml` + effort-allokáció **vezérelv** (max effort ah
 
-- **v2.3.X Penztar/Ertektar UI audit (computer-use, élő Penztar.exe)** (medium-term-episodic)
-  - source: `vault/sessions/2026-04-30-v2.3.X-penztar-ertektar-audit-computer-use.md`
-  - summary: --- date: 2026-04-30 title: v2.3.X Penztar/Ertektar UI audit (computer-use, élő Penztar.exe) type: ui-audit duration: 06:50 → 07:10 CEST (~20 perc) status: documented-23-bugs related-pr: #326 (v2.4.0 foundation) --- # v2.3.X Pénztár/Értéktár UI audit — computer-use eredmények ## Összefoglaló A v2.3.X (jelenleg installálva: `Penztar-Setup-2.3.2-20260425.exe`) Electron alkalmazás teljes körű UI auditja `mcp__computer-u
+- **Handoff — 2026-07-05 PROD-VERSION-STALE (DNS-misroute) diagnózis + fix** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-05-prod-version-stale-dns-misroute.md`
+  - summary: # Handoff — 2026-07-05 PROD-VERSION-STALE (DNS-misroute) diagnózis + fix ## Mi volt a baj A publikus `excvaluta.com`/`/api/v1/version` hetekig `2.28.8`-at adott (buildTime 07-04 15:11), miközben minden deploy sikeresen `2.28.27`-et telepített. A backlog eredeti hipotézise (systemctl restart nem cserélte a JVM-et) **HAMIS** volt. ## Valós gyökérok (VERIFY-DON'T-TRUST győzött) - Hetzner primary VÉGIG egészséges: `curl
 
-- **v2.4.0 RELEASE — PR #326 admin-merge + telepítők build + Codex P1+P2 fix loop** (medium-term-episodic)
-  - source: `vault/sessions/2026-04-30-v2.4.0-merged-installer-builds.md`
-  - summary: --- date: 2026-04-30 title: v2.4.0 RELEASE — PR #326 admin-merge + telepítők build + Codex P1+P2 fix loop type: release-merge duration: 06:30 → 07:42 CEST (~70 perc) status: COMPLETE related-pr: #326 (squash admin-merged main-re) main-head: cea183be --- # v2.4.0 release session — B6 multi-branch + i18next foundation ## TL;DR A v2.4.0 alapozó release sikeresen mergelve a main-re. Codex 2 inline finding (P1 tenant boun
+- **Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-06-anthropic-outage-fs-d-pending.md`
+  - summary: # Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett) > Oka: az Anthropic hozzáférés (Opus orchestrator + Fable planner) kikerült a > session végén. A 4-szerepes pipeline nem folytatható (Fable tervezés + GLM > review még elmegy OpenRouter/Nous úton, de az Opus orchestrátor nélül a > minőségi szabvány nem tartható). A user explicit utasítása: álljunk meg, > írjunk handoffot, várjuk az
 
-- **v2.4.0 sprint kick-off — B6 multi-branch foundation + i18next setup** (medium-term-episodic)
-  - source: `vault/sessions/2026-04-30-v2.4.0-sprint-kickoff-foundation.md`
-  - summary: --- date: 2026-04-30 title: v2.4.0 sprint kick-off — B6 multi-branch foundation + i18next setup type: sprint-kickoff duration: 06:30 → 06:45 CEST (15 perc setup) status: foundation-complete --- # v2.4.0 sprint kick-off (foundation) ## Felhasznáo-direktíva 2026-04-30 06:15 CEST User válasz a v2.4 sprint planning 6 kérdésére: | # | Kérdés | Válasz | |---|--------|--------| | C-1 | Multi-branch worker engedélyezett HR/b
+- **Handoff — 2026-07-07 FS-D (FS-3) MERGELVE + deployolva; FS-GAP folytatható** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-07-fs-d-merged-deployed.md`
+  - summary: # Handoff — 2026-07-07 FS-D (FS-3) MERGELVE + deployolva; FS-GAP folytatható > Előzmény: a `handoff-2026-07-06-anthropic-outage-fs-d-pending.md` az Anthropic-kiesés > miatt PENDING-en hagyta az FS-D-t (WIP-snapshot commit, review előtt). Az Anthropic > visszatért; ez a session végigvitte a teljes pipeline-t merge-ig és deployig. ## 1. AKTUÁLIS ÁLLAPOT - **Main HEAD:** `b6b263eb` = PR #1348 (FS-3 D-szelet) squash-merg
 
-- **v2.4.1 RELEASE — F8 TRB Export PSQLException production fix + telepítők** (medium-term-episodic)
-  - source: `vault/sessions/2026-04-30-v2.4.1-trb-export-pg-fix-FINAL.md`
-  - summary: --- date: 2026-04-30 title: v2.4.1 RELEASE — F8 TRB Export PSQLException production fix + telepítők type: release-fix duration: 08:23 → 11:00 CEST (~2.5 óra inkl. vault sync) status: COMPLETE-PRODUCTION-VERIFIED related-pr: #327 (squash admin-merged main-re) main-head: c1e887dd --- # v2.4.1 release session — F8 TRB Export PostgreSQL type inference fix ## TL;DR A v2.3.X / v2.4.0-ban felfedezett **F8 TRB Export funkcio
+- **Handoff — 2026-07-07 FS-5 TELJES (4/4 slice mergelve)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-07-fs5-complete.md`
+  - summary: # Handoff — 2026-07-07 FS-5 TELJES (4/4 slice mergelve) ## 1. AKTUÁLIS ÁLLAPOT - **Main HEAD:** `094bc809` = PR #1352 (FS-5 S4) squash-merge. - **FS-5 KÉSZ** — okmány elő/hátlap képpár + törvényi kódos nagyítás + pénztár scan-törlés sync után. - Working tree tiszta, worktree-k eltávolítva. - Flyway max a repóban: **V345** (V344 scanned_document_image, V345 document_view_grant). - Prod deploy: NEM ellenőriztem ebben a
 
-- **v2.4.10 — Értéktári vs Pénztári készlet domain szétválasztás + F-tab módfilter** (medium-term-episodic)
-  - source: `vault/sessions/2026-04-30-v2.4.10-vault-vs-cashier-stocks-FINAL.md`
-  - summary: --- date: 2026-04-30 title: v2.4.10 — Értéktári vs Pénztári készlet domain szétválasztás + F-tab módfilter type: feature-release duration: 19:55 → 22:25 CEST (~2.5 óra) status: MERGED-INSTALLED related-prs: "#334 (v2.4.8), #335 (v2.4.9→v2.4.10)" main-head: cebbf99f (v2.4.10) --- # v2.4.10 sprint — domain helyreállítás ## TL;DR Két iteráció ugyanazon a problémán: 1. **v2.4.8 (PR #334)**: a user feedback alapján 3 fájl
+- **Handoff — FS-7 S3 merged, FS-7 TELJES (2026-07-07)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-07-fs7-s3-complete.md`
+  - summary: # Handoff — FS-7 S3 merged, FS-7 TELJES (2026-07-07) ## Mi történt FS-7 (10M+ jövedelemforrás-igazolás → email a compliance-címzetteknek → zero-persistence) **záró szelete (S3) merged** → **FS-7 TELJES (3/3)**. - **PR #1355** (squash 70fa72ff): center `IncomeProofRecipientsPanel` + SettingsPage tab (`Jövedelemig. címzettek`) + `incomeSourceDocApi` getRecipients/putRecipients a MEGLÉVŐ `services/api/incomeSourceDocs.t
 
-- **v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage** (medium-term-episodic)
-  - source: `vault/sessions/2026-04-30-v2.4.2-2.4.6-autonomous-batch-execution.md`
-  - summary: --- date: 2026-04-30 title: v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage type: multi-pr-batch duration: 14:42 → 15:50 CEST (~1 óra 8 perc) status: ALL-MERGED-PRODUCTION-VERIFIED related-prs: "#328, #329, #330, #331, #332" main-head: 17407006 --- # v2.4.2 → v2.4.6 autonóm batch execution — sprint kickoff teljes hiánylista ## TL;DR User direktíva: *"menj végig szépen sorban a teljes hiányli
+- **Handoff — FS-9 S1 merged, FS-9 folyamatban (2026-07-07)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-07-fs9-s1-merged.md`
+  - summary: # Handoff — FS-9 S1 merged, FS-9 folyamatban (2026-07-07) ## Mi történt FS-9 (címletképek center→pénztár sync) **S1 backend foundation merged**. - **PR #1356** (squash 1e74af97): `CurrencyDenominationImage` entity + V346 migráció (FK-mentes, új tábla) + repository (findByIdAndCompanyId IDOR-guard + bájtmentes MetaView-projekció) + service (fail-closed upload, cross-tenant IDOR minden útvonalon) + controller (/upload
 
-- **v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul** (medium-term-episodic)
-  - source: `vault/sessions/2026-04-30-v2.4.7-install-and-v2.4.8-treasury-ui.md`
-  - summary: --- date: 2026-04-30 title: v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul type: install-deploy + ui-refactor duration: 19:00 -> 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: "#334" main-head: "64352b16 (v2.4.7)" --- # v2.4.7 telepites + v2.4.8 UI sprint ## TL;DR User uj session-t inditott a token-takarekossag miatt. Ket lepcso: 1. **v2.4.7 telepitve a fejlesztoi gepre** - u
+- **Handoff — FS-10 S2 (center compliance kérdés-szerkesztő UI) — 2026-07-08** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-08-fs10-s2-merged.md`
+  - summary: # Handoff — FS-10 S2 (center compliance kérdés-szerkesztő UI) — 2026-07-08 ## Kész / merged - **PR #1360 MERGED** (squash, `ed23815e`) — FS-10 S2 center admin UI. - `services/api/complianceQuestions.ts` — önálló domain API-modul (list/create/update/setActive) client-side fail-closed guardokkal; companyId SOHA nincs a body-ban. - `pages/compliance/ComplianceQuestionsPage.tsx` — CRUD editor (create+edit egy űrlapon, di
 
-- **v2.5.0 Hetzner production outage + atomic rollback (PR #336 → #337)** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-01-v2.5.0-outage-rollback-FINAL.md`
-  - summary: --- date: 2026-05-01 title: v2.5.0 Hetzner production outage + atomic rollback (PR #336 → #337) type: incident-postmortem + recovery duration: 02:00 → 08:37 CEST (~6.5 óra) status: PRODUCTION-RESTORED + v2.5.0-ATOMIC-PLAN-RECORDED related-prs: "#336 (v2.5.0 sprint, MERGED → outage), #337 (rollback, MERGED)" main-head: d7f9d59b (hotfix workflow) --- # v2.5.0 Production outage — incident postmortem ## TL;DR A v2.5.0 sp
+- **Handoff — FS-10 S3 (pénztár compliance-kérdés flow) + FS-10 TELJES — 2026-07-08** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-08-fs10-s3-complete.md`
+  - summary: # Handoff — FS-10 S3 (pénztár compliance-kérdés flow) + FS-10 TELJES — 2026-07-08 ## Kész / merged - **PR #1361 MERGED** (squash, `09d8fee3`) — FS-10 S3, a lánc lezárása. → **FS-10 TELJES (3/3):** S1 #1359 (backend), S2 #1360 (center szerkesztő), S3 #1361 (pénztár flow). - Fájlok: `complianceQuestions.ts` (+listActive/submitAnswer), új `ComplianceQuestionsBlock.tsx` (+teszt), `CashierTransactionPage.tsx` (5 pontszerű
 
-- **Vault evolution — 2026 SOTA memory architecture adoption** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-02-memory-architecture-sota-evolution.md`
-  - summary: --- date: 2026-05-02 title: Vault evolution — 2026 SOTA memory architecture adoption type: meta-improvement (vault szerkezet) trigger: user-direktíva "olvasd el az alábbi szöveget [3 SOTA trend], készíts memóriát, ellenőrizd a jelenlegi memória korszerűségét" duration: ~30 perc related-prs: nincs (vault-only, nem érinti a repo-t) --- # Vault evolution — 2026-05-02 ## TL;DR User megosztott egy 2026-os state-of-the-art
+- **Handoff — FS-9 TELJES (2026-07-08)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-08-fs9-complete.md`
+  - summary: # Handoff — FS-9 TELJES (2026-07-08) ## Mi történt FS-9 (címletképek: center feltöltés → sync → pénztár nézegető, hamis bankjegy szűréshez) **mindhárom szelete merged. FS-9 TELJES (3/3).** - **S1** #1356 (1e74af97) — backend foundation: `CurrencyDenominationImage` entity + V346 (FK-mentes) + service (fail-closed upload, cross-tenant IDOR) + controller + `ImageThumbnailUtil` refactor + multipart-limit. Backend suite 2
 
-- **9-task sprint — PR #379-385 (P1.3, P1.4, P1.7, P1.8 + i18n + inventory)** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-03-9-task-sprint-pr-379-385.md`
-  - summary: --- date: 2026-05-03 title: 9-task sprint — PR #379-385 (P1.3, P1.4, P1.7, P1.8 + i18n + inventory) status: in-progress --- # 2026-05-03 — 9-task sprint (Audit fix-loop) ## User direktíva > "Mindet szépen sorban hajtsd végre, javítsd ki a tartozásokat, ne maradjanak hibák, > később csak halmozódni fog. Végezd el az összes feladatot egy hosszabb sprintben. > Hazugság mellébeszélés, lustaság, halasztás nélkül kizárólag
+- **Handoff — 2026-07-08 — Tech-adósság backlog 9/9 KÉSZ + first-shot kapuk** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-08-techdebt-9of9.md`
+  - summary: # Handoff — 2026-07-08 — Tech-adósság backlog 9/9 KÉSZ + first-shot kapuk ## Mi készült el ma (mind merged a mainre, végig zöld CI) | TD | Téma | PR | Squash-commit | |---|---|---|---| | TD1 | security-logger (token/PIN redakció a logból) | #1362 | 4859cf49 | | TD2 | LOG-CUSTOMERID-HYGIENE | #1363 | ea0eb03c | | TD3 | SECRETS-HOOK-CASEINSENSITIVE (hook `(?-i)` fix) | #1364 | 50593492 | | TD4 | repo-wide prettier norm
 
-- **2026-05-05 — Error-reporting pipeline E2E + valuta-error-monitor routine + v2.5.18 installer** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-05-error-reporting-pipeline-complete-v2-5-18-installer.md`
-  - summary: # 2026-05-05 — Error-reporting pipeline E2E + valuta-error-monitor routine + v2.5.18 installer ## Mit zárult le ### Backend reporter PR sorozat (mind merge-elve) - **#407** `feat(diagnostics): auto kliens-oldali hibajelentes (Sentry-style HTTP endpoint + PostgreSQL)` — V182 + DiagnosticsController + ErrorReportDto + ClientErrorLog entity - **#410** `feat(diagnostics): kritikus kliens hiba -> AUTO GitHub Issue auto-cr
+- **Handoff — 2026-07-09 backlog-grind: LOWER-BYTEA-CLASS + FE blob/log hygiene** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-09-backlog-grind.md`
+  - summary: # Handoff — 2026-07-09 backlog-grind: LOWER-BYTEA-CLASS + FE blob/log hygiene ## Merged ma (ez a session) - **#1377** `a95b76fa` — LOWER-BYTEA-CLASS lezárás: az osztály-lelet NEM reprodukál (RED 12/12 zöld fix nélkül, valós PG; trigger a `(:p IS NULL OR ...)` kettős param-használat volt a #1376-ban, a 9 repóban hiányzik). Szállítás: pinelő `LowerByteaNullBindRegressionIT` (9 null-bind + 3 happy/tenant). Coder korrekt
 
-- **2026-05-06 hallucináció-korrekció — saját session-output felülvizsgálat** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-06-hallucination-correction.md`
-  - summary: --- title: 2026-05-06 hallucináció-korrekció — saját session-output felülvizsgálat type: session created: 2026-05-06 22:00 CEST trigger: Kósa Zoltán user-direktíva — "kuna konverzió 2025-ben lezárult" hallucináció felfedezése után --- # Hallucináció-korrekció — saját session-output felülvizsgálat ## Trigger A user 2026-05-06 22:00 körül kötelezően jelezte, hogy a saját Product-Ready Roadmap-omban hallucináltam: **"HR
+- **Handoff — 2026-07-09 — FS-11 backend KÉSZ (S1+S2a+S2b), S3 frontend folyamatban** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-09-fs11-backend-complete.md`
+  - summary: # Handoff — 2026-07-09 — FS-11 backend KÉSZ (S1+S2a+S2b), S3 frontend folyamatban ## Mi készült el (mind merged a mainre, végig zöld CI) | Szelet | Téma | PR | Squash-commit | |---|---|---|---| | FS-11 S1 | Cégszintű compliance tranzakció-kereső (21 szűrő) + CSV/XLSX export | #1371 | ab8f5dc9 | | FS-11 S2a | Mentett szűrő-sablonok (V350, dátum nélkül, cégszintű, IDOR-védett) | #1372 | 794b2568 | | FS-11 S2b | Keresés
 
-- **2026-05-07 — Handoff dokumentum (v2.5.27 → v2.5.35 sprint sorozat)** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-07-handoff-v2.5.35-comprehensive.md`
-  - summary: --- title: 2026-05-07 — Handoff dokumentum (v2.5.27 → v2.5.35 sprint sorozat) type: session created: 2026-05-07 status: ACTIVE — handoff for next agent/session covers: 2026-05-06 napközben + éjszaka + 2026-05-07 hajnal production_version: 2.5.35 production_health: bootstrap 200 OK --- # Handoff: v2.5.27 → v2.5.35 sprint sorozat ## TL;DR (egyetlen képernyőn) | Mit | Érték | |---|---| | **Production verzió** | v2.5.35
+- **Handoff — 2026-07-09 — FS-11 TELJES (S3 frontend + fix-kör merged)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-09-fs11-complete.md`
+  - summary: # Handoff — 2026-07-09 — FS-11 TELJES (S3 frontend + fix-kör merged) ## Mi készült el (mind merged a mainre) | Tétel | Tartalom | PR | Squash | |---|---|---|---| | FS-11 S3 | Compliance tranzakciós lista center frontend — S3a kliens+downloadBlob, S3b oldal (21 szűrő/5 fieldset + lapozott tábla + CSV/XLSX) + route + AML/Compliance menüpont, S3c sablon-eszköztár + audit-mentés modal + audit-lista + PDF | #1374 | 121f7a
 
-- **2026-05-07 — PR434 stack merge + repo-local memory consolidation** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-07-pr434-stack-merge-memory-consolidation.md`
-  - summary: --- title: 2026-05-07 — PR434 stack merge + repo-local memory consolidation type: session created: 2026-05-07 status: completed main_head: aaf0588c production_health: bootstrap 200 OK --- # 2026-05-07 — PR434 stack merge + repo-local memory consolidation ## Summary - Repo-local vault activated at `D:\repo\valutavalto-program\vault\`. - Old external `D:\valutavalto-vault\` deleted to prevent double read/write. - Multi
+- **HANDOFF — 2026-07-09 backlog-grind (gép-újraindítás + Hermes-frissítés előtti állapot)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-09-restart-and-update.md`
+  - summary: # HANDOFF — 2026-07-09 backlog-grind (gép-újraindítás + Hermes-frissítés előtti állapot) > Cél: e session lezárása után a gép újraindítható, a Hermes Agent frissíthető, > és egy friss session EBBŐL a fájlból + a BACKLOG.md-ből folytatni tud. > Frissítés-recept: `hermes-update-maintenance` skill. ## 1. AZONNALI folytatási pont (ha a session megszakadt) **In-flight munka: SYSPARAM-NO-COMPANYID Slice 1** — branch `fix/s
 
-- **2026-05-09: Hibaüzenet humanizálás + teszt bővítés (PR #536 + #537)** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-09-error-humanization-test-expansion-pr536-537.md`
-  - summary: # 2026-05-09: Hibaüzenet humanizálás + teszt bővítés (PR #536 + #537) ## Kontextus A felhasználó (Kósa Zoltán) jelentette, hogy a SetupWizard "Network Connection Error"-t ír a valódi hibaüzenetek helyett, és a teljes tesztrendszer átfogó auditját kérte. ## Elvégzett munka ### PR #536 — Szerepkör-hozzárendelés javítás (előző session-ből folytatva) - **V195 Flyway migráció**: mind az 5 whitelisted worker (BALI, BORSI,
+- **HANDOFF — 2026-07-10 nappal: backlog-grind folytatás (FK-028 után)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-10-backlog-grind-2.md`
+  - summary: # HANDOFF — 2026-07-10 nappal: backlog-grind folytatás (FK-028 után) ## Ma merged (mind teljes pipeline: terv→coder→dual review→holdout→CI→deploy→origin-check) | PR | SHA | Mi | |---|---|---| | #1391 | 826e6715 | FS-12 gyanús ügyfél dashboard + 10M XLSX (V-nincs; suite 2794/0) | | #1392 | bcae65fc | FS-14 kamera ellenőri workflow (V354; 2812/0; vizuál PASS) | | #1393 | 650e1e9f | CAMERA-FREEZE-DETECT legacy-parity (2
 
-- **2026-05-11: Installer build v2.5.40 + V196 NOT NULL hotfix** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-11-installer-build-v196-hotfix.md`
-  - summary: # 2026-05-11: Installer build v2.5.40 + V196 NOT NULL hotfix ## Kontextus Az előző session (2026-05-09) után a user kérte a v2.5.39/v2.5.40 installer buildet, mert nem volt meg neki. A build közben kiderült, hogy a V196 migration productionban FAILELT. ## Elvégzett munka ### PR #539 — Version bump 2.5.39 → 2.5.40 - 4-way sync: root package.json, frontend-react, penztar-client, backend/pom.xml - Auto-patch a build-ins
+- **HANDOFF — 2026-07-10 éjjel: INVSTOCK + FE-hygiene + FK-028 teljes** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-10-fk028-complete.md`
+  - summary: # HANDOFF — 2026-07-10 éjjel: INVSTOCK + FE-hygiene + FK-028 teljes ## Ma merged (mind: teljes pipeline + dual review + holdout + CI + deploy) | PR | SHA | Mi | |---|---|---| | #1385 | 2735737a | INVSTOCK-SHIPMENT-ROLLBACK-ONLY: ON CONFLICT insertIfAbsent + relock (3 hely), valós-PG repro IT (RED→GREEN), suite 2755/0 | | #1386 | 3377f3fb | LOGGER-RAW-ERR residual: 3 console.warn bypass → sanitizáló logger.warn (osztá
 
-- **2026-05-12 árfolyamkészítő telepítő build** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-arfolyamkeszito-installer-build.md`
-  - summary: --- title: 2026-05-12 árfolyamkészítő telepítő build date: 2026-05-12 status: completed --- # 2026-05-12 árfolyamkészítő telepítő build ## Döntés Az árfolyamkészítő kliensben történt változások telepítőértékűek: - Google Desktop OAuth belépés bekerült a külön `rate-maker` Electron appba. - A kezdő árfolyam/munkacsoport adatbetöltés a dedikált `/api/v1/local-rate-maker/bootstrap` végpontra került. - A publikálás továb
+- **HANDOFF — 2026-07-10 teljes session (10 PR + legacy-elemzés + FS-VISUAL batch)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-10-full-session.md`
+  - summary: # HANDOFF — 2026-07-10 teljes session (10 PR + legacy-elemzés + FS-VISUAL batch) > Ez a mérvadó handoff az új session folytatásához. A BACKLOG.md a teljes részletességű forrás. ## Előző session-ból átvett állapot (07-09 work, már prodon) #1385 INVSTOCK · #1386 FE-console-err · #1388 triple-Low · #1389 CASHBAL-scope · #1390 FE-FLAKY-SWEEP — mind merged+deployed, 2.28.29. ## Ez a session: 8 PR merged+deployed (mind: te
 
-- **Központi Electron szolgáltatások befejezési kör** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-central-workstation-services-completion.md`
-  - summary: --- title: Központi Electron szolgáltatások befejezési kör date: 2026-05-12 status: implemented version: 2.5.46 tags: - kozponti-munkaallomas - legacy-modulok - szolgaltatasok - installer --- # Központi Electron szolgáltatások befejezési kör Felhasználói döntés: a központi Electronban kijelölt összes, korábban megalapított szolgáltatást végig kell vinni, nem elég sprintlistába tenni. ## Készre húzott részek - Napi el
+- **WorkerBranchAccess TOCTOU triage — 2026-07-10** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-10-workerbranchaccess-toctou-triage.md`
+  - summary: # WorkerBranchAccess TOCTOU triage — 2026-07-10 **VERDIKT: FALSE POSITIVE.** A #1401 `listBranches`/`listWorkers` guardjai és a lista-query közti elméleti READ_COMMITTED ablak jelenleg nem kihasználható. - Nincs production hívó: `WorkerBranchAccessService.java:188,210` az egyetlen definíció; külső hívó csak `WorkerService.java:403` → `hasAccess`, nem a listázók. - Nincs versenyző író: `AdminBootstrapService.java:136`
 
-- **Központi irányítóközpont sprint** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-central-workstation-sprint.md`
-  - summary: --- title: Központi irányítóközpont sprint date: 2026-05-12 status: implemented version: 2.5.45 tags: - kozponti-munkaallomas - sprint - legacy-modulok - installer --- # Központi irányítóközpont sprint Autonóm fejlesztési lépés: az eddig megalapított központi funkciók egy sprintben kerültek be a központi Electron programba. ## Elkészült - Új oldal: `frontend-react/src/pages/central/CentralSprintPage.tsx`. - Új route:
+- **FS11-DEF — TELJES PROGRAM LEZÁRVA — 2026-07-12** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-12-fs11-def-COMPLETE.md`
+  - summary: # FS11-DEF — TELJES PROGRAM LEZÁRVA — 2026-07-12 ## Végállapot Az FS11-DEF (5 halasztott compliance keresőszűrő) mind backend, mind frontend oldalon **teljesen leszállítva és élesítve**. | Szűrő | PR | Deploy | |---|---|---| | beneficialOwnerName + LINECUR (currency OR) | #1422 | ✅ v2.28.33 14:03 | | customerCountry + customerBirthName | #1423 | ✅ v2.28.33 14:59 | | relatedMinCount (backend, GROUP BY/HAVING aggregate
 
-- **CI hibabeolvasas es onellenorzo kapuk kotelezo mandatuma** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-ci-error-intake-and-self-check-mandate.md`
-  - summary: --- title: CI hibabeolvasas es onellenorzo kapuk kotelezo mandatuma date: 2026-05-12 type: session-memory status: implemented --- # CI hibabeolvasas es onellenorzo kapuk ## Dontes Kotelezo ervenyu mukodesi szabaly lett, hogy a CI es AI review hibakat az AI ugynok olvassa ki kozvetlenul. A felhasznalot nem kerjuk Sorcery, GitHub Actions, Copilot vagy Codex hibak kezi bemasolasara. ## Implementacio - Uj script: `script
+- **FS11-DEF backend teljes (5/5) — 2026-07-12** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-12-fs11-def-backend-complete.md`
+  - summary: # FS11-DEF backend teljes (5/5) — 2026-07-12 **Belépő állapot:** BACKLOG.md + korábbi handoffok + FS11-DEF slice1-4 tervek beolvasva; slice1 PR (#1422) készen állt, de branch-policy blokkolta a sima merge-t. ## Végzett munka (kanonikus dev-loop szerint, minden szeleten) 1. **Slice1 (#1422, ALREADY CODED, csak merge kellett):** beneficialOwnerName + line-currency EXISTS-szűrők. `--admin` merge (branch-policy blokk), d
 
-- **Zárás beérkezés központi modul** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-closing-control-central-module.md`
-  - summary: --- title: Zárás beérkezés központi modul date: 2026-05-12 status: implemented version: 2.5.43 tags: - kozponti-munkaallomas - zaras - legacy-modulok - installer --- # Zárás beérkezés központi modul Autonóm fejlesztési lépés a szerver legacy modul inventory alapján. Legacy megfelelők: - `zarasctrl.dll` - `beerk.dll` - `missctrl.dll` - `daybook.fdb` zárási állapot/missing-closing működés ## Elkészült - Backend `Closin
+- **FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-12-fs11-def-release-chain.md`
+  - summary: # FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12 ## Teljes lánc végigvitel (a felhasználó kérésére: "Push, merge, lint, deploy és telepítő") 1. **PR #1425** (FS11-DEF slice 3/3 frontend) — mergelve, deploy éles v2.28.33-ban. 2. **Both-origin freshness** (Hetzner + Scaleway hot standby) verifikálva PASS mindkét deployra (v2.28.33 és v2.28.34). 3. **Lint**: `npm run lint` → 0 error (2447 pre-existing warning, n
 
-- **2026-05-12 Felmeres + Anti tudaslefedettsegi audit** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-felmeres-anti-knowledge-audit.md`
-  - summary: --- date: 2026-05-12 type: knowledge-audit scope: - D:\repo\valutavalto-program\Felmérés\Valuta - D:\repo\valutavalto-program\Anti status: captured priority: P0 related: - docs/architecture/felmeres-anti-knowledge-coverage-audit-2026-05-12.md - docs/architecture/central-workstation-legacy-module-inventory.md - docs/architecture/local-rate-maker-architecture.md --- # 2026-05-12 Felmeres + Anti tudaslefedettsegi audit
+- **FK09/FK10 rate-maker handoff — 2026-07-18** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-18-fk09-fk10-rate-maker.md`
+  - summary: # FK09/FK10 rate-maker handoff — 2026-07-18 - PR #1454 MERGED: https://github.com/kosazoltan/valutavalto-program/pull/1454 - Main/release SHA: `e0db5f395ea8601493cece45a25e971ef2e9fb3e` - Release: `v2.28.44` — https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.28.44 - FK09: online/offline fejlécállapot látható, regressziós teszt lefedi. - FK10: 0/nem pozitív forrás látható képlethiba; előző jó érték me
 
-- **Four-area alignment and web fallback hardening 2.5.48** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-four-area-alignment-and-web-fallback-2.5.48.md`
-  - summary: --- title: Four-area alignment and web fallback hardening 2.5.48 date: 2026-05-12 status: completed tags: - installer - electron - app-mode - web-fallback - release-rule --- # Négy működési terület és webes tartalék mód, 2.5.48 Felhasználói pontosítás: - A telepítő előtti ellenőrzésnek nem három funkciót, hanem négy működési területet kell összhangban tartania: pénztár, értéktár, RFM/árfolyamkészítő és központi. Font
+- **Handoff — FKH-018 + Ollama indítási hiba** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-18-fkh018-ollama.md`
+  - summary: # Handoff — FKH-018 + Ollama indítási hiba - Időpont: 2026-07-18 14:31 +0200. - Repo: `D:/repo/valutavalto-program`; branch: `feature/ertektar-atvetel-jovahagyas-nelkul`; HEAD: `e0db5f39`. - Worktree: 41 módosított/untracked bejegyzés; semmi nincs commitolva vagy pusholva. - Első következő feladat: az Ollama nem indul el; bizonyíték-első hibakereséssel javítandó, utána folytatni FKH-018-at. - Session elején ellenőriz
 
-- **2026-05-12 - Four-block audit follow-up: central module manifest** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-four-block-central-module-manifest.md`
-  - summary: # 2026-05-12 - Four-block audit follow-up: central module manifest ## Decision During the four-block comparison (pénztár, értéktár, RFM árfolyamkészítő, központi), the current memory/code gap was the central workstation module-permission manifest. The central workstation must not decide central module visibility from a frontend-only role list. The backend now returns `centralModules` in the login response, and the ce
+- **Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-19-ertektar-batch-r2-budget-stop.md`
+  - summary: # Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19) - Stable task-id: `VALUTA-ERTEKTAR-BATCH-20260719-R2`. - Planner (Fable-5) lefutott; verdict READY. - Kanonikus terv: `.hermes/dev-loop/VALUTA-ERTEKTAR-BATCH-20260718-PLAN.md` (SHA-256 `3faf4488a304e3b707ea5fc13436a986cecc75abfee4a779a0dec37b0ff58d85`). - Holdout: `D:/repo/Hermes-agent/pipeline/.runtime/VALUTA-ERTEKTAR-BATCH-20260719-R2/HOLDOUT.md` (40 eset).
 
-- **Google OAuth Auto-Detection Setup** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-google-oauth-auto-detection-setup.md`
-  - summary: --- date: 2026-05-12 type: implementation-session status: captured priority: P0 related: - docs/architecture/google-oauth-auto-detection-setup.md --- # Google OAuth Auto-Detection Setup User decision: leaders and central workers should log in with Google OAuth. Email from verified Google identity identifies branch, worker, and role from master data. Cashiers keep username/password login. Implemented direction: - adde
+- **Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-19-fk057-mainlayout.md`
+  - summary: # Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra - Forrás: `FK-057_MainLayout_gorgetesi_architektura_javitas_v2.md` R4, SHA-256 ellenőrizve. - A gyökérlayout viewport-magasságú (`h-screen overflow-hidden`); nincs dokumentumszintű görgetés. - A Sidebar navigáció és a `.app-print-content` külön függőleges scrollport. - Mobilon a `main` explicit `minHeight: 0`; a nyitott sidebar `min-h-0 max-h-full`. -
 
-- **2026-05-12 - Teljes handoff es memoria mentes (v2.5.48)** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-handoff-current-state-2.5.48.md`
-  - summary: --- title: 2026-05-12 - Teljes handoff es memoria mentes (v2.5.48) type: handoff created: 2026-05-12 status: active version: 2.5.48 repo: D:\repo\valutavalto-program memory_status: synced --- # Handoff - valutavalto-program v2.5.48 ## TL;DR A repo jelenlegi fejlesztesi iranya negy osszehangolt kliens/blokk: - Penztar: lokalis Electron, `appMode=penztar`, default route `/cashier`. - Ertektar: lokalis mukodes a penztar
+- **Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-19-v2.28.45-release.md`
+  - summary: # Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19 - PR #1456 merged (squash): https://github.com/kosazoltan/valutavalto-program/pull/1456 - Main/release SHA: `f3ac9fad0b992ef6f7c0f41cd954c413f825c59c` - PR CI: all required checks PASS after fixing the CashierStocks async test race. - CI fix: await rendered `Baja Tesco` option; 10/10 repeated targeted coverage runs PASS; dual review+jury APPROVE. - Local gates
 
-- **Központi irányítóközpont Electron app** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-kozponti-iranyitokozpont-electron.md`
-  - summary: --- title: Központi irányítóközpont Electron app date: 2026-05-12 status: implemented version: 2.5.44 tags: - electron - kozponti-munkaallomas - legacy-modulok - installer --- # Központi irányítóközpont Electron app Felhasználói döntés: a legacy szerver mappában talált, központi/főértéktári/belső ellenőri funkciókat nem a szerver asztalán futtatjuk. Egy külön helyi Electron alkalmazás készült "Központi irányítóközpon
+- **Handoff — FK-058 + FK-051v2 + v2.28.53 release — 2026-07-23** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-23-fk058-fk051v2-v2.28.53.md`
+  - summary: # Handoff — FK-058 + FK-051v2 + v2.28.53 release — 2026-07-23 - FK-058 (PR #1474 merged): CashBalanceRepository.findByCompanyIdExcludingVault + DailySessionRepository.findByDateRangeExcludingVault kiegészítve a FK-056 kanonikus null-safe VAULT_COUNTERPARTY branchType-kizárással (isVault defense-in-depth marad). Új VaultCounterpartyExclusionPostgresIT (Testcontainers) 2/2 PASS. - FK-051 v2 (PR #1475 merged): kozponti-
 
-- **2026-05-12 helyi árfolyamkészítő architektúra** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-local-rate-maker-architecture.md`
-  - summary: --- title: 2026-05-12 helyi árfolyamkészítő architektúra date: 2026-05-12 status: completed --- # 2026-05-12 helyi árfolyamkészítő architektúra ## Döntés A főértéktárosi árfolyamkészítés iránya módosult: nem a szerveren nyitott szerkesztőként fut, hanem külön, helyileg telepíthető árfolyamkészítő alkalmazásban. A szerver hitelesített átvevő, validáló, auditáló és terítő központ. ## Megvalósított változások - Új backe
+- **Handoff — v2.28.52 release + backlog-zárás — 2026-07-23** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-23-v2.28.52-release.md`
+  - summary: # Handoff — v2.28.52 release + backlog-zárás — 2026-07-23 - Minden nyitott issue lezárva: #1442 (PR #1470), #1451 (PR #1472), #1455 (triage, not planned), #1428 (PR #1473). - #1428 gyökérok: electron-builder multiUser.nsh System::Store ág friss telepítésnél (upstream #7921, offset 0x1581=System!Store+0x4a0). Fix: preInit InstallLocation pre-seed mindkét kliensben. Mért: baseline unsigned 5/8 crash → fix 0/8. - v2.28.
 
-- **Parallax AgentWard implementacio** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-parallax-agentward-implementation.md`
-  - summary: --- title: Parallax AgentWard implementacio date: 2026-05-12 type: implementation-session status: completed --- # Parallax AgentWard implementacio ## Bemenet A user adott egy Parallax-ugynokhalozati utasitascsomagot: kognitiv es vegrehajtasi reteg szeparacio, ketlepcsos verifikacio, MCP/skill routing, AgentWard runtime biztonsag, default-sensitive titokkezeles, OAuth blocklist, OWASP agentic top 10 es permanent intel
+- **Handoff 2026-07-23 — v2.28.55 release (CI-annotáció batch)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-23-v2.28.55-dependency-batch.md`
+  - summary: # Handoff 2026-07-23 — v2.28.55 release (CI-annotáció batch) - v2.28.54 lezárva: run 30003708497 success, Downloads-verifikáció OK (SHA256 + Authenticode Valid). - CI-annotációk implementálva: - #1478: Spring Jackson 3 fix — RedisConfig GenericJacksonJsonRedisSerializer (builder+enableUnsafeDefaultTyping, 1:1 viselkedés), teszt JacksonJsonHttpMessageConverter. GLM-5.2 review: APPROVE-WITH-NITS, 0 blocker; teszt 8/8.
 
-- **Beérkezett adatok központi modul** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-received-data-central-module.md`
-  - summary: --- title: Beérkezett adatok központi modul date: 2026-05-12 status: implemented version: 2.5.44 tags: - kozponti-munkaallomas - beerkezett-adatok - legacy-modulok - installer --- # Beérkezett adatok központi modul Autonóm fejlesztési lépés a szerver legacy modul inventory alapján. Legacy megfelelők: - `beerk.dll` - `datadisp.dll` - `getdisp.dll` - `daybook.fdb` napi adatcsomag/beküldés áttekintés ## Elkészült - Új b
+- **Handoff 2026-07-24 — FK-061 + FK-062, v2.28.56** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-24-fk061-fk062-v2.28.56.md`
+  - summary: # Handoff 2026-07-24 — FK-061 + FK-062, v2.28.56 - FK-054 (318fb160/#1281) és FK-059 (7272e03c, v2.28.50) lezártsága VERIFIED (main-ancestor). - FK-061: 'Napzárás' menü az Értéktár csoportban (menuGroups.ts); backend DailyClosingService.checkEveningDenomination vault-skip (branch.isVault) + EVENING_DENOMINATION_CHECK_SKIPPED_VAULT audit + info log; új isVaultBranch() helper. - FK-062: ClosingControlService.isRequired
 
-- **2026-05-12 server legacy module inventory** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-server-legacy-module-inventory.md`
-  - summary: # 2026-05-12 server legacy module inventory Decision context: - The planned desktop tool should become a broader "Központi helyi munkaállomás", not only an árfolyamkészítő. - The cashier application remains separate. - The server remains a backend/API/background service and source of truth. Operator workflows move into the local Electron workstation where appropriate. Surveyed path: - `D:\repo\valutavalto-program\for
+- **Handoff — FK-063 + FK-064 (pénztári multi-devizás címletezés + zárási UI egységesítés)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-24-fk063-fk064-multidevizas-zaras.md`
+  - summary: # Handoff — FK-063 + FK-064 (pénztári multi-devizás címletezés + zárási UI egységesítés) - PR #1483 squash-merged → main `467a0fbc` (2026-07-24). Branch törölve. - FK-063: `GET /closing-wizard/currencies-with-balance` (JWT-branch, company-szűrt, HUF mindig); `denominationSections` pénztár módban dinamikus (cash_balance-alapú, HUF-fallback offline-ra); `computeCashDiscrepancy` + finalize-gate pénznemenkénti (`perCurre
 
-- **Négy működési terület végpont-ellenőrzése telepítő előtt** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-three-client-endpoint-prepackage-rule.md`
-  - summary: --- title: Négy működési terület végpont-ellenőrzése telepítő előtt date: 2026-05-12 status: completed tags: - installer - endpoint-check - electron - release-rule --- # Négy működési terület végpont-ellenőrzése telepítő előtt Felhasználói kötelező utasítás: - Minden új telepítő készítése előtt meg kell nézni, hogy a négy működési terület kommunikációs végpontjai és appMode beállításai szinkronban vannak-e. Pontosíto
+- **Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-04-fkh029-vault-cash-balance-scope.md`
+  - summary: # Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés **Dátum:** 2026-08-04 · **Branch:** `fkh029-vault-cash-balance-scope` (main `9a48f0dd`-ből) ## Miért Az FKH-028 V369 csak BR020-at pótolta (FR-5 tudatos scope-kivétel). Az élő prod audit (read-only, Hetzner) szerint **7 további aktív Értéktárnak 0 `cash_balance` sora** volt, és **BR075 Békéscsaba 10 PENDING átadása 2026-05-26 óta b
 
-- **Three client installer and function alignment 2.5.47** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-three-client-installer-alignment-2.5.47.md`
-  - summary: --- title: Three client installer and function alignment 2.5.47 date: 2026-05-12 status: completed tags: - installer - electron - central-workstation - rate-maker - cashier - google-oauth --- # Három kliens összhangba hozása, 2.5.47 Kiinduló probléma: - A Letöltések mappában csak részleges telepítőcsomag volt. - A központi irányítóközpont `2.5.46`, az árfolyamkészítő `2.5.41`, a pénztár pedig régebbi/eltérő nevű csom
+- **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
+  - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
+  - summary: # Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult ## Kiváltó kontextus A RUB-visszaállítás (PR #1147: V327–V329, RUB `is_active=true` + címlet + currency_stock) után a deploy **Gate A (Hetzner lokális 'valuta' DB)** pirosat adott: `V326 != repo V329`. A diagnózis (read-only, `hetzner-db-check.yml` bővítve a `chore/prod-flyway-diagnose` branchen) az al
 
-- **Valutavalto Obsidian memoria javitas es EXZ elhatarolas** (medium-term-episodic)
-  - source: `vault/sessions/2026-05-12-valutavalto-obsidian-memory-repair.md`
-  - summary: --- title: "Valutavalto Obsidian memoria javitas es EXZ elhatarolas" date: 2026-05-12 repo: "D:\\repo\\valutavalto-program" vault: "D:\\repo\\valutavalto-program\\vault" status: "active" priority: "P0" --- # Valutavalto Obsidian memoria javitas es EXZ elhatarolas ## Dontes A `valutavalto-program` memoriaja onallo memoria. Nem keverheto az EXZ repo memoriajaval, akkor sem, ha az Obsidian desktop korabban EXZ vaultot n
+- **Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)** (medium-term-episodic)
+  - source: `vault/sessions/release-history-archive-through-2.27.25.md`
+  - summary: # Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor) > Ez a v2.5.x–v2.27.25 release-horgony + telepítő-SHA + LEZÁRVA történet, amit a CLAUDE.md-ből > a karcsúsításkor ide mozgattunk (kontextus-bloat csökkentés). A kötelező mandátumok + a friss > release-horgony a CLAUDE.md-ben maradtak. Történeti referencia; a repo-tény (git log) az erősebb. ## Aktuális release-állapot (a következő agent sz
 
 ## Operativ Memoria
 
 - **ReceiptController.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/controller/ReceiptController.java`
-  - summary: package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.service.ReceiptGeneratorService; import hu.puzzleir.valuta.service.ReceiptService; import lombok.RequiredArgsConstructor; import org.springframework.http.HttpHeaders; import org.springframework.http.MediaType; import org.springframework.http.ResponseEntity; import org.springframework.security.access.prepost.PreA
-
-- **ReceiptSearchController.java** (operational-receipt)
-  - source: `backend/src/main/java/hu/puzzleir/valuta/controller/ReceiptSearchController.java`
-  - summary: package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.receipt.*; import hu.puzzleir.valuta.service.ReceiptSearchService; import lombok.RequiredArgsConstructor; import org.springframework.security.access.prepost.PreAuthorize; import org.springframework.data.domain.Page; import org.springframework.data.domain.Pageable; import org.springframework.format.annotation.DateTimeFormat; import org.springframewor
+  - summary: package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.receipt.CancelledTransactionReceiptRequest; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.service.ReceiptGeneratorService; import hu.puzzleir.valuta.service.ReceiptService; import jakarta.validation.Valid; import lombok.RequiredArgsConstructor; import org.springframework.format.annotation.DateTimeFormat; import org.springframew
 
 - **CashRegisterReceiptRequest.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/dto/cashregister/CashRegisterReceiptRequest.java`
@@ -250,25 +274,13 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `backend/src/main/java/hu/puzzleir/valuta/dto/ertektar/MaterialReceiptResponseDto.java`
   - summary: package hu.puzzleir.valuta.dto.ertektar; import lombok.*; import java.time.LocalDateTime; import java.util.List; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class MaterialReceiptResponseDto { private Long id; private String receiptNumber; private String receiptType; private Integer vaultTerritoryId; private String vaultTerritoryName; private String branchCode; private String counterpartName; private
 
+- **CancelledTransactionReceiptRequest.java** (operational-receipt)
+  - source: `backend/src/main/java/hu/puzzleir/valuta/dto/receipt/CancelledTransactionReceiptRequest.java`
+  - summary: package hu.puzzleir.valuta.dto.receipt; import jakarta.validation.Valid; import jakarta.validation.constraints.DecimalMin; import jakarta.validation.constraints.Digits; import jakarta.validation.constraints.NotBlank; import jakarta.validation.constraints.Pattern; import jakarta.validation.constraints.Size; import lombok.AllArgsConstructor; import lombok.Builder; import lombok.Data; import lombok.NoArgsConstructor; im
+
 - **ReceiptData.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptData.java`
   - summary: package hu.puzzleir.valuta.dto.receipt; import lombok.*; import java.math.BigDecimal; import java.time.LocalDateTime; import java.util.ArrayList; import java.util.List; /** * Bizonylat adatstruktúra - nyomtatásra és PDF generálásra. * * Bizonylat számozási szabály: * - E-YYMMDD-XXXX: Eladási bizonylat (valuta eladás ügyfélnek) * - V-YYMMDD-XXXX: Vételi bizonylat (valuta vásárlás ügyféltől) * - A-YYMMDD-XXXX: Átvezeté
-
-- **ReceiptDetailDto.java** (operational-receipt)
-  - source: `backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptDetailDto.java`
-  - summary: package hu.puzzleir.valuta.dto.receipt; import lombok.AllArgsConstructor; import lombok.Builder; import lombok.Data; import lombok.NoArgsConstructor; import java.math.BigDecimal; import java.time.LocalDate; import java.time.LocalTime; import java.util.List; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class ReceiptDetailDto { private Long id; private String receiptNumber; private LocalDate transaction
-
-- **ReceiptLineDto.java** (operational-receipt)
-  - source: `backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptLineDto.java`
-  - summary: package hu.puzzleir.valuta.dto.receipt; import lombok.AllArgsConstructor; import lombok.Builder; import lombok.Data; import lombok.NoArgsConstructor; import java.math.BigDecimal; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class ReceiptLineDto { private Integer lineNumber; private String currencyCode; private BigDecimal appliedRate; private BigDecimal banknoteCount; private BigDecimal hufValue; priva
-
-- **ReceiptSearchCriteria.java** (operational-receipt)
-  - source: `backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptSearchCriteria.java`
-  - summary: package hu.puzzleir.valuta.dto.receipt; import lombok.AllArgsConstructor; import lombok.Data; import lombok.NoArgsConstructor; import java.math.BigDecimal; import java.time.LocalDate; @Data @NoArgsConstructor @AllArgsConstructor public class ReceiptSearchCriteria { private String number; private LocalDate dateFrom; private LocalDate dateTo; private String type; private BigDecimal minAmount; private BigDecimal maxAmou
-
-- **ReceiptSearchResultDto.java** (operational-receipt)
-  - source: `backend/src/main/java/hu/puzzleir/valuta/dto/receipt/ReceiptSearchResultDto.java`
-  - summary: package hu.puzzleir.valuta.dto.receipt; import lombok.AllArgsConstructor; import lombok.Builder; import lombok.Data; import lombok.NoArgsConstructor; import java.math.BigDecimal; import java.time.LocalDate; import java.time.LocalTime; @Data @NoArgsConstructor @AllArgsConstructor @Builder public class ReceiptSearchResultDto { private Long id; private String receiptNumber; private LocalDate transactionDate; private Loc
 
 - **MaterialReceipt.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/entity/MaterialReceipt.java`
@@ -280,7 +292,7 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 - **Receipt.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/entity/Receipt.java`
-  - summary: package hu.puzzleir.valuta.entity; import jakarta.persistence.*; import lombok.*; import org.springframework.data.annotation.CreatedDate; import org.springframework.data.jpa.domain.support.AuditingEntityListener; import java.time.LocalDate; import java.time.LocalDateTime; import java.util.UUID; @Entity @Table(name = "receipt") @EntityListeners(AuditingEntityListener.class) @Getter @Setter @NoArgsConstructor @AllArgsC
+  - summary: package hu.puzzleir.valuta.entity; import jakarta.persistence.*; import lombok.*; import org.springframework.data.annotation.CreatedDate; import org.springframework.data.jpa.domain.support.AuditingEntityListener; import java.math.BigDecimal; import java.time.LocalDate; import java.time.LocalDateTime; import java.util.UUID; @Entity @Table(name = "receipt") @EntityListeners(AuditingEntityListener.class) @Getter @Setter
 
 - **ReceiptSequence.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/entity/ReceiptSequence.java`
@@ -292,7 +304,7 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 - **ReceiptRepository.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/repository/ReceiptRepository.java`
-  - summary: package hu.puzzleir.valuta.repository; import hu.puzzleir.valuta.entity.Receipt; import org.springframework.data.jpa.repository.JpaRepository; import org.springframework.stereotype.Repository; import java.util.List; import java.util.UUID; @Repository public interface ReceiptRepository extends JpaRepository<Receipt, UUID> { List<Receipt> findByTransactionId(UUID transactionId); List<Receipt> findAllByCompanyId(UUID co
+  - summary: package hu.puzzleir.valuta.repository; import hu.puzzleir.valuta.entity.Receipt; import org.springframework.data.jpa.repository.JpaRepository; import org.springframework.data.jpa.repository.Query; import org.springframework.data.repository.query.Param; import org.springframework.stereotype.Repository; import java.time.LocalDate; import java.util.List; import java.util.UUID; @Repository public interface ReceiptReposit
 
 - **ReceiptSequenceRepository.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/repository/ReceiptSequenceRepository.java`
@@ -304,19 +316,15 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 - **MaterialReceiptService.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/service/MaterialReceiptService.java`
-  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptLineDto; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptRequestDto; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptResponseDto; import hu.puzzleir.valuta.entity.*; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.CurrencyStockRepository; import hu.puzzleir.valuta.r
+  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptLineDto; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptRequestDto; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptResponseDto; import hu.puzzleir.valuta.entity.*; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.BranchRepository; import hu.puzzleir.valuta.reposito
 
 - **ReceiptGeneratorService.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/service/ReceiptGeneratorService.java`
-  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.Transfer; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.entity.WuTransaction; import hu.puzzleir.valuta.repository.TransactionRepository; import lombok.RequiredA
+  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.Transfer; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.entity.WuTransaction; import hu.puzzleir.valuta.repository.TransactionRepository; import hu.puzzleir.valu
 
 - **ReceiptPdfService.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/service/ReceiptPdfService.java`
   - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.exception.BusinessException; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import lombok.extern.slf4j.Slf4j; import org.apache.pdfbox.pdmodel.PDDocument; import org.apache.pdfbox.pdmodel.PDPage; import org.apache.pdfbox.pdmodel.PDPageContentStream; import org.apache.pdfbox.pdmodel.common.PDRectangle; import org.apache.pdfbox.pdmodel.font.PDType1Font;
-
-- **ReceiptSearchService.java** (operational-receipt)
-  - source: `backend/src/main/java/hu/puzzleir/valuta/service/ReceiptSearchService.java`
-  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.dto.receipt.*; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.TransactionLine; import hu.puzzleir.valuta.repository.TransactionRepository; import hu.puzzleir.valuta.security.SecurityUtils; import lombok.RequiredArgsConstructor; import lombok.extern.slf4j.Slf4j; i
 
 - **ReceiptSequenceService.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/service/ReceiptSequenceService.java`
@@ -324,7 +332,23 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 - **ReceiptService.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/service/ReceiptService.java`
-  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.ReceiptRepository; import hu.puzzleir.valuta.repository.TransactionRepository; import hu.puzzleir.valuta.security.SecurityUtils; import lombok.RequiredArgsConstructor; import lombok.extern.slf4j.S
+  - summary: package hu.puzzleir.valuta.service; import tools.jackson.core.JacksonException; import tools.jackson.databind.ObjectMapper; import hu.puzzleir.valuta.dto.receipt.CancelledTransactionReceiptRequest; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.exception.ValidationException; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzz
+
+- **ShipmentUnifiedReceiptControllerTest.java** (operational-receipt)
+  - source: `backend/src/test/java/hu/puzzleir/valuta/controller/ShipmentUnifiedReceiptControllerTest.java`
+  - summary: package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest; import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto; import hu.puzzleir.valuta.service.ShipmentHandlingFeeService; import hu.puzzleir.valuta.service.ShipmentService; import hu.puzzleir.valuta.util.IdempotencyGuard; import io.swagger.v3.oas.annotations.responses.ApiResponses; import org.junit.jupiter.api
+
+- **ShipmentRequestRepositoryUnifiedReceiptContractTest.java** (operational-receipt)
+  - source: `backend/src/test/java/hu/puzzleir/valuta/repository/ShipmentRequestRepositoryUnifiedReceiptContractTest.java`
+  - summary: package hu.puzzleir.valuta.repository; import jakarta.persistence.LockModeType; import org.junit.jupiter.api.Test; import org.springframework.data.jpa.repository.Lock; import org.springframework.data.jpa.repository.Query; import java.lang.reflect.Method; import java.util.Collection; import java.util.UUID; import static org.assertj.core.api.Assertions.assertThat; class ShipmentRequestRepositoryUnifiedReceiptContractTe
+
+- **MaterialReceiptCashierEntityIdFkh029Test.java** (operational-receipt)
+  - source: `backend/src/test/java/hu/puzzleir/valuta/service/MaterialReceiptCashierEntityIdFkh029Test.java`
+  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.ertektar.MaterialReceiptResponseDto; import hu.puzzleir.valuta.entity.Branch; import hu.puzzleir.valuta.entity.CurrencyStock; import hu.puzzleir.valuta.entity.MaterialReceipt; import hu.puzzleir.valuta.entity.MaterialReceiptLine; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.BranchRepository; import
+
+- **MaterialReceiptServiceTest.java** (operational-receipt)
+  - source: `backend/src/test/java/hu/puzzleir/valuta/service/MaterialReceiptServiceTest.java`
+  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Company; import hu.puzzleir.valuta.entity.CurrencyStock; import hu.puzzleir.valuta.entity.MaterialReceipt; import hu.puzzleir.valuta.entity.MaterialReceiptLine; import hu.puzzleir.valuta.entity.VaultTerritory; import hu.puzzleir.valuta.exception.ValidationException; import hu.puzzleir.valuta.repository.CurrencyStockRepository; import hu.puzzleir.val
 
 - **ReceiptGeneratorServiceTest.java** (operational-receipt)
   - source: `backend/src/test/java/hu/puzzleir/valuta/service/ReceiptGeneratorServiceTest.java`
@@ -334,9 +358,17 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `backend/src/test/java/hu/puzzleir/valuta/service/ReceiptPdfServiceTest.java`
   - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.receipt.ReceiptData; import hu.puzzleir.valuta.entity.WuTransaction; import org.junit.jupiter.api.BeforeEach; import org.junit.jupiter.api.DisplayName; import org.junit.jupiter.api.Test; import java.math.BigDecimal; import java.time.LocalDateTime; import java.util.List; import static org.assertj.core.api.Assertions.*; /** * ReceiptPdfService UNIT teszt
 
+- **ReceiptSequenceServiceTest.java** (operational-receipt)
+  - source: `backend/src/test/java/hu/puzzleir/valuta/service/ReceiptSequenceServiceTest.java`
+  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Branch; import hu.puzzleir.valuta.entity.Company; import hu.puzzleir.valuta.entity.ReceiptSequence; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.repository.BranchRepository; import hu.puzzleir.valuta.repository.ReceiptSequenceRepository; import hu.puzzleir.valuta.repository.TransactionRepository; import hu.puzzleir.val
+
 - **ReceiptServiceB7Test.java** (operational-receipt)
   - source: `backend/src/test/java/hu/puzzleir/valuta/service/ReceiptServiceB7Test.java`
-  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Branch; import hu.puzzleir.valuta.entity.Company; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.TransactionStatus; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.ReceiptRepo
+  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.dto.receipt.CancelledTransactionReceiptRequest; import hu.puzzleir.valuta.entity.Branch; import hu.puzzleir.valuta.entity.Company; import hu.puzzleir.valuta.entity.Receipt; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.entity.TransactionStatus; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.exception.R
+
+- **TransactionServiceReceiptScopeFk071Test.java** (operational-receipt)
+  - source: `backend/src/test/java/hu/puzzleir/valuta/service/TransactionServiceReceiptScopeFk071Test.java`
+  - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.BranchRepository; import hu.puzzleir.valuta.repository.CashBalanceRepository; import hu.puzzleir.valuta.repository.CircularRepository; import hu.puzzleir.valuta.repository.CompanyRepository; import hu.puzzleir.valuta.repository.CurrencyRe
 
 - **Lessons Learned — Valutavalto ERP** (operational-lessons)
   - source: `docs/LESSONS_LEARNED.md`
@@ -356,21 +388,21 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 - **ReceiptPrint.tsx** (operational-receipt)
   - source: `frontend-react/src/components/ReceiptPrint.tsx`
-  - summary: import { useRef, useEffect, useState } from 'react' import QRCode from 'qrcode' import { Printer, X } from 'lucide-react' import { Transaction } from '../services/api/index' import { formatDecimal, formatInteger } from '../utils/numberFormat' import { toast } from './ui/toaster' import { useTranslation } from 'react-i18next' interface ReceiptPrintProps { transaction: Transaction companyName: string companyFullName?:
+  - summary: /** * NAV-szabvanyu adomentes valutavalto bizonylat sablon. * * I18N EXEMPTION: a `eslint.config.js`-ben kifejezetten ki van veve a * `i18next/no-literal-string` rule alol (lasd ott a "NAV bizonylat" override * blokkot). Az alabbi JSDoc dokumentalja MIERT: * * Minden JSX literal a fajlban jogszabalyi vagy NAV mintaszerusegbol KOTELEZO: * - "Adomentes a szolgaltatas nyujtasa a 2007. evi CXVII. tv. 86 § e) alapjan" * -
 
-- **ReceiptPreviewModal.tsx** (operational-receipt)
-  - source: `frontend-react/src/components/electron/ReceiptPreviewModal.tsx`
-  - summary: /** * ReceiptPreviewModal — Bizonylat előnézet és nyomtatás modal. * * Böngészőben is megjelenítható (előnézet), de a tényleges nyomtatás * (window.electronAPI.printReceipt) csak Electron-ban működik. * * FUNKCIÓK: * - Bizonylat előnézet (80mm hőnyomtató formátum) * - QR kód megjelenítés * - Nyomtatás megerősítés * - Újranyomtatás lehetőség */ import { useCallback, useEffect, useRef, useState } from 'react'; import t
-
-- **ReceiptPage.tsx** (operational-receipt)
-  - source: `frontend-react/src/pages/receipts/ReceiptPage.tsx`
-  - summary: import { useState, useEffect, useMemo, useCallback } from 'react' import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock } from 'lucide-react' import { receiptApi, Receipt } from '../../services/api/index' import { getErrorMessage } from '../../utils/errorHandling' import { toast } from '../../components/ui/toaster' import { useAuthStore } from '../../stores/authStore' import ReceiptPreviewModal from '../../com
+- **ReceiptPreviewModal.multiline.test.tsx** (operational-receipt)
+  - source: `frontend-react/src/components/electron/ReceiptPreviewModal.multiline.test.tsx`
+  - summary: import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a valuta-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), })) // Több-valutás (multi-line) v
 
 ## Hosszu Tavu Memoria
 
 - **LegacyCompanyIdentityCodec.java** (semantic-reference)
   - source: `backend/src/main/java/hu/puzzleir/valuta/util/LegacyCompanyIdentityCodec.java`
   - summary: package hu.puzzleir.valuta.util; import java.util.UUID; /** * UUID -> legacy Integer company identity bridge. * * Legacy modulok egy resze Integer companyId-t hasznal, * mig az uj multi-tenant modell UUID-t. A lekepzesnek stabilnak * es reprodukalhatonak kell lennie ugyanarra a UUID-re. */ public final class LegacyCompanyIdentityCodec { private LegacyCompanyIdentityCodec() { } public static Integer toLegacyInt(UUID c
+
+- **JwtLegacyTokenCompatTest.java** (semantic-reference)
+  - source: `backend/src/test/java/hu/puzzleir/valuta/security/JwtLegacyTokenCompatTest.java`
+  - summary: package hu.puzzleir.valuta.security; import io.jsonwebtoken.Jwts; import io.jsonwebtoken.security.Keys; import org.junit.jupiter.api.Test; import org.springframework.core.env.Environment; import org.springframework.test.util.ReflectionTestUtils; import java.nio.charset.StandardCharsets; import java.util.Base64; import java.util.Date; import java.util.LinkedHashMap; import java.util.List; import java.util.Map; import
 
 - **LegacyCompanyIdentityCodecTest.java** (semantic-reference)
   - source: `backend/src/test/java/hu/puzzleir/valuta/util/LegacyCompanyIdentityCodecTest.java`
@@ -563,7 +595,3 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **2026-04-17 installer release v2.1.0 — session memory** (long-term-historical)
   - source: `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.qmd`
   - summary: --- title: "2026-04-17 installer release v2.1.0 — session memory" date: 2026-04-17 tags: [installer, electron, nsis, first-run-wizard, release, v2.1.0, build-pipeline, postgres, jlink] status: captured supersedes: none relates_to: - docs/knowledge/memory/2026-04-17-pipeline-run-session.qmd (previous wave, same day, post-AML-wave1) --- ## Cel A user kerese: 1. "Tehát akkor most akár tudunk egy telepítőfájlt készíteni,
-
-- **2026-04-17-installer-release-v2.1.0-session.yaml** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml`
-  - summary: date: 2026-04-17 wave: installer-release-v2.1.0 session_type: first-run-wizard-plus-standalone-eltavolito-build-plus-version-unification-plus-full-installer-pipeline previous_session_same_day: docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml resumed_from: previous-session-wave-post-aml-wave1-followup-completed parent_agent_transcript: agent-transcripts/ac0bf5fb-6a32-4418-a5a1-fe9b337b2263 final_head: branch
