@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-08-09T17:21:57.711Z",
-  "source_count": 1050,
+  "generated_at": "2026-08-09T17:25:44.904Z",
+  "source_count": 1051,
   "sources": [
     {
       "path": "AGENTS.md",
-      "sha256": "5043d408c8eec3c5aafbf7b1ac3bc0a7def916a36107fe457b8064bb53847a25",
+      "sha256": "e3d062f120db6f419ef078ae0e5522aeb1dc178671c4c1775cd3c01e302a0364",
       "type": "short-term-core",
       "areas": [
         "aml",
@@ -15,6 +15,7 @@
         "ertektar",
         "frontend",
         "installer",
+        "legacy",
         "napzaras",
         "penztar",
         "riport",
@@ -12290,6 +12291,17 @@
         "ertektar",
         "sync",
         "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md",
+      "sha256": "3bf42d91ea4812c5a018158750aae7eb00930a89c9bcb7324ad43e6453068efd",
+      "type": "medium-term-episodic",
+      "areas": [
+        "ertektar",
+        "legacy",
+        "riport",
+        "specifikacio"
       ]
     },
     {

@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-09T17:21:57.711Z
+generated_at: 2026-08-09T17:25:44.904Z
 kind: knowledge_bundle
 nodes:
   - id: a54ff182c7e8acf5
@@ -8,7 +8,7 @@ nodes:
     source_path: AGENTS.md
     summary: "# AGENTS.md - AI coding agent szabalyzat > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPECET > KELL"
     tags: [agents, coding, agent, szabalyzat, kotelezo, ervenyu, szabaly, teszt, integritas, nincs]
-    areas: [aml, arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, napzaras, penztar, riport, security, specifikacio, sync, tenant]
+    areas: [aml, arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, legacy, napzaras, penztar, riport, security, specifikacio, sync, tenant]
   - id: 4105fb6c90109f86
     type: short-term-core
     title: AI_CONSTITUTION.md - mukodesi alapelvek
@@ -7338,6 +7338,13 @@ nodes:
     summary: "--- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour"
     tags: [aktiv, repo, memoria, read, gate, area, taxonomia, stale, check, date]
     areas: [cimletezes, ertektar, sync, tenant]
+  - id: be68989e6ea5a2e7
+    type: medium-term-episodic
+    title: "Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása"
+    source_path: vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md
+    summary: "--- date: 2026-08-09 title: Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása type: session status: complete tags: [memory, legacy, excmd, felmeres-kb, agent-rules, recovery] --- # Handoff — a memória legacy-vakfoltjának megszüntetése ## A probléma (audit) A bundle 382 forrást indexelt, és a fejlesztéshez ténylegesen szükséges tudás szinte teljes egészében kimaradt. Git-trackelt fájlokhoz mért le"
+    tags: [legacy, tudasbazis, beindexelese, elveszett, felmeresi, helyreallitasa, date, 2026, title, type]
+    areas: [ertektar, legacy, riport, specifikacio]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -7376,6 +7383,9 @@ edges:
     relation: belongs_to_area
   - from: a54ff182c7e8acf5
     to: area_installer
+    relation: belongs_to_area
+  - from: a54ff182c7e8acf5
+    to: area_legacy
     relation: belongs_to_area
   - from: a54ff182c7e8acf5
     to: area_napzaras
@@ -22275,6 +22285,18 @@ edges:
   - from: 9b6f403d1655a914
     to: area_tenant
     relation: belongs_to_area
+  - from: be68989e6ea5a2e7
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: be68989e6ea5a2e7
+    to: area_legacy
+    relation: belongs_to_area
+  - from: be68989e6ea5a2e7
+    to: area_riport
+    relation: belongs_to_area
+  - from: be68989e6ea5a2e7
+    to: area_specifikacio
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22332,9 +22354,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: aca7bcfec6996618
-    to: repo_project_state
-    relation: informs
   - from: c206e27893093403
     to: repo_project_state
     relation: informs
@@ -22564,6 +22583,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 9b6f403d1655a914
+    to: repo_project_state
+    relation: informs
+  - from: be68989e6ea5a2e7
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

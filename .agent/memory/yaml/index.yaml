@@ -1,14 +1,14 @@
-generated_at: 2026-08-09T17:21:57.711Z
+generated_at: 2026-08-09T17:25:44.904Z
 schema_version: 1
-source_count: 1050
+source_count: 1051
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
     type: short-term-core
     path: AGENTS.md
-    sha256: 5043d408c8eec3c5aafbf7b1ac3bc0a7def916a36107fe457b8064bb53847a25
+    sha256: e3d062f120db6f419ef078ae0e5522aeb1dc178671c4c1775cd3c01e302a0364
     summary: "# AGENTS.md - AI coding agent szabalyzat > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPECET > KELL"
-    areas: [aml, arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, napzaras, penztar, riport, security, specifikacio, sync, tenant]
+    areas: [aml, arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, legacy, napzaras, penztar, riport, security, specifikacio, sync, tenant]
     keywords: [agents, coding, agent, szabalyzat, kotelezo, ervenyu, szabaly, teszt, integritas, nincs, kivetel, minden]
   - id: 4105fb6c90109f86
     title: AI_CONSTITUTION.md - mukodesi alapelvek
@@ -1686,6 +1686,15 @@ medium_term:
     summary: "--- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour"
     areas: [cimletezes, ertektar, sync, tenant]
     keywords: [aktiv, repo, memoria, read, gate, area, taxonomia, stale, check, date, 2026, title]
+  - id: be68989e6ea5a2e7
+    title: "Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md
+    status: complete
+    sha256: 3bf42d91ea4812c5a018158750aae7eb00930a89c9bcb7324ad43e6453068efd
+    summary: "--- date: 2026-08-09 title: Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása type: session status: complete tags: [memory, legacy, excmd, felmeres-kb, agent-rules, recovery] --- # Handoff — a memória legacy-vakfoltjának megszüntetése ## A probléma (audit) A bundle 382 forrást indexelt, és a fejlesztéshez ténylegesen szükséges tudás szinte teljes egészében kimaradt. Git-trackelt fájlokhoz mért le"
+    areas: [ertektar, legacy, riport, specifikacio]
+    keywords: [legacy, tudasbazis, beindexelese, elveszett, felmeresi, helyreallitasa, date, 2026, title, type, session, status]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-09T17:21:57.711Z
+generated: 2026-08-09T17:25:44.904Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — 2026-07-05 PROD-VERSION-STALE (DNS-misroute) diagnózis + fix** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-05-prod-version-stale-dns-misroute.md`
-  - summary: # Handoff — 2026-07-05 PROD-VERSION-STALE (DNS-misroute) diagnózis + fix ## Mi volt a baj A publikus `excvaluta.com`/`/api/v1/version` hetekig `2.28.8`-at adott (buildTime 07-04 15:11), miközben minden deploy sikeresen `2.28.27`-et telepített. A backlog eredeti hipotézise (systemctl restart nem cserélte a JVM-et) **HAMIS** volt. ## Valós gyökérok (VERIFY-DON'T-TRUST győzött) - Hetzner primary VÉGIG egészséges: `curl
 
 - **Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-06-anthropic-outage-fs-d-pending.md`
@@ -243,6 +239,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Aktív repo-memória (read-gate + area-taxonómia + stale-check)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md`
   - summary: --- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour
+
+- **Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md`
+  - summary: --- date: 2026-08-09 title: Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása type: session status: complete tags: [memory, legacy, excmd, felmeres-kb, agent-rules, recovery] --- # Handoff — a memória legacy-vakfoltjának megszüntetése ## A probléma (audit) A bundle 382 forrást indexelt, és a fejlesztéshez ténylegesen szükséges tudás szinte teljes egészében kimaradt. Git-trackelt fájlokhoz mért le
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
