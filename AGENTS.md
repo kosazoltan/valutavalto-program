@@ -138,7 +138,23 @@ kotelezo:
 ```bash
 npm run memory:query -- "<funkcio>" --area legacy --limit 8
 npm run memory:query -- "<funkcio>" --area specifikacio --limit 8
+npm run memory:symbol -- "<funkcio>"          # HOL csinalta a regi program
 ```
+
+**Legacy szimbolum-index.** A `memory:symbol` a teljes Delphi forras (8304
+fajl, 331 modul) szimbolum-terkepen keres: modulnev, exportalt DLL-API,
+form-osztaly, eljaras, erintett DB-tabla es kepernyo-felirat alapjan. A talalat
+megadja a konkret forrasfajlt, igy a regi megoldas azonnal megnyithato.
+
+```bash
+npm run memory:symbol -- sztorno              # modul + API + tablak
+npm run memory:symbol -- --table CIMLETEK     # ki irja/olvassa a tablat
+npm run memory:symbol -- --export cimletezorutin
+npm run memory:symbol -- --list-tables        # mind a 212 legacy tabla
+npm run memory:symbol -- --list-exports       # mind a 170 exportalt API
+```
+
+Az indexet a `npm run memory:legacy-index` epiti ujra (a korpusz valtozasakor).
 
 - Ha a legacy mar megoldotta: az implementacio elott le kell irni, hogyan
   csinalta a regi program, es indokolni kell minden szandekos elterest.

@@ -1,10 +1,24 @@
 {
-  "generated_at": "2026-08-09T17:25:44.904Z",
-  "source_count": 1051,
+  "generated_at": "2026-08-09T17:37:58.762Z",
+  "source_count": 1052,
   "sources": [
     {
+      "path": ".agent/memory/legacy/legacy-module-map.md",
+      "sha256": "8de13cca75f0e7df193d40a4779372109f56c16bc82487ba99c9839ba31b6dcd",
+      "type": "long-term-legacy",
+      "areas": [
+        "arfolyam",
+        "cimletezes",
+        "ertektar",
+        "legacy",
+        "napzaras",
+        "penztar",
+        "riport"
+      ]
+    },
+    {
       "path": "AGENTS.md",
-      "sha256": "e3d062f120db6f419ef078ae0e5522aeb1dc178671c4c1775cd3c01e302a0364",
+      "sha256": "d6d2d1bba12183165b75330e8e569e6908e72cf0b903a42dbc8b3961ad2a1669",
       "type": "short-term-core",
       "areas": [
         "aml",

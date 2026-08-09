@@ -71,6 +71,8 @@
     "memory:query": "node scripts/repo-memory.mjs query",
     "memory:areas": "node scripts/repo-memory.mjs areas",
     "memory:stale-check": "node scripts/repo-memory.mjs stale-check",
+    "memory:legacy-index": "python scripts/legacy-symbol-index.py",
+    "memory:symbol": "python scripts/legacy-symbol-query.py",
     "ci:errors": "node scripts/ci-error-digest.mjs",
     "agent:guard": "node scripts/agentward-guard.mjs",
     "agent:archive": "node scripts/agent-decision-log.mjs",

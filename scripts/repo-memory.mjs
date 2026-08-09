@@ -351,6 +351,11 @@ function collectSources() {
     path.join(root, 'AGENTS.md'),
     path.join(root, 'AI_CONSTITUTION.md'),
     path.join(root, 'docs', 'LESSONS_LEARNED.md'),
+    // Generated digest of the legacy Delphi symbol index. The corpus itself
+    // (~45 MB of Pascal) is far too large to full-text index, but this map of
+    // module -> exported API / form class / SQL tables answers "where did the
+    // old program do X?" and is small enough to live in the bundle.
+    path.join(root, '.agent', 'memory', 'legacy', 'legacy-module-map.md'),
   ])
     if (exists(file)) candidates.push(file)
 

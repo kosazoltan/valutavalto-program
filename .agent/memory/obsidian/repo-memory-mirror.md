@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-09T17:25:44.904Z
+generated: 2026-08-09T17:37:58.762Z
 ---
 
 # Repo Memory Mirror
@@ -8,10 +8,11 @@ generated: 2026-08-09T17:25:44.904Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1051
-- generated: 2026-08-09T17:25:44.904Z
+- sources: 1052
+- generated: 2026-08-09T17:37:58.762Z
 
 ## Sources
+- [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
 - [[AGENTS.md - AI coding agent szabalyzat]] — `AGENTS.md` (short-term-core)
 - [[AI_CONSTITUTION.md - mukodesi alapelvek]] — `AI_CONSTITUTION.md` (short-term-core)
 - [[AI_CONTRACT.md - hard korlatok AI coding agenteknek]] — `AI_CONTRACT.md` (semantic-reference)
