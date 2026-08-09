@@ -19,7 +19,24 @@ npm run memory:areas
 ```
 
 Areas: `ertektar penztar napzaras arfolyam cimletezes sync aml tenant riport
-database installer deploy security frontend legacy`.
+database installer deploy security frontend legacy specifikacio`.
+
+## Mandatory legacy lookup
+
+The memory holds the full analysis of the original Delphi program (gap matrices
+over ~645k source lines, Firebird schema reconstruction, DLL parity, RE
+reports), the EXCMD requirement corpus (~495 docs) and the recovered survey
+knowledge base. The feature being asked for is very often already solved there.
+
+Before any new feature, behaviour change or regression hunt:
+
+```bash
+npm run memory:query -- "<feature>" --area legacy --limit 8
+npm run memory:query -- "<feature>" --area specifikacio --limit 8
+```
+
+State how the legacy solved it and justify every intentional deviation, or say
+explicitly that the queries returned nothing.
 
 - Cite the hits (path + the fact used) in the implementation plan, or state
   explicitly that the query returned nothing relevant.

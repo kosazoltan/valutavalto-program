@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-09T16:29:20.247Z
+generated: 2026-08-09T17:21:57.711Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — 2026-06-15 — AI biztonsági-audit doktrína + operating-fájl cleanup + módszertan-beépítés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-06-15-ai-audit-doktrina-es-operating-cleanup.md`
-  - summary: # Handoff — 2026-06-15 — AI biztonsági-audit doktrína + operating-fájl cleanup + módszertan-beépítés ## Mi történt (3 PR, mind docs/agent-konfig — NINCS deploy, a futó backend bitre azonos) 1. **PR #1144** (main `330cb0fc`) — AI defenzív audit **doktrína**: új mandate `vault/feedback/security-audit-mandate-2026-06-15.md` + playbook + `docs/security/ai-audit-profile.yaml` + effort-allokáció **vezérelv** (max effort ah
 
 - **Handoff — 2026-07-05 PROD-VERSION-STALE (DNS-misroute) diagnózis + fix** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-05-prod-version-stale-dns-misroute.md`
@@ -244,6 +240,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `vault/sessions/handoff-2026-08-04-fkh029-vault-cash-balance-scope.md`
   - summary: # Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés **Dátum:** 2026-08-04 · **Branch:** `fkh029-vault-cash-balance-scope` (main `9a48f0dd`-ből) ## Miért Az FKH-028 V369 csak BR020-at pótolta (FR-5 tudatos scope-kivétel). Az élő prod audit (read-only, Hetzner) szerint **7 további aktív Értéktárnak 0 `cash_balance` sora** volt, és **BR075 Békéscsaba 10 PENDING átadása 2026-05-26 óta b
 
+- **Aktív repo-memória (read-gate + area-taxonómia + stale-check)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md`
+  - summary: --- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour
+
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
   - summary: # Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult ## Kiváltó kontextus A RUB-visszaállítás (PR #1147: V327–V329, RUB `is_active=true` + címlet + currency_stock) után a deploy **Gate A (Hetzner lokális 'valuta' DB)** pirosat adott: `V326 != repo V329`. A diagnózis (read-only, `hetzner-db-check.yml` bővítve a `chore/prod-flyway-diagnose` branchen) az al
@@ -253,6 +253,30 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor) > Ez a v2.5.x–v2.27.25 release-horgony + telepítő-SHA + LEZÁRVA történet, amit a CLAUDE.md-ből > a karcsúsításkor ide mozgattunk (kontextus-bloat csökkentés). A kötelező mandátumok + a friss > release-horgony a CLAUDE.md-ben maradtak. Történeti referencia; a repo-tény (git log) az erősebb. ## Aktuális release-állapot (a következő agent sz
 
 ## Operativ Memoria
+
+- **Doc↔kód konformancia-audit — Foglaló + Bizonylatok + Bizonylat-szűrés** (operational-receipt)
+  - source: `EXCMD/_compare/2026-06-02-reverify/03-foglalo-bizonylat.md`
+  - summary: # Doc↔kód konformancia-audit — Foglaló + Bizonylatok + Bizonylat-szűrés Dátum: 2026-06-02 Auditált specifikációk: - `EXCMD/b4-bizonylatok.md` (FR-1..FR-16) - `EXCMD/b4-foglalo.md` (FR-1..FR-16) - `EXCMD/b5b-bizonylat-szures.md` (FR-BSZUR-01..05) Módszer: spec-követelmény soronkénti összevetés az aktuális kóddal. „IMPLEMENTED" csak file:line bizonyítékkal. Backend vs frontend/kliens megkülönböztetve. Jelmagyarázat: ✅
+
+- **B3 (b4-bizonylatok FR-15/16 — „MEGSEM" bizonylat) — verdikt: MOOT a modern architektúrában (category-C)** (operational-receipt)
+  - source: `EXCMD/_compare/2026-06-04-B3-megsem-bizonylat-verdikt.md`
+  - summary: # B3 (b4-bizonylatok FR-15/16 — „MEGSEM" bizonylat) — verdikt: MOOT a modern architektúrában (category-C) > EXCMD↔kód összevetés, 2026-06-04. Tényalapú, file:line bizonyítékkal. NEM implementálandó (architektúra-eltérés, nem bug). > > Helyesírási konvenció ebben a dokumentumban: a **„MEGSEM"** (ékezet nélkül, nagybetűvel) a legacy Delphi által a bizonylatra NYOMTATOTT literál felirat; a **„mégsem gomb"** (ékezettel,
+
+- **C3 összevetés — Foglaló (b4-foglalo) + Bizonylatok (b4-bizonylatok) + Engedélyezés-adatok (b3)** (operational-receipt)
+  - source: `EXCMD/_compare/c3-foglalo-bizonylat-engedely.md`
+  - summary: # C3 összevetés — Foglaló (b4-foglalo) + Bizonylatok (b4-bizonylatok) + Engedélyezés-adatok (b3) Forrás-spec-ek vs. tényleges kód (v2.26.18). Kutatás-only, nincs kódmódosítás. ## b4-foglalo.md — Foglaló (ügyfél-előleg) | FR | Státusz | Kód-bizonyíték | Hiány | | --- | --- | --- | --- | | FR-1 pénztár(kassza) azonosító | PARTIAL | `Reservation.branch` + `worker` (`entity/Reservation.java:60-69`); SecurityUtils branchI
+
+- **Zárás-képernyők és zárási bizonylatok (napi/dekád/havi/értéktári + címletezés)** (operational-receipt)
+  - source: `EXCMD/b2-zaras-kepernyok-bizonylatok.md`
+  - summary: --- title: "Zárás-képernyők és zárási bizonylatok (napi/dekád/havi/értéktári + címletezés)" modul: b2-zaras-kepernyok-bizonylatok kategoria: zaras alkalmazas: penztar-client szerepokor: - ROLE_CASHIER - ROLE_TREASURER - ROLE_SUPERVISOR - ROLE_AUDITOR forrasok: - "Felmérés/.../Bizonylatok/Napi zárás.jpg" - "Felmérés/.../Bizonylatok/2024. március. 1. havi dekádzárás.jpeg" - "Felmérés/.../Bizonylatok/Zárás-Értéktár.jpeg
+
+- **Bizonylatok (forint átadás/átvétel, KKTG, pénztári bizonylatok)** (operational-receipt)
+  - source: `EXCMD/b4-bizonylatok.md`
+  - summary: --- title: "Bizonylatok (forint átadás/átvétel, KKTG, pénztári bizonylatok)" modul: b4-bizonylatok kategoria: bizonylatok alkalmazas: penztar-client szerepokor: - ROLE_CASHIER - ROLE_TREASURER forrasok: - "Felmérés/.../Bizonylatok/KKTG átadás és átvétel.jpg" - "Felmérés/.../Bizonylatok/pénztári átvétel.jpeg" - "Felmérés/.../Bizonylatok/Pénztári átadás 2.jpg" - "Felmérés/.../Bizonylatok/Áfolyam nyomtatás _ Pénztárosi
+
+- **Bizonylatok szűrése képernyő** (operational-receipt)
+  - source: `EXCMD/b5b-bizonylat-szures.md`
+  - summary: --- title: "Bizonylatok szűrése képernyő" modul: b5b-bizonylat-szures kategoria: bizonylatok alkalmazas: penztar-client szerepokor: - ROLE_CASHIER - ROLE_TREASURER - ROLE_INTERNAL_AUDITOR forrasok: - "Felmérés/Valuta/Cégesoport felmérése/Képernyőképek/Bizonylatok szűrése.jpeg" - "Felmérés/Valuta/Cégesoport felmérése/Képernyőképek/Bizonylatok szűrése2.jpeg" prio: Közepes utolso_frissites: "2026-06-02" media_eredetu: t
 
 - **ReceiptController.java** (operational-receipt)
   - source: `backend/src/main/java/hu/puzzleir/valuta/controller/ReceiptController.java`
@@ -370,228 +394,204 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `backend/src/test/java/hu/puzzleir/valuta/service/TransactionServiceReceiptScopeFk071Test.java`
   - summary: package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.BranchRepository; import hu.puzzleir.valuta.repository.CashBalanceRepository; import hu.puzzleir.valuta.repository.CircularRepository; import hu.puzzleir.valuta.repository.CompanyRepository; import hu.puzzleir.valuta.repository.CurrencyRe
 
-- **Lessons Learned — Valutavalto ERP** (operational-lessons)
-  - source: `docs/LESSONS_LEARNED.md`
-  - summary: # Lessons Learned — Valutavalto ERP > **KOTELEZO ERVENYU** minden agent-nek: programozas elott olvasd el. A listahoz minden uj hiba > hozzaadando, hogy soha tobbe ne ismetelodjon. Lista dokumentalva: 2026-04-21 session-tol kezdve. Kategoriak szerint. Minden tetel tartalmaz: **hiba**, **megoldas**, **gyors-check** (hogyan kerulod el legkozelebb). --- ## 1. PowerShell / Shell scripting ### 1.1 `$pid` read-only PowerShe
-
-- **Compliance Audit Checklist — NGM 23/2014 + AML (2017. évi LIII. tv.) + GDPR** (operational-runbook)
-  - source: `docs/operations/compliance-audit-checklist.md`
-  - summary: # Compliance Audit Checklist — NGM 23/2014 + AML (2017. évi LIII. tv.) + GDPR > **Hatókör:** Valutaváltó ERP (`excvaluta.com`), EBC Zrt. üzemeltetés. > **Célközönség:** compliance officer, DPO, külső auditor, NAV/MNB ellenőrzésre felkészülés. > **Utolsó frissítés:** 2026-05-06. > **Felülvizsgálat:** éves teljes audit + negyedéves spot-check (lásd 5. szakasz). > **Eredmény-jelölés:** PASS / PARTIAL / FAIL / VERIFY / G
-
-- **Disaster Recovery & Backup runbook — Valutaváltó ERP** (operational-runbook)
-  - source: `docs/operations/dr-backup-runbook.md`
-  - summary: # Disaster Recovery & Backup runbook — Valutaváltó ERP > **Hatókör:** Hetzner production környezet (`excvaluta.com`). > **Célközönség:** rendszergazdák, üzemeltetésért felelős fejlesztők, DPO. > **Utolsó frissítés:** 2026-05-06. > **NEM végfelhasználói dokumentum** (a kollégák számára a telepítő automatikusan kezel mindent — lásd `CLAUDE.md` "nem-informatikus végfelhasználók alapelv"). --- ## 1. Production architektú
-
-- **Production Monitoring runbook — Valutaváltó ERP** (operational-runbook)
-  - source: `docs/operations/monitoring-runbook.md`
-  - summary: # Production Monitoring runbook — Valutaváltó ERP > **Hatókör:** `excvaluta.com` (Hetzner production). > **Célközönség:** rendszergazdák, on-call fejlesztők, DPO. > **Utolsó frissítés:** 2026-05-06. > **Kapcsolódó:** `dr-backup-runbook.md` (DR), `compliance-audit-checklist.md` (compliance). --- ## 1. Mit kell monitorozni — KPI lista | KPI | Cél | Forrás | Alert szint | |---|---|---|---| | `bootstrap-status` HTTP 200
-
-- **ReceiptPrint.tsx** (operational-receipt)
-  - source: `frontend-react/src/components/ReceiptPrint.tsx`
-  - summary: /** * NAV-szabvanyu adomentes valutavalto bizonylat sablon. * * I18N EXEMPTION: a `eslint.config.js`-ben kifejezetten ki van veve a * `i18next/no-literal-string` rule alol (lasd ott a "NAV bizonylat" override * blokkot). Az alabbi JSDoc dokumentalja MIERT: * * Minden JSX literal a fajlban jogszabalyi vagy NAV mintaszerusegbol KOTELEZO: * - "Adomentes a szolgaltatas nyujtasa a 2007. evi CXVII. tv. 86 § e) alapjan" * -
-
-- **ReceiptPreviewModal.multiline.test.tsx** (operational-receipt)
-  - source: `frontend-react/src/components/electron/ReceiptPreviewModal.multiline.test.tsx`
-  - summary: import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a valuta-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), })) // Több-valutás (multi-line) v
-
 ## Hosszu Tavu Memoria
 
-- **LegacyCompanyIdentityCodec.java** (semantic-reference)
-  - source: `backend/src/main/java/hu/puzzleir/valuta/util/LegacyCompanyIdentityCodec.java`
-  - summary: package hu.puzzleir.valuta.util; import java.util.UUID; /** * UUID -> legacy Integer company identity bridge. * * Legacy modulok egy resze Integer companyId-t hasznal, * mig az uj multi-tenant modell UUID-t. A lekepzesnek stabilnak * es reprodukalhatonak kell lennie ugyanarra a UUID-re. */ public final class LegacyCompanyIdentityCodec { private LegacyCompanyIdentityCodec() { } public static Integer toLegacyInt(UUID c
+- **AI_CONTRACT.md - hard korlatok AI coding agenteknek** (semantic-reference)
+  - source: `AI_CONTRACT.md`
+  - summary: # AI_CONTRACT.md - hard korlatok AI coding agenteknek > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A S
 
-- **JwtLegacyTokenCompatTest.java** (semantic-reference)
-  - source: `backend/src/test/java/hu/puzzleir/valuta/security/JwtLegacyTokenCompatTest.java`
-  - summary: package hu.puzzleir.valuta.security; import io.jsonwebtoken.Jwts; import io.jsonwebtoken.security.Keys; import org.junit.jupiter.api.Test; import org.springframework.core.env.Environment; import org.springframework.test.util.ReflectionTestUtils; import java.nio.charset.StandardCharsets; import java.util.Base64; import java.util.Date; import java.util.LinkedHashMap; import java.util.List; import java.util.Map; import
+- **Valutavalto ERP - Komplex Rendszer Architektura** (semantic-reference)
+  - source: `ARCHITECTURE.md`
+  - summary: # Valutavalto ERP - Komplex Rendszer Architektura ## Hogyan mukodik egyben a harom komponens ## Egy paranccsal az egesz indul Indit (szines concurrently output-tal): 1. **db**: PostgreSQL 16 docker container (5432) - a data reteg 2. **backend**: Spring Boot (mvnw spring-boot:run) - var a DB-re `wait-on tcp:5432` 3. **frontend**: Vite dev server (3000) - var a backend-re `wait-on /api/v1/auth/bootstrap-status` 4. **el
 
-- **LegacyCompanyIdentityCodecTest.java** (semantic-reference)
-  - source: `backend/src/test/java/hu/puzzleir/valuta/util/LegacyCompanyIdentityCodecTest.java`
-  - summary: package hu.puzzleir.valuta.util; import org.junit.jupiter.api.Test; import java.util.UUID; import static org.junit.jupiter.api.Assertions.*; class LegacyCompanyIdentityCodecTest { @Test void toLegacyInt_returnsNullForNull() { assertNull(LegacyCompanyIdentityCodec.toLegacyInt(null)); } @Test void toLegacyInt_isStableForSameUuid() { UUID companyId = UUID.fromString("123e4567-e89b-12d3-a456-426614174000"); Integer first
+- **Architektúra Döntések** (semantic-reference)
+  - source: `ARCHITECTURE_DECISIONS.md`
+  - summary: # Architektúra Döntések **Dátum:** 2024-12-15 **Projekt:** Valuta Váltó Rendszer - React + Spring Boot --- ## ✅ Kritikus Döntések (Megerősítve) ### 1. Multi-Tenant Architektúra **Döntés:** MULTI-TENANT (2 cég) **Cégek:** 1. **Exclusive Best Change Zrt.** (Best Change) - Legacy kód: `_kftnev := 'BEST'` - Cég név: `_cegnev := 'Exclusive Best Change ZRT.'` - Legacy logo: ChangeEmblemaPanel - **Színséma:** Piros, fekete,
 
-- **Legacy vs Modern — Összehasonlítás és Gap Analízis** (semantic-reference)
-  - source: `docs/knowledge/analysis/gap-comparison-2026-04-07.md`
-  - summary: # Legacy vs Modern — Összehasonlítás és Gap Analízis > Dátum: 2026-04-08 02:45 | Forrás: Junior legacy + modern elemzés --- ## 1. TELJES LEFEDETTSÉGI MÁTRIX | Legacy Modul | Legacy KB | Modern Service | Modern KB | Állapot | Gap | |-------------|----------|----------------|----------|---------|-----| | Adatgyűjtő (receptor) | 77 | DataCollectionService | 10 | MEGVAN | Receptor pattern nem kell (centralizált DB) | | F
+- **2026.05.20-2026.06.01 modulfejlesztes kodrevizio es javitasi terv** (semantic-reference)
+  - source: `EXCMD/2026-05-20_2026-06-01_modulfejlesztes_kodrevizio_javitasi_terv.md`
+  - summary: # 2026.05.20-2026.06.01 modulfejlesztes kodrevizio es javitasi terv Keszult: 2026-06-01. Cel: a 2026.05.20 es 2026.06.01 kozotti modulfejlesztesek tenyalapu ujraellenorzese, kulonosen az arfolyamkeszito/FK02-FK04, FK013-FK014, shipment, backend API, frontend TS/TSX, adatbazis schema/index es memoria/ledger allitasok alapjan. Fontos korlat: ez dokumentacios audit es javitasi utasitas. Uzleti kod nem lett modositva. ##
 
-- **Junior — Legacy SZERVER Részletes Elemzés (10K szegmensekben)** (semantic-reference)
-  - source: `docs/knowledge/analysis/junior-legacy-szerver-detailed-2026-04-07.md`
-  - summary: # Junior — Legacy SZERVER Részletes Elemzés (10K szegmensekben) > Dátum: 2026-04-07 | Módszer: forráskód beolvasás 200 soronként, szegmensenként elemzés --- ## SZEGMENS 1: unit29.pas — TADATLEGYUJTES (Adatgyűjtő/Receptor) [0-400 sor] ### Funkció A **központi adatgyűjtő modul** — az összes iroda (pénztár) adatait összegyűjti a központi szerverre. ### Architektúra - **Receptor pattern:** Minden iroda saját Firebird DB-
+- **2026-06-01 — Audit-verifikáció eredménye (a 2026-05-20…06-01 modulfejlesztés zárása)** (semantic-reference)
+  - source: `EXCMD/2026-06-01_audit-verifikacio-eredmeny.md`
+  - summary: # 2026-06-01 — Audit-verifikáció eredménye (a 2026-05-20…06-01 modulfejlesztés zárása) Cél: a `2026-05-20_2026-06-01_modulfejlesztes_kodrevizio_javitasi_terv.md` (audit-PLAN) és a `vault/references/audit-2026-05-31-confirmed-findings.md` állításainak **tény-alapú újraellenőrzése a JELENLEGI kód ellen** (HEAD: main @ #978/2.27.79). Minden megállapítás file:line bizonyítékkal. > **Fő következtetés:** az audit-PLAN doc
 
-- **Modern Valutaváltó Részletes Elemzés (Tamás+Nóra helyett Junior)** (semantic-reference)
-  - source: `docs/knowledge/analysis/tamas-nora-modern-detailed-2026-04-07.md`
-  - summary: # Modern Valutaváltó Részletes Elemzés (Tamás+Nóra helyett Junior) > Dátum: 2026-04-08 02:30 | 192 backend service, 209 frontend komponens --- ## SZEGMENS 1-5: TOP 30 BACKEND SERVICE-EK ### MnbReportService (51KB) — MNB jelentés generálás - NAV/MNB havi, negyedéves, éves riportok - Modern: teljes implementáció ### AmlService (49KB) — Pénzmosás elleni védelem - Göngyölés, küszöbérték, szankciólista, bejelentés - AML h
+- **2026-06-02 tranzakciós hibák - tényalapú kódaudit és javítási utasítás** (semantic-reference)
+  - source: `EXCMD/2026-06-02_tranzakcio_keszlet_allampolgarsag_savos_arfolyam_kezelesi_dij_audit_javitasi_utasitas.md`
+  - summary: # 2026-06-02 tranzakciós hibák - tényalapú kódaudit és javítási utasítás ## Cél és korlátok Ez az audit a 2026-06-02-án jelzett pénztári hibákat vizsgálja: - eladás/vétel készletmozgásának elvárt működése; - két 06.02-i tétel hiánya a tranzakciólistából; - állampolgárság mező korlátozott választéka; - sávos árfolyam nem választható / Electron kliensben nem érvényesül; - kezelési költség beállíthatósága és módosítható
 
-- **Legacy Reverse Engineering — Index & Kereső** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/INDEX.md`
-  - summary: --- type: registry scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Legacy Reverse Engineering — Index & Kereso" load: on-demand --- # Legacy Reverse Engineering — Index & Kereső > **Keletkezés:** 2026-04-02 (eredeti elemzés), 2026-04-05 (vault archiválás + gap audit) > **Forrás:** `D:\repo\valutavalto-program\Anti\VALUTA\` — Delphi 7 legacy rendszer > **Cél:** A moder
+- **EXCMD konverter — közös instrukció (SABLON 2, valutaváltó)** (semantic-reference)
+  - source: `EXCMD/2026-06-03-ertektar-nyomtatas-es-virtualis-partnerek-eltavolitasa.md`
+  - summary: <system_context> # EXCMD konverter — közös instrukció (SABLON 2, valutaváltó) ## Kontextus Ezt a specifikációt az AI-ügynök az átadás-átvételi bizonylatnyomtatás, valamint a virtuális partnerek Központi Munkaállomás felületeiről történő eltávolításának megvalósításához használja fel. A projekt helye: Valutaváltó Repo (`D:\repo\valutavalto-program`). ## Technológiai Stack (Tech Stack) - **Backend**: Java 21 + Spring B
 
-- **Anti Valutavalto - Egyesiitett Reverse Engineering Elemzes** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/RE-egyestitett-osszes-csapat-elemzes.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Anti Valutavalto - Egyesiitett Reverse Engineering Elemzes" load: on-demand --- # Anti Valutavalto - Egyesiitett Reverse Engineering Elemzes > **Datum:** 2026-04-02 > **Projekt:** Delphi 7 legacy -> Java + React + Electron > **Szerzok:** GPT-5.4, Junior, Eszter, Tamas, Gabor > **Modszer:** 5 parhuzamos
+- **EXCMD konverter — közös instrukció (SABLON 2, valutaváltó)** (semantic-reference)
+  - source: `EXCMD/2026-06-03-keszlet-pillanatkep-hianyzo-penztarak-javitasa.md`
+  - summary: <system_context> # EXCMD konverter — közös instrukció (SABLON 2, valutaváltó) ## Kontextus Ezt a specifikációt az AI-ügynök a Készlet pillanatkép (Stock snapshot) modulban tapasztalt hiányzó pénztárak hibájának javításához használja fel. A projekt helye: Valutaváltó Repo (`D:\repo\valutavalto-program`). ## Technológiai Stack (Tech Stack) - **Backend**: Java 21 + Spring Boot 4 - **Frontend**: React 19 + TS (frontend-r
 
-- **Anti Valutaváltó — Üzleti Logika és Minőségi Elemzés** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/RE-eszter-uzleti-logika-minoseg.md`
-  - summary: --- type: session-log scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Anti Valutavalto — Uzleti Logika es Minosegi Elemzes" load: on-demand --- # Anti Valutaváltó — Üzleti Logika és Minőségi Elemzés ## S1 ESZTER_CONTROLLER_CHIEF_ELEMZESE > **Dátum:** 2026-04-02 > **Elemző:** Eszter — QA & Code Review Controller Chief > **Forrás:** `D:\repo\valutavalto-program\Anti\VAL
+- **2026-06-03 — AML/CFT GO-LIVE implementációs terv (EBC ZRT pénzmosási szabályzat alapján)** (semantic-reference)
+  - source: `EXCMD/2026-06-03_AML-go-live-terv.md`
+  - summary: # 2026-06-03 — AML/CFT GO-LIVE implementációs terv (EBC ZRT pénzmosási szabályzat alapján) Forrás (kiolvasva, tényalapú): EBC ZRT „PÉNZMOSÁS- ÉS TERRORIZMUSFINANSZÍROZÁS-MEGELŐZÉSI SZABÁLYZAT" (14/2025. (VI. 16.) MNB rendelet + Pmt. 2017. LIII. + Kit. 2017. LII. + 21/2017. NGM), hatályos 2026-05-25, valamint a „Belső kockázatértékelés" és az MNB-segédlet (2025-01-01). > **Cél:** a compliance-flag-ek élesítése (a user
 
-- **Anti Valutaváltó — UI/UX Design Elemzés és Modern Migrációs Terv** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/RE-gabor-uiux-design-wireframes.md`
-  - summary: --- type: reference scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Anti Valutavalto — UI/UX Design Elemzes es Modern Migracios Terv" load: on-demand --- # Anti Valutaváltó — UI/UX Design Elemzés és Modern Migrációs Terv > **Szerző:** Gábor (Design & Graphics Chief) > **Dátum:** 2026-04-02 > **Forrás:** `antivaluta-junior.md` (rendszer áttekintés) + `anti-dfm-pack.md`
+- **2026-06-03 — Teljes EXCMD spec ↔ kód verifikáció (mind a 30 b*.md)** (semantic-reference)
+  - source: `EXCMD/2026-06-03_teljes-spec-kod-verifikacio-eredmeny.md`
+  - summary: # 2026-06-03 — Teljes EXCMD spec ↔ kód verifikáció (mind a 30 b*.md) Készült: 2026-06-03. Módszer: 9 párhuzamos verifikáló ügynök, mindegyik a `b*.md` specek funkcionális követelményeit (FR-*) a JELEN `main` kódhoz mérte, file:line bizonyítékkal, szkeptikusan (ha nincs a kódban → OPEN). READ-ONLY felmérés, üzleti kód nem módosult ennél. > **Fontos kontextus:** a 472 EXCMD MD-ből 457 az `_ai-protokoll/ai-workitems.jso
 
-- **Gap Analysis — Legacy vs Modern Implementáció** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/RE-gap-analysis-legacy-vs-modern.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Gap Analysis — Legacy vs Modern Implementacio" load: on-demand --- # Gap Analysis — Legacy vs Modern Implementáció > **Dátum:** 2026-04-05 > **Cél:** Megtalálni, ami a legacy elemzésekben van, de a modern rendszerből hiányzik --- ## S1 IMPLEMENTALT_MODERN_RENDSZERBEN_MEGVAN | Legacy terület | Modern im
+- **AI fejlesztesi protokoll (EXCMD alapu)** (semantic-reference)
+  - source: `EXCMD/AI-fejlesztesi-protokoll.md`
+  - summary: # AI fejlesztesi protokoll (EXCMD alapu) Cel: az EXCMD utasitasfajlokbol reprodukalhato modon keszuljon 1) ticket, 2) implementacios spec, 3) teszt, 4) kod, 5) validacio. Hataly: valutavalto-program repo, backend + frontend + electron kliensek. ## 0. Bemenet (Single Source of Truth) Kotelezo forrasok: - EXCMD modul fajl (pl. b1, b2, b3b, b5b, legacy module md) - kapcsolodo media kivonat (ha van) - kapcsolodo inventor
 
-- **Anti Valutaváltó — Teljes Reverse Engineering Elemzés** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/RE-junior-teljes-rendszer-architektura.md`
-  - summary: --- type: reference scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Anti Valutavalto — Teljes Reverse Engineering Elemzes" load: on-demand --- # Anti Valutaváltó — Teljes Reverse Engineering Elemzés ## S1 JUNIOR_SZOFTVERFEJLESZTO_AGENS_ELEMZESE > **Dátum:** 2026-04-02 > **Forrás:** `D:\repo\valutavalto-program\Anti\VALUTA\` > **Technológia:** Delphi 7, Firebird/InterB
+- **FK-007 kódaudit és javítási utasítás** (semantic-reference)
+  - source: `EXCMD/FK-007_ertektar_kartyan_valutanemek_kodaudit_javitasi_utasitas.md`
+  - summary: # FK-007 kódaudit és javítási utasítás **Modul:** Központi munkaállomás / Országos készlet **Téma:** Értéktár kártyákon valutanemek megjelenítése **Audit dátuma:** 2026-06-02 **Kérés forrása:** `C:\Users\Kósa Zoltán\Downloads\FK-007_Ertektar_kartyan_valutanemek.md` és a mellékelt két képernyőkép **Fontos korlát:** Ez az audit kizárólag a jelenlegi forráskódban és migrációkban ellenőrzött tényekre épül. Nem történt ad
 
-- **Anti Valutaváltó — Technikai Architektúra és Integrációs Elemzés** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/RE-tamas-technikai-architektura.md`
-  - summary: --- type: reference scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Anti Valutavalto — Technikai Architektura es Integracios Elemzes" load: on-demand --- # Anti Valutaváltó — Technikai Architektúra és Integrációs Elemzés ## S1 TAMAS_TESTOPS_CHIEF_MELYARCHITEKTURA_ELEMZES > **Dátum:** 2026-04-02 > **Elemző:** Tamás (testops/Claude Sonnet 4.6) > **Forrás:** `D:\repo\val
+- **Modul: Központi kliens – Iroda adatainak szerkesztése (kozponti-client + backend)** (semantic-reference)
+  - source: `EXCMD/FK-022_iroda_szerkesztes.md`
+  - summary: # Modul: Központi kliens – Iroda adatainak szerkesztése (kozponti-client + backend) ## 1. Cél A Központi munkaállomás Pénztár Törzs Adatbázis moduljában meglévő iroda adatainak szerkesztése, az összes törzsadat-mező módosíthatóságával, státuszváltáskor megerősítő kérdéssel, hogy a Főértéktáros hibás vagy megváltozott adatokat javítani tudjon. ## 2. Scope ### IN - Szerkesztési form megnyitása a lista nézetből (FK-020)
 
-- **AML and BIGCTRL Rule-Level Parity** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/aml-bigctrl-rule-parity.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "AML and BIGCTRL Rule-Level Parity" load: on-demand --- # AML and BIGCTRL Rule-Level Parity > Cel: a `BIGCTRL.DLL` es a kapcsolodo AML/KYC szabalyok lebontasa konkret szabalyokra, modern hivaslanccal es teszt-bizonyitekkal. > Gepi matrix: `generated/aml-bigctrl-rule-parity-2026-04-09.csv` --- ## S1 LEGA
+- **FK02-C - Irodák listájának szűrése: kódrevízió és javítási utasítás** (semantic-reference)
+  - source: `EXCMD/FK02-C_irodak_lista_szures_kodrevizio_es_javitasi_utasitas.md`
+  - summary: # FK02-C - Irodák listájának szűrése: kódrevízió és javítási utasítás Dátum: 2026-06-01 Repo: `valutavalto-program` Téma: Az Árfolyamkészítő „Irodák kezelése” dialógjában csak pénztár típusú egységek jelenhetnek meg. Ez a dokumentum kizárólag a mellékelt specifikációk és a jelenlegi kód tényei alapján készült. Nem tartalmaz feltételezésre épített állítást. Programkód-módosítás most nem történt; ez egy AI-fejlesztő üg
 
-- **AML Wave 1 Source Reconciliation Backlog** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/aml-wave1-source-reconciliation-backlog.md`
-  - summary: --- type: reconciliation-backlog scope: aml-wave1 version: 2026-04-11 format: structured-lookup encoding: utf-8 description: "Single source reconciliation backlog for AML wave 1 closure, residual gaps, and stale-status cleanup" load: on-demand --- # AML Wave 1 Source Reconciliation Backlog > Cel: az AML wave 1 allapotat egyetlen, forras-sorrenddel ellatott closure backlogba huzni, hogy a parity matrixok, gap dokument
+- **EXCMD konverter — közös instrukció (SABLON 2, valutaváltó)** (semantic-reference)
+  - source: `EXCMD/_SABLON2-INSTRUKCIO.md`
+  - summary: <system_context> # EXCMD konverter — közös instrukció (SABLON 2, valutaváltó) ## Kontextus Minden konvertáló ügynök ELŐSZÖR ezt olvassa be. Minden EXCMD MD ezt a sémát követi. A projekt célja a Valutaváltó Repo (`D:\repo\valutavalto-program`) ERP-ben található dokumentumok és képek hű leírása AI-ügynök által végrehajtható formában. ## Technológiai Stack (Tech Stack) - **Backend**: Java 21 + Spring Boot 4 - **Frontend
 
-- **Camera Endpoint and Test Gap List** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/camera-endpoint-test-gap-list.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Camera Endpoint and Test Gap List" load: on-demand --- # Camera Endpoint and Test Gap List > Cel: a kamera alrendszer kulon HTTP/IPC endpoint-matrixa es a hozza tartozo teszt-gap lista. > Gepi matrix: `generated/camera-endpoint-gap-list-2026-04-09.csv` --- ## S1 HTTP_ENDPOINT_MATRIX | Endpoint | Handle
+- **Pénztár Törzs Adatbázis - AI ügynök utasításkészlet (2 feladat)** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/2026-06-03-penztar-torzs-ai-utasitaskeszlet.md`
+  - summary: --- title: "Pénztár Törzs Adatbázis - AI ügynök utasításkészlet (2 feladat)" modul: b2-penztar-torzs-adatbazis-felterkepezes kategoria: backend-core-data alkalmazas: backend szerepokor: - ROLE_ADMIN - ROLE_FOERTEKTAR - ROLE_UGYVEZETO forrasok: - "C:/Users/Kósa Zoltán/Downloads/FELTERKEPEZES_penztar_torzs.md" - "EXCMD/_ai-protokoll/OCR-MD-korrekcio-portolhato-playbook.md" - "EXCMD/_inventory/docx-text/Kósa Szervezés
 
-- **Camera Subsystem Knowledge Base and Rebuild Plan** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/camera-subsystem-knowledge-base.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Camera Subsystem Knowledge Base and Rebuild Plan" load: on-demand --- # Camera Subsystem Knowledge Base and Rebuild Plan > Cel: a kamera alrendszert kulon termekcsaladkent kezelni, nem pusztan egy admin oldalkent. --- ## S1 LEGACY_TERKEP | Terulet | Szerep | |---------|--------| | `Anti/camera` | telep
+- **EXCMD teljes audit — státusz-revízió + javítás (2026-06-04)** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/2026-06-04-excmd-teljes-audit-statusz-es-javitas.md`
+  - summary: # EXCMD teljes audit — státusz-revízió + javítás (2026-06-04) **Módszer:** a teljes EXCMD mappa (595 fájl) finding-listáit (`_compare/2026-06-02-reverify/00-MASTER-GAPS.md` A1–A7/B1–B10, `b3-arfolyam-karbantarto-hibalista` FR-HL-01..19, `_ai-protokoll/high-priority-explicit-fr`, b1–b10 spec-FR-ek) **4 párhuzamos verifikáló-ügynökkel a JELENLEGI kód ellen** újra-ellenőriztük (branch `feat/aml-senior-approval-frontend-
 
-- **Byte-Level Format Sheets for `ARFDATA.DAT` and `FOGLALO.DAT`** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/dat-format-sheets.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Byte-Level Format Sheets for ARFDATA.DAT and FOGLALO.DAT" load: on-demand --- # Byte-Level Format Sheets for `ARFDATA.DAT` and `FOGLALO.DAT` > Fontos: ez a lap **bizonyitek-alapu formatumlap**, nem teljesen visszaellenorzott binaris parser-spec. Ahol nincs valos minta/hex dump, ott a sor `inferred` vag
+- **Kód-audit és javítási terv — 2026.05.20–06.04 modulfejlesztés ground-truth ellenőrzése** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/2026-06-04-kod-audit-es-javitasi-terv.md`
+  - summary: --- title: "Kód-audit és javítási terv — 2026.05.20–06.04 modulfejlesztés ground-truth ellenőrzése" modul: kod-audit-felulvizsgalat kategoria: minoseg-audit alkalmazas: backend + frontend-react + 3 Electron kliens prio: Magas keszult: "2026-06-04" modszer: ground-truth (typecheck / eslint / teszt / grep) — NEM leírás-alapú, kizárólag kódtény --- # 0. Összefoglaló (TL;DR) A 2026.05.20–06.04 intervallum modulfejlesztés
 
-- **Felmérés Hang 002 — Strukturált Kézi Kivonat** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/felmeres-hang-002-structured-summary.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Felmérés Hang 002 — strukturált kézi kivonat" load: on-demand --- # Felmérés Hang 002 — Strukturált Kézi Kivonat > Cél: a `Felmérés` hanganyagából olyan tudástári kivonat készítése, amely az ASR nyers szövegét üzleti és modernizációs szempontból használható szerkezetbe rendezi. > Primer transcript: `do
+- **Pénztáros (Worker/Employee) törzsadatbázis audit + javítási terv** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/2026-06-04-penztaros-torzs-audit-es-javitasi-terv.md`
+  - summary: # Pénztáros (Worker/Employee) törzsadatbázis audit + javítási terv **Dátum:** 2026-06-04 **Hatókör:** A pénztáros/dolgozó (`Worker` = login/jogosultság entity, `Employee` = HR/bér PII törzs) mesteradatbázis biztonsági + funkcionális auditja, **ugyanolyan mélységben**, mint a korábbi Pénztár (Branch) Törzs audit (#1025). Builder-mód: a talált valódi hibák **javítva** lettek, nem csak elemezve. **Módszer:** ground-trut
 
-- **Felmérés Hang 003 — Strukturált Kézi Kivonat** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/felmeres-hang-003-structured-summary.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Felmérés Hang 003 — strukturált kézi kivonat" load: on-demand --- # Felmérés Hang 003 — Strukturált Kézi Kivonat > Cél: a `Felmérés` Hang 003 anyagából kinyerhető üzleti és technikai tudás strukturált rögzítése. > Primer transcript: `docs/knowledge/generated/asr-text/Hang_003_sd-aa6901b1ee.txt` > Dupli
+- **OCR + MD korrekcio + YAML (Jammo) fejlec - Portolhato playbook** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/OCR-MD-korrekcio-portolhato-playbook.md`
+  - summary: # OCR + MD korrekcio + YAML (Jammo) fejlec - Portolhato playbook ## Cel Ez a dokumentum egy teljes, ujrafuttathato modszertan arra, hogyan vigyel vegig egy legacy + media (kep/hang) feldolgozasi csomagot egy masik repositoryban. A kimenet celja: - forrasallomany-index es coverage - OCR/ASR tartalomkivonat - EXCMD-szeru modulspec MD-k - YAML (Jammo) fejlec konzisztencia - hivatkozas-audit javitas - AI-ugynokoknek futt
 
-- **Felmérés Hang 004 — Strukturált Kézi Kivonat** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/felmeres-hang-004-structured-summary.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Felmérés Hang 004 — strukturált kézi kivonat" load: on-demand --- # Felmérés Hang 004 — Strukturált Kézi Kivonat > Cél: a `Felmérés` Hang 004 anyagából kinyerhető treasury, készlet, zárás és foglaló tudás strukturált rögzítése. > Primer transcript: `docs/knowledge/generated/asr-text/Hang_004_sd-a0fd043
+- **EXCMD AI protokoll pack** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/README.md`
+  - summary: # EXCMD AI protokoll pack Automatikusan generalt munkacsomag az osszes EXCMD modulhoz. - Modulok szama: 457 - Explicit FR kodot tartalmaz: 12 - Explicit FR nelkuli modul: 445 ## Cluster bontas - business: 56 - legacy-arfolyam: 17 - legacy-ertektar: 56 - legacy-overview: 7 - legacy-szerver: 36 - legacy-szerver-fejlesztes: 174 - legacy-valuta: 111 ## Kockazati bontas - Alacsony: 60 - Kozepes: 275 - Magas: 122 ## Kimene
 
-- **Felmérés Hang 005 — Strukturált Kézi Kivonat** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/felmeres-hang-005-structured-summary.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Felmérés Hang 005 — strukturált kézi kivonat" load: on-demand --- # Felmérés Hang 005 — Strukturált Kézi Kivonat > Cél: a `Felmérés` Hang 005 anyagából kinyerhető technikai, integrációs és környezeti tudás strukturált rögzítése. > Primer transcript: `docs/knowledge/generated/asr-text/Hang_005_sd-568ae5
+- **EXCMD teljes AI munkacsomag** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/ai-ticket-spec-test-kod-batch.md`
+  - summary: # EXCMD teljes AI munkacsomag Ez a fajl az osszes modulra tartalmaz egy roviden futtathato munkacsomag-vazat. Osszes modul: 457 ## 1. 2026.05.20-2026.06.01 modulfejlesztes kodrevizio es javitasi terv - Modul: 2026-05-20_2026-06-01_modulfejlesztes_kodrevizio_javitasi_terv - Fajl: EXCMD/2026-05-20_2026-06-01_modulfejlesztes_kodrevizio_javitasi_terv.md - Kategoria: business - Alkalmazas: penztar-client - Kockazat: Magas
 
-- **Firebird Schema Reconstruction Index** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/firebird-schema-reconstruction-index.md`
-  - summary: --- type: registry scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Firebird Schema Reconstruction Index" load: on-demand --- # Firebird Schema Reconstruction Index > Cel: a legacy Firebird/InterBase vilag adatbazisait, valoszinu szerepkoreit es a modern PostgreSQL/Flyway megfeleltetesi pontokat egy helyre gyujteni. > Gepi leltar: `generated/firebird-db-artifacts-2026-
+- **ai-workitems.jsonl** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/ai-workitems.jsonl`
+  - summary: {"module_path": "EXCMD/2026-05-20_2026-06-01_modulfejlesztes_kodrevizio_javitasi_terv.md", "mic": {"modul": "2026-05-20_2026-06-01_modulfejlesztes_kodrevizio_javitasi_terv", "title": "2026.05.20-2026.06.01 modulfejlesztes kodrevizio es javitasi terv", "kategoria": "business", "alkalmazas": "penztar-client", "fr_codes": [], "risk": "Magas"}, "ticket_template": {"title": "[2026-05-20_2026-06-01_modulfejlesztes_kodreviz
 
-- **Firebird Table to Modern Entity Matrix** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/firebird-table-to-modern-entity-matrix.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Firebird Table to Modern Entity Matrix" load: on-demand --- # Firebird Table to Modern Entity Matrix > Cel: a legacy Firebird tabla- es tablafamilia-nevek konkret modern PostgreSQL tablakhoz, entity-khez, migraciokhoz es service-ekhez kotese. > Gepi matrix: `generated/firebird-table-to-modern-entity-ma
+- **all-modules-registry.csv** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/all-modules-registry.csv`
+  - summary: path,title,modul,kategoria,alkalmazas,cluster,risk,fr_count,fr_codes EXCMD/2026-05-20_2026-06-01_modulfejlesztes_kodrevizio_javitasi_terv.md,2026.05.20-2026.06.01 modulfejlesztes kodrevizio es javitasi terv,2026-05-20_2026-06-01_modulfejlesztes_kodrevizio_javitasi_terv,business,penztar-client,business,Magas,0, EXCMD/2026-06-01_audit-verifikacio-eredmeny.md,2026-06-01 — Audit-verifikáció eredménye (a 2026-05-20…06-01
 
-- **aml-bigctrl-rule-parity-2026-04-09.csv** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/generated/aml-bigctrl-rule-parity-2026-04-09.csv`
-  - summary: rule_id,legacy_meaning,modern_implementation,endpoint_or_caller,test_evidence,status,risk R-300K,Identification required above 300000 HUF,AmlService.checkTransaction,transaction aml call chain,backend/src/test/java/hu/puzzleir/valuta/integration/AmlFlowTest.java,full,P0 R-1.5M,Detailed identification above 1500000 HUF,AmlService.checkTransaction,transaction aml call chain,backend/src/test/java/hu/puzzleir/valuta/inte
+- **high-priority-explicit-fr.csv** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/high-priority-explicit-fr.csv`
+  - summary: "path","title","modul","kategoria","alkalmazas","cluster","risk","fr_count","fr_codes" "EXCMD/b1-arfolyamkeszito-kepernyok.md","Árfolyamkészítő (RFM) — Képernyők","b1-arfolyamkeszito-kepernyok","arfolyamkeszito","arfolyam-keszito-client","business","Magas","24","FR-RFMUI-01;FR-RFMUI-02;FR-RFMUI-03;FR-RFMUI-04;FR-RFMUI-05;FR-RFMUI-06;FR-RFMUI-07;FR-RFMUI-08;FR-RFMUI-09;FR-RFMUI-10;FR-RFMUI-11;FR-RFMUI-12;FR-RFMUI-13;F
 
-- **camera-endpoint-gap-list-2026-04-09.csv** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/generated/camera-endpoint-gap-list-2026-04-09.csv`
-  - summary: endpoint,handler,auth,evidence,test_evidence,status GET /api/v1/camera/stream/{cameraId},CameraController.getLiveFrame,"MANAGER|ADMIN",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraControllerSecurityTest.java,implemented GET /api/v1/camera/status,CameraController.getCameraStatus,"MANAGER|ADMIN",CameraController.java,backend/src/test/java/hu/puzzleir/valuta/controller/CameraController
+- **Priorizalt szelet - Magas kockazat + explicit FR** (semantic-reference)
+  - source: `EXCMD/_ai-protokoll/high-priority-explicit-fr.md`
+  - summary: # Priorizalt szelet - Magas kockazat + explicit FR - Teljes modulhalmaz: 457 - Kivalasztott modulok: 12 ## Modulok - b1-arfolyamkeszito-kepernyok | Árfolyamkészítő (RFM) — Képernyők | FR: 24 - b1-arfolyamkeszito-kovetelmenylista | Modul: Árfolyamkészítő (RFM) — Követelménylista | FR: 30 - b2-sztorno | Modul: Sztornókezelés | FR: 19 - b2-zaras-ablak | Modul: Zárás Ablak (zárás-wizard) | FR: 23 - b2-zaras-kepernyok-biz
 
-- **firebird-db-artifacts-2026-04-09.csv** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/generated/firebird-db-artifacts-2026-04-09.csv`
-  - summary: path,extension,size_bytes Anti\SZERVER\_extracted\ERTEKTAR\database\engedely.fdb,.fdb,1064960 Anti\SZERVER\_extracted\ERTEKTAR\database\hazihrk.fdb,.fdb,802816 Anti\SZERVER\_extracted\ERTEKTAR\database\korlevel.fdb,.fdb,933888 Anti\SZERVER\_extracted\ERTEKTAR\database\mentes\engedely.fdb,.fdb,1064960 Anti\SZERVER\_extracted\ERTEKTAR\database\mentes\korlevel.fdb,.fdb,933888 Anti\SZERVER\_extracted\ERTEKTAR\database\me
+- **Konszolidált gap-backlog — EXCMD spec ↔ jelenlegi program** (semantic-reference)
+  - source: `EXCMD/_compare/00-KONSZOLIDALT-GAPS.md`
+  - summary: # Konszolidált gap-backlog — EXCMD spec ↔ jelenlegi program > **Készült:** 2026-05-22. Forrás: a 27 EXCMD spec (`EXCMD/b*.md`) szakaszonkénti összevetése a v2.26.18 kóddal (6 verifikációs ügynök, kód-bizonyítékkal). Részletek: `c1`–`c6` riportok ugyanitt. > > A program **érett**: a magfunkciók (Foglaló, WU, kez.ktg, ÁFA, e-ker, sztornó, napzárás, címletezés 7 stratégia, dekád/TRB, RB-mozgások, AML küszöbök, NAV/MNB,
 
-- **firebird-table-to-modern-entity-matrix-2026-04-09.csv** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/generated/firebird-table-to-modern-entity-matrix-2026-04-09.csv`
-  - summary: legacy_table_family,legacy_role,modern_tables,entity_paths,migration_paths,primary_services,mapping_type,confidence IRODAK,Branch master data,branch,backend/src/main/java/hu/puzzleir/valuta/entity/Branch.java,"backend/src/main/resources/db/migration/V0_1__base_tables.sql;backend/src/main/resources/db/migration/V95__branch_region_code.sql",BranchService.java,"1:1 core + enriched",documented ARFOLYAM,Buy sell settlemen
+- **Teljes forrás-lefedettség diszpozíció (416 fájl → 160 egyedi)** (semantic-reference)
+  - source: `EXCMD/_compare/02-TELJES-LEFEDETTSEG-DISPOZICIO.md`
+  - summary: # Teljes forrás-lefedettség diszpozíció (416 fájl → 160 egyedi) > Készült: 2026-05-22. A user-direktíva ("mindent egyenként MD-vé + gap + implementálás") > teljesítése: MINDEN egyedi forrás-kategória elszámolva, bizonyítékkal. A CLAUDE.md > no-busywork / no-hallucináció mandátum szerint spec + gap CSAK ott készült, ahol a > tartalom a programhoz képest VALÓDI új követelményt hordoz. ## Forrás-összegzés - `Felmérés/Va
 
-- **legacy-binary-inventory-2026-04-09.csv** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/generated/legacy-binary-inventory-2026-04-09.csv`
-  - summary: relative_path,area,provenance,extension,filename,basename,size_bytes,cluster,inferred_function,source_hint Anti\ARFOLYAM\Arfolyam.exe,ARFOLYAM,original,.exe,Arfolyam.exe,Arfolyam,1170432,rates,Arfolyam kezeles es rates tooling,Anti\ARFOLYAM\ARFOLYAM\Arfolyam.dpr Anti\ARFOLYAM\ARFOLYAM\Arfolyam.exe,ARFOLYAM,original,.exe,Arfolyam.exe,Arfolyam,1170432,rates,Arfolyam kezeles es rates tooling,Anti\ARFOLYAM\ARFOLYAM\Arfol
+- **Modulonkénti OCR/ASR kivonat (2026-06-02)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-media-module-content-extracts.md`
+  - summary: # Modulonkénti OCR/ASR kivonat (2026-06-02) Automatikusan generált tartalmi kivonatok a nem-duplikált médiahalmazról. ## Modul fájlok - `EXCMD/media-module-extracts/2026-06-02-ertektar-media-kivonat.md` - `EXCMD/media-module-extracts/2026-06-02-felmeres-media-kivonat.md` - `EXCMD/media-module-extracts/2026-06-02-szerver-media-kivonat.md` - `EXCMD/media-module-extracts/2026-06-02-valuta-media-kivonat.md`
 
-- **legacy-binary-summary-2026-04-09.json** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/generated/legacy-binary-summary-2026-04-09.json`
-  - summary: { "generated_at": "2026-04-09", "inventory_path": "docs\\knowledge\\legacy-reverse-engineering\\generated\\legacy-binary-inventory-2026-04-09.csv", "total_binaries": 2157, "area_counts": { "ARFOLYAM": { "exe": 2, "dll": 0 }, "VALUTA": { "exe": 155, "dll": 129 }, "SZERVER": { "exe": 430, "dll": 294 }, "SZERVER_EXTRACTED_AUTO": { "exe": 705, "dll": 406 }, "CAMERA": { "exe": 6, "dll": 0 }, "CAMERA2": { "exe": 2, "dll":
+- **Automatikus Média-Feldolgozó Passz (2026-06-02)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-media-processing-pass.md`
+  - summary: # Automatikus Média-Feldolgozó Passz (2026-06-02) ## Cél Az `Anti/`, `Felmérés/`, `forrasok/` source-of-truth mappák médiafájljainak automatikus, gépi feldolgozása: - teljes média-leltár (kép/hang/videó), - technikai metadata (méret, felbontás, időtartam), - duplikátum-analízis (SHA-256), - eredmények visszavezetése az EXCMD dokumentációba. ## Futtatott automatikus passz - Fájlbejárás: `Anti/`, `Felmérés/`, `forrasok
 
-- **legacy-dll-parity-matrix-2026-04-09.csv** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/generated/legacy-dll-parity-matrix-2026-04-09.csv`
-  - summary: legacy_area,legacy_module,legacy_cluster,legacy_role,source_hint,modern_service,modern_controller,modern_ui,test_target,parity_status,risk,notes VALUTA,vasarlas,transaction-buy,valuta vetel,Anti\VALUTA\DLL\VASARLAS\MAKEDLL,TransactionService,TransactionController,frontend-react/src/pages/transactions/TransactionPage.tsx,backend/src/test/java/hu/puzzleir/valuta/integration/TransactionFlowTest.java,full,P0, VALUTA,elad
+- **Mester gap-riport — EXCMD spec ↔ AKTUÁLIS kód újra-audit (2026-06-02)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/00-MASTER-GAPS.md`
+  - summary: # Mester gap-riport — EXCMD spec ↔ AKTUÁLIS kód újra-audit (2026-06-02) > Forrás: 9 párhuzamos fókuszált audit-ágens, kód-bizonyítékkal (`01`–`09` riportok ugyanitt). > A kód v2.27.84+ (backend 4.0.6). A 2026-05-22-i `00-KONSZOLIDALT-GAPS.md` (23/23 KÉSZ) baseline > ÓTA a kód jelentősen fejlődött; ez az audit az AKTUÁLIS állapotot verifikálta, kiterjesztve az > újabb FK/audit/b-extension fájlokra is. Minden tétel fil
 
-- **szerver-dat-file-families-2026-04-09.csv** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/generated/szerver-dat-file-families-2026-04-09.csv`
-  - summary: family,count,sample_path ARFDATA.DAT,48,Anti\ARFOLYAM\arfdata.dat DATA.DAT,8,Anti\SZERVER\_extracted_auto\SZERVER\_extracted\SZERVER\fejleszt\makeszlt\keszlex_unpacked\DATA.DAT F1415_SETTINGS.DAT,2,Anti\SZERVER\_extracted_auto\camera-20260306T145042Z-1-001_unpacked\camera\Data (2017_03_30 19_50_04 UTC)_unpacked\F1415_settings.dat F1464_IDENTITY.DAT,2,Anti\SZERVER\_extracted_auto\camera-20260306T145042Z-1-001_unpacked
+- **RFM / Árfolyamkészítő — Doc↔Kód konformancia-audit (2026-06-02 reverify)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/01-rfm-arfolyam.md`
+  - summary: # RFM / Árfolyamkészítő — Doc↔Kód konformancia-audit (2026-06-02 reverify) Forrás-specek: `b1-arfolyamkeszito-kepernyok.md`, `b1-arfolyamkeszito-kovetelmenylista.md`, `FK02-B_csoport_arfolyamlap_javitasok_findingok.md`, `b3-arfolyam-karbantarto-hibalista.md`, `b3b-erb-egyedi-kotas.md`, `b8-atlagarfolyam.md`. Kód-helyek: `frontend-react/src/pages/rates/**`, `backend/.../service|controller|repository`. Megjegyzés: a B-
 
-- **Legacy Analysis and Rebuild Knowledge Base** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/legacy-analysis-rebuild-knowledge-base.md`
-  - summary: --- type: registry scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Legacy Analysis and Rebuild Knowledge Base" load: on-demand --- # Legacy Analysis and Rebuild Knowledge Base > Cel: a teljes kibontott legacy anyaghoz egy olyan agent-kompatibilis tudasbazis letrehozasa, amely egyszerre tartalmaz elemzest, referenciautakat es ujraepitesi tervet. --- ## S1 TUDASBAZIS_RE
+- **Doc↔kód konformancia-reverify — Sztornó + Zárás (b2)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/02-sztorno-zaras.md`
+  - summary: # Doc↔kód konformancia-reverify — Sztornó + Zárás (b2) > **Készült:** 2026-06-02. Forrás-specek: `EXCMD/b2-sztorno.md`, `EXCMD/b2-zaras-ablak.md`, > `EXCMD/b2-zaras-kepernyok-bizonylatok.md`. Kód: jelenlegi `main` (HEAD e6535da59). > Módszer: követelményenkénti grep + file:line bizonyíték. "IMPLEMENTED" csak kód-hivatkozással. > Kiemelt fókusz: **G3** NAV/napzárás eltérés-magyarázat gate (`CLOSING_DISCREPANCY_EXPLANA
 
-- **Legacy Binary Functional Index** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/legacy-binary-functional-index.md`
-  - summary: --- type: registry scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Legacy Binary Functional Index" load: on-demand --- # Legacy Binary Functional Index > Elokeszites datum: 2026-04-09 > Forrasgyoker: `D:\repo\valutavalto-program\Anti\` > Geppel generalva: `generated/legacy-binary-inventory-2026-04-09.csv` > SQLite tabla: `docs/valuta-knowledge.sqlite -> legacy_binary_
+- **Doc↔kód konformancia újra-audit — Pénztár menü / Kezelés / Címletezés / Engedélyezés** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/04-penztar-menu-kezeles.md`
+  - summary: # Doc↔kód konformancia újra-audit — Pénztár menü / Kezelés / Címletezés / Engedélyezés > **Készült:** 2026-06-02. **Auditált specek:** `b5-fomenu.md`, `b5-kezeles-cimletezes-engedelyezes.md`, `b5-penztar-mozgasok.md`, `b5-penztarallas-listak.md`, `b6b-egyeb-feladatok-menu.md`. > **Kódbázis:** `backend/` (Java 21 / Spring), `frontend-react/` (React+TS), `penztar-client/` (Electron — a frontend-react buildet hosztolja)
 
-- **Legacy DLL Parity Matrix** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/legacy-dll-parity-matrix.md`
-  - summary: --- type: registry scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "Legacy DLL Parity Matrix" load: on-demand --- # Legacy DLL Parity Matrix > Cel: `legacy modul -> modern service/page/test` megfeleltetesi reteget adni a VALUTA es ERTEKTAR vilaghoz. > Kiegeszito gepi forras: `generated/legacy-dll-parity-matrix-2026-04-09.csv` --- ## S1 AJANLOTT_OSZLOPOK | Oszlop | Jele
+- **05 — Beállítások + Bank API + Engedélyezés-adatok (doc↔kód reverifikáció)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/05-beallitas-bank-engedely.md`
+  - summary: # 05 — Beállítások + Bank API + Engedélyezés-adatok (doc↔kód reverifikáció) Dátum: 2026-06-02 Auditált specifikációk: - `EXCMD/b6-beallitasok.md` (FR-01..FR-15, `gep_konfiguracio` adatmodell) - `EXCMD/b3-bank-api.md` (FR-API-01, FR-API-02, BankApiConfig/ExternalRateLog) - `EXCMD/b3-engedelyezes-adatok.md` (FR-AUTH-01..FR-AUTH-08, TransactionApproval/ApprovalItems) Módszer: minden követelmény egyenként; IMPLEMENTED cs
 
-- **Legacy Szerver Üzleti Logika** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/szerver-business-logic.md`
-  - summary: --- type: session-log scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Legacy Szerver Uzleti Logika" load: on-demand --- # Legacy Szerver Üzleti Logika > Agent-optimalizált — számítási szabályok, küszöbértékek, validációk --- ## S1 1_DEVIZANEM_RENDSZER ### Fix 27 + HUF - A modern rendszer dinamikus Currency entity-t használ → **OK, de a sorrend/indexelés nem garantált*
+- **Doc↔kód konformancia-audit — b8 AML / szankció / forgalom-riport / átadás-átvétel-WU-ÁFA** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/06-riport-aml-szankcio.md`
+  - summary: # Doc↔kód konformancia-audit — b8 AML / szankció / forgalom-riport / átadás-átvétel-WU-ÁFA Dátum: 2026-06-02 Auditált doc-ok: - `EXCMD/b8-atadas-atvetel-wu-afa-kktg.md` - `EXCMD/b8-forgalom-keszlet-riportok.md` - `EXCMD/b8-terrorlista-szankcios.md` Módszer: minden FR + adatmodell-állítás egyenként verifikálva az aktuális kód ellen. IMPLEMENTED csak `file:line` bizonyítékkal. Bizonytalan → VERIFIKÁLANDÓ. --- ## 1. b8-
 
-- **Legacy SZERVER Core Analysis** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/szerver-core-analysis.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Legacy SZERVER Core Analysis" load: on-demand --- # Legacy SZERVER Core Analysis > Forrás: `Anti\SZERVER\_extracted\SZERVER\fejleszt\server\` > 4 fő unit részletes elemzése --- ## S1 UNIT1PAS_37K_FO_SZERVER_FORM ### Fő Firebird táblák | Tábla | DB | Tartalom | |-------|-----|----------| | RENDSZER | RE
+- **Doc↔kód konformancia-reverifikáció — Körlevelek/Compliance + Munkavállaló-nyilvántartás** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/07-compliance-munkavallalo.md`
+  - summary: # Doc↔kód konformancia-reverifikáció — Körlevelek/Compliance + Munkavállaló-nyilvántartás Dátum: 2026-06-02 Scope: `EXCMD/b9-korlevelek-compliance.md` + `EXCMD/b9-munkavallalo-nyilvantartas.md` Módszer: követelmény-egyenkénti kód-bizonyítás (file:line). „IMPLEMENTED" csak konkrét hivatkozással. --- ## A) b9-munkavallalo-nyilvantartas.md ### Adatmodell — al-táblák (G19 kiemelt fókusz) | Elem | Doc | Kód-bizonyíték | S
 
-- **SZERVER DAT Import Knowledge Base** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/szerver-dat-import-knowledge-base.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-04-09 format: structured-lookup encoding: utf-8 description: "SZERVER DAT Import Knowledge Base" load: on-demand --- # SZERVER DAT Import Knowledge Base > Cel: a fajl-alapu legacy adatcseret egy agent-altal is bejarhato import- es adatfolyam-tudastarra bontani. > Gepi inventory: `generated/szerver-dat-file-families-2026-04-09.csv` --- ## S1 DAT_CSALADOK | Fajl /
+- **08 — FK értéktári auditok: doc↔kód konformancia-reverifikáció** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/08-fk-ertektar-auditok.md`
+  - summary: # 08 — FK értéktári auditok: doc↔kód konformancia-reverifikáció **Dátum:** 2026-06-02 **Hatókör:** 4 javítási utasítás finding-onkénti ellenőrzése az AKTUÁLIS kód ellen. **Módszer:** minden pont egyenként; IMPLEMENTED csak file:line bizonyítékkal; nincs találat → MISSING. Auditált dokumentumok: 1. `FK-007_ertektar_kartyan_valutanemek_kodaudit_javitasi_utasitas.md` 2. `FK02-C_irodak_lista_szures_kodrevizio_es_javitasi
 
-- **Szerver Legacy vs Modern — Gap Elemzés** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/szerver-gap-vs-modern.md`
-  - summary: --- type: analysis scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Szerver Legacy vs Modern — Gap Elemzes" load: on-demand --- # Szerver Legacy vs Modern — Gap Elemzés > Utolsó frissítés: 2026-04-05 > A modern backend: `D:\repo\valutavalto-program\backend\` > Az Electron kliens: `D:\repo\valutavalto-program\penztar-client\` > A web frontend: `D:\repo\valutavalto-progr
+- **09 — Dátumozott auditok + high-priority FR: doc↔kód re-verifikáció (2026-06-02)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-reverify/09-datumozott-auditok-highprio.md`
+  - summary: # 09 — Dátumozott auditok + high-priority FR: doc↔kód re-verifikáció (2026-06-02) Cél: a három dátumozott EXCMD-audit (2026-05-20…06-01 modulfejlesztés-terv, 2026-06-01 audit-verifikáció, 2026-06-02 tranzakciós audit) + a `high-priority-explicit-fr.md` állításainak **tény-alapú újraellenőrzése a JELENLEGI kód ellen** (HEAD: main, V288 / #1001 után). Szabály: minden pont egyenként; "IMPLEMENTED" csak `file:line` bizon
 
-- **Legacy SZERVER Modul Index** (long-term-legacy)
-  - source: `docs/knowledge/legacy-reverse-engineering/szerver-modules-index.md`
-  - summary: --- type: registry scope: vault-creating version: 2026-07-19 format: structured-lookup encoding: utf-8 description: "Legacy SZERVER Modul Index" load: on-demand --- # Legacy SZERVER Modul Index > Agent-optimalizált hivatkozás — keresés: `<!-- MODULE: név -->` > Forrás: `Anti\SZERVER\_extracted\SZERVER\fejleszt\` > Utolsó frissítés: 2026-04-05 --- ## S1 SZERVER_ARCHITEKTURA_OSSZEFOGLALO ### Felépítés - **Nyelv**: Delp
+- **Source-of-Truth Revalidáció (2026-06-02)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-02-source-truth-revalidation.md`
+  - summary: # Source-of-Truth Revalidáció (2026-06-02) ## Cél Az `Anti/`, `Felmérés/`, `forrasok/` könyvtárak teljes fájlállományának újrainventarizálása és az `EXCMD/` utasításdokumentumok forráshivatkozásainak tényszerű ellenőrzése, majd a hibás hivatkozások javítása. ## Gépi audit artefaktok - `EXCMD/_inventory/source-truth-file-index-2026-06-02.csv` - `EXCMD/_inventory/source-truth-extension-breakdown-2026-06-02.csv` - `EXCM
 
-- **2026-03-30 — Sprint 3 összefoglaló** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-03-30-sprint3.md`
-  - summary: # 2026-03-30 — Sprint 3 összefoglaló ## Leszállítva - **A)** AuthorizationSection — meghatalmazás UI (create/verify/suspend/resume/revoke) - **B)** BanknoteBreakdown — címletezés UI (IN/OUT, COMMON_DENOMINATIONS) - **C)** BanknoteInventory — backend domain (entity/repo/service/controller/DTO/Flyway V130) ## Pipeline - Eszter: APPROVED (3. kör — C1/C2/C3/M1 javítás után) - Tamás: 409 PASS / 0 FAIL (28 új teszt: Author
+- **B1 — „ERB egyedi kötés" verdikt (2026-06-10)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-10-B1-erb-egyedi-kotes-verdikt.md`
+  - summary: # B1 — „ERB egyedi kötés" verdikt (2026-06-10) **Módszer:** a forrás-képernyőkép (`Felmérés/Valuta/Kósa Szervezés/Cégcsoport felmérése/ Személyes találkozó összefoglalók, kapott dokumentumok, képernyőképek/Képernyőképek/ERB Egyedi kötés.JPG`) ÚJRA-OCR-ezése nagy felbontásban, a 2026-06-02-i részleges OCR helyett. Kizárólag a képen ténylegesen látható elemek. ## Mit mutat valójában a kép A dialógus tartalma (tisztán o
 
-- **2026-04-01 — Electron Sprint 6: Helyi penztari alkalmazas** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-01-electron-sprint6.md`
-  - summary: # 2026-04-01 — Electron Sprint 6: Helyi penztari alkalmazas ## Architektura (Zoltan kotelező utasitas 2026-04-01) - Valutavaltas KIZAROLAG helyi Electron alkalmazasban tortenik - excvaluta.com weben NINCS React SPA, NINCS valutavaltas, NINCS ertektar - A szerver (Hetzner 95.216.191.162) szerepe: API backend + jovobeli riportok/statisztikak - Az Electron app a backend API-n keresztul kommunikal a szerverrel - excvalut
+- **Anti bináris végrehajtható fájlok (EXE) — implementáció-verdikt (2026-06-10)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-10-binaris-exe-implementacio-verdikt.md`
+  - summary: # Anti bináris végrehajtható fájlok (EXE) — implementáció-verdikt (2026-06-10) **Hozzáférési tény:** a nyers `Anti/` fa (benne az EXE-kkel) a `.gitignore` miatt csak a lokális gépen él, a felhő-session nem éri el. A bináris-elemzés azonban dokumentáltan megtörtént (`EXCMD/legacy/02-ARFOLYAM-binaris-visszafejtes.md`, 2026-05-22: TPF0 form-kinyerés + DFM-parse), és az eredménye a repóban van — ez a verdikt AZT veti öss
 
-- **2026-04-01 Sprint 5 — Architekturalis javitas** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-01-sprint5-architecture-fix.md`
-  - summary: # 2026-04-01 Sprint 5 — Architekturalis javitas ## KRITIKUS SZABALY (Zoltan utasitasa) - Valutavaltas kizarolag LOKALIS ELECTRON alkalmazasban tortenik - excvaluta.com weben NINCS React SPA, NINCS valutevaltas, NINCS ertektar - A szerver (Hetzner VPS) szerepe: API backend + jovobeli riportok/statisztikak/kimuatasok - Az Electron app a backend API-n keresztul kommunikal a szerverrel ## Elvegzett javitas - Nginx atirva
+- **Legacy halasztott döntések — verdikt (2026-06-10)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-10-legacy-halasztott-dontesek-verdikt.md`
+  - summary: # Legacy halasztott döntések — verdikt (2026-06-10) **Kontextus:** a 2026-05-23-i teljes legacy-verifikáció (`EXCMD/legacy/06-FEJLESZT-VERIFIKACIO-EREDMENY.md`) néhány tételt „őszintén halasztva" státuszban hagyott, döntésre várva. A user-direktíva (2026-06-10): a döntéseket a Pascal-forrásokból kinyert tényanyag alapján kell meghozni. Az alábbi döntések tényalapja a Pascal-fájlokból bináris szinten generált modul-ki
 
-- **Legacy Delphi 7 Forráskód Elemzés — Konszolidált Összesítő** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-05-valutavalto-legacy-delphi-elemzes-osszesito.md`
-  - summary: # Legacy Delphi 7 Forráskód Elemzés — Konszolidált Összesítő ## Dátum: 2026-04-05 ## Forrás: `Anti\SZERVER\_extracted\` (1102 .pas, 1099 .dfm, 17 MB Delphi forráskód) ## Modern: `backend/` (1192 Java, 4.6 MB) + `frontend-react/` (209 fájl, 1.7 MB) + `penztar-client/` (28 fájl, 377 KB) --- ## 1. Az elemzések áttekintése | # | Szerző | Fókusz | Fájl | Méret | Főbb eredmény | |---|---|---|---|---|---| | 1 | **Junior** |
+- **Legacy/ledger re-verifikáció + valós gap-zárás — verdikt (2026-06-10, 3. kör)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-10-legacy-ledger-reverifikacio-verdikt.md`
+  - summary: # Legacy/ledger re-verifikáció + valós gap-zárás — verdikt (2026-06-10, 3. kör) **User-direktíva:** a forrásfák (EXCMD, Felmérés, forrasok, Anti) összevetése a ledgerrel / fejlesztési tervvel; a hibásan implementált vagy el sem készített részek felderítése és önálló javítása — hazugság és hallucináció nélkül. ## Forrás-elérhetőségi tényállás (blokkoló FELOLDVA 2026-06-11) - ~~A `scripts/legacy-transfer.py` Base64-híd
 
-- **2026-04-11 AML Wave 1 Session Memory** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-11-aml-wave1-session.md`
-  - summary: --- type: session-log scope: workspace-shared version: 2026-04-11 format: structured-lookup encoding: utf-8 description: "Session memory for AML wave 1 parity closure and gate stabilization" load: on-demand --- # 2026-04-11 AML Wave 1 Session Memory ## S1 SESSION_GOAL Cel: - az AML / BIGCTRL / KYC / sanctions parity elso hullamanak tenyleges lezarsa - a WU-specifikus AML bypassok megszuntetese - a parity bizonyitekok
+- **Sztornó 4-szem-elv (#954) — UI-evidence pótlása (2026-06-10)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-10-storno-four-eyes-ui-evidence.md`
+  - summary: # Sztornó 4-szem-elv (#954) — UI-evidence pótlása (2026-06-10) ## Előzmény A V305 migráció (AML go-live flagek) a `STORNO_APPROVAL_FOUR_EYES_ENFORCEMENT` flaget kifejezetten KIHAGYTA, indoklással: „a storno four-eyes UI-készenlétére nincs dokumentált evidence → DEFER (külön döntés)." A kód-elleni reverifikáció kimutatta a tényleges hiányt: a backend `POST /api/v1/stornos/approve/{approvalId}` végpontot **semmilyen UI
 
-- **2026-04-11 AML Wave 1 Session Snapshot** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-11-aml-wave1-session.qmd`
-  - summary: --- title: "2026-04-11 AML Wave 1 Session Snapshot" format: gfm execute: false freeze: auto --- ## Session Scope - Goal: close AML wave 1 parity and restore trustworthy verification. - Result: AML wave 1 closed, WU AML hardened, security gate passed. ## Closed Rules | Rule | Outcome | Evidence | |---|---|---| | `R-type--1` | full | `AmlBigctrlC1C2C3Test`, `AmlControllerCheckAllThresholdsTest`, `WesternUnionServiceTes
+- **Anti/forrasok bináris re-verifikáció — verdikt (2026-06-11, 4. kör)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-11-binaris-reverifikacio-verdikt.md`
+  - summary: # Anti/forrasok bináris re-verifikáció — verdikt (2026-06-11, 4. kör) **Mandátum:** a 2026-06-10-es ledger-verdikt nyitott tétele — a legacy binárisok (EXE/DLL) bájthelyes elemzése és a kinyert funkciókészlet összevetése a mai ERP-vel; a hibásan implementált vagy el sem készített részek felderítése. ## Módszer és lefedettség 1. **Bináris-elemzés a teljes lokális Anti-fán** (`scripts/legacy-binary-analyzer.py`): 2 157
 
-- **2026-04-11-aml-wave1-session.yaml** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-11-aml-wave1-session.yaml`
-  - summary: session_id: 2026-04-11-aml-wave1 scope: workspace-shared status: closed focus_area: aml-bigctrl-kyc-sanctions current_state: aml_wave1: closed security_gate: passed next_primary_wave: transactions-fee-rounding-storno completed_fixes: - id: aml-currency-propagation summary: currencyCode now reaches the transaction AML call chain evidence: - backend/src/main/java/hu/puzzleir/valuta/service/AmlService.java - backend/src
+- **b1 FR-RFMUI-19/20/21 — ARFDATA.DAT + FTP szétküldés: by-design kiváltás verdikt (2026-06-11)** (semantic-reference)
+  - source: `EXCMD/_compare/2026-06-11-rfmui-arfdata-by-design-verdikt.md`
+  - summary: # b1 FR-RFMUI-19/20/21 — ARFDATA.DAT + FTP szétküldés: by-design kiváltás verdikt (2026-06-11) **Tétel:** a b1-arfolyamkeszito-kepernyok.md FR-RFMUI-19/20/21 (Must) a legacy `ARFDATA.DAT` bináris generálását és FTP-feltöltését írja le (Békéscsaba `185.43.207.99:21100` elsődleges, Pécs másodlagos FTP, `RF*.DAT`/`NR*.DAT` takarítással). A 2026-06-11-i teljességi elemzés ezt nyitottként jelölte, mert a by-design kiváltá
 
-- **2026-04-17 Hetzner backend deploy v2.1.1 — session memory** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-17-hetzner-deploy-v2.1.1-session.qmd`
-  - summary: --- title: "2026-04-17 Hetzner backend deploy v2.1.1 — session memory" date: 2026-04-17 tags: [hetzner, deploy, ssh, systemd, postgres, luks, flyway, v2.1.1, public-endpoints, backend, hotfix] status: captured supersedes: none relates_to: - docs/knowledge/memory/2026-04-17-pipeline-run-session.qmd - docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.qmd - docs/knowledge/memory/2026-04-17-hetzner-deploy
+- **C1 — RFM (Árfolyamkészítő) spec ↔ kód összevetés** (semantic-reference)
+  - source: `EXCMD/_compare/c1-rfm-rate.md`
+  - summary: # C1 — RFM (Árfolyamkészítő) spec ↔ kód összevetés Forrás-spec-ek: `b1-arfolyamkeszito-kovetelmenylista.md`, `b1-arfolyamkeszito-kepernyok.md`, `b3-bank-api.md`, `b3-arfolyam-karbantarto-hibalista.md`. Kód: `frontend-react/src/pages/rates/` + `pages/ratemanagement/` (shared a 3 Electron klienssel), `backend/.../service/Rate*`, `Mnb*`, `Raiffeisen*`. Módszer: trust-but-verify, minden FR konkrét kód-bizonyítékkal. ## b
 
-- **2026-04-17-hetzner-deploy-v2.1.1-session.yaml** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-17-hetzner-deploy-v2.1.1-session.yaml`
-  - summary: date: 2026-04-17 wave: hetzner-deploy-v2.1.1 session_type: direct-ssh-deploy-plus-postgres-resurrection-plus-flyway-bugfix previous_session_same_day: - docs/knowledge/memory/2026-04-17-pipeline-run-session.yaml - docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.yaml resumed_from: post-v2.1.1-release-wave-user-frustrated-login-broken parent_agent_transcript: agent-transcripts/ac0bf5fb-6a32-4418-a5a1-f
+- **C2 — Sztornó + Zárás szakaszonkénti összevetés (spec ↔ kód)** (semantic-reference)
+  - source: `EXCMD/_compare/c2-sztorno-zaras.md`
+  - summary: # C2 — Sztornó + Zárás szakaszonkénti összevetés (spec ↔ kód) > Forrás-specek: `EXCMD/b2-sztorno.md` (18 FR), `EXCMD/b2-zaras-ablak.md` (23 FR), `EXCMD/b2-zaras-kepernyok-bizonylatok.md` (30 FR). > Verifikáció: kódbázis Grep/Read (backend `service/`, `controller/`, frontend `pages/`). KUTATÁS-only. ## b2-sztorno.md (18 FR) | Spec | FR-ID | Követelmény | Státusz | Bizonyíték | Hiány | |---|---|---|---|---|---| | sztor
 
-- **2026-04-17 installer release v2.1.0 — session memory** (long-term-historical)
-  - source: `docs/knowledge/memory/2026-04-17-installer-release-v2.1.0-session.qmd`
-  - summary: --- title: "2026-04-17 installer release v2.1.0 — session memory" date: 2026-04-17 tags: [installer, electron, nsis, first-run-wizard, release, v2.1.0, build-pipeline, postgres, jlink] status: captured supersedes: none relates_to: - docs/knowledge/memory/2026-04-17-pipeline-run-session.qmd (previous wave, same day, post-AML-wave1) --- ## Cel A user kerese: 1. "Tehát akkor most akár tudunk egy telepítőfájlt készíteni,
+- **C4 — Menü + pénztárműveletek: EXCMD-spec vs tényleges kód összevetés** (semantic-reference)
+  - source: `EXCMD/_compare/c4-menu-penztarmuveletek.md`
+  - summary: # C4 — Menü + pénztárműveletek: EXCMD-spec vs tényleges kód összevetés Forrás-specek: `b5-fomenu.md`, `b5-penztar-mozgasok.md`, `b5-penztarallas-listak.md`, `b5-kezeles-cimletezes-engedelyezes.md` Vizsgált kód: backend `hu.puzzleir.valuta.*` + `frontend-react/src/` (a penztar-client renderer ezt használja). Készült: 2026-05-22 — KUTATÁS-only. ## b5-fomenu.md (FR-FM) | FR | Státusz | Kód-bizonyíték | Hiány | |---|---|

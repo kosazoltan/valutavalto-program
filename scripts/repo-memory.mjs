@@ -284,8 +284,37 @@ const AREA_RULES = {
     keywords: ['react', 'tanstack', 'zustand', 'tailwind', 'vite', 'frontend'],
   },
   legacy: {
-    paths: ['legacy', 'anti'],
-    keywords: ['delphi', 'legacy', 'parity', 'paritas', 'paritás'],
+    paths: ['legacy', 'anti', 'excmd', 'felmeres-kb', 'reverse-engineering'],
+    keywords: [
+      'delphi',
+      'legacy',
+      'parity',
+      'paritas',
+      'paritás',
+      'firebird',
+      'pascal',
+      'régi program',
+      'regi program',
+      'eredeti program',
+    ],
+  },
+  // Requirement/specification corpus: what the business actually asked for.
+  // Distinct from `legacy` (how the old program did it) — a feature task
+  // usually needs both.
+  specifikacio: {
+    paths: ['excmd', 'docs/specs', 'kovetelmeny'],
+    keywords: [
+      'kovetelmeny',
+      'követelmény',
+      'specifikacio',
+      'specifikáció',
+      'elvaras',
+      'elvárás',
+      'felmeres',
+      'felmérés',
+      'interju',
+      'interjú',
+    ],
   },
 }
 
@@ -327,18 +356,62 @@ function collectSources() {
 
   for (const dir of [
     path.join(root, 'docs', 'knowledge', 'memory'),
+    path.join(root, 'docs', 'knowledge', 'analysis'),
+    path.join(root, 'docs', 'knowledge', 'reviews'),
+    path.join(root, 'docs', 'knowledge', 'legacy-reverse-engineering'),
+    path.join(root, 'docs', 'knowledge', 'generated'),
     path.join(root, 'docs', 'operations'),
     path.join(root, 'docs', 'user-manual'),
-    path.join(root, 'docs', 'knowledge', 'legacy-reverse-engineering'),
     path.join(root, 'docs', 'legacy-analysis'),
-    path.join(root, 'docs', 'knowledge', 'analysis'),
+    path.join(root, 'docs', 'architecture'),
+    path.join(root, 'docs', 'specs'),
+    path.join(root, 'docs', 'database'),
+    path.join(root, 'docs', 'security'),
+    path.join(root, 'docs', 'playbooks'),
+    // EXCMD: the customer-facing specification / requirement corpus (~495 md).
+    // This is where the original program's agreed behaviour is written down;
+    // leaving it unindexed was the single biggest blind spot in the bundle.
+    path.join(root, 'EXCMD'),
     path.join(vault, 'sessions'),
     path.join(vault, 'agent-archive'),
     path.join(vault, 'feedback'),
     path.join(vault, 'procedures'),
     path.join(vault, 'references'),
+    path.join(vault, 'architecture'),
+    path.join(vault, 'elvi'),
+    path.join(vault, 'operations'),
   ]) {
     candidates.push(...listFiles(dir, ['.md', '.qmd', '.yaml', '.yml', '.csv', '.json', '.jsonl']))
+  }
+
+  // Top-level legacy/parity/architecture docs. These sit loose in docs/ and in
+  // the repo root, and carry the Delphi-vs-modern gap analysis that a feature
+  // task must consult before re-solving something the legacy already solved.
+  for (const file of listFiles(path.join(root, 'docs'), ['.md'])) {
+    if (rel(file).split('/').length !== 2) continue // docs/<file>.md only
+    const base = path.basename(file).toUpperCase()
+    if (
+      base.includes('LEGACY') ||
+      base.includes('ANTI') ||
+      base.includes('ARCHITECTURE') ||
+      base.includes('PARITY') ||
+      base.includes('LESSONS') ||
+      base.includes('MIGRATION') ||
+      base.includes('TREASURY') ||
+      base.includes('PENZTAR') ||
+      base.includes('API-OVERVIEW') ||
+      base.includes('CAPABILITIES')
+    )
+      candidates.push(file)
+  }
+  for (const name of [
+    'ARCHITECTURE.md',
+    'ARCHITECTURE_DECISIONS.md',
+    'REPO_STATE.md',
+    'AI_CONTRACT.md',
+  ]) {
+    const file = path.join(root, name)
+    if (exists(file)) candidates.push(file)
   }
   for (const dir of [path.join(root, 'backend', 'src'), path.join(root, 'frontend-react', 'src')]) {
     candidates.push(
@@ -386,15 +459,18 @@ function yamlEscape(value) {
 }
 
 function writeYaml(entries) {
+  // Caps exist so the machine-readable layer stays loadable, but they must not
+  // silently drop knowledge: the legacy/specification corpus is large and is
+  // exactly what a feature task needs. Long-term is uncapped for that reason;
+  // the query layer re-derives from source anyway, so these caps only bound the
+  // browsable index, never what `memory:query` can find.
   const groups = {
     short_term: entries
       .filter((e) => e.type.startsWith('short-term') || e.type.includes('preferences'))
-      .slice(0, 40),
-    medium_term: entries.filter((e) => e.type.includes('episodic')).slice(-80),
-    operational: entries.filter((e) => e.type.includes('operational')).slice(0, 80),
-    long_term: entries
-      .filter((e) => e.type.includes('long-term') || e.type.includes('semantic'))
-      .slice(0, 140),
+      .slice(0, 60),
+    medium_term: entries.filter((e) => e.type.includes('episodic')).slice(-160),
+    operational: entries.filter((e) => e.type.includes('operational')).slice(0, 160),
+    long_term: entries.filter((e) => e.type.includes('long-term') || e.type.includes('semantic')),
   }
   const lines = []
   lines.push(`generated_at: ${now}`)
@@ -465,7 +541,7 @@ function writeCognee(entries) {
     'kind: knowledge_bundle',
     'nodes:',
   ]
-  for (const e of entries.slice(0, 220)) {
+  for (const e of entries) {
     lines.push(`  - id: ${e.id}`)
     lines.push(`    type: ${yamlEscape(e.type)}`)
     lines.push(`    title: ${yamlEscape(e.title)}`)
@@ -475,7 +551,7 @@ function writeCognee(entries) {
     lines.push(`    areas: [${e.areas.map(yamlEscape).join(', ')}]`)
   }
   lines.push('edges:')
-  for (const e of entries.slice(0, 220)) {
+  for (const e of entries) {
     for (const area of e.areas) {
       lines.push(`  - from: ${e.id}`)
       lines.push(`    to: area_${area}`)
@@ -534,7 +610,7 @@ function writeObsidian(entries) {
     '',
     '## Sources',
   ]
-  for (const e of entries.slice(0, 180)) lines.push(`- [[${e.title}]] — \`${e.path}\` (${e.type})`)
+  for (const e of entries) lines.push(`- [[${e.title}]] — \`${e.path}\` (${e.type})`)
   fs.writeFileSync(
     path.join(memoryRoot, 'obsidian', 'repo-memory-mirror.md'),
     lines.join('\n') + '\n',

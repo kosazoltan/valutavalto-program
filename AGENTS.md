@@ -123,7 +123,31 @@ npm run memory:areas          # elerheto teruletek es talalatszamok
 ```
 
 Teruletek: `ertektar penztar napzaras arfolyam cimletezes sync aml tenant riport
-database installer deploy security frontend legacy`.
+database installer deploy security frontend legacy specifikacio`.
+
+**KOTELEZO LEGACY-LOOKUP.** A memoria tartalmazza az eredeti Delphi valutavalto
+program teljes elemzeset (645 ezer sor forras gap-matrixai, Firebird sema-
+rekonstrukcio, DLL-paritas, RE-jelentesek), az EXCMD kovetelmeny-korpuszt (~495
+dokumentum) es a helyreallitott felmeresi tudasbazist (interjuk, riportok,
+bizonylatok). Ezekben nagyon gyakran BENNE VAN a most kert funkcio mar
+megoldott valtozata, a buktatoi, es a hozza tartozo uzleti szabaly.
+
+Ezert minden uj funkcio, viselkedes-valtoztatas es regresszio-vizsgalat elott
+kotelezo:
+
+```bash
+npm run memory:query -- "<funkcio>" --area legacy --limit 8
+npm run memory:query -- "<funkcio>" --area specifikacio --limit 8
+```
+
+- Ha a legacy mar megoldotta: az implementacio elott le kell irni, hogyan
+  csinalta a regi program, es indokolni kell minden szandekos elterest.
+- Ha a specifikacio (EXCMD/felmeres) rogzit uzleti szabalyt: azt kell kovetni,
+  nem a sajat feltetelezest.
+- Ha egyik lekerdezes sem ad talalatot: ezt explicit ki kell mondani a tervben.
+- Ujrafejleszteni valamit, ami a legacy-ben mar le van programozva es a memoria
+  leirja, felesleges koltseg es hibaforras — ez a szabaly ezt hivatott
+  megelozni.
 
 - Az implementacios tervben **hivatkozni kell** a talalatokra (path + a felhasznalt
   teny), vagy explicit ki kell mondani, hogy a lekerdezes nem adott relevans tudast.
