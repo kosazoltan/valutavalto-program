@@ -41,6 +41,24 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     Optional<DenominationBalance> findByCashDeskIdAndDenominationId(UUID cashDeskId, Long denominationId);
 
     /**
+     * FK-078 (FR-3): kategória-tudatos egyedi rekord — pénztár + címlet + kategória.
+     *
+     * <p>A kategória-nélküli párja ({@link #findByCashDeskIdAndDenominationId}) az ELSŐ
+     * találatot adja vissza kategóriától függetlenül, ezért egy {@code HANDLING_FEE} mentés
+     * felülírhatná az {@code EVENING} sort (és fordítva). A becímletező oldal (FK-078) mindkét
+     * kategóriát írja, ezért az upsert-kulcsnak tartalmaznia kell a kategóriát is.</p>
+     */
+    @Query("SELECT db FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :cashDeskId " +
+           "AND db.denomination.id = :denominationId " +
+           "AND db.denominationCategory = :category")
+    Optional<DenominationBalance> findByCashDeskIdAndDenominationIdAndCategory(
+        @Param("cashDeskId") UUID cashDeskId,
+        @Param("denominationId") Long denominationId,
+        @Param("category") DenominationCategory category
+    );
+
+    /**
      * Pénztárgép adott valutájú címletek teljes értékének összege
      */
     @Query("SELECT COALESCE(SUM(db.totalValue), 0) FROM DenominationBalance db " +

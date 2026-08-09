@@ -417,6 +417,27 @@ export interface DenominationQuantityUpdateRequest {
   quantity: number
 }
 
+/**
+ * FK-078 (FR-3): a `denomination_balance` sor kategóriája. A becímletező oldal a csempe
+ * szerint adja át — a backend `DenominationCategory` enum két itt használt értéke.
+ */
+export type DenominationBalanceCategory = 'EVENING' | 'HANDLING_FEE'
+
+/**
+ * FK-078 (FR-4): napközbeni önellenőrzés egy pénznemre — a becímletezett összeg és a
+ * könyv szerinti `cash_balance.currentBalance` összevetése. Kizárólag tájékoztató,
+ * a mentés soha nem blokkolódik az eredménye alapján.
+ */
+export interface DenominationSelfCheck {
+  currencyCode: string
+  currencyId: number
+  denominatedAmount: number
+  expectedBalance: number
+  /** denominatedAmount - expectedBalance (előjeles: pozitív = többlet). */
+  difference: number
+  matches: boolean
+}
+
 export const denominationBalanceApi = {
   getCashDeskDenominations: async (cashDeskId: string): Promise<DenominationBalanceDTO[]> => {
     const response = await api.get<DenominationBalanceDTO[]>(
@@ -436,10 +457,28 @@ export const denominationBalanceApi = {
   setDenominationQuantities: async (
     cashDeskId: string,
     updates: DenominationQuantityUpdateRequest[],
+    category?: DenominationBalanceCategory,
   ): Promise<DenominationBalanceDTO[]> => {
+    // FK-078 (FR-2/FR-3): a kategória opcionális query-paraméter — hiányában a backend
+    // a korábbi EVENING viselkedést tartja (visszamenőleg kompatibilis).
     const response = await api.post<DenominationBalanceDTO[]>(
       `/cash-desks/${cashDeskId}/denominations/batch`,
       updates,
+      category ? { params: { category } } : undefined,
+    )
+    return response.data
+  },
+  /**
+   * FK-078 (FR-4): napközbeni önellenőrzés — pénznemenkénti „egyezik / nem egyezik".
+   * Kizárólag tájékoztató: a mentés soha nem blokkolódik az eredménye alapján.
+   */
+  selfCheck: async (
+    cashDeskId: string,
+    category: DenominationBalanceCategory,
+  ): Promise<DenominationSelfCheck[]> => {
+    const response = await api.get<DenominationSelfCheck[]>(
+      `/cash-desks/${cashDeskId}/denominations/self-check`,
+      { params: { category } },
     )
     return response.data
   },
