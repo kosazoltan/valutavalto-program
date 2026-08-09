@@ -202,6 +202,11 @@ export default function DocumentStoragePage() {
     } finally {
       setScannedLoading(false)
     }
+    // Lint-audit 2026-08-09: a `parsedScannedLookupId` egy nem memoizalt helper,
+    // amely KIZAROLAG a lenti ket deps-bol (`scannedLookupId`, `scannedLookupType`)
+    // szamol. Deps-be veve minden renderben uj referenciat kapna es folyamatos
+    // refetch-et okozna; a kihagyasa nem hoz stale erteket — a forras-state benne van.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scannedLookupId, scannedLookupType])
 
   const handleScannedUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

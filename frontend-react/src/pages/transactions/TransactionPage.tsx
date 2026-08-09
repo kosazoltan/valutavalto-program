@@ -168,9 +168,17 @@ function TransactionEntryPage() {
   }, [foreignAmount, hufAmount, selectedCurrency, currentRate, lastEdited])
 
   // Keyboard shortcuts
+  // Lint-audit 2026-08-09 (react-hooks/exhaustive-deps): a `handleCancel` sima
+  // fuggveny-deklaracio, ezert MINDEN renderben uj referencia — a deps-ben tartva
+  // a keydown listener minden renderben le-fel csatolodott. Ref-en keresztul
+  // hivjuk, igy a listener egyszer regisztral, de mindig a FRISS closure-t hasznalja
+  // (ugyanaz a minta, mint a CashierTransactionPage `isSubmittingRef`-je).
+  const handleCancelRef = useRef(handleCancel)
+  handleCancelRef.current = handleCancel
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') void handleCancel()
+      if (e.key === 'Escape') void handleCancelRef.current()
       if (e.key >= '1' && e.key <= '8' && !e.ctrlKey && !e.altKey) {
         const target = e.target as HTMLElement
         if (
@@ -188,7 +196,7 @@ function TransactionEntryPage() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currencyRates, handleCancel])
+  }, [currencyRates])
 
   const switchTransactionType = (type: 'BUY' | 'SELL') => {
     setTransactionType(type)

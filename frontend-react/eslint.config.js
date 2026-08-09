@@ -99,6 +99,14 @@ export default tseslint.config(
       'react-hooks/preserve-manual-memoization': 'off',
       'react-hooks/purity': 'off',
       'react-hooks/component-hook-factories': 'off',
+      // Lint-audit 2026-08-09: ERROR szint. A hook-fuggosegek hianya nem
+      // kozmetikai kerdes — penzugyi kepernyokon stale closure-t okoz (a
+      // CashierTransactionPage submit-callbackje regi dij-felulbiralast es
+      // kartyaszamot vitt volna fel, a CustomerPanel regi AML/Pmt. adatot mentett
+      // volna). A 2503 i18n-warning kozott az ilyen jelzes elveszett, ezert ez a
+      // szabaly kulon, blokkolo szinten fut. Indokolt kivetelt inline
+      // `eslint-disable-next-line` + magyarazo komment ad (lasd ShipmentNewPage).
+      'react-hooks/exhaustive-deps': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'error',

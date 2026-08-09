@@ -83,6 +83,10 @@ export default function WorkerPage() {
 
   useEffect(() => {
     void load('all')
+    // Lint-audit 2026-08-09: szandekos mount-only betoltes. A `load` minden
+    // renderben ujragyartodik (nem memoizalt), igy a deps-be veve vegtelen
+    // fetch-hurkot okozna.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const showAllWorkers = async () => {

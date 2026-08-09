@@ -1646,6 +1646,20 @@ export default function CashierTransactionPage() {
     openReceiptModal,
     sendIncomeProofEmail,
     t,
+    // Lint-audit 2026-08-09 (react-hooks/exhaustive-deps): ez a harom ertek a
+    // FELKULDOTT payload resze (handlingFeeOverrideType / -Reason /
+    // customerCardNumber, lasd :1212, :1449, :1523, :1540), de hianyzott a
+    // deps-listabol. Ha a penztaros UTOLJARA a dij-felulbiralast vagy a
+    // kartyaszamot allitja be, a memoizalt closure a REGI erteket vinne fel —
+    // dijelszamolasi es ugyfel-azonositasi (Pmt.) hiba. Az `isSubmitting`
+    // szandekosan marad kint (:229 komment, ref-bol olvassuk); ezek viszont
+    // ritkan valtozo user-input mezok, a re-create koltsege elhanyagolhato.
+    cardNumber,
+    feeOverrideReason,
+    feeOverrideType,
+    // `setIsSubmitting` stabil (`useCallback(..., [])` a :249 soron), a
+    // felvetele nem okoz ujra-kreacios cascade-et.
+    setIsSubmitting,
   ])
 
   const handleKeyDown = useCallback(

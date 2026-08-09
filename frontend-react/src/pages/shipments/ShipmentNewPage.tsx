@@ -145,8 +145,15 @@ export default function ShipmentNewPage() {
   const roles = useAuthStore((s) => s.roles)
   const activeRole = useAuthStore((s) => s.activeRole)
   const hasCanonicalRole = useAuthStore((s) => s.hasCanonicalRole)
+  // Lint-audit 2026-08-09 (react-hooks/exhaustive-deps): a `hasCanonicalRole`
+  // referenciaban stabil zustand-selector, de az EREDMENYE a `roles` / `activeRole`
+  // allapottol fugg. A linter ezert "feleslegesnek" latja oket; ha viszont
+  // kivesszuk, a memo NEM szamolodik ujra szerepkorvaltaskor, es a felhasznalo a
+  // regi jogosultsag szerinti dropdown-t kapna. Jogosultsagi hiba lenne — a
+  // fuggoseg szandekos, ezert nemitjuk a szabalyt mind a harom memonal.
   const isVaultUser = useMemo(
     () => hasCanonicalRole(['ertektar']),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [hasCanonicalRole, roles, activeRole],
   )
   // FK-013 PÉNZTÁRI OLDAL (2026-05-28): a pénztáros (CASHIER/PENZTAR canonical role)
@@ -155,6 +162,7 @@ export default function ShipmentNewPage() {
   // működés szerint – ott csak az alábbiak szerepelnek".
   const isCashierUser = useMemo(
     () => hasCanonicalRole(['penztar']) && !hasCanonicalRole(['ertektar', 'foertektar']),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [hasCanonicalRole, roles, activeRole],
   )
   // FKH-018: a kezelési költség tételtípust a backend RBAC-jával azonos értéktáros
@@ -162,6 +170,7 @@ export default function ShipmentNewPage() {
   const [itemType, setItemType] = useState<'currency' | 'handlingFee'>('currency')
   const canRecordHandlingFee = useMemo(
     () => hasCanonicalRole(['ertektar', 'foertektar']),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [hasCanonicalRole, roles, activeRole],
   )
   const isHandlingFee = itemType === 'handlingFee' && canRecordHandlingFee

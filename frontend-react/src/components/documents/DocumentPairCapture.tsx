@@ -81,7 +81,6 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
         stream.getTracks().forEach((track) => track.stop())
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [electronAvailable])
 
   const captureSide = useCallback(
