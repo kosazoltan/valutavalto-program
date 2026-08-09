@@ -56,7 +56,9 @@ const VaultStocktakeDetailPage = lazy(
 const ComplianceDashboardPage = lazy(() => import('./pages/compliance/ComplianceDashboardPage'))
 const DocumentShortagePage = lazy(() => import('./pages/compliance/DocumentShortagePage'))
 const ComplianceQuestionsPage = lazy(() => import('./pages/compliance/ComplianceQuestionsPage'))
-const ComplianceTransactionsPage = lazy(() => import('./pages/compliance/ComplianceTransactionsPage'))
+const ComplianceTransactionsPage = lazy(
+  () => import('./pages/compliance/ComplianceTransactionsPage'),
+)
 const TransactionPage = lazy(() => import('./pages/transactions/TransactionPage'))
 const TransactionListPage = lazy(() => import('./pages/transactions/TransactionListPage'))
 const ConversionPage = lazy(() => import('./pages/transactions/ConversionPage'))
@@ -79,7 +81,6 @@ const CompetitorRateEntryPage = lazy(() => import('./pages/competitors/Competito
 const RateCreationPage = lazy(() => import('./pages/rates/RateCreationPage'))
 const MainRateSheetPage = lazy(() => import('./pages/rates/MainRateSheetPage'))
 const CashDeskPage = lazy(() => import('./pages/cashdesk/CashDeskPage'))
-const DenominationPage = lazy(() => import('./pages/cashdesk/DenominationPage'))
 const DenominationImagesPage = lazy(() => import('./pages/cashier/DenominationImagesPage'))
 const DayOpenPage = lazy(() => import('./pages/cashdesk/DayOpenPage'))
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'))
@@ -141,6 +142,8 @@ const OtherTasksPage = lazy(() => import('./pages/othertasks/OtherTasksPage'))
 const ClosingDenominationMenuPage = lazy(
   () => import('./pages/closing/ClosingDenominationMenuPage'),
 )
+// FK-078: kozos, kategoria-tudatos becimletezo oldal (a regi DenominationPage utodja).
+const DenominationEntryPage = lazy(() => import('./pages/closing/DenominationEntryPage'))
 const DocumentStoragePage = lazy(() => import('./pages/documents/DocumentStoragePage'))
 const NotificationPage = lazy(() => import('./pages/notifications/NotificationPage'))
 const OrganizationalSystemParameterPage = lazy(
@@ -696,7 +699,6 @@ export default function App() {
 
                 {/* Cash desk */}
                 <Route path="/cashdesk" element={<CashDeskPage />} />
-                <Route path="/cashdesk/denominations" element={<DenominationPage />} />
                 <Route path="/cashdesk/breaks" element={<CashDeskBreakPage />} />
 
                 {/* Closing */}
@@ -890,6 +892,11 @@ export default function App() {
                 <Route
                   path="/closing/denominations-menu"
                   element={<ClosingDenominationMenuPage />}
+                />
+                {/* FK-078 FR-1: kozos becimletezo oldal, kategoria a route-parameterben. */}
+                <Route
+                  path="/closing/denomination-entry/:category"
+                  element={<DenominationEntryPage />}
                 />
 
                 {/* Document Storage */}

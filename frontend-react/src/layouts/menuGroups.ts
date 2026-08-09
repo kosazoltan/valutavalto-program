@@ -122,7 +122,8 @@ export const menuGroups: MenuGroup[] = [
       { path: '/transactions/conversion', label: 'Konverzió', icon: ArrowLeftRight },
       { path: '/trades', label: 'Irodaközi trade', icon: ArrowLeftRight },
       { path: '/cashdesk', label: 'Kassza / készlet', icon: Wallet },
-      { path: '/cashdesk/denominations', label: 'Címletezés', icon: FileText },
+      // FK-078 FR-7: a régi, önálló „Címletezés" oldal megszűnt — a becímletezés a
+      // „Címletezés – zárások" menüponton át, kategóriánként érhető el.
       // EXCMD b5 FR-KC-05: zárási címletezések választó-menüje.
       { path: '/closing/denominations-menu', label: 'Címletezés – zárások', icon: FileText },
       // FS-9 S3: aktív címletképek read-only nézegetője (hamis bankjegy ellenőrzés).

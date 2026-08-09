@@ -734,10 +734,8 @@ describe('MobileOverviewPage', () => {
       'href',
       '/transactions/cashier',
     )
-    expect(within(cashierArea).getByRole('link', { name: /Címletezés/i })).toHaveAttribute(
-      'href',
-      '/cashdesk/denominations',
-    )
+    // FK-078 FR-7: a régi, önálló „Címletezés" oldal megszűnt — mobil nézetből sem érhető el.
+    expect(within(cashierArea).queryByRole('link', { name: /Címletezés/i })).toBeNull()
     expect(within(cashierArea).getByText('Pénztári készletfigyelő')).toBeInTheDocument()
     expect(within(cashierArea).getAllByText('EUR').length).toBeGreaterThan(0)
     expect(within(cashierArea).getByText('Alacsony')).toBeInTheDocument()

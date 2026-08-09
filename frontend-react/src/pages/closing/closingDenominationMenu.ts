@@ -11,8 +11,16 @@
  * „A MAI NAPI ZÁRÁS […]", „A HAVI ZÁRÁS VÉ[GRE]HAJTÁSA", „MÉGSEM" — mind meglévő
  * funkcióra mutat (/closing/wizard, /closing/monthly, vissza). Kitalált felirat nem
  * kerülhet a UI-ba; a funkciók ezen a választó-menün + a főmenün elérhetők. Ugyanez a
- * kép vizuálisan megerősítette az FR-KC-05 implementációt (6 gomb, pontosan a 4
- * szürkített inaktív, VISSZA/KILÉPÉS, „CIMLETEZÉS – ZÁRÁSOK" cím).
+ * kép vizuálisan megerősítette az FR-KC-05 implementációt (VISSZA/KILÉPÉS,
+ * „CIMLETEZÉS – ZÁRÁSOK" cím).
+ *
+ * FK-078 FR-1: az „Esti zárás" és a „Kezelési díj" pont már NEM a zárás-varázslóra visz,
+ * hanem a közös, kategória-tudatos becímletező oldalra (/closing/denomination-entry/:category).
+ * A tényleges zárást onnan kizárólag a „Napi zárás végrehajtása" gomb indítja (FR-5).
+ * FK-078 FR-6: az „Elektromos kereskedés" csempe eltávolítva (5 pont a korábbi 6 helyett) —
+ * a mögötte lévő e-kereskedelem backend-vertikum (DenominationCategory.ECOMMERCE, a varázsló
+ * saját lépése, a riportok) SZÁNDÉKOSAN érintetlen (Scope OUT).
+ * FK-078 FR-8: a WU / ÁFA / Foglaló pontok változatlanul, inaktívan maradnak.
  */
 
 export interface ClosingDenominationMenuItem {
@@ -30,16 +38,16 @@ export const CLOSING_DENOMINATION_MENU: ClosingDenominationMenuItem[] = [
   {
     id: 'evening-closing',
     label: 'ESTI ZÁRÁS CÍMLETEZÉSE',
-    route: '/closing/wizard',
+    route: '/closing/denomination-entry/EVENING',
     disabled: false,
-    description: 'A napi zárás címletezési lépése (zárás-varázsló)',
+    description: 'Napközbeni becímletezés önellenőrzéssel (EVENING kategória)',
   },
   {
     id: 'handling-fee',
     label: 'KEZELÉSI DÍJ CÍMLETEZÉSE',
-    route: '/closing/wizard',
+    route: '/closing/denomination-entry/HANDLING_FEE',
     disabled: false,
-    description: 'A kezelési díj címletezése a zárás-varázslóban',
+    description: 'A kezelési díj becímletezése (HANDLING_FEE kategória)',
   },
   {
     id: 'western-union',
@@ -56,12 +64,6 @@ export const CLOSING_DENOMINATION_MENU: ClosingDenominationMenuItem[] = [
   {
     id: 'foglalo-keszlet',
     label: 'FOGLALÓ KÉSZLET CÍMLETEZÉSE',
-    disabled: true,
-    description: 'A forrás-képernyőn inaktív (szürkített) menüpont',
-  },
-  {
-    id: 'elektromos-kereskedes',
-    label: 'ELEKTROMOS KERESKEDÉS CÍMLETEZÉSE',
     disabled: true,
     description: 'A forrás-képernyőn inaktív (szürkített) menüpont',
   },

@@ -17,7 +17,6 @@ import {
   Users,
   Calendar,
   Archive,
-  RefreshCw,
   Settings,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -173,14 +172,6 @@ const MENU_ITEMS_ADMIN: MenuItem[] = [
     icon: Archive,
     route: '/archiving',
     shortcut: 'Shift+F7',
-  },
-  {
-    key: '8',
-    label: 'Címletezés',
-    description: 'Címlet összetétel kezelése',
-    icon: RefreshCw,
-    route: '/cashdesk/denominations',
-    shortcut: 'Shift+F8',
   },
   {
     key: '9',

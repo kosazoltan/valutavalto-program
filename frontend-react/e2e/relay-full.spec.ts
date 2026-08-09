@@ -233,7 +233,7 @@ const ROUTES = [
   '/rates/creation',
   '/rates/groups',
   '/cashdesk',
-  '/cashdesk/denominations',
+  '/closing/denomination-entry/EVENING',
   '/cashdesk/breaks',
   '/closing/wizard',
   '/transfers',
