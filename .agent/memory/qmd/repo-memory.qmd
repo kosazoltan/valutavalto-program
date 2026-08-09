@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-09T17:37:58.762Z
+generated: 2026-08-09T18:04:37.696Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-06-anthropic-outage-fs-d-pending.md`
-  - summary: # Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett) > Oka: az Anthropic hozzáférés (Opus orchestrator + Fable planner) kikerült a > session végén. A 4-szerepes pipeline nem folytatható (Fable tervezés + GLM > review még elmegy OpenRouter/Nous úton, de az Opus orchestrátor nélül a > minőségi szabvány nem tartható). A user explicit utasítása: álljunk meg, > írjunk handoffot, várjuk az
 
 - **Handoff — 2026-07-07 FS-D (FS-3) MERGELVE + deployolva; FS-GAP folytatható** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-07-fs-d-merged-deployed.md`
@@ -239,6 +235,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Aktív repo-memória (read-gate + area-taxonómia + stale-check)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md`
   - summary: --- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour
+
+- **FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md`
+  - summary: --- date: 2026-08-09 title: FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele type: session status: complete tags: [fkh031, sync, ertektar, penztar, retry, ui, tdd] --- # Handoff — FKH-031 NFR-1 ## Kiindulás A branch (`feature/ertektar-fkh031-sync-retry-lathatosag`) FR-1…FR-6 szinten készen volt (commit `6ff0fc2a`, `711c4adf`). Kötelező memória-lookup után (AGENTS.md 2.1) kódfeltárással **egy valós hiányt** találta
 
 - **Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md`

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-09T17:37:58.762Z",
-  "source_count": 1052,
+  "generated_at": "2026-08-09T18:04:37.696Z",
+  "source_count": 1053,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -8251,12 +8251,13 @@
     },
     {
       "path": "frontend-react/src/pages/receipts/ReceiptPage.tsx",
-      "sha256": "d09831384f51e487d476ea9d92d38cdb9422e8fde4513869441da5e6a6945451",
+      "sha256": "4492152da29fbde1424e2f09b194a3218c2bf865b043aee73537ea97f3235a7b",
       "type": "operational-receipt",
       "areas": [
         "aml",
         "frontend",
         "napzaras",
+        "penztar",
         "sync"
       ]
     },
@@ -12305,6 +12306,18 @@
         "ertektar",
         "sync",
         "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md",
+      "sha256": "ecdd058d70a6952af7e5f6cb5fe19ba28afbcef419c715b724a68b140131ef39",
+      "type": "medium-term-episodic",
+      "areas": [
+        "ertektar",
+        "frontend",
+        "penztar",
+        "specifikacio",
+        "sync"
       ]
     },
     {

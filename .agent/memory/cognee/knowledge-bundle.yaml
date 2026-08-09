@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-09T17:37:58.762Z
+generated_at: 2026-08-09T18:04:37.696Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -4915,7 +4915,7 @@ nodes:
     source_path: frontend-react/src/pages/receipts/ReceiptPage.tsx
     summary: "import { useState, useEffect, useMemo, useCallback } from 'react' import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock, ChevronDown, ChevronRight, X, Download, AlertTriangle, RefreshCw, } from 'lucide-react' import { receiptApi, Receipt } from '../../services/api/index' import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling' import { downloadBlob } from '../../utils/downloadBlob' impo"
     tags: [receiptpage, tsx, import, usestate, useeffect, usememo, usecallback, from, react, receipt]
-    areas: [aml, frontend, napzaras, sync]
+    areas: [aml, frontend, napzaras, penztar, sync]
   - id: dee30b5112353662
     type: operational-receipt
     title: ReceiptPage.types.test.ts
@@ -7345,6 +7345,13 @@ nodes:
     summary: "--- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour"
     tags: [aktiv, repo, memoria, read, gate, area, taxonomia, stale, check, date]
     areas: [cimletezes, ertektar, sync, tenant]
+  - id: 57d7a6fe91a377d4
+    type: medium-term-episodic
+    title: "FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele"
+    source_path: vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md
+    summary: "--- date: 2026-08-09 title: FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele type: session status: complete tags: [fkh031, sync, ertektar, penztar, retry, ui, tdd] --- # Handoff — FKH-031 NFR-1 ## Kiindulás A branch (`feature/ertektar-fkh031-sync-retry-lathatosag`) FR-1…FR-6 szinten készen volt (commit `6ff0fc2a`, `711c4adf`). Kötelező memória-lookup után (AGENTS.md 2.1) kódfeltárással **egy valós hiányt** találta"
+    tags: [fkh, 031, nfr, lejart, retry, ablak, lathatova, tetele, date, 2026]
+    areas: [ertektar, frontend, penztar, specifikacio, sync]
   - id: be68989e6ea5a2e7
     type: medium-term-episodic
     title: "Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása"
@@ -17433,6 +17440,9 @@ edges:
     to: area_napzaras
     relation: belongs_to_area
   - from: dc4f2735adac335d
+    to: area_penztar
+    relation: belongs_to_area
+  - from: dc4f2735adac335d
     to: area_sync
     relation: belongs_to_area
   - from: dee30b5112353662
@@ -22313,6 +22323,21 @@ edges:
   - from: 9b6f403d1655a914
     to: area_tenant
     relation: belongs_to_area
+  - from: 57d7a6fe91a377d4
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 57d7a6fe91a377d4
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 57d7a6fe91a377d4
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 57d7a6fe91a377d4
+    to: area_specifikacio
+    relation: belongs_to_area
+  - from: 57d7a6fe91a377d4
+    to: area_sync
+    relation: belongs_to_area
   - from: be68989e6ea5a2e7
     to: area_ertektar
     relation: belongs_to_area
@@ -22382,9 +22407,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: c206e27893093403
-    to: repo_project_state
-    relation: informs
   - from: 041d7a37f24f7cb9
     to: repo_project_state
     relation: informs
@@ -22611,6 +22633,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 9b6f403d1655a914
+    to: repo_project_state
+    relation: informs
+  - from: 57d7a6fe91a377d4
     to: repo_project_state
     relation: informs
   - from: be68989e6ea5a2e7

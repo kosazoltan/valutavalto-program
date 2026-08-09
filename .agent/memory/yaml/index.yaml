@@ -1,6 +1,6 @@
-generated_at: 2026-08-09T17:37:58.762Z
+generated_at: 2026-08-09T18:04:37.696Z
 schema_version: 1
-source_count: 1052
+source_count: 1053
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -1686,6 +1686,15 @@ medium_term:
     summary: "--- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour"
     areas: [cimletezes, ertektar, sync, tenant]
     keywords: [aktiv, repo, memoria, read, gate, area, taxonomia, stale, check, date, 2026, title]
+  - id: 57d7a6fe91a377d4
+    title: "FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md
+    status: complete
+    sha256: ecdd058d70a6952af7e5f6cb5fe19ba28afbcef419c715b724a68b140131ef39
+    summary: "--- date: 2026-08-09 title: FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele type: session status: complete tags: [fkh031, sync, ertektar, penztar, retry, ui, tdd] --- # Handoff — FKH-031 NFR-1 ## Kiindulás A branch (`feature/ertektar-fkh031-sync-retry-lathatosag`) FR-1…FR-6 szinten készen volt (commit `6ff0fc2a`, `711c4adf`). Kötelező memória-lookup után (AGENTS.md 2.1) kódfeltárással **egy valós hiányt** találta"
+    areas: [ertektar, frontend, penztar, specifikacio, sync]
+    keywords: [fkh, 031, nfr, lejart, retry, ablak, lathatova, tetele, date, 2026, title, type]
   - id: be68989e6ea5a2e7
     title: "Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása"
     type: medium-term-episodic
@@ -2100,9 +2109,9 @@ operational:
     title: ReceiptPage.tsx
     type: operational-receipt
     path: frontend-react/src/pages/receipts/ReceiptPage.tsx
-    sha256: d09831384f51e487d476ea9d92d38cdb9422e8fde4513869441da5e6a6945451
+    sha256: 4492152da29fbde1424e2f09b194a3218c2bf865b043aee73537ea97f3235a7b
     summary: "import { useState, useEffect, useMemo, useCallback } from 'react' import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock, ChevronDown, ChevronRight, X, Download, AlertTriangle, RefreshCw, } from 'lucide-react' import { receiptApi, Receipt } from '../../services/api/index' import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling' import { downloadBlob } from '../../utils/downloadBlob' impo"
-    areas: [aml, frontend, napzaras, sync]
+    areas: [aml, frontend, napzaras, penztar, sync]
     keywords: [receiptpage, tsx, import, usestate, useeffect, usememo, usecallback, from, react, receipt, receipticon, search]
   - id: dee30b5112353662
     title: ReceiptPage.types.test.ts
