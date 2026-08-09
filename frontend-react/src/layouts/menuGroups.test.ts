@@ -200,7 +200,6 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       'Konverzió',
       'Irodaközi trade',
       'Kassza / készlet',
-      'Címletezés',
       'Címletezés – zárások',
       'Címletképek (valuta)',
       'Ügyfelek',
@@ -243,7 +242,6 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       'Konverzió',
       'Irodaközi trade',
       'Kassza / készlet',
-      'Címletezés',
       'Címletezés – zárások',
       'Címletképek (valuta)',
       'Ügyfelek',
@@ -280,5 +278,36 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       'Ügyfelek',
       'Árfolyamok (nézet)',
     ])
+  })
+})
+
+describe('FKH-030 FR-1 — Pénzforgalom riport a Riportok menücsoportban', () => {
+  it('FR-1: a Riportok csoport tartalmazza a „Pénzforgalom riport” menüpontot', () => {
+    const reports = menuGroups.find((g) => g.label === 'Riportok')
+    expect(reports).toBeDefined()
+    expect(reports!.items.map((i) => i.path)).toContain('/reports/cash-flow')
+  })
+
+  it('FR-1: az oversight-szerepkörök a menüből is elérik (a backend RBAC-kal összhangban)', () => {
+    // A CashFlowReportController @PreAuthorize ezeket engedélyezi — korábban az „Értéktár
+    // (lokál)” csoportba zárva a menüből egyikük sem érte el a riportot.
+    for (const role of [
+      'irodavezeto',
+      'belso_ellenor',
+      'teruleti_vezeto',
+      'penzugyi_vezeto',
+      'ugyvezeto',
+      'foertektar',
+    ]) {
+      expect(fkh026VisibleItemLabels('full', [role])).toContain('Pénzforgalom riport')
+    }
+  })
+
+  it('FR-1: az értéktári elérés változatlanul megmarad (nem áthelyezés, hanem kiterjesztés)', () => {
+    expect(fkh026VisibleItemLabels('ertektar', ['ertektar'])).toContain('Pénzforgalom riport')
+  })
+
+  it('jogosulatlan szerepkör (penztaros) továbbra sem látja', () => {
+    expect(fkh026VisibleItemLabels('full', ['penztaros'])).not.toContain('Pénzforgalom riport')
   })
 })

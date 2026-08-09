@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-12T20:06:35.409Z",
+  "generated_at": "2026-08-09T16:16:07.462Z",
   "checks": [
     {
       "name": "memoryRoot",
@@ -32,14 +32,18 @@
     },
     {
       "name": "cognee",
-      "ok": true,
-      "status": 200,
-      "detail": "{\"status\":\"ready\",\"health\":\"healthy\",\"version\":\"0.5.6-local\"}"
+      "ok": false,
+      "error": "fetch failed"
     },
     {
       "name": "obsidian:https://127.0.0.1:27124/",
-      "ok": true,
-      "status": 200
+      "ok": false,
+      "error": "connect ECONNREFUSED 127.0.0.1:27124"
+    },
+    {
+      "name": "obsidian:http://127.0.0.1:27123/",
+      "ok": false,
+      "error": "connect ECONNREFUSED 127.0.0.1:27123"
     }
   ]
 }

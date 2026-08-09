@@ -10,6 +10,10 @@ export interface ExchangeRate {
   currencyName: string
   validDate: string
   validTime: string
+  /** FKH-032 FR-6: az árfolyam kora órában (backend számított mező). */
+  ageHours?: number
+  /** FKH-032 FR-6: elavult-e az árfolyam a szerver `exchange-rate.max-age-hours` szerint. */
+  stale?: boolean
   baseBuyRate: number
   baseSellRate: number
   limit1Amount?: number

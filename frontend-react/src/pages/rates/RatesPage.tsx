@@ -61,6 +61,10 @@ interface RateRow {
   sellRate: number
   mnbRate: number
   lastUpdate: string
+  /** FKH-032 FR-6: elavult árfolyam — feltűnő, aktív vizuális jelzést kap a táblában. */
+  isStale: boolean
+  /** FKH-032 FR-6: az árfolyam kora órában, a jelzés melletti magyarázathoz. */
+  ageHours?: number
   currencyId: number
   /** FK-006: false = aktív valuta, de még NINCS rögzített árfolyama (üres sorként jelenik meg). */
   hasRate: boolean
@@ -75,6 +79,18 @@ interface RateRow {
   limit3SellRate?: number
 }
 
+/**
+ * FKH-031 FR-5: az árfolyam érvényességi dátumának magyar formázása (2026.08.08).
+ * A backend `validDate` ISO (YYYY-MM-DD) formában érkezik; hiányzó/érvénytelen érték
+ * esetén üres sztringet adunk vissza, hogy a felirat ne törjön el.
+ */
+function formatRateDate(validDate: string | null | undefined): string {
+  if (!validDate) return ''
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(validDate)
+  if (!match) return ''
+  return `${match[1]}.${match[2]}.${match[3]}`
+}
+
 function mapExchangeRateToRow(rate: ExchangeRate): RateRow {
   return {
     id: rate.id,
@@ -83,12 +99,20 @@ function mapExchangeRateToRow(rate: ExchangeRate): RateRow {
     buyRate: rate.baseBuyRate,
     sellRate: rate.baseSellRate,
     mnbRate: rate.officialRate ?? 0,
+    // FKH-031 FR-5: a "frissítve" felirat DÁTUMOT és időt is tartalmaz — egy elavult
+    // árfolyam így önmagában is felismerhető, nem csak a HH:MM látszik.
     lastUpdate: rate.validTime
-      ? rate.validTime.substring(0, 5)
-      : new Date(rate.createdAt).toLocaleTimeString('hu-HU', {
+      ? `${formatRateDate(rate.validDate)} ${rate.validTime.substring(0, 5)}`.trim()
+      : new Date(rate.createdAt).toLocaleString('hu-HU', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
           hour: '2-digit',
           minute: '2-digit',
         }),
+    // FKH-032 FR-6: a szerver által számított elavulás-jelzés (exchange-rate.max-age-hours).
+    isStale: rate.stale === true,
+    ageHours: rate.ageHours,
     currencyId: rate.currencyId,
     limit1Amount: rate.limit1Amount ?? undefined,
     limit1BuyRate: rate.limit1BuyRate ?? undefined,
@@ -125,6 +149,8 @@ function buildRows(currencies: Currency[], rates: ExchangeRate[]): RateRow[] {
         sellRate: 0,
         mnbRate: 0,
         lastUpdate: '',
+        // FKH-032 FR-6: nincs rögzített árfolyam -> nincs mit elavultként jelezni.
+        isStale: false,
         currencyId: c.id,
         hasRate: false,
       }
@@ -967,13 +993,28 @@ export default function RatesPage() {
                 {rates.map((rate, idx) => (
                   <tr
                     key={rate.id}
-                    className={`${idx % 2 === 1 ? 'bg-gray-50/70' : 'bg-white'} border-b border-gray-100 last:border-0 hover:bg-blue-50/60`}
+                    data-testid={rate.isStale ? `rate-row-stale-${rate.code}` : undefined}
+                    className={`${
+                      // FKH-032 FR-6: elavult árfolyam feltűnő, aktív jelzése — az ügyfél a
+                      // teljes táblát látja, a problémának első pillantásra ki kell tűnnie.
+                      rate.isStale
+                        ? 'bg-red-100 ring-1 ring-inset ring-red-400'
+                        : idx % 2 === 1
+                          ? 'bg-gray-50/70'
+                          : 'bg-white'
+                    } border-b border-gray-100 last:border-0 hover:bg-blue-50/60`}
                   >
                     <td className="whitespace-nowrap px-3 py-2">
                       <span className="font-mono text-base font-bold text-blue-800">
                         {rate.code}
                       </span>
                       <span className="ml-2 text-gray-500">{rate.name}</span>
+                      {rate.isStale && (
+                        <span className="badge badge-red ml-2 align-middle">
+                          Elavult árfolyam
+                          {typeof rate.ageHours === 'number' ? ` (${rate.ageHours} órás)` : ''}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right font-mono text-base font-semibold tabular-nums text-green-700">
                       {rate.hasRate ? (

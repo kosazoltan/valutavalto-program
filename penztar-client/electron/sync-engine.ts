@@ -78,8 +78,9 @@ import {
   type PrintReceiptData,
 } from './printer';
 import { sanitizeStoredServerUrl } from './config-guard';
-import { isAllowedUrl } from './api-proxy';
+import { isAllowedUrl, fetchViaElectronNet } from './api-proxy';
 import { sanitizeSyncErrorMessage } from './sync-error-sanitizer';
+import { isBusinessRetryWithheld } from './business-retry';
 
 // --- Típusok ---
 
@@ -424,6 +425,73 @@ async function httpPost<T>(
   } catch (err) {
     // FK-071 MEDIUM-E: a HttpStatusError message-e a szerver-üzenetet (PII-t) hordozhatja — maszkolva.
     log.error('[SyncEngine] httpPost failed:', { url, err: splitSyncError(err).masked });
+    throw err;
+  }
+}
+
+/**
+ * FKH-032 FR-1/FR-3: azonnali (mentéskori) küldés a main-process `net.request`
+ * (`fetchViaElectronNet`) csatornán — UGYANAZON az útvonalon, amit a renderer
+ * `useOnlineStatus` health-check-je és az `api:fetch` IPC használ. Az undici
+ * `fetch`-et egyes TLS-proxyk (ESET/Kaspersky/Bitdefender) blokkolják, miközben a
+ * Chromium network stack átmegy rajtuk — ez okozta az "Online jelző zöld, a küldés
+ * mégis hálózati hibával bukik" ellentmondást.
+ *
+ * <p>Szignatúrája szándékosan azonos a {@link httpPost}-éval, hogy a
+ * {@link SyncEngine.syncTransaction} poster-injektálással cserélhesse ki.
+ * Timeout: NFR-1 szerint 5000 ms (nem a 15 mp-es általános érték).
+ */
+const IMMEDIATE_SYNC_TIMEOUT_MS = 5_000;
+
+async function httpPostViaNet<T>(
+  url: string,
+  body: Record<string, unknown>,
+  token: string | null,
+  idempotencyKey?: string,
+  allowEmptyResponse = false,
+): Promise<T> {
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      // FKH-032 FR-5: a mentéskor generált, TÁROLT kulcs megy fel — a backend ez
+      // alapján dedupol, így az azonnali kísérlet + háttér-szinkron nem duplikál.
+      'Idempotency-Key': idempotencyKey ?? crypto.randomUUID(),
+    };
+    const companyCode = getConfig('bootstrap_company_code')?.trim();
+    if (companyCode) {
+      headers['X-Company-Code'] = companyCode;
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetchViaElectronNet({
+      method: 'POST',
+      url,
+      body: JSON.stringify(body),
+      headers,
+      timeoutMs: IMMEDIATE_SYNC_TIMEOUT_MS,
+    });
+
+    if (!response.ok) {
+      let serverMessage: string | null = null;
+      try {
+        const parsed = JSON.parse(response.body) as { message?: unknown };
+        if (typeof parsed.message === 'string' && parsed.message.trim()) {
+          serverMessage = parsed.message;
+        }
+      } catch {
+        /* nem-JSON body → marad a status-alapú fallback */
+      }
+      throw new HttpStatusError(response.status, response.statusText, serverMessage);
+    }
+
+    if (allowEmptyResponse && !response.body.trim()) {
+      return undefined as T;
+    }
+    return (response.body.trim() ? JSON.parse(response.body) : undefined) as T;
+  } catch (err) {
+    log.error('[SyncEngine] httpPostViaNet failed:', { url, err: splitSyncError(err).masked });
     throw err;
   }
 }
@@ -1095,6 +1163,85 @@ export class SyncEngine {
    */
 
   /**
+   * FKH-032 FR-2/FR-3/FR-4/FR-5: CÉLZOTT azonnali könyvelési kísérlet EGY frissen
+   * mentett tételre — a teljes `syncAll()` helyett.
+   *
+   * <ul>
+   *   <li>FR-1: a main-process `net.request` csatornán megy ({@link httpPostViaNet}),
+   *       ugyanazon, mint a `useOnlineStatus` health-check — a jelző és a küldés
+   *       nem mondhat ellent egymásnak.</li>
+   *   <li>FR-3: 5 mp-es dedikált timeout; túllépéskor a tétel a helyi queue-ban marad,
+   *       a 30 mp-es háttér-szinkron + FKH-031 retry-logika veszi át (NFR-2).</li>
+   *   <li>FR-5: a MENTÉSKOR generált, tárolt `idempotency_key` megy fel — a backend
+   *       dedupol, nincs kettős könyvelés az azonnali és a háttér-kísérlet között.</li>
+   *   <li>NFR-3: siker és hiba is auditálódik (markTransactionSynced /
+   *       markTransactionSyncError → `pending_transaction_sync_attempts`).</li>
+   * </ul>
+   *
+   * A háttér-ciklus abandon/backoff állapotát NEM módosítja azon túl, hogy üzleti
+   * (nem-retry-olható) 4xx esetén a tételt abandonolja — pontosan úgy, ahogy a
+   * háttér-ág tenné, elkerülve a felesleges körökben ismételt elutasítást.
+   */
+  async syncSingleTransactionImmediate(
+    id: number,
+  ): Promise<{ success: boolean; error?: string | null }> {
+    const tx = getPendingTransactions().find((row) => row.id === id);
+    if (!tx) {
+      // Már felkerült (pl. egy párhuzamos háttér-ciklus vitte fel) — ez SIKER.
+      return { success: true, error: null };
+    }
+
+    const serverUrl = this.getActiveServerUrl();
+    if (!serverUrl) {
+      return { success: false, error: 'Offline mód — szerver URL nincs beállítva' };
+    }
+
+    const sessionCompanyCode = getConfig('bootstrap_company_code');
+    const mismatchMessage = standaloneCompanyMismatchMessage(
+      'TX',
+      tx.id,
+      tx.company_code,
+      sessionCompanyCode,
+    );
+    if (mismatchMessage) {
+      try {
+        markTransactionSyncError(tx.id, mismatchMessage, new Date().toISOString());
+      } catch {
+        /* best-effort */
+      }
+      return { success: false, error: mismatchMessage };
+    }
+
+    let token = this.getAuthToken();
+    if (!token) {
+      token = await this.bootstrapAuthSession(serverUrl);
+    }
+    if (!token) {
+      return { success: false, error: 'Nincs auth token — bejelentkezés szükséges' };
+    }
+
+    try {
+      await this.syncTransaction(serverUrl, token, tx, httpPostViaNet);
+      markTransactionSynced(tx.id);
+      this.abandonedTxIds.delete(tx.id);
+      log.info(`[SyncEngine] TX #${tx.id} azonnali könyvelés sikeres (net.request)`);
+      return { success: true, error: null };
+    } catch (err) {
+      const { raw: rawErrorMsg, masked: errorMsg } = splitSyncError(err);
+      try {
+        markTransactionSyncError(tx.id, errorMsg, new Date().toISOString());
+      } catch {
+        /* best-effort */
+      }
+      if (this.isBusinessValidationError(rawErrorMsg)) {
+        this.abandonedTxIds.add(tx.id);
+      }
+      log.warn(`[SyncEngine] TX #${tx.id} azonnali könyvelés sikertelen: ${errorMsg}`);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
    * PR #116: HTTP 4xx (kivéve auth 401/403 és rate-limit 429) = üzleti validációs hiba.
    * Ezek NEM transient hibák → ne retry-oljuk újra és újra az intervalban.
    *
@@ -1176,9 +1323,26 @@ export class SyncEngine {
   private async performSyncAll(tokenOverride?: string | null): Promise<SyncResult> {
     const result: SyncResult = { synced: 0, failed: 0, errors: [] };
 
-    // PR #116: abandoned (business-validation-failed) kizárása az auto-sync-ből
+    // PR #116 + FKH-031 FR-1/FR-2: a business-validation hibás tételek kizárása az
+    // auto-sync-ből mostantól IDŐKAPUZOTT, nem végleges. A tétel a perzisztens
+    // sync_attempts/last_attempt_at mezőkből számolt backoff lejárta után újra
+    // esélyt kap (app-restart után is), 7 napig; utána kézi beavatkozás kell.
+    const nowMs = Date.now();
     const allPendingTx = getPendingTransactions();
-    const pendingTransactions = allPendingTx.filter((tx) => !this.abandonedTxIds.has(tx.id));
+    const pendingTransactions = allPendingTx.filter((tx) => {
+      // FR-2: a kapuzás forrása perzisztens is lehet — app-restart után az in-memory
+      // abandoned-set üres, de a tárolt sync_error megőrzi a "HTTP 4xx" prefixet
+      // (lásd sync-error-sanitizer.ts sorrend-invariáns), így a backoff folytatódik.
+      const isBusinessRejected =
+        this.abandonedTxIds.has(tx.id) || this.isBusinessValidationError(tx.sync_error ?? '');
+      if (!isBusinessRejected) return true;
+      if (isBusinessRetryWithheld(tx, nowMs)) return false;
+      // Backoff lejárt — a tétel visszakerül az auto-sync-be. Ha ismét business
+      // hibára fut, a catch-ág újra hozzáadja a set-hez, immár nagyobb attempt-tel.
+      this.abandonedTxIds.delete(tx.id);
+      log.info(`[SyncEngine] TX #${tx.id} business-retry backoff lejárt — újrapróbálkozás`);
+      return true;
+    });
     const allPendingConv = getPendingConversions();
     const pendingConversions = allPendingConv.filter((c) => !this.abandonedConvIds.has(c.id));
     const allPendingBankTx = getPendingBankTransactions();
@@ -1709,6 +1873,8 @@ export class SyncEngine {
     serverUrl: string,
     token: string,
     tx: PendingTransactionRow,
+    // FKH-032 FR-1: az azonnali kísérlet a net.request csatornára cserélheti a postert.
+    poster: typeof httpPost = httpPost,
   ): Promise<void> {
     const endpoint =
       tx.type === 'SELL' ? `${serverUrl}/transactions/sell` : `${serverUrl}/transactions/buy`;
@@ -1867,7 +2033,7 @@ export class SyncEngine {
     }
 
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
-    await httpPost(endpoint, body, token, tx.idempotency_key ?? undefined);
+    await poster(endpoint, body, token, tx.idempotency_key ?? undefined);
   }
 
   private async syncConversion(

@@ -151,7 +151,10 @@ export default function DailyTurnoverPage() {
     } finally {
       setLoading(false)
     }
-  }, [buildRange, unitMode, territoryId, branchId, t])
+    // Lint-audit 2026-08-09: a `t` felesleges volt — a callback egyetlen
+    // forditott sztringet sem hasznal (a hibauzenet a `getErrorMessage`-bol jon),
+    // igy a nyelvvaltas feleslegesen ujra-kreaciot es refetch-et valtott ki.
+  }, [buildRange, unitMode, territoryId, branchId])
 
   const fmtNum = (n: number) =>
     (n ?? 0).toLocaleString('hu-HU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

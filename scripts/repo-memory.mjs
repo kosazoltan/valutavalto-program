@@ -213,6 +213,132 @@ function classify(file, fm, title, text) {
   return fm.type || 'semantic-reference'
 }
 
+// --- Area taxonomy -----------------------------------------------------------
+// Every memory entry is tagged with zero or more product areas so that
+// `memory:query --area <area>` can return only the knowledge that belongs to the
+// program area currently being developed. Keep the keys stable: agent rules and
+// CI gates reference them by name.
+const AREA_RULES = {
+  ertektar: {
+    paths: ['ertektar', 'vault-', 'valuables', 'treasury'],
+    keywords: [
+      'ertektar',
+      'értéktár',
+      'vaulttransfer',
+      'collection',
+      'distribution',
+      'ertekszallito',
+      'értékszállító',
+    ],
+  },
+  penztar: {
+    paths: ['penztar-client', 'penztar', 'cashier'],
+    keywords: ['penztar', 'pénztár', 'cashier', 'kktg', 'penztaros', 'pénztáros', 'cashbalance'],
+  },
+  napzaras: {
+    paths: ['napzaras', 'dayclose', 'day-close'],
+    keywords: ['napzaras', 'napzárás', 'dayclose', 'varazslo', 'varázsló', 'zaras', 'zárás'],
+  },
+  arfolyam: {
+    paths: ['arfolyam', 'rate-maker', 'arfolyam-keszito'],
+    keywords: ['arfolyam', 'árfolyam', 'mnb', 'exchangerate', 'ratemaker', 'arfolyamkeszito'],
+  },
+  cimletezes: {
+    paths: ['denomination', 'cimlet'],
+    keywords: ['cimlet', 'címlet', 'denomination', 'cimletezes', 'címletezés'],
+  },
+  sync: {
+    paths: ['sync', 'offline', 'sync-engine'],
+    keywords: ['sync', 'szinkron', 'offline', 'outbox', 'retry', 'sqljs', 'sql.js', 'local-first'],
+  },
+  aml: {
+    paths: ['aml', 'sanction', 'pmt'],
+    keywords: ['aml', 'pmt', 'gongyolites', 'göngyölítés', 'szankcio', 'szankció', 'pep', 'kyc'],
+  },
+  tenant: {
+    paths: ['tenant', 'company'],
+    keywords: ['companyid', 'multi-tenant', 'multitenant', 'tenant', 'izolacio', 'izoláció'],
+  },
+  riport: {
+    paths: ['report', 'riport', 'nav-report'],
+    keywords: ['nav', 'riport', 'report', 'adatszolgaltatas', 'adatszolgáltatás'],
+  },
+  database: {
+    paths: ['flyway', 'migration', 'database/', 'db/'],
+    keywords: ['flyway', 'migration', 'migracio', 'migráció', 'postgres', 'ddl', 'schema'],
+  },
+  installer: {
+    paths: ['installer', 'nsis', 'electron-builder'],
+    keywords: ['installer', 'telepito', 'telepítő', 'nsis', 'electron-builder', 'signing'],
+  },
+  deploy: {
+    paths: ['deploy', 'operations', 'workflows'],
+    keywords: ['deploy', 'hetzner', 'scaleway', 'neon', 'github actions', 'ci', 'release'],
+  },
+  security: {
+    paths: ['security', 'audit'],
+    keywords: ['security', 'biztonsag', 'biztonság', 'gitleaks', 'trivy', 'rbac', 'authz'],
+  },
+  frontend: {
+    paths: ['frontend-react', 'kozponti-client'],
+    keywords: ['react', 'tanstack', 'zustand', 'tailwind', 'vite', 'frontend'],
+  },
+  legacy: {
+    paths: ['legacy', 'anti', 'excmd', 'felmeres-kb', 'reverse-engineering'],
+    keywords: [
+      'delphi',
+      'legacy',
+      'parity',
+      'paritas',
+      'paritás',
+      'firebird',
+      'pascal',
+      'régi program',
+      'regi program',
+      'eredeti program',
+    ],
+  },
+  // Requirement/specification corpus: what the business actually asked for.
+  // Distinct from `legacy` (how the old program did it) — a feature task
+  // usually needs both.
+  specifikacio: {
+    paths: ['excmd', 'docs/specs', 'kovetelmeny'],
+    keywords: [
+      'kovetelmeny',
+      'követelmény',
+      'specifikacio',
+      'specifikáció',
+      'elvaras',
+      'elvárás',
+      'felmeres',
+      'felmérés',
+      'interju',
+      'interjú',
+    ],
+  },
+}
+
+function detectAreas(file, fm, title, text) {
+  const relPath = rel(file).toLowerCase()
+  const haystack = `${title}\n${fm.tags || ''}\n${text}`
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  const found = new Set()
+  for (const [area, rule] of Object.entries(AREA_RULES)) {
+    if (rule.paths.some((p) => relPath.includes(p))) {
+      found.add(area)
+      continue
+    }
+    const hits = rule.keywords.filter((k) =>
+      haystack.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g, '')),
+    ).length
+    // Two independent keyword hits keep incidental mentions out of the area.
+    if (hits >= 2) found.add(area)
+  }
+  return Array.from(found).sort()
+}
+
 function collectSources() {
   const repoVault = path.join(root, 'vault')
   const vault = repoVault
@@ -225,23 +351,72 @@ function collectSources() {
     path.join(root, 'AGENTS.md'),
     path.join(root, 'AI_CONSTITUTION.md'),
     path.join(root, 'docs', 'LESSONS_LEARNED.md'),
+    // Generated digest of the legacy Delphi symbol index. The corpus itself
+    // (~45 MB of Pascal) is far too large to full-text index, but this map of
+    // module -> exported API / form class / SQL tables answers "where did the
+    // old program do X?" and is small enough to live in the bundle.
+    path.join(root, '.agent', 'memory', 'legacy', 'legacy-module-map.md'),
   ])
     if (exists(file)) candidates.push(file)
 
   for (const dir of [
     path.join(root, 'docs', 'knowledge', 'memory'),
+    path.join(root, 'docs', 'knowledge', 'analysis'),
+    path.join(root, 'docs', 'knowledge', 'reviews'),
+    path.join(root, 'docs', 'knowledge', 'legacy-reverse-engineering'),
+    path.join(root, 'docs', 'knowledge', 'generated'),
     path.join(root, 'docs', 'operations'),
     path.join(root, 'docs', 'user-manual'),
-    path.join(root, 'docs', 'knowledge', 'legacy-reverse-engineering'),
     path.join(root, 'docs', 'legacy-analysis'),
-    path.join(root, 'docs', 'knowledge', 'analysis'),
+    path.join(root, 'docs', 'architecture'),
+    path.join(root, 'docs', 'specs'),
+    path.join(root, 'docs', 'database'),
+    path.join(root, 'docs', 'security'),
+    path.join(root, 'docs', 'playbooks'),
+    // EXCMD: the customer-facing specification / requirement corpus (~495 md).
+    // This is where the original program's agreed behaviour is written down;
+    // leaving it unindexed was the single biggest blind spot in the bundle.
+    path.join(root, 'EXCMD'),
     path.join(vault, 'sessions'),
     path.join(vault, 'agent-archive'),
     path.join(vault, 'feedback'),
     path.join(vault, 'procedures'),
     path.join(vault, 'references'),
+    path.join(vault, 'architecture'),
+    path.join(vault, 'elvi'),
+    path.join(vault, 'operations'),
   ]) {
     candidates.push(...listFiles(dir, ['.md', '.qmd', '.yaml', '.yml', '.csv', '.json', '.jsonl']))
+  }
+
+  // Top-level legacy/parity/architecture docs. These sit loose in docs/ and in
+  // the repo root, and carry the Delphi-vs-modern gap analysis that a feature
+  // task must consult before re-solving something the legacy already solved.
+  for (const file of listFiles(path.join(root, 'docs'), ['.md'])) {
+    if (rel(file).split('/').length !== 2) continue // docs/<file>.md only
+    const base = path.basename(file).toUpperCase()
+    if (
+      base.includes('LEGACY') ||
+      base.includes('ANTI') ||
+      base.includes('ARCHITECTURE') ||
+      base.includes('PARITY') ||
+      base.includes('LESSONS') ||
+      base.includes('MIGRATION') ||
+      base.includes('TREASURY') ||
+      base.includes('PENZTAR') ||
+      base.includes('API-OVERVIEW') ||
+      base.includes('CAPABILITIES')
+    )
+      candidates.push(file)
+  }
+  for (const name of [
+    'ARCHITECTURE.md',
+    'ARCHITECTURE_DECISIONS.md',
+    'REPO_STATE.md',
+    'AI_CONTRACT.md',
+  ]) {
+    const file = path.join(root, name)
+    if (exists(file)) candidates.push(file)
   }
   for (const dir of [path.join(root, 'backend', 'src'), path.join(root, 'frontend-react', 'src')]) {
     candidates.push(
@@ -275,6 +450,7 @@ function buildEntries() {
       sha256: sha(text),
       bytes: Buffer.byteLength(text, 'utf8'),
       summary: summarize(text),
+      areas: detectAreas(file, fm, title, text),
       keywords: tokenize(`${title}\n${text}`).slice(0, 40),
     }
   })
@@ -288,15 +464,18 @@ function yamlEscape(value) {
 }
 
 function writeYaml(entries) {
+  // Caps exist so the machine-readable layer stays loadable, but they must not
+  // silently drop knowledge: the legacy/specification corpus is large and is
+  // exactly what a feature task needs. Long-term is uncapped for that reason;
+  // the query layer re-derives from source anyway, so these caps only bound the
+  // browsable index, never what `memory:query` can find.
   const groups = {
     short_term: entries
       .filter((e) => e.type.startsWith('short-term') || e.type.includes('preferences'))
-      .slice(0, 40),
-    medium_term: entries.filter((e) => e.type.includes('episodic')).slice(-80),
-    operational: entries.filter((e) => e.type.includes('operational')).slice(0, 80),
-    long_term: entries
-      .filter((e) => e.type.includes('long-term') || e.type.includes('semantic'))
-      .slice(0, 140),
+      .slice(0, 60),
+    medium_term: entries.filter((e) => e.type.includes('episodic')).slice(-160),
+    operational: entries.filter((e) => e.type.includes('operational')).slice(0, 160),
+    long_term: entries.filter((e) => e.type.includes('long-term') || e.type.includes('semantic')),
   }
   const lines = []
   lines.push(`generated_at: ${now}`)
@@ -312,6 +491,7 @@ function writeYaml(entries) {
       if (e.status) lines.push(`    status: ${yamlEscape(e.status)}`)
       lines.push(`    sha256: ${e.sha256}`)
       lines.push(`    summary: ${yamlEscape(e.summary)}`)
+      lines.push(`    areas: [${e.areas.map(yamlEscape).join(', ')}]`)
       lines.push(`    keywords: [${e.keywords.slice(0, 12).map(yamlEscape).join(', ')}]`)
     }
   }
@@ -366,15 +546,23 @@ function writeCognee(entries) {
     'kind: knowledge_bundle',
     'nodes:',
   ]
-  for (const e of entries.slice(0, 220)) {
+  for (const e of entries) {
     lines.push(`  - id: ${e.id}`)
     lines.push(`    type: ${yamlEscape(e.type)}`)
     lines.push(`    title: ${yamlEscape(e.title)}`)
     lines.push(`    source_path: ${yamlEscape(e.path)}`)
     lines.push(`    summary: ${yamlEscape(e.summary)}`)
     lines.push(`    tags: [${e.keywords.slice(0, 10).map(yamlEscape).join(', ')}]`)
+    lines.push(`    areas: [${e.areas.map(yamlEscape).join(', ')}]`)
   }
   lines.push('edges:')
+  for (const e of entries) {
+    for (const area of e.areas) {
+      lines.push(`  - from: ${e.id}`)
+      lines.push(`    to: area_${area}`)
+      lines.push('    relation: belongs_to_area')
+    }
+  }
   for (const e of entries.filter((x) => x.type.includes('episodic')).slice(-80)) {
     lines.push(`  - from: ${e.id}`)
     lines.push('    to: repo_project_state')
@@ -398,6 +586,7 @@ function writeVector(entries) {
           type: e.type,
           sha256: e.sha256,
           embedding_model: 'local-keyword-hash-v1',
+          areas: e.areas,
           vector: e.keywords
             .slice(0, 64)
             .map((t) => Number.parseInt(sha(t).slice(0, 8), 16) / 0xffffffff),
@@ -426,7 +615,7 @@ function writeObsidian(entries) {
     '',
     '## Sources',
   ]
-  for (const e of entries.slice(0, 180)) lines.push(`- [[${e.title}]] — \`${e.path}\` (${e.type})`)
+  for (const e of entries) lines.push(`- [[${e.title}]] — \`${e.path}\` (${e.type})`)
   fs.writeFileSync(
     path.join(memoryRoot, 'obsidian', 'repo-memory-mirror.md'),
     lines.join('\n') + '\n',
@@ -579,6 +768,27 @@ function build() {
   writeCognee(entries)
   writeVector(entries)
   writeObsidian(entries)
+  // Complete, uncapped source hash list. The QMD/YAML/Cognee layers are capped
+  // per group for readability, so they cannot serve as a drift baseline; this
+  // file is the authoritative one that `stale-check` compares against.
+  fs.writeFileSync(
+    path.join(memoryRoot, 'reports', 'sources.json'),
+    JSON.stringify(
+      {
+        generated_at: now,
+        source_count: entries.length,
+        sources: entries.map((e) => ({
+          path: e.path,
+          sha256: e.sha256,
+          type: e.type,
+          areas: e.areas,
+        })),
+      },
+      null,
+      2,
+    ) + '\n',
+    'utf8',
+  )
   fs.writeFileSync(
     path.join(memoryRoot, 'reports', 'manifest.json'),
     JSON.stringify({ generated_at: now, source_count: entries.length, layers }, null, 2) + '\n',
@@ -638,11 +848,189 @@ async function sync() {
   console.log(JSON.stringify(result, null, 2))
 }
 
+// --- Query layer -------------------------------------------------------------
+// Read side of the memory system. Fully offline and deterministic: it re-derives
+// the entry set from committed sources, so a query can never return knowledge
+// that no longer exists in the repo.
+function scoreEntry(entry, queryTokens) {
+  if (!queryTokens.length) return 1
+  const kw = new Set(entry.keywords)
+  const haystack = `${entry.title}\n${entry.summary}\n${entry.path}`
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  let score = 0
+  for (const token of queryTokens) {
+    if (kw.has(token)) score += 3
+    if (haystack.includes(token)) score += 2
+    if (entry.path.toLowerCase().includes(token)) score += 2
+  }
+  return score
+}
+
+// Recency and layer priority: active directives and recent episodes outrank
+// historical archive material when the keyword score ties.
+function entryPriority(entry) {
+  let p = 0
+  if (entry.type.startsWith('short-term')) p += 4
+  if (entry.type.includes('operational')) p += 3
+  if (entry.type.includes('episodic')) p += 2
+  if (entry.status && entry.status.toLowerCase() === 'active') p += 2
+  if (entry.created && /^20\d\d-\d\d-\d\d$/.test(entry.created)) {
+    const ageDays = (Date.now() - Date.parse(entry.created)) / 86400000
+    if (ageDays < 45) p += 3
+    else if (ageDays < 120) p += 1
+  }
+  return p
+}
+
+function parseQueryArgs(argv) {
+  const opts = { terms: [], areas: [], limit: 8, json: false, full: false }
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i]
+    if (arg === '--area' || arg === '-a') {
+      opts.areas.push(...String(argv[(i += 1)] || '').split(','))
+    } else if (arg.startsWith('--area=')) {
+      opts.areas.push(...arg.slice('--area='.length).split(','))
+    } else if (arg === '--limit' || arg === '-n') {
+      opts.limit = Number.parseInt(argv[(i += 1)], 10) || opts.limit
+    } else if (arg.startsWith('--limit=')) {
+      opts.limit = Number.parseInt(arg.slice('--limit='.length), 10) || opts.limit
+    } else if (arg === '--json') {
+      opts.json = true
+    } else if (arg === '--full') {
+      opts.full = true
+    } else {
+      opts.terms.push(arg)
+    }
+  }
+  opts.areas = opts.areas.map((a) => a.trim()).filter(Boolean)
+  return opts
+}
+
+function query(argv) {
+  const opts = parseQueryArgs(argv)
+  const unknown = opts.areas.filter((a) => !(a in AREA_RULES))
+  if (unknown.length) {
+    console.error(
+      `Unknown area(s): ${unknown.join(', ')}\nKnown areas: ${Object.keys(AREA_RULES).join(', ')}`,
+    )
+    process.exit(2)
+  }
+  const queryTokens = tokenize(opts.terms.join(' '))
+  let entries = buildEntries()
+  if (opts.areas.length)
+    entries = entries.filter((e) => opts.areas.some((a) => e.areas.includes(a)))
+
+  const ranked = entries
+    .map((e) => ({ entry: e, score: scoreEntry(e, queryTokens) + entryPriority(e) }))
+    .filter((r) => (queryTokens.length ? r.score > entryPriority(r.entry) : true))
+    .sort((a, b) => b.score - a.score || a.entry.path.localeCompare(b.entry.path))
+    .slice(0, opts.limit)
+
+  if (opts.json) {
+    console.log(
+      JSON.stringify(
+        {
+          generated_at: now,
+          query: opts.terms.join(' '),
+          areas: opts.areas,
+          match_count: ranked.length,
+          candidate_count: entries.length,
+          results: ranked.map((r) => ({ score: r.score, ...r.entry, keywords: undefined })),
+        },
+        null,
+        2,
+      ),
+    )
+    return
+  }
+
+  console.log(`# repo-memory query`)
+  console.log(`query: ${opts.terms.join(' ') || '(none)'}`)
+  console.log(`areas: ${opts.areas.join(', ') || '(all)'}`)
+  console.log(`candidates: ${entries.length}  matches: ${ranked.length}\n`)
+  if (!ranked.length) {
+    console.log('No stored knowledge matched. Treat this area as unrecorded and write memory')
+    console.log(
+      'at the end of the workflow (see .agent/memory/qmd/mandatory-memory-after-workflow.qmd).',
+    )
+    return
+  }
+  for (const { entry, score } of ranked) {
+    console.log(`## ${entry.title}`)
+    console.log(`- path: ${entry.path}`)
+    console.log(`- type: ${entry.type}  areas: [${entry.areas.join(', ')}]  score: ${score}`)
+    if (entry.created) console.log(`- created: ${entry.created}`)
+    console.log(
+      `- summary: ${opts.full ? summarize(readText(path.join(root, entry.path)), 1600) : entry.summary}`,
+    )
+    console.log('')
+  }
+}
+
+function areasCommand() {
+  const entries = buildEntries()
+  const counts = Object.fromEntries(Object.keys(AREA_RULES).map((a) => [a, 0]))
+  let untagged = 0
+  for (const e of entries) {
+    if (!e.areas.length) untagged += 1
+    for (const a of e.areas) counts[a] += 1
+  }
+  console.log(JSON.stringify({ source_count: entries.length, untagged, areas: counts }, null, 2))
+}
+
+// --- Staleness gate ----------------------------------------------------------
+// The committed bundle is only trustworthy if every source hash in it still
+// matches the working tree. Any drift means an agent would read outdated
+// knowledge, so this exits non-zero and is safe to wire into a push/CI gate.
+function staleCheck() {
+  const sourcesPath = path.join(memoryRoot, 'reports', 'sources.json')
+  const result = { generated_at: now, ok: true, reasons: [] }
+  if (!exists(sourcesPath)) {
+    result.ok = false
+    result.reasons.push('memory source manifest missing; run: npm run memory:build')
+    console.log(JSON.stringify(result, null, 2))
+    process.exit(1)
+  }
+  const committed = JSON.parse(readText(sourcesPath))
+  const committedMap = new Map(committed.sources.map((s) => [s.path, s.sha256]))
+  const entries = buildEntries()
+  result.committed_source_count = committed.source_count
+  result.current_source_count = entries.length
+
+  const added = entries.filter((e) => !committedMap.has(e.path)).map((e) => e.path)
+  const changed = entries
+    .filter((e) => committedMap.has(e.path) && committedMap.get(e.path) !== e.sha256)
+    .map((e) => e.path)
+  const currentPaths = new Set(entries.map((e) => e.path))
+  const removed = committed.sources.filter((s) => !currentPaths.has(s.path)).map((s) => s.path)
+
+  result.added = added.length
+  result.changed = changed.length
+  result.removed = removed.length
+  if (added.length || changed.length || removed.length) {
+    result.ok = false
+    result.reasons.push(
+      `memory bundle is stale: ${added.length} added, ${changed.length} changed, ${removed.length} removed; run: npm run memory:build`,
+    )
+    result.examples = [...added, ...changed, ...removed].slice(0, 8)
+  }
+  console.log(JSON.stringify(result, null, 2))
+  if (!result.ok) process.exit(1)
+}
+
 const cmd = process.argv[2] || 'status'
 if (cmd === 'build') build()
 else if (cmd === 'status') await status()
 else if (cmd === 'sync') await sync()
+else if (cmd === 'query') query(process.argv.slice(3))
+else if (cmd === 'areas') areasCommand()
+else if (cmd === 'stale-check') staleCheck()
 else {
-  console.error('Usage: node scripts/repo-memory.mjs <build|status|sync>')
+  console.error(
+    'Usage: node scripts/repo-memory.mjs <build|status|sync|areas|stale-check>\n' +
+      '       node scripts/repo-memory.mjs query [terms...] [--area <a[,b]>] [--limit N] [--json] [--full]',
+  )
   process.exit(2)
 }

@@ -5,8 +5,10 @@ import hu.puzzleir.valuta.dto.exchangerate.CurrentRateDto;
 import hu.puzzleir.valuta.dto.exchangerate.ExchangeRateDto;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.service.ExchangeRateService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
@@ -18,8 +20,47 @@ public class ExchangeRateMapper {
     /** Valuták ahol az egység 100 (pl. JPY) */
     private static final Set<String> UNIT_100_CURRENCIES = Set.of("JPY");
 
+    /**
+     * FKH-032 FR-6: az ELAVULT-JELZES kulon konfigurálható korhatara, orában.
+     *
+     * <p>SZANDEKOSAN KULON kulcs a dobo {@code exchange-rate.max-age-hours}-tol. Elesben az
+     * utobbi 720 ora (30 nap), mert a TRANZAKCIO-ELUTASITAS hatara uzletileg ilyen laza —
+     * ha a jelzes ugyanezt olvasna, a piros "Elavult arfolyam" badge gyakorlatilag sosem
+     * sulne el, es az FR-6 felhasznaloi hatasa nulla lenne.</p>
+     *
+     * <p>A ket kulcs iranya kotott: a jelzes SOHA nem lehet megengedobb a validacional
+     * (lasd {@link #resolveStaleWarningHours()}) — kulonben letezne olyan arfolyam, amit a
+     * rendszer elutasit, de a felulet frissnek mutat.</p>
+     */
+    @Value("${exchange-rate.stale-warning-hours:24}")
+    private int staleWarningHours;
+
+    /** A dobo validacio korhatara — a jelzes ennel szigorubb (vagy azonos) lehet csak. */
+    @Value("${exchange-rate.max-age-hours:24}")
+    private int maxAgeHours;
+
+    /**
+     * A jelzes tenyleges kuszobe: a ket konfig kozul a SZIGORUBB (kisebb pozitiv ertek).
+     * A 0/negativ ertek "nincs korhatar" jelentesu, ezert az nem tekintendo szigorubbnak.
+     */
+    private int resolveStaleWarningHours() {
+        if (staleWarningHours <= 0) {
+            return maxAgeHours;
+        }
+        if (maxAgeHours <= 0) {
+            return staleWarningHours;
+        }
+        return Math.min(staleWarningHours, maxAgeHours);
+    }
+
     public ExchangeRateDto toDto(ExchangeRate entity) {
         if (entity == null) return null;
+
+        // FKH-032 FR-6: szamitott frissesseg-mezok, a service kozos (nem dobo) logikajaval.
+        long minutesOld = ExchangeRateService.calculateRateAgeMinutes(
+                entity.getValidDate(), entity.getValidTime(), LocalDateTime.now());
+        boolean stale = entity.getValidDate() != null && entity.getValidTime() != null
+                && ExchangeRateService.isRateStale(minutesOld, resolveStaleWarningHours());
 
         return ExchangeRateDto.builder()
                 .id(entity.getId())
@@ -43,6 +84,8 @@ public class ExchangeRateMapper {
                 .active(entity.getActive())
                 .createdBy(entity.getCreatedBy())
                 .createdAt(entity.getCreatedAt())
+                .ageHours(minutesOld / 60L)
+                .stale(stale)
                 .build();
     }
 

@@ -79,6 +79,10 @@ function DocumentViewGrantModal({ open, side, onSubmit, onCancel }: GrantModalPr
         setLoading(false)
       }
     })()
+    // Lint-audit 2026-08-09: a `t` csak a hibauzenethez kell; deps-be veve
+    // nyelvvaltaskor ujra lekerne az engedelyezo-listat es torolne a mar
+    // bepotyogtetett PIN-t. A megnyitas (`open`) a helyes trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   if (!open) return null

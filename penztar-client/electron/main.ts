@@ -788,6 +788,19 @@ ipcMain.handle(
   },
 );
 
+// FKH-032 FR-2: célzott, EGY-tételes azonnali könyvelési kísérlet a mentés után
+// (a teljes syncAll() helyett), a main-process net.request csatornán, 5 mp timeouttal.
+ipcMain.handle(
+  'sync-single-transaction-immediate',
+  async (_event, id: number): Promise<{ success: boolean; error?: string | null }> => {
+    const localId = Number(id);
+    if (!Number.isInteger(localId) || localId <= 0) {
+      return { success: false, error: 'Érvénytelen tétel-azonosító' };
+    }
+    return syncEngine.syncSingleTransactionImmediate(localId);
+  },
+);
+
 ipcMain.handle('get-sync-status', async (): Promise<string> => {
   return JSON.stringify(syncEngine.getStatus());
 });

@@ -12,11 +12,75 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+import org.springframework.test.util.ReflectionTestUtils;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ExchangeRateMapperTest {
 
     private final ExchangeRateMapper mapper = new ExchangeRateMapper();
+
+    /**
+     * FKH-032 FR-6: a jelzes-kuszob (stale-warning-hours) es a dobo validacio hatara
+     * (max-age-hours) KULON konfig. A mapper mindig a SZIGORUBBAT alkalmazza, hogy ne
+     * letezzen olyan arfolyam, amit a rendszer elutasit, de a felulet frissnek mutat.
+     */
+    private ExchangeRateMapper mapperWith(int staleWarningHours, int maxAgeHours) {
+        ExchangeRateMapper configured = new ExchangeRateMapper();
+        ReflectionTestUtils.setField(configured, "staleWarningHours", staleWarningHours);
+        ReflectionTestUtils.setField(configured, "maxAgeHours", maxAgeHours);
+        return configured;
+    }
+
+    private ExchangeRate rateAgedHours(long hoursOld) {
+        LocalDateTime moment = LocalDateTime.now().minusHours(hoursOld);
+        return ExchangeRate.builder()
+                .id(1L)
+                .currency(Currency.builder().id(1L).code("EUR").name("Euro").build())
+                .validDate(moment.toLocalDate())
+                .validTime(moment.toLocalTime())
+                .baseBuyRate(new BigDecimal("390.0000"))
+                .baseSellRate(new BigDecimal("395.0000"))
+                .active(true)
+                .build();
+    }
+
+    @Test
+    @DisplayName("FKH-032 FR-6: a jelzes a szigorubb stale-warning-hours szerint sul el, nem a 720 oras validacios hatar szerint")
+    void staleWarningUsesTheStricterThreshold() {
+        // Eles konfiguracio: a tranzakcio-tiltas 720 ora (30 nap), a jelzes 24 ora.
+        ExchangeRateMapper production = mapperWith(24, 720);
+
+        // 30 oras arfolyam: a validacio meg atengedne, a JELZESNEK viszont mar szolnia kell.
+        assertThat(production.toDto(rateAgedHours(30)).getStale())
+                .as("30 oras arfolyam elavultnak jelolt a 24 oras jelzes-kuszob szerint")
+                .isTrue();
+
+        // 2 oras arfolyam: friss.
+        assertThat(production.toDto(rateAgedHours(2)).getStale())
+                .as("2 oras arfolyam nem elavult")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("FKH-032 FR-6: a jelzes soha nem lehet megengedobb a dobo validacional")
+    void staleWarningNeverLooserThanValidation() {
+        // Rosszul konfiguralt kornyezet: a jelzes lazabb (48h), mint a validacio (12h).
+        ExchangeRateMapper misconfigured = mapperWith(48, 12);
+
+        assertThat(misconfigured.toDto(rateAgedHours(20)).getStale())
+                .as("A 12 oras validacio mar elutasitana — a felulet nem mutathatja frissnek")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("FKH-032 FR-6: 0 jelzes-kuszob eseten a validacios hatarra esik vissza")
+    void staleWarningFallsBackToValidationLimit() {
+        ExchangeRateMapper fallback = mapperWith(0, 24);
+
+        assertThat(fallback.toDto(rateAgedHours(30)).getStale()).isTrue();
+        assertThat(fallback.toDto(rateAgedHours(10)).getStale()).isFalse();
+    }
 
     @Test
     @DisplayName("null entity → null DTO")

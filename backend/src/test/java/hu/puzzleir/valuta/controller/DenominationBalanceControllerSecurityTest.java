@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.controller;
 
+import hu.puzzleir.valuta.entity.DenominationCategory;
 import hu.puzzleir.valuta.service.DenominationBalanceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,8 +51,10 @@ class DenominationBalanceControllerSecurityTest {
             "hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR')";
 
     private static final UUID CASH_DESK_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    // FK-078 FR-4: a self-check olvaso vegpont — ugyanaz a bovitett olvaso RBAC vedi.
     private static final List<String> READ_METHODS =
-            List.of("getCashDeskDenominations", "getCashDeskDenominationsByCurrency", "calculateTotal");
+            List.of("getCashDeskDenominations", "getCashDeskDenominationsByCurrency", "calculateTotal",
+                    "selfCheck");
     private static final List<String> WRITE_METHODS = List.of("updateQuantity", "batchUpdate");
 
     @Autowired private DenominationBalanceController controller;
@@ -116,39 +119,41 @@ class DenominationBalanceControllerSecurityTest {
     @Test
     @WithMockUser(roles = "ERTEKTAR")
     void write_allowsErtektarOnBatch() {
-        when(service.batchUpdate(any(), any())).thenReturn(List.of());
+        when(service.batchUpdate(any(), any(), any())).thenReturn(List.of());
 
-        controller.batchUpdate(CASH_DESK_ID, List.of());
+        controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING);
 
-        verify(service).batchUpdate(any(), any());
+        verify(service).batchUpdate(any(), any(), any());
     }
 
     @Test
     @WithMockUser(roles = "UGYVEZETO")
     void write_deniesUgyvezetoOnUpdateQuantity() {
         assertThrows(
-                AccessDeniedException.class, () -> controller.updateQuantity(CASH_DESK_ID, 1L, 5));
+                AccessDeniedException.class,
+                () -> controller.updateQuantity(CASH_DESK_ID, 1L, 5, DenominationCategory.EVENING));
 
-        verify(service, never()).updateQuantity(any(), anyLong(), anyInt());
+        verify(service, never()).updateQuantity(any(), anyLong(), anyInt(), any());
     }
 
     @Test
     @WithMockUser(roles = "UGYVEZETO")
     void write_deniesUgyvezetoOnBatch() {
-        assertThrows(AccessDeniedException.class, () -> controller.batchUpdate(CASH_DESK_ID, List.of()));
+        assertThrows(AccessDeniedException.class,
+                () -> controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING));
 
-        verify(service, never()).batchUpdate(any(), any());
+        verify(service, never()).batchUpdate(any(), any(), any());
     }
 
     /** FK-077 FR-4 regresszio: a ma is mukodo CASHIER szerepkor valtozatlanul ir. */
     @Test
     @WithMockUser(roles = "CASHIER")
     void write_stillAllowsCashier() {
-        when(service.batchUpdate(any(), any())).thenReturn(List.of());
+        when(service.batchUpdate(any(), any(), any())).thenReturn(List.of());
 
-        controller.batchUpdate(CASH_DESK_ID, List.of());
+        controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING);
 
-        verify(service).batchUpdate(any(), any());
+        verify(service).batchUpdate(any(), any(), any());
     }
 
     private static Method handler(String name) {

@@ -154,7 +154,6 @@ export default function StockMatrix() {
             <RefreshCw size={16} className={autoRefresh ? 'animate-spin' : ''} />
             {autoRefresh ? (
               <span>
-                {/* eslint-disable-next-line i18next/no-literal-string */}
                 {t('treasury.autoRefresh')}
                 <strong>{countdown}s</strong>
               </span>

@@ -415,6 +415,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   retryPendingTransaction: (id: number): Promise<{ success: boolean; error?: string | null }> =>
     ipcRenderer.invoke('retry-pending-transaction', id),
 
+  // FKH-032 FR-2/FR-4: célzott azonnali könyvelési kísérlet EGY frissen mentett
+  // tételre — tétel-szintű, konkrét eredménnyel (nem összesített logikai jelzés).
+  syncSingleTransactionImmediate: (
+    id: number,
+  ): Promise<{ success: boolean; error?: string | null }> =>
+    ipcRenderer.invoke('sync-single-transaction-immediate', id),
+
   getSyncStatus: (): Promise<string> => ipcRenderer.invoke('get-sync-status'),
 
   // 2026-04-29 v2.3.11 (E-B6.2 Page Visibility API):

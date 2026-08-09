@@ -122,7 +122,8 @@ export const menuGroups: MenuGroup[] = [
       { path: '/transactions/conversion', label: 'Konverzió', icon: ArrowLeftRight },
       { path: '/trades', label: 'Irodaközi trade', icon: ArrowLeftRight },
       { path: '/cashdesk', label: 'Kassza / készlet', icon: Wallet },
-      { path: '/cashdesk/denominations', label: 'Címletezés', icon: FileText },
+      // FK-078 FR-7: a régi, önálló „Címletezés" oldal megszűnt — a becímletezés a
+      // „Címletezés – zárások" menüponton át, kategóriánként érhető el.
       // EXCMD b5 FR-KC-05: zárási címletezések választó-menüje.
       { path: '/closing/denominations-menu', label: 'Címletezés – zárások', icon: FileText },
       // FS-9 S3: aktív címletképek read-only nézegetője (hamis bankjegy ellenőrzés).
@@ -301,6 +302,24 @@ export const menuGroups: MenuGroup[] = [
         label: 'Átlag árfolyam',
         icon: TrendingUp,
         canonicalRoles: ['foertektar', 'ugyvezeto', 'belso_ellenor'],
+      },
+      // FKH-030 FR-1: a „Pénzforgalom riport” a Riportok csoportban is megjelenik.
+      // Korábban KIZÁRÓLAG az „Értéktár (lokál)” csoportban szerepelt (a Naplókönyv mellett,
+      // ertektar szerepkörökkel), így a backend RBAC által jogosított oversight-szerepkörök
+      // (irodavezeto, belso_ellenor, teruleti_vezeto, penzugyi_vezeto) a menüből NEM érték el.
+      // A canonicalRoles a CashFlowReportController @PreAuthorize-át tükrözi.
+      {
+        path: '/reports/cash-flow',
+        label: 'Pénzforgalom riport',
+        icon: FileText,
+        canonicalRoles: [
+          'foertektar',
+          'ugyvezeto',
+          'irodavezeto',
+          'belso_ellenor',
+          'teruleti_vezeto',
+          'penzugyi_vezeto',
+        ],
       },
       { path: '/reports/daily-journal', label: 'Napkönyv (PDF)', icon: FileText },
       { path: '/reports/central', label: 'Központi riportok (CSV)', icon: Building2 },

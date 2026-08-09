@@ -168,9 +168,17 @@ function TransactionEntryPage() {
   }, [foreignAmount, hufAmount, selectedCurrency, currentRate, lastEdited])
 
   // Keyboard shortcuts
+  // Lint-audit 2026-08-09 (react-hooks/exhaustive-deps): a `handleCancel` sima
+  // fuggveny-deklaracio, ezert MINDEN renderben uj referencia — a deps-ben tartva
+  // a keydown listener minden renderben le-fel csatolodott. Ref-en keresztul
+  // hivjuk, igy a listener egyszer regisztral, de mindig a FRISS closure-t hasznalja
+  // (ugyanaz a minta, mint a CashierTransactionPage `isSubmittingRef`-je).
+  const handleCancelRef = useRef(handleCancel)
+  handleCancelRef.current = handleCancel
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') void handleCancel()
+      if (e.key === 'Escape') void handleCancelRef.current()
       if (e.key >= '1' && e.key <= '8' && !e.ctrlKey && !e.altKey) {
         const target = e.target as HTMLElement
         if (
@@ -188,7 +196,7 @@ function TransactionEntryPage() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currencyRates, handleCancel])
+  }, [currencyRates])
 
   const switchTransactionType = (type: 'BUY' | 'SELL') => {
     setTransactionType(type)
@@ -484,16 +492,14 @@ function TransactionEntryPage() {
           },
         ])
 
-        // PR #116: 3-agu toast - sikeres sync / server-error / offline queue
+        // PR #116 + FKH-032 FR-4: 3-agu toast — azonnal konyvelve / konkret hiba / offline queue
         if (outcome.allSavedSynced) {
-          toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal szinkronizálva lett.')
+          toast.success('Tranzakció sikeresen rögzítve!', 'A tétel azonnal könyvelve lett.')
         } else if (outcome.syncErrors && outcome.syncErrors.length > 0) {
-          // Server-oldali hiba (pl. rate mismatch, insufficient balance)
+          // Server-oldali hiba (pl. rate mismatch, insufficient balance) — a célzott
+          // azonnali kísérlet tétel-szintű, konkrét oka.
           const firstError = outcome.syncErrors[0]
-          toast.error(
-            'Szinkron hiba - a tranzakció lokálisan mentve, de a szerver elutasitotta',
-            firstError,
-          )
+          toast.error('Azonnali könyvelés sikertelen — a tranzakció lokálisan mentve', firstError)
         } else {
           toast.warning(
             'Offline mentés megtörtént',

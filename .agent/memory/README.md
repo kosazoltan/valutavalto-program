@@ -12,14 +12,43 @@ sources. Secrets and full environment values must never be stored here.
 - `obsidian/repo-memory-mirror.md` - Obsidian-compatible mirror document.
 - `vector/vector-index.jsonl` - local deterministic keyword-hash vector index.
 - `reports/manifest.json`, `reports/status.json`, `reports/sync.json` - verification output.
+- `reports/sources.json` - complete, uncapped source path+sha256 list; the drift
+  baseline used by `memory:stale-check`.
+
+## Areas (active memory)
+
+Every entry is tagged with zero or more product areas so knowledge can be loaded
+for exactly the program area under development:
+
+`ertektar penztar napzaras arfolyam cimletezes sync aml tenant riport database
+installer deploy security frontend legacy`
+
+Area assignment is deterministic (path match, or 2+ keyword hits) and defined by
+`AREA_RULES` in `scripts/repo-memory.mjs`.
 
 ## Commands
 
-```powershell
-npm run memory:build
-npm run memory:status
-npm run memory:sync
+```bash
+npm run memory:build                                   # regenerate all layers
+npm run memory:status                                  # layer + live service checks
+npm run memory:sync                                    # build + Cognee/Obsidian push
+npm run memory:areas                                   # area coverage counts
+npm run memory:query -- "<terms>" --area sync --limit 8 # READ side (offline)
+npm run memory:stale-check                             # exit 1 if bundle is stale
 ```
+
+`memory:query` flags: `--area <a[,b]>`, `--limit N`, `--json` (machine-readable),
+`--full` (longer excerpt read from the source file).
+
+`memory:query` and `memory:stale-check` re-derive entries from the working tree,
+so they never return knowledge that no longer exists in the repo.
+
+## Mandatory usage
+
+Reading stored area knowledge before non-trivial work and rebuilding the bundle
+after it are both mandatory — see `AGENTS.md` section 2.1 and
+`qmd/mandatory-memory-after-workflow.qmd`. `memory:stale-check` enforces the
+write side and is wired into the pre-push gate.
 
 `memory:build` always works offline from committed repo files plus the local
 Obsidian vault. `memory:sync` also writes status about Cognee/Obsidian live

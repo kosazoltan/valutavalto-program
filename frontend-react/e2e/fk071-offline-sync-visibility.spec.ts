@@ -164,6 +164,16 @@ async function mockApis(page: Page) {
 async function installElectronApiStub(page: Page) {
   await page.addInitScript(
     ({ syncError }) => {
+      // FKH-031 NFR-1: a pending sor `created_at`-ja SZÁNDÉKOSAN relatív (2 órája),
+      // nem fix dátum. A 7 napos üzleti retry-ablakon (BUSINESS_RETRY_WINDOW_MS)
+      // kívül eső tétel felirata már "Kézi beavatkozás kell", nem "Feltöltés hibás",
+      // ezért egy hardkódolt dátum egy hét után magától megbuktatta ezt a tesztet
+      // (2026-07-29-es fixture → 2026-08-09-i futás = 11 nap). Ez a teszt az FR-3
+      // újraküldés-gombot méri, nem az ablak lejáratát: a friss időbélyeg tartja a
+      // sort a RETRYING ágon. Az ablak lejáratának fedezete a
+      // TransactionListPage.fk071.test.tsx unit tesztjeiben van, ahol az idő mockolt.
+      const createdAtMs = Date.now() - 2 * 60 * 60 * 1000
+      const createdAtIso = new Date(createdAtMs).toISOString()
       const pendingRow = {
         id: 42,
         type: 'BUY',
@@ -177,11 +187,11 @@ async function installElectronApiStub(page: Page) {
         customer_name: null,
         local_reference_number: 'V03500042',
         idempotency_key: 'ikey-42',
-        created_at: '2026-07-29 10:00:00',
+        created_at: createdAtIso.replace('T', ' ').slice(0, 19),
         synced: 0,
         sync_error: syncError,
         sync_attempts: 1,
-        last_attempt_at: '2026-07-29T10:00:30.000Z',
+        last_attempt_at: new Date(createdAtMs + 30_000).toISOString(),
       }
       const state = { retriedSuccessfully: false }
       const retryCalls: number[] = []

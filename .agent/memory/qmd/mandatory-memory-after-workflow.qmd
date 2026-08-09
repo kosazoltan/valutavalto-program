@@ -6,9 +6,29 @@ status: active
 source: user directive in Cursor session 2026-05-07 21:37 CEST
 ---
 
-# Mandatory Memory Write After Every Completed Workflow
+# Mandatory Memory Read Before, Write After Every Workflow
 
-## Rule
+## Rule 1 — Read before (active memory)
+
+Before any non-trivial change in a program area, the agent must load the stored
+knowledge for that area and cite it in the implementation plan:
+
+```bash
+npm run memory:query -- "<task keywords>" --area <area> --limit 8
+npm run memory:areas
+```
+
+Areas: ertektar, penztar, napzaras, arfolyam, cimletezes, sync, aml, tenant,
+riport, database, installer, deploy, security, frontend, legacy.
+
+Non-trivial = 3+ files, financial logic, tenant isolation, contract change,
+DB migration, sync/offline behaviour, installer or release work, or any
+regression/bug hunt.
+
+If the query returns no match, say so explicitly and treat the area as
+unrecorded — that itself is a signal that memory must be written at the end.
+
+## Rule 2 — Write after
 
 After every completed work process in the Valutavalto project, the agent must update the
 available memory layers with verified facts from that work.

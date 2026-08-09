@@ -67,7 +67,14 @@ foreach ($file in $files) {
 
             $addedLines = $diffText -split "`r?`n" | Where-Object { $_ -match '^\+' -and $_ -notmatch '^\+\+\+' }
             foreach ($line in $addedLines) {
-                if ($line -match $mojibakeRegex) {
+                # -cmatch (case-SENSITIVE) kotelezo: a PowerShell `-match` alapertelmezesben
+                # kis-nagybetu-fuggetlen, ezert a NAGYBETUS mojibake-markerek (U+00C3, U+00C2,
+                # U+0102, U+0139) illeszkednek a legitim KISBETUS diakritikakra is (U+00E3,
+                # U+00E2, U+0103, U+013A) — pl. roman "Agentia Iraniana" vagy portugal "-ao"
+                # vegzodes minden nemzetkozi nevlistat megbuktatna. A mojibake definicio
+                # szerint a nagybetus alak. (Kodpont-nevek szandekosan: a nyers karakterek
+                # ide irva magat ezt a sort tennek talalatta.)
+                if ($line -cmatch $mojibakeRegex) {
                     $mojibakeHits.Add($file)
                     break
                 }

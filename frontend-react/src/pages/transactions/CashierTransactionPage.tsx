@@ -56,6 +56,7 @@ import {
 } from '../../utils/rateBands'
 import RateAuthDialog from './components/RateAuthDialog'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { sanitizeSyncErrorMessage } from '../../utils/syncErrorSanitizer'
 import IncomeSourceDocCapture from '../../components/documents/IncomeSourceDocCapture'
 import ComplianceQuestionsBlock from './components/ComplianceQuestionsBlock'
 
@@ -1284,12 +1285,19 @@ export default function CashierTransactionPage() {
         if (outcome.allSavedSynced) {
           toast.success(
             'Bizonylat(ok) sikeresen rögzítve!',
-            `${filledRows.length} tétel azonnal szinkronizálva.`,
+            `${filledRows.length} tétel azonnal könyvelve.`,
+          )
+        } else if (outcome.syncErrors && outcome.syncErrors.length > 0) {
+          // FKH-032 FR-4: a célzott azonnali kísérlet TÉNYLEGES hibaoka látszik,
+          // nem csak egy általános "helyi queue-ba került" üzenet.
+          toast.error(
+            `Azonnali könyvelés sikertelen — ${outcome.pendingCount} tétel helyben mentve`,
+            sanitizeSyncErrorMessage(outcome.syncErrors[0] ?? ''),
           )
         } else {
           toast.warning(
             'Offline mentés megtörtént',
-            `${outcome.pendingCount} tétel helyi queue-ba került, ${outcome.syncedCount} tétel azonnal feltöltve.`,
+            `${outcome.pendingCount} tétel helyi queue-ba került, ${outcome.syncedCount} tétel azonnal könyvelve.`,
           )
         }
 
@@ -1638,6 +1646,20 @@ export default function CashierTransactionPage() {
     openReceiptModal,
     sendIncomeProofEmail,
     t,
+    // Lint-audit 2026-08-09 (react-hooks/exhaustive-deps): ez a harom ertek a
+    // FELKULDOTT payload resze (handlingFeeOverrideType / -Reason /
+    // customerCardNumber, lasd :1212, :1449, :1523, :1540), de hianyzott a
+    // deps-listabol. Ha a penztaros UTOLJARA a dij-felulbiralast vagy a
+    // kartyaszamot allitja be, a memoizalt closure a REGI erteket vinne fel —
+    // dijelszamolasi es ugyfel-azonositasi (Pmt.) hiba. Az `isSubmitting`
+    // szandekosan marad kint (:229 komment, ref-bol olvassuk); ezek viszont
+    // ritkan valtozo user-input mezok, a re-create koltsege elhanyagolhato.
+    cardNumber,
+    feeOverrideReason,
+    feeOverrideType,
+    // `setIsSubmitting` stabil (`useCallback(..., [])` a :249 soron), a
+    // felvetele nem okoz ujra-kreacios cascade-et.
+    setIsSubmitting,
   ])
 
   const handleKeyDown = useCallback(

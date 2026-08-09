@@ -120,7 +120,14 @@ function makePendingRow(localId: number, overrides: Partial<PendingRow> = {}): P
     customer_name: null,
     local_reference_number: `V0350000${localId}`,
     idempotency_key: `ikey-${localId}`,
-    created_at: '2026-07-29 10:00:00',
+    // FKH-031 NFR-1: a datum RELATIV, nem fix. Egy beegetett '2026-07-29' fixture
+    // az ido mulasaval atlepte a 7 napos automatikus retry-ablakot, es a sor
+    // felirata jogosan valtott "Kezi beavatkozas kell"-re — a teszt szandeka
+    // viszont a FRISS hibas tetel. A relativ datum ezt idofuggetlenul rogziti.
+    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .replace('T', ' ')
+      .slice(0, 19),
     synced: 0,
     ...overrides,
   }
@@ -213,6 +220,38 @@ describe('FK-071 — TransactionListPage offline szinkron-hiba láthatóság', (
 
     const detail = screen.getByTestId(`sync-error-detail-${displayId(42)}`)
     expect(detailTextOf(detail)).toContain('Ügyfél neve kötelező')
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FKH-031 NFR-1 — a 7 napos automatikus retry-ablak lejárta
+  // ─────────────────────────────────────────────────────────────────────────
+  it('FKH-031 NFR-1: 7 napnál régebbi hibás tétel "Kézi beavatkozás kell" jelzést kap', async () => {
+    // A sync-engine (business-retry.ts) ekkor már véglegesen visszatartja a tételt,
+    // ezért a listán is meg kell különböztetni a "majd újrapróbálja" állapottól —
+    // különben a pénztáros azt hiszi, a rendszer még dolgozik rajta.
+    const row = makePendingRow(60, {
+      sync_error: 'HTTP 422 — Lejárt árfolyam',
+      created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .replace('T', ' ')
+        .slice(0, 19),
+    })
+    electronApiMocks.getPendingTransactions.mockResolvedValue([row])
+
+    renderPage()
+
+    expect(await screen.findByText('Kézi beavatkozás kell')).toBeInTheDocument()
+    expect(screen.queryByText('Feltöltés hibás')).not.toBeInTheDocument()
+  })
+
+  it('FKH-031 NFR-1: friss hibás tétel marad a "Feltöltés hibás" (automatikus retry) jelzésen', async () => {
+    const row = makePendingRow(61, { sync_error: 'HTTP 422 — Lejárt árfolyam' })
+    electronApiMocks.getPendingTransactions.mockResolvedValue([row])
+
+    renderPage()
+
+    expect(await screen.findByText('Feltöltés hibás')).toBeInTheDocument()
+    expect(screen.queryByText('Kézi beavatkozás kell')).not.toBeInTheDocument()
   })
 
   // ─────────────────────────────────────────────────────────────────────────

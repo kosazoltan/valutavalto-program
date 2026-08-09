@@ -6,33 +6,39 @@ import {
 
 // EXCMD b5 FR-KC-05 — a „Címletezés – zárások" választó-menü adatai.
 describe('CLOSING_DENOMINATION_MENU (FR-KC-05)', () => {
-  it('a spec mind a 6 menüpontját tartalmazza, a forrás-képernyő sorrendjében', () => {
+  // FK-078 FR-6: az „Elektromos kereskedés" csempe eltávolítva — 5 pont a korábbi 6 helyett.
+  it('az 5 megmaradó menüpontot tartalmazza, a forrás-képernyő sorrendjében', () => {
     expect(CLOSING_DENOMINATION_MENU.map((i) => i.id)).toEqual([
       'evening-closing',
       'handling-fee',
       'western-union',
       'afa-penztar',
       'foglalo-keszlet',
-      'elektromos-kereskedes',
     ])
   })
 
-  it('az aktív pontok (esti zárás + kezelési díj) a zárás-varázslóra visznek', () => {
+  it('FK-078 FR-6: az elektromos kereskedés csempe nem jelenik meg', () => {
+    expect(CLOSING_DENOMINATION_MENU.some((i) => i.id === 'elektromos-kereskedes')).toBe(false)
+  })
+
+  // FK-078 FR-1: az aktív pontok már NEM a zárás-varázslóra, hanem a közös,
+  // kategória-tudatos becímletező oldalra visznek.
+  it('FK-078 FR-1: az aktív pontok a becímletező oldalra visznek, kategóriával', () => {
     const active = CLOSING_DENOMINATION_MENU.filter((i) => !i.disabled)
     expect(active.map((i) => i.id)).toEqual(['evening-closing', 'handling-fee'])
+    expect(active.map((i) => i.route)).toEqual([
+      '/closing/denomination-entry/EVENING',
+      '/closing/denomination-entry/HANDLING_FEE',
+    ])
     for (const item of active) {
-      expect(item.route).toBe('/closing/wizard')
+      expect(item.route).not.toBe('/closing/wizard')
     }
   })
 
   it('FR-KC-05 kényszer: az inaktív (szürkített) pontoknak nincs route-juk — nem indíthatók', () => {
     const disabled = CLOSING_DENOMINATION_MENU.filter((i) => i.disabled)
-    expect(disabled.map((i) => i.id)).toEqual([
-      'western-union',
-      'afa-penztar',
-      'foglalo-keszlet',
-      'elektromos-kereskedes',
-    ])
+    // FK-078 FR-8: a WU / ÁFA / Foglaló változatlanul, inaktívan marad.
+    expect(disabled.map((i) => i.id)).toEqual(['western-union', 'afa-penztar', 'foglalo-keszlet'])
     for (const item of disabled) {
       expect(item.route).toBeUndefined()
     }

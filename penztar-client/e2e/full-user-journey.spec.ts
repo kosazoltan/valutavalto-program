@@ -298,8 +298,10 @@ test.describe('Full User Journey — Emberi viselkedés szimuláció', () => {
     console.log(`✓ CashDesk page loaded, content length: ${pageContent?.length}`);
   });
 
-  test('8b. Pénztár — címletek', async () => {
-    await checkPageLoads(page, '/cashdesk/denominations', 'Címletek');
+  // FK-078 FR-7: a régi, önálló Címletezés oldal megszűnt — a becímletezés a
+  // kategória-tudatos oldalon (/closing/denomination-entry/:category) érhető el.
+  test('8b. Pénztár — címletezés (esti zárás)', async () => {
+    await checkPageLoads(page, '/closing/denomination-entry/EVENING', 'Címletezés');
   });
 
   test('8c. Pénztár — szünetek', async () => {

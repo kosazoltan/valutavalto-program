@@ -4,6 +4,8 @@ import type { PrintReceiptData, TransactionReceiptLine } from '../types/receipt'
 import { getElectronAPI } from './electron'
 import { logger } from './logger'
 import { multiLinePayable } from './rounding'
+import { sanitizeSyncErrorMessage } from './syncErrorSanitizer'
+import { classifyPendingSyncState } from './pendingSyncState'
 
 export interface PendingReceiptDraft {
   id: string
@@ -20,6 +22,23 @@ export interface PendingReceiptDraft {
    * azonos (lokalis receiptData → ESC/POS), csak a megjelenites/statusz ter el.
    */
   reprint?: boolean
+  /**
+   * FKH-031 FR-3: a tetel legutobbi szinkron-hibaja (`pending_transactions.sync_error`),
+   * mar PII-maszkolva. Ha ki van toltve, a bizonylat-vazlat lista a fix "Helyben mentve,
+   * szinkronra var" felirat helyett a TENYLEGES hibaokot mutatja, piros jelzessel —
+   * ugyanugy, ahogy a Tranzakciolista teszi (FK-071, commit 2fbd6fe2).
+   */
+  syncError?: string | null
+  /** FKH-031 FR-3: eddigi sikertelen szinkron-kiserletek szama. */
+  syncAttempts?: number | null
+  /**
+   * FKH-031 NFR-1: `true`, ha a 7 napos automatikus retry-ablak lejart — a
+   * sync-engine mar NEM probalkozik magatol, a tetelt csak kezi "Ujrakuldes"
+   * viheti fel. A UI ezt megkulonbozteti a "majd ujraprobalja" allapottol.
+   */
+  needsManualIntervention?: boolean
+  /** FKH-031 FR-4: az "Ujrakuldes" gomb ehhez a pending_transactions PK-hoz kotheto. */
+  pendingTransactionId?: number
   receiptData: PrintReceiptData
 }
 
@@ -330,13 +349,26 @@ export async function getPendingReceiptDrafts(
 
     for (const row of transactions) {
       const createdAt = normalizeTimestamp(row.created_at)
+      // FKH-031 FR-3: a tarolt hibauzenet PII-maszkolva kerul a UI-ra (defense in depth —
+      // az Electron oldal mar maszkolva tarol, ez a legacy sorokat is lefedi).
+      const rawSyncError = (row as { sync_error?: string | null }).sync_error ?? null
+      const syncError = rawSyncError ? sanitizeSyncErrorMessage(rawSyncError) : null
+      const syncAttempts = (row as { sync_attempts?: number | null }).sync_attempts ?? null
+      // FKH-031 NFR-1: 7 nap utan a sync-engine mar NEM probalkozik automatikusan
+      // (business-retry.ts: isBusinessRetryWithheld), ezert a felirat is mast mond —
+      // kulonben a penztaros nem tudna, hogy kezi ujrakuldes nelkul a tetel nem megy fel.
+      const syncState = classifyPendingSyncState({ syncError, createdAt: row.created_at })
       drafts.push({
         id: `tx-${row.id}`,
         referenceNumber: row.local_reference_number ?? `LOCAL-TX-${row.id}`,
         entityType: 'TRANSACTION',
         createdAt,
         title: row.type === 'BUY' ? 'Vételi vázlat' : 'Eladási vázlat',
-        statusLabel: 'Helyben mentve, szinkronra vár',
+        statusLabel: syncState.label,
+        needsManualIntervention: syncState.needsManualIntervention,
+        syncError,
+        syncAttempts,
+        pendingTransactionId: row.id,
         canPrint: true,
         receiptData: buildTransactionReceiptData(row, worker),
       })

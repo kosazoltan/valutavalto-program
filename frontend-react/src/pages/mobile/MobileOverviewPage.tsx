@@ -225,7 +225,14 @@ interface WuStubStatus {
 
 type PanelStatus = 'ok' | 'loading' | 'unavailable'
 type MobileWorkArea =
-  'cashier' | 'field' | 'camera' | 'vault' | 'approval' | 'customer' | 'management' | 'integrations'
+  | 'cashier'
+  | 'field'
+  | 'camera'
+  | 'vault'
+  | 'approval'
+  | 'customer'
+  | 'management'
+  | 'integrations'
 type MobileErtektarStatusKind = 'collection' | 'distribution' | 'bankTransaction'
 type MobileBranchSyncKind = 'rates' | 'transactions' | 'inventory' | 'full'
 
@@ -1420,7 +1427,6 @@ export default function MobileOverviewPage() {
                       label="Vétel / eladás"
                     />
                     <MobileAction to="/customers/new" icon={Users} label="Új ügyfél" />
-                    <MobileAction to="/cashdesk/denominations" icon={Package} label="Címletezés" />
                     <MobileAction to="/closing/wizard" icon={FileText} label="Napzárás" />
                   </div>
                   <MobilePanel
@@ -2640,12 +2646,6 @@ export default function MobileOverviewPage() {
                 icon={FileText}
                 title="Napzárás"
                 meta="Zárási varázsló"
-              />
-              <TaskLink
-                to="/cashdesk/denominations"
-                icon={Package}
-                title="Címletezés"
-                meta="Kassza / címlet"
               />
             </MobileTaskGroup>
 

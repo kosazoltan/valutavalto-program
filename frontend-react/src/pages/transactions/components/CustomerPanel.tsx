@@ -39,7 +39,12 @@ import {
  * - EGYEB              — egyeb kiemelt kozszereploi minoseg
  */
 export type PepKind =
-  'CSALADTAG' | 'KOZELI_MUNKATARS' | 'KORMANYFO' | 'PARLAMENTI' | 'NAV_VEZETO' | 'EGYEB'
+  | 'CSALADTAG'
+  | 'KOZELI_MUNKATARS'
+  | 'KORMANYFO'
+  | 'PARLAMENTI'
+  | 'NAV_VEZETO'
+  | 'EGYEB'
 
 /**
  * V235 (2026-05-19 HIBA #17): actor (kepviselt fel) teljes azonositasi adatai.
@@ -676,6 +681,26 @@ export default function CustomerPanel({
     onCustomerReady,
     onAmlResult,
     runAmlCheck,
+    // Lint-audit 2026-08-09 (react-hooks/exhaustive-deps): ezek mind a mentett
+    // ugyfel-/AML-payload reszei (Pmt. adatrogzites), de hianyoztak a deps-bol.
+    // Ha a penztaros UTOLJARA ezek valamelyiket allitja be — tipikusan a "mas
+    // neveben eljaro" (actor) azonositast vagy a penzeszkoz forrasat —, a
+    // memoizalt closure a REGI erteket menti el: hianyos vagy teves AML-adat
+    // kerulne a tranzakciohoz. `legalEntityData` `useCallback` (:265), stabil.
+    onOwnBehalf,
+    actorName,
+    actorBirthDate,
+    actorBirthPlace,
+    actorMotherName,
+    actorNationality,
+    actorDocumentType,
+    actorDocumentNumber,
+    actorAddress,
+    pepKind,
+    sourceOfFunds,
+    sourceOfFundsDocType,
+    sourceOfFundsDocDate,
+    legalEntityData,
   ])
 
   const handleClearCustomer = useCallback(() => {
