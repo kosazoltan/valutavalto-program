@@ -1,6 +1,6 @@
-generated_at: 2026-08-09T20:57:10.372Z
+generated_at: 2026-08-09T22:19:54.930Z
 schema_version: 1
-source_count: 1053
+source_count: 1054
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,14 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 53eeefa5ffe5383a
-    title: "2026-04-27 Session: Audit-NO-GO iter3 + memóriarendszer refaktor"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-27-audit-NO-GO-iter3-and-memory-cleanup.md
-    sha256: 5fd953b23b61b44942cc975ec70214f401521edf9d95f607fa78f229255c8a7e
-    summary: "--- date: 2026-04-27 session_type: audit-fix + memory-system-overhaul duration: ~3 hours (10:00 - 13:00 CEST) main_head_start: 60f6b913 main_head_end: 29c319f3 --- # 2026-04-27 Session: Audit-NO-GO iter3 + memóriarendszer refaktor ## Összefoglaló Két nagy munkafolyamat egy session-ben: 1. **GitHub Copilot 2026-04-27 11:05 NO-GO audit fixe** — PR #238, 7 commit, mergelve 2. **Memóriarendszer egyszerűsítése** — több pá"
-    areas: [deploy, frontend, security, tenant]
-    keywords: [2026, session, audit, iter3, memoriarendszer, refaktor, date, session_type, fix, memory, system, overhaul]
   - id: 0d5bb9aa6ab2e5f6
     title: "2026-04-27 Session - Dependabot batch + housekeeping (issue #110 + memory)"
     type: medium-term-episodic
@@ -1704,6 +1696,14 @@ medium_term:
     summary: "--- date: 2026-08-09 title: Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása type: session status: complete tags: [memory, legacy, excmd, felmeres-kb, agent-rules, recovery] --- # Handoff — a memória legacy-vakfoltjának megszüntetése ## A probléma (audit) A bundle 382 forrást indexelt, és a fejlesztéshez ténylegesen szükséges tudás szinte teljes egészében kimaradt. Git-trackelt fájlokhoz mért le"
     areas: [ertektar, legacy, riport, specifikacio]
     keywords: [legacy, tudasbazis, beindexelese, elveszett, felmeresi, helyreallitasa, date, 2026, title, type, session, status]
+  - id: 5854e5999d2a6bf0
+    title: "Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md
+    sha256: 6532cee81a1e0c21bb14d24c62f9d2018c046d13347d07501cc49c79ed951844
+    summary: "# Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás ## Release: v2.28.73 (FKH-031 / V377) — KIADVA, élesben igazolva - main `a54e4890`; main CI 6/6 zöld; prod `/api/v1/version` → 2.28.73, health `ok:true`. - **Gate B 7/7 PASS** (`scripts/verify-fkh031-gate-b.sh`): V377 lefutott ÉS ÍRT (`[FKH-031 V377]` marker 2 soron), AA035100003→COMPLETED, AA035100004→CANCELLED, `cash_balance` BR035/BR020 USD"
+    areas: [deploy, napzaras]
+    keywords: [handoff, 2026, release, ket, prod, uzemeltetesi, javitas, fkh, 031, v377, kiadva, elesben]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-09T20:57:10.372Z",
-  "source_count": 1053,
+  "generated_at": "2026-08-09T22:19:54.930Z",
+  "source_count": 1054,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12329,6 +12329,15 @@
         "legacy",
         "riport",
         "specifikacio"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md",
+      "sha256": "6532cee81a1e0c21bb14d24c62f9d2018c046d13347d07501cc49c79ed951844",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "napzaras"
       ]
     },
     {
