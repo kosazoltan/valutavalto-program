@@ -303,6 +303,24 @@ export const menuGroups: MenuGroup[] = [
         icon: TrendingUp,
         canonicalRoles: ['foertektar', 'ugyvezeto', 'belso_ellenor'],
       },
+      // FKH-030 FR-1: a „Pénzforgalom riport” a Riportok csoportban is megjelenik.
+      // Korábban KIZÁRÓLAG az „Értéktár (lokál)” csoportban szerepelt (a Naplókönyv mellett,
+      // ertektar szerepkörökkel), így a backend RBAC által jogosított oversight-szerepkörök
+      // (irodavezeto, belso_ellenor, teruleti_vezeto, penzugyi_vezeto) a menüből NEM érték el.
+      // A canonicalRoles a CashFlowReportController @PreAuthorize-át tükrözi.
+      {
+        path: '/reports/cash-flow',
+        label: 'Pénzforgalom riport',
+        icon: FileText,
+        canonicalRoles: [
+          'foertektar',
+          'ugyvezeto',
+          'irodavezeto',
+          'belso_ellenor',
+          'teruleti_vezeto',
+          'penzugyi_vezeto',
+        ],
+      },
       { path: '/reports/daily-journal', label: 'Napkönyv (PDF)', icon: FileText },
       { path: '/reports/central', label: 'Központi riportok (CSV)', icon: Building2 },
       { path: '/reports/nav', label: 'NAV adatszolgáltatás', icon: ShieldAlert },

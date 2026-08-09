@@ -198,6 +198,54 @@ class Fkh031LayerContradictionV377PostgresTest {
         }
     }
 
+    /**
+     * FAIL-CLOSED szerzodes a fel-allapotra.
+     *
+     * <p>A migracio 4. blokkja (kiindulo-allapot guard) a HIBAS KEZDOALLAPOTOT mar iras ELOTT
+     * kiszuri — azt a {@code v377NemNyulElteroKiindulasiAllapothoz} teszt fedi. Az itt vizsgalt
+     * ag ezzel szemben CSAK valodi versenyhelyzetben erheto el: ha a masodik UPDATE es a
+     * SELECT kozott valaki mashonnan modositja a REVERSAL sort. Ez fixturaval nem allithato
+     * elo determinisztikusan, ezert a viselkedes helyett a FORRAS-SZERZODEST allitjuk:
+     * ezen az agon RAISE EXCEPTION-nek kell allnia, nem RAISE NOTICE-nak.</p>
+     *
+     * <p>Miert szamit: NOTICE eseten az elso UPDATE (AA035100003 -> COMPLETED) commitalodna a
+     * masodik nelkul, es a 1000 USD DUPLAN latszana a BR035 forgalmaban — pontosan az a
+     * penzugyi hiba, amit ez a migracio rendezni hivatott. EXCEPTION-nel a Flyway a teljes
+     * migraciot visszagorgeti: inkabb ne fusson le, mint hogy felig fusson le.</p>
+     */
+    @Test
+    @DisplayName("V377: a fel-allapot aga fail-closed (RAISE EXCEPTION, nem NOTICE)")
+    void v377FelAllapotAgaFailClosed() throws Exception {
+        String sql = Files.readString(resolveMigration(V377_FILE_PATTERN), StandardCharsets.UTF_8);
+
+        int secondUpdate = sql.indexOf("AA035100004 ervenytelenitese");
+        assertThat(secondUpdate)
+                .as("A masodik UPDATE fel-allapot-aga megtalalhato a migracioban")
+                .isGreaterThan(0);
+
+        String branch = sql.substring(secondUpdate);
+        assertThat(sql.substring(Math.max(0, secondUpdate - 200), secondUpdate))
+                .as("A fel-allapot agat RAISE EXCEPTION vezeti be (RAISE NOTICE fel-allapotot commitalna)")
+                .contains("RAISE EXCEPTION");
+        assertThat(branch)
+                .as("Az uzenet kimondja a visszagorgetest")
+                .contains("VISSZAGORGETVE");
+    }
+
+    /**
+     * A sikeres ag valtozatlanul NOTICE-szal zar (nem szabad, hogy a fail-closed valtoztatas
+     * a normal futast is elszallassza) — ezt a {@code v377RendeziAReteg_ellentmondast} teszt
+     * bizonyitja viselkedesi szinten; itt csak a forras-szerzodest rogzitjuk.
+     */
+    @Test
+    @DisplayName("V377: a sikeres ag tovabbra is NOTICE-szal zar")
+    void v377SikeresAgNoticeMarad() throws Exception {
+        String sql = Files.readString(resolveMigration(V377_FILE_PATTERN), StandardCharsets.UTF_8);
+        assertThat(sql)
+                .as("A sikeres rendezes tajekoztato NOTICE-a megmaradt")
+                .contains("reteg-ellentmondas rendezve");
+    }
+
     // ============================ ARRANGE ============================
 
     private record Fixture(UUID companyId, UUID branchId) {

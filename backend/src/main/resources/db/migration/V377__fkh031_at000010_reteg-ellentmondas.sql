@@ -209,8 +209,15 @@ BEGIN
         RAISE NOTICE 'V377: AT-000010 reteg-ellentmondas rendezve — AA035100003 REVERSED->COMPLETED, '
                      'AA035100004 COMPLETED->CANCELLED (1000 USD megjelenik a BR035 forgalmaban).';
     ELSE
-        RAISE NOTICE 'V377: az AA035100004 ervenytelenitese % sort erintett (parhuzamos valtozas?) — '
-                     'kezi vizsgalat szukseges: az AA035100003 mar COMPLETED, igy a forgalom '
-                     'DUPLAN latszhat.', v_rows;
+        -- FAIL-CLOSED (FKH-031/A NFR-3 kiterjesztese): ide csak ugy juthatunk, hogy az elso
+        -- UPDATE MAR lefutott (AA035100003 COMPLETED), a masodik viszont nem talalt sort.
+        -- RAISE NOTICE eseten ez a FEL-ALLAPOT COMMITALODNA, es a 1000 USD DUPLAN latszana
+        -- a BR035 forgalmaban — pontosan az a penzugyi hiba, amit ez a migracio rendezni hivatott.
+        -- EXCEPTION-nel a Flyway a TELJES migraciot visszagorgeti: inkabb ne fusson le, mint
+        -- hogy felig fusson le.
+        RAISE EXCEPTION 'V377: az AA035100004 ervenytelenitese % sort erintett (parhuzamos valtozas?) — '
+                        'a migracio VISSZAGORGETVE, hogy az AA035100003 mar elvegzett '
+                        'REVERSED->COMPLETED valtasa ne maradjon fel-allapotban (kulonben a '
+                        'forgalom DUPLAN latszana). Kezi vizsgalat szukseges.', v_rows;
     END IF;
 END $$;
