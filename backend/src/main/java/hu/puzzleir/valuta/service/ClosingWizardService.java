@@ -630,8 +630,15 @@ public class ClosingWizardService {
                     return denominationRepository.save(d);
                 });
 
+        // FKH-033 (PR #1588 BLOCK): a lookup KATEGORIA-TUDATOS kell legyen. A kategoria-mentes
+        // parja az elso talalatot adta vissza kategoriatol fuggetlenul, igy (a) egy meglevo
+        // HANDLING_FEE sort irt volna felul EVENING-re, illetve (b) ha nem talalt, uj sort
+        // probalt beszurni, amit a V75-os (cash_desk_id, denomination_id) kulcs elutasitott
+        // — DataIntegrityViolationException / 500 a torvenyileg kotelezo napi zarasban.
+        // A kulcsot a V378 terjeszti ki a kategoriara.
         DenominationBalance balance = denominationBalanceRepository
-                .findByCashDeskIdAndDenominationId(branchId, denomination.getId())
+                .findByCashDeskIdAndDenominationIdAndCategory(
+                        branchId, denomination.getId(), DenominationCategory.EVENING)
                 .orElseGet(() -> DenominationBalance.builder()
                         .cashDeskId(branchId)
                         .denomination(denomination)

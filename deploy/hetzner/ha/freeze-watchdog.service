@@ -8,6 +8,12 @@ Wants=network-online.target
 Type=oneshot
 # root kell a `systemctl restart` + `sudo -u postgres pg_isready` műveletekhez.
 User=root
-ExecStart=/opt/valutavalto/deploy/hetzner/ha/freeze-watchdog.sh
+# FKH-034 (2026-08-10): a szkript EXPLICIT `/bin/bash`-sal indul. Korabban a
+# `ExecStart=<script>` forma a fajl exec-bitjere tamaszkodott, es amikor az egy
+# telepites soran elveszett, a systemd 203/EXEC-cel bukott — az ONGYOGYITO maga
+# volt halott 2026-07-02 es 2026-08-09 kozott (54 375 sikertelen inditas), ES a
+# hiba NEMA volt, mert a watchdognak nincs sajat watchdogja. A `/bin/bash` elotag
+# az egesz hibaosztalyt megszunteti: a szkript az exec-bittol fuggetlenul lefut.
+ExecStart=/bin/bash /opt/valutavalto/deploy/hetzner/ha/freeze-watchdog.sh
 # A watchdog maga kezeli a hibákat (set -uo pipefail, explicit exit-kódok); ne floodolja a journalt.
 TimeoutStartSec=300

@@ -19,7 +19,12 @@ import java.util.UUID;
     @Index(name = "idx_denom_balance_desk", columnList = "cash_desk_id"),
     @Index(name = "idx_denom_balance_denomination", columnList = "denomination_id")
 }, uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"cash_desk_id", "denomination_id"})
+    // FKH-033 (V378): a kulcsnak tartalmaznia KELL a kategoriat — kategoria nelkul az
+    // elso HANDLING_FEE mentes utkozott a mar meglevo EVENING sorral, es a napi zaras
+    // varazsloja 500-zal osszeomlott.
+    @UniqueConstraint(
+        name = "uk_denom_balance_desk_denom_category",
+        columnNames = {"cash_desk_id", "denomination_id", "denomination_category"})
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
