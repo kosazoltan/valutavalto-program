@@ -96,7 +96,13 @@ jobs:
     name: Backend OWASP Dependency Check (weekly)
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # FKH-035 (2026-08-10): 45 -> 120 perc. A 31362490156-os utemezett futas 45 perc
+    # utan CANCELLED lett: az NVD-cache MISS-elt (owasp-nvd-Linux-2026-W33 es a
+    # restore-key sem talalt), igy a job a teljes, 374 418 rekordos NVD-adatbazist
+    # toltotte le 3500 ms-os keresi kesleltetessel. A PR-trigger azert zold ~10-12 perc
+    # alatt, mert ott ez a job SKIP-el (`if: schedule || workflow_dispatch`) — nem
+    # gyorsabb, hanem el sem indul.
+    timeout-minutes: 120
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
@@ -111,26 +117,58 @@ jobs:
         id: nvd_cache_key
         run: echo "key=$(date -u +'%G-W%V')" >> "$GITHUB_OUTPUT"
 
-      - name: Cache OWASP NVD database
-        uses: actions/cache@v6
+      # FKH-035: restore + save SZETVALASZTVA. A kombinalt `actions/cache` a
+      # post-step-ben ment, ami CANCELLED job eseten NEM fut le — ezert a timeout
+      # onmagat tartotta fenn: minden heti futas nulla cache-sel indult, tullepte a
+      # limitet, es megint nem mentett. A kulon `cache/save` mar a letoltes UTAN,
+      # az elemzes ELOTT rogziti az adatbazist.
+      - name: Restore OWASP NVD database
+        id: nvd_restore
+        uses: actions/cache/restore@v6
         with:
           path: backend/.owasp-dependency-check-data
           key: owasp-nvd-${{ runner.os }}-${{ steps.nvd_cache_key.outputs.key }}
           restore-keys: |
             owasp-nvd-${{ runner.os }}-
 
-      - name: OWASP Dependency Check
-        id: owasp
+      - name: Update NVD database only
+        id: nvd_update
         continue-on-error: true
         run: |
           if [ -z "$NVD_API_KEY" ]; then
             echo "::warning::NVD_API_KEY is empty – falling back to anonymous NVD (slow, 5 req / 30s)"
+            # Kulcs nelkul az NVD 5 keres / 30 mp-re korlatoz: a nagy keslektetes KOTELEZO.
+            DELAY=3500
+          else
+            # Ervenyes API-kulccsal az NVD dokumentalt biztonsagos kesleltetese ~700 ms;
+            # a 3500 ms ilyenkor feleslegesen otszorozte a futasidot.
+            DELAY=700
           fi
+          cd backend && mvn -B org.owasp:dependency-check-maven:update-only \
+            -DnvdApiKey="$NVD_API_KEY" \
+            -DnvdApiDelay=$DELAY \
+            -DnvdMaxRetryCount=10 \
+            -DdataDirectory=.owasp-dependency-check-data \
+            --no-transfer-progress
+
+      # A friss adatbazis akkor is mentesre kerul, ha az update reszlegesen futott —
+      # igy a kovetkezo heti futas mar nem nullarol indul.
+      - name: Save OWASP NVD database
+        if: always()
+        uses: actions/cache/save@v6
+        with:
+          path: backend/.owasp-dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ steps.nvd_cache_key.outputs.key }}
+
+      - name: OWASP Dependency Check
+        id: owasp
+        continue-on-error: true
+        run: |
+          # autoUpdate=false: az adatbazis-frissites mar megtortent (es cache-elve lett)
+          # a kulon lepesben; itt CSAK az elemzes fut, halozati fuggoseg nelkul.
           cd backend && mvn -B org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=9 \
-            -DnvdApiKey=$NVD_API_KEY \
-            -DnvdApiDelay=3500 \
-            -DnvdMaxRetryCount=10 \
+            -DautoUpdate=false \
             -DsuppressionFile=owasp-suppressions.xml \
             -DdataDirectory=.owasp-dependency-check-data \
             --no-transfer-progress
