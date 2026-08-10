@@ -96,7 +96,7 @@ class ClosingWizardDenominationAllowedFk076Test {
                 .thenReturn(Optional.empty());
         lenient().when(denominationRepository.save(any(Denomination.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(denominationBalanceRepository.findByCashDeskIdAndDenominationId(any(), any()))
+        lenient().when(denominationBalanceRepository.findByCashDeskIdAndDenominationIdAndCategory(any(), any(), any()))
                 .thenReturn(Optional.empty());
         lenient().when(denominationBalanceRepository.save(any()))
                 .thenAnswer(inv -> inv.getArgument(0));

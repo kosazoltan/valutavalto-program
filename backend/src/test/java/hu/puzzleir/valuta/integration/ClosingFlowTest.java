@@ -212,7 +212,7 @@ class ClosingFlowTest {
             branch.setCompany(company);
             when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Optional.of(branch));
 
-            when(denominationBalanceRepository.findByCashDeskIdAndDenominationId(eq(BRANCH_ID), any()))
+            when(denominationBalanceRepository.findByCashDeskIdAndDenominationIdAndCategory(eq(BRANCH_ID), any(), any()))
                     .thenReturn(Optional.empty());
             when(denominationBalanceRepository.save(any(hu.puzzleir.valuta.entity.DenominationBalance.class)))
                     .thenAnswer(inv -> inv.getArgument(0));

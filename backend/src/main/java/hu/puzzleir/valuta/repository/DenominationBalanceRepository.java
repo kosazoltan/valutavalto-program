@@ -36,17 +36,15 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     );
 
     /**
-     * Egyedi rekord: pénztárgép + címlet
-     */
-    Optional<DenominationBalance> findByCashDeskIdAndDenominationId(UUID cashDeskId, Long denominationId);
-
-    /**
-     * FK-078 (FR-3): kategória-tudatos egyedi rekord — pénztár + címlet + kategória.
+     * FK-078 (FR-3) / FKH-033: kategória-tudatos egyedi rekord — pénztár + címlet + kategória.
      *
-     * <p>A kategória-nélküli párja ({@link #findByCashDeskIdAndDenominationId}) az ELSŐ
-     * találatot adja vissza kategóriától függetlenül, ezért egy {@code HANDLING_FEE} mentés
-     * felülírhatná az {@code EVENING} sort (és fordítva). A becímletező oldal (FK-078) mindkét
-     * kategóriát írja, ezért az upsert-kulcsnak tartalmaznia kell a kategóriát is.</p>
+     * <p>Ez az EGYETLEN megengedett upsert-lookup a {@code denomination_balance} táblára.
+     * A korábbi, kategória-mentes párja ({@code findByCashDeskIdAndDenominationId}) az ELSŐ
+     * találatot adta vissza kategóriától függetlenül, ezért egy {@code HANDLING_FEE} mentés
+     * felülírhatta az {@code EVENING} sort — illetve új sort próbált beszúrni, amit a V75-ös
+     * kategória-mentes egyedi kulcs elutasított (500 a napi zárásban). A V378 óta a DB-kulcs
+     * is {@code (cash_desk_id, denomination_id, denomination_category)}; a kategória-mentes
+     * metódus SZÁNDÉKOSAN nem létezik, hogy ne lehessen visszacsúszni a hibás mintába.</p>
      */
     @Query("SELECT db FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :cashDeskId " +

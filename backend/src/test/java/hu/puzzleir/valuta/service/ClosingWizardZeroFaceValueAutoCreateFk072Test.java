@@ -82,7 +82,7 @@ class ClosingWizardZeroFaceValueAutoCreateFk072Test {
         lenient().when(branchRepository.findById(branchId))
                 .thenReturn(Optional.of(Branch.builder().id(branchId).code("BR001").company(company).build()));
         lenient().when(denominationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(denominationBalanceRepository.findByCashDeskIdAndDenominationId(any(), any()))
+        lenient().when(denominationBalanceRepository.findByCashDeskIdAndDenominationIdAndCategory(any(), any(), any()))
                 .thenReturn(Optional.empty());
         lenient().when(denominationBalanceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         // FK-076 (FR-3): a nem-HUF auto-create ág most a denomination_allowed ellen
