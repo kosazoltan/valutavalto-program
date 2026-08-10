@@ -1,6 +1,6 @@
 {
   "name": "valuta-arfolyam-keszito-client",
-  "version": "2.28.73",
+  "version": "2.28.74",
   "private": true,
   "author": "Exclusive Best Change Zrt.",
   "description": "Helyi foertektar arfolyamkeszito kliens - Electron GUI es kommunikacios mag",
