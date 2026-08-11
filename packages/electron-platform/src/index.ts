@@ -56,3 +56,19 @@ export {
 } from './config-store'
 
 export { resolveWasmPath } from './local-first-paths'
+
+export {
+  normalizeApiUrl,
+  decideApiUrl,
+  parseErrorMessage,
+  type ApiUrlDecision,
+  type ApiUrlFallbackReason,
+} from './api-url'
+
+export {
+  promoteUserDataEnv,
+  createMediaPermissionHandler,
+  createAppProtocolHandler,
+  type PlatformLogger,
+  type PromoteUserDataEnvOptions,
+} from './app-runtime'

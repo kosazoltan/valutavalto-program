@@ -233,6 +233,93 @@ check(
   names.size === CLIENTS.filter((c) => existsSync(join(c, 'package.json'))).length,
 )
 
+// --- 7. BIZTONSAGI SZABALYOK EGY FORRASBOL (platform-refaktor 3. kor) --------
+// A media-permission szabaly (F-006 default-deny + explicit origin-allowlist) es
+// az `app:` protokoll path-traversal vedelme korabban HAROM, ill. KET masolatban
+// elt a kliensekben. A kiemeles utan egy forras van. Ez a szakasz azt orzi, hogy
+// a masolat ne szivarogjon vissza: ha egy kliens ujra sajat inline handlert irna,
+// a szabaly ket helyen driftelhetne szet - es a driftet semmilyen typecheck
+// vagy build nem venne eszre.
+const RUNTIME_MODULE = join(PLATFORM_DIR, 'src', 'app-runtime.ts')
+check('platform app-runtime modul letezik', existsSync(RUNTIME_MODULE))
+
+for (const client of CLIENTS) {
+  const mainPath = join(client, 'electron', 'main.ts')
+  if (!existsSync(mainPath)) continue
+  const src = readFileSync(mainPath, 'utf8')
+
+  // 7a. A permission-handler a platformbol jon, nem inline lambda.
+  if (src.includes('setPermissionRequestHandler')) {
+    check(
+      `${client}: a media-permission handler a PLATFORMBOL jon (F-006 egy forras)`,
+      src.includes('setPermissionRequestHandler(createMediaPermissionHandler('),
+      'inline permission-handler visszaszivargott — a default-deny szabaly ket helyen driftelne',
+    )
+    // A regi masolat jellegzetes belso sora nem maradhat a kliensben.
+    check(
+      `${client}: nincs visszamasolt origin-allowlist a kliensben`,
+      !src.includes("url.hostname === 'excvaluta.com'"),
+      'az origin-ellenorzes a platform app-runtime moduljaba tartozik',
+    )
+  }
+
+  // 7b. Az `app:` protokoll-kiszolgalo path-traversal vedelme.
+  // A penztar-client valtozata SZANDEKOSAN kulon marad (kerdesenkenti log.info +
+  // eltero valtozo-elnevezes), ezert csak a masik ket kliensre kotelezo.
+  if (client !== 'penztar-client' && src.includes("protocol.handle('app'")) {
+    check(
+      `${client}: az app: protokoll-kiszolgalo a PLATFORMBOL jon`,
+      src.includes("protocol.handle('app', createAppProtocolHandler("),
+      'a path-traversal vedelem egy forrasbol jon; inline masolat tilos',
+    )
+  }
+
+  // 7c. A userData/.env promocio.
+  if (src.includes('userData/.env') || src.includes('promoteUserDataEnv')) {
+    check(
+      `${client}: a userData/.env promocio a PLATFORMBOL jon`,
+      src.includes('promoteUserDataEnv({'),
+      'inline dotenv-promocio visszaszivargott',
+    )
+    // A kliens-specifikus kulonbseg legyen EXPLICIT parameter, ne rejtett default.
+    check(
+      `${client}: explicit missingEnvMessage-t ad at (nincs rejtett default)`,
+      /missingEnvMessage:\s*\n?\s*'/.test(src),
+      'a hianyzo-.env uzenet kliensenkent elter, ezert kotelezo parameter',
+    )
+  }
+}
+
+// 7d. Az api-url modul PURE marad: `electron` import a platform-oldalon
+// megtorne a `penztar-client` vitest node-kornyezeteben futo tesztjeit.
+const apiUrlModule = join(PLATFORM_DIR, 'src', 'api-url.ts')
+if (existsSync(apiUrlModule)) {
+  const src = readFileSync(apiUrlModule, 'utf8')
+  check(
+    'a platform api-url modulja PURE (nincs electron import)',
+    !/from\s+['"]electron['"]/.test(src),
+    'az electron import miatt a modul nem lenne unit-tesztelheto',
+  )
+}
+
+// 7e. A `resolveConfiguredApiUrl` a platform dontesere epul mindharom kliensben.
+for (const client of CLIENTS) {
+  const mainPath = join(client, 'electron', 'main.ts')
+  if (!existsSync(mainPath)) continue
+  const src = readFileSync(mainPath, 'utf8')
+  if (!src.includes('function resolveConfiguredApiUrl')) continue
+  check(
+    `${client}: resolveConfiguredApiUrl a platform decideApiUrl-jere epul`,
+    src.includes('decideApiUrl('),
+    'a sema-ellenorzes (http/https allowlist) egy forrasbol jon',
+  )
+  check(
+    `${client}: nincs visszamasolt normalizeApiUrl a kliensben`,
+    !src.includes('function normalizeApiUrl'),
+    'a normalizalas a platform api-url moduljaban van',
+  )
+}
+
 console.log(`\nVizsgalt import-utvonal: ${checked}`)
 notes.forEach((n) => console.log('  -', n))
 
