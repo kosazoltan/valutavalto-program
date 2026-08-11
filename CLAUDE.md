@@ -74,6 +74,10 @@ tenyszeruen megtortent.
 - Minden Hetzner-deploy KOTELEZOEN ellenorzi a DB-migraciot: a prod 'valuta' DB
   Flyway-szintje == repo max V (Gate A), es a Neon backup-DB sema is migralva (Gate B,
   `flyway migrate`). Automatizalva a `deploy-hetzner.yml`-ben; tilos kikapcsolni. Lasd AGENTS.md 4.
+- PLATFORM-IRANY (2026-08-10 ota): az Electron-kliensekben **kliens -> kliens import
+  TILOS** (CI-blokkolo). A kozos kod a `packages/electron-platform`-ba kerul; csak
+  bizonyitottan azonos logika emelheto ki. Kapu: `npm run check:platform-boundaries`.
+  Lasd AGENTS.md 4 "Platform-irany" es a `valutavalto-platform-architecture` skillt.
 
 ## Helyi toolok (scripts/dev-tools/ — 45 db, zero-API-cost)
 

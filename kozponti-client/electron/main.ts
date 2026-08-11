@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, session } from 'electron'
 import log from 'electron-log/main'
 import { release as getOsRelease } from 'node:os'
 import fs from 'node:fs'
@@ -16,6 +16,16 @@ import {
   setAuthToken,
   registerLocalFirstIpcHandlers,
 } from './local-first'
+import {
+  configPath,
+  tokenPath,
+  readConfig,
+  writeConfig,
+  deleteConfigKey,
+  storeToken,
+  loadToken,
+  clearToken,
+} from '../../packages/electron-platform/src'
 
 const osBuild = Number.parseInt(getOsRelease().split('.')[2] || '0', 10)
 if (osBuild >= 26200) {
@@ -78,33 +88,13 @@ function isWorkstationMode(value: unknown): value is WorkstationMode {
 // Az aktuális session módja — induláskor a választó-ablak állítja be.
 let activeAppMode: WorkstationMode = 'full'
 
-function configPath(): string {
-  return path.join(app.getPath('userData'), 'config.json')
-}
-
-function tokenPath(): string {
-  return path.join(app.getPath('userData'), 'auth-token.bin')
-}
-
-function readConfig(): Record<string, string> {
-  try {
-    const raw = fs.readFileSync(configPath(), 'utf8')
-    const parsed = JSON.parse(raw) as unknown
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, string>)
-      : {}
-  } catch {
-    return {}
-  }
-}
-
-function writeConfig(config: Record<string, string>): void {
-  const target = configPath()
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  const tmp = `${target}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(config, null, 2), { encoding: 'utf8', mode: 0o600 })
-  fs.renameSync(tmp, target)
-}
+// A config/token primitivek (configPath, tokenPath, readConfig, writeConfig,
+// deleteConfigKey, storeToken, loadToken, clearToken) a KOZOS platform-retegben
+// elnek: packages/electron-platform/src/config-store.ts
+//
+// FONTOS (#ERR-INST-01): a platform az utvonalat MINDEN HIVASKOR ujra feloldja az
+// `app.getPath('userData')`-bol, ezert az alabbi `app.setPath('userData', ...)`
+// mod-izolacio VALTOZATLANUL ervenyes marad rajuk.
 
 function getConfig(key: string): string | null {
   // app_mode: a session aktuális módja (a választó-ablak állította be), NEM hardcode.
@@ -131,10 +121,9 @@ function setConfig(key: string, value: string): void {
 }
 
 function deleteConfig(key: string): void {
+  // Kliens-specifikus guard: az app_mode kulcs NEM torolheto (a session modjat tarolja).
   if (key === 'app_mode') return
-  const config = readConfig()
-  delete config[key]
-  writeConfig(config)
+  deleteConfigKey(key)
 }
 
 /** A config.json-ben perzisztált korábbi mód (alapértelmezett a választó-ablakban). */
@@ -382,31 +371,28 @@ function registerIpcHandlers(): void {
   ipcMain.handle('delete-config', (_event, key: string) => deleteConfig(key))
 
   ipcMain.handle('secure-store-token', (_event, token: string): boolean => {
-    if (!safeStorage.isEncryptionAvailable()) {
+    // A perzisztalas a kozos platform-primitivvel tortenik; a `setAuthToken`
+    // hivas KLIENS-OLDALI es KOTELEZO: enelkul a token nem jutna el a
+    // local-first / sync reteghez (csendes funkcionalis regresszio lenne).
+    if (!storeToken(token)) {
       log.warn('[Security] safeStorage nem elérhető, token nincs perzisztálva.')
       return false
     }
-    fs.mkdirSync(app.getPath('userData'), { recursive: true })
-    fs.writeFileSync(tokenPath(), safeStorage.encryptString(token), { mode: 0o600 })
     setAuthToken(token)
     return true
   })
 
   ipcMain.handle('secure-load-token', (): string | null => {
-    try {
-      if (!safeStorage.isEncryptionAvailable() || !fs.existsSync(tokenPath())) return null
-      return safeStorage.decryptString(fs.readFileSync(tokenPath()))
-    } catch (err) {
-      log.warn('[Security] token visszafejtés sikertelen:', err)
-      return null
+    const token = loadToken()
+    if (token === null) {
+      log.debug('[Security] nincs visszafejthető perzisztált token.')
     }
+    return token
   })
 
   ipcMain.handle('secure-clear-token', (): void => {
-    try {
-      if (fs.existsSync(tokenPath())) fs.unlinkSync(tokenPath())
-    } catch (err) {
-      log.warn('[Security] token törlés sikertelen:', err)
+    if (!clearToken()) {
+      log.warn('[Security] token törlés sikertelen.')
     }
     setAuthToken(null)
   })
