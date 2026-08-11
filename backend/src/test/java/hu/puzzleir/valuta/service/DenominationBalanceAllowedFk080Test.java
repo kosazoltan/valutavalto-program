@@ -230,4 +230,32 @@ class DenominationBalanceAllowedFk080Test {
 
         verify(balanceRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("FR-5g (addendum A-4 + round-2 ITEM 2): a 2-arg batchUpdate(branchId, updates) belépési pont is gát alatt van — tiltott tételre VV-VALID-007, nincs mentés")
+    void twoArgBatchUpdateOverloadAlsoRejectsForbiddenItem() {
+        // A 2-argumentumos overload EVENING-kategorival delegal a 3-arg-ra, amely a
+        // 4-arg updateQuantity-n keresztul futtatja a requireAllowedDenomination gatot.
+        // A regi teszt CSAK a 3-arg overloadot jaratta nem-ures tiltott tetellel, igy
+        // ez a publikus belepesi pont bizonyitatlan volt — addendum A-4 kotove tette.
+        Denomination rsdCoin = row(42L, companyId, "RSD", 12L, "10", DenominationType.COIN, true);
+        when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
+        lenient().when(denominationRepository.findById(42L)).thenReturn(Optional.of(rsdCoin));
+        lenient().when(denominationAllowedRepository.findActiveAllowed(companyId, 12L, new BigDecimal("10")))
+                .thenReturn(Optional.of(allowed("10", DenominationType.BANKNOTE)));
+
+        DenominationQuantityUpdateRequestDto update = new DenominationQuantityUpdateRequestDto();
+        update.setDenominationId("42");
+        update.setQuantity(9);
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+
+            assertThatThrownBy(() -> service().batchUpdate(branchId, List.of(update)))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("VV-VALID-007");
+        }
+
+        verify(balanceRepository, never()).save(any());
+    }
 }
