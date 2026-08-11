@@ -247,6 +247,26 @@ A CI workflow `actions/checkout`-jának a `main` ref-et kell használnia, és a
 - hamis mock adat production valaszkent
 - teszt skip/torles/assertion-gyengites csak a zold eredmenyert
 - `--no-verify`, force push vedett agra, branch protection gyengitese
+- **kliens -> kliens import az Electron-kliensekben** (platform-irany, l. lent)
+
+### Platform-irany (2026-08-10 ota kotelezo)
+
+A repo fejlesztese PLATFORM-JELLEGU. Egyetlen szabaly, CI-blokkolo:
+
+> **Kliens -> platform importalhat. Kliens -> KLIENS SOHA.**
+> Ha ket kliensnek ugyanaz kell, az a `packages/electron-platform`-ba kerul.
+
+- Kapu: `npm run check:platform-boundaries`
+  (`scripts/check-platform-boundaries.mjs`), CI: `business-invariant-guard.yml` #15.
+- Csak **bizonyitottan azonos** logika emelheto ki (diff / klon-meres bizonyitsa,
+  ne a ranezes). A "hasonlo, de nem azonos" kod osszevonasa penzugyi rendszerben
+  regresszios kockazat, nem nyereseg.
+- Kiemeleskor a kliens-specifikus kulonbseg legyen **explicit, kotelezo parameter**,
+  ne rejtett fajl-szintu default.
+- Ha a platform uj npm-dependencyt kap, a `windows-signed-release.yml` MINDKET
+  telepito-jobjaba fel kell venni a `npm ci`-t — kulonben a RELEASE bukik, nem a PR.
+- Reszletes eljaras + buktatok: `valutavalto-platform-architecture` skill es
+  `.hermes.md` "PLATFORM-JELLEGU FEJLESZTES" szakasz.
 
 ### Celzott ellenorzes eleg, ha
 

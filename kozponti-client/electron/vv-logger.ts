@@ -1,192 +1,41 @@
 /**
- * EBC Valutavalto - Electron main process strukturalt logger (V234 modul).
+ * EBC Valutavalto - Electron main process strukturalt logger (kozponti munkaallomas).
  *
- * Forras: vault/feedback/valutavalto-belso-log-audit-modul-tervezet-2026-05-18.md (5.3)
+ * PLATFORM-REFAKTOR (2026-08-10): a tenyleges implementacio a kozos
+ * platform-retegben el:
  *
- * Wrapper az electron-log/main ele:
- * - lokalisan logol (electron-log → AppData/logs/main.log)
- * - WARN / ERROR szint a backend /api/v1/diagnostics/audit/log endpointra forwardol
+ *   packages/electron-platform/src/vv-logger.ts
  *
- * Iparagi standard: a kliens-oldali strukturalt logok ugyanazon a sema-ban
- * mennek mint a backend (event_type, error_code, attrs.*) - igy a Loki/Grafana
- * query egysegesen tudja keresni a backend ES Electron klienseket egy trace_id-ra.
+ * Korabban ez a modul HAROM kliensben letezett kulon peldanyban (193 / 192 / 192
+ * sor), amelyek egymastol MINDOSSZE a default `clientContext`-ben tertek el
+ * (CASHIER / TREASURY_HQ / RFM) - a logika bajtra azonos volt. A klon-meres
+ * (2026-08-10) ezt komponensek kozotti duplikaciokent azonositotta.
  *
- * KULONBSEG az error-reporter.ts-tol:
- * - error-reporter: unhandled exception / crash forward (client_error_log tabla)
- * - vv-logger: STRUKTURALT business event-ek (transaction.committed, voice.error, etc)
- *   → V234 audit_log tabla (event_type + error_code + AI-olvashato).
+ * Ez a fajl mostantol csak a KLIENS-SPECIFIKUS konfiguraciot koti be
+ * (`clientContext: 'TREASURY_HQ'`), es valtozatlan felulettel exportal tovabb, hogy a
+ * hivok ne valtozzanak.
  *
- * Hasznalat:
+ * Hasznalat (valtozatlan):
  *   import { vvLogger } from './vv-logger'
- *   vvLogger.error('VV-VOICE-001', 'voice.token_fetch_failed', new Error('429'),
- *                  { worker_id: 'W-S011' })
+ *   vvLogger.error('VV-VOICE-001', 'voice.token_fetch_failed', new Error('429'))
  */
 
-import { app, net } from 'electron'
-import log from 'electron-log/main'
-import { release as getOsRelease, type as getOsType } from 'node:os'
+import { createVvLogger, type ClientContext } from '../../packages/electron-platform/src'
 
-const ENDPOINT_PATH = '/api/v1/diagnostics/audit/log'
-// Copilot PR #681: token-bucket helyett egyszeru "drop counter + summary" minta.
-// Az anti-spam fix interval-on belul a forward-okat skip-eljuk, de
-// szamoljuk a `droppedSinceLastForward` countert, es a kovetkezo forward-on
-// hozzaadjuk az attrs.drop_count mezohoz - igy NEM tunik el nyomtalanul a signal.
-const ANTI_SPAM_MIN_INTERVAL_MS = 2_000
-const MAX_MESSAGE_LEN = 500
-const MAX_STACK_LEN = 4000
+const handle = createVvLogger({ clientContext: 'TREASURY_HQ' })
 
-type ClientContext = 'CASHIER' | 'TREASURY_HQ' | 'RFM' | 'ADMIN'
+export type { ClientContext }
 
-let backendBaseUrl = 'https://excvaluta.com'
-let authBearerToken: string | null = null
-let clientContext: ClientContext = 'TREASURY_HQ'
-let lastForwardMs = 0
-let droppedSinceLastForward = 0
+/** Strukturalt logger - lokalis electron-log + backend audit-forward. */
+export const vvLogger = handle.vvLogger
+
+/** A JWT-tokent a renderer kuldi a main-nek IPC-n at, amikor a worker login-ol. */
+export const setAuthToken = handle.setAuthToken
 
 /**
- * Konfiguracio - a main.ts hivja meg inditaskor.
- *
- * @param baseUrl - production: 'https://excvaluta.com' (default)
- * @param context - 'CASHIER' (penztar-client), 'TREASURY_HQ' (kozponti), 'RFM' (arfolyam)
+ * Konfiguracio - a main.ts hivhatja inditaskor (baseUrl / context override).
+ * A kliens-specifikus default context (`TREASURY_HQ`) mar be van allitva.
  */
-export function configureVvLogger(opts: { baseUrl?: string; clientContext?: ClientContext }): void {
-  if (opts.baseUrl) backendBaseUrl = opts.baseUrl.replace(/\/+$/, '')
-  if (opts.clientContext) clientContext = opts.clientContext
-}
-
-/**
- * A JWT-tokent a renderer kuldi a main-nek IPC-n at, amikor a worker login-ol.
- */
-export function setAuthToken(token: string | null): void {
-  authBearerToken = token
-}
-
-interface VvLogPayload {
-  level: 'ERROR' | 'WARN'
-  eventType: string
-  errorCode?: string
-  message: string
-  clientTs: string
-  traceId?: string
-  clientContext: ClientContext
-  clientVersion: string
-  attrs?: Record<string, unknown>
-  stackTrace?: string
-}
-
-function truncate(s: string | undefined, max: number): string | undefined {
-  if (!s) return s
-  return s.length > max ? `${s.substring(0, max)}...[truncated]` : s
-}
-
-function buildPayload(
-  level: VvLogPayload['level'],
-  eventType: string,
-  errorCode: string | undefined,
-  message: string,
-  attrs: Record<string, unknown> | undefined,
-  cause?: Error | unknown,
-): VvLogPayload {
-  const stack = cause instanceof Error ? cause.stack : typeof cause === 'string' ? cause : undefined
-  return {
-    level,
-    eventType,
-    errorCode,
-    message: truncate(message, MAX_MESSAGE_LEN) ?? message,
-    clientTs: new Date().toISOString(),
-    clientContext,
-    clientVersion: app.getVersion(),
-    attrs: {
-      ...attrs,
-      // Copilot PR #681 P1: dynamic OS label (NEM hardcoded Windows)
-      'electron.os': `${getOsType()} ${getOsRelease()}`,
-    },
-    stackTrace: truncate(stack, MAX_STACK_LEN),
-  }
-}
-
-/**
- * Backend forward - send-and-forget, NE blokkolj.
- */
-function forwardToBackend(payload: VvLogPayload): void {
-  if (!authBearerToken) {
-    // A kliens nincs bejelentkezve - a backend /log endpoint @PreAuthorize('isAuthenticated()')
-    // elutasitana. Csak lokalisan logoljunk.
-    return
-  }
-  const now = Date.now()
-  if (now - lastForwardMs < ANTI_SPAM_MIN_INTERVAL_MS) {
-    // Copilot PR #681 P1: dropolt event-eket szamoljuk, NEM dobjuk el silently
-    droppedSinceLastForward += 1
-    return
-  }
-  lastForwardMs = now
-
-  // Hozzaadjuk a drop_count-ot az attrs-hoz hogy a backend lassa a missing signalt
-  const enrichedPayload: VvLogPayload =
-    droppedSinceLastForward > 0
-      ? {
-          ...payload,
-          attrs: { ...payload.attrs, 'vv.dropped_since_last': droppedSinceLastForward },
-        }
-      : payload
-  droppedSinceLastForward = 0
-
-  try {
-    const req = net.request({ method: 'POST', url: `${backendBaseUrl}${ENDPOINT_PATH}` })
-    req.setHeader('Content-Type', 'application/json')
-    req.setHeader('Authorization', `Bearer ${authBearerToken}`)
-    req.setHeader('User-Agent', `ValutaElectronVVLogger/${app.getVersion()}`)
-    req.on('error', () => {
-      /* csendben */
-    })
-    req.on('response', (res) => {
-      res.on('data', () => {
-        /* drain */
-      })
-      res.on('end', () => {
-        /* finished */
-      })
-    })
-    req.write(JSON.stringify(enrichedPayload))
-    req.end()
-  } catch {
-    /* csendben */
-  }
-}
-
-export const vvLogger = {
-  info(eventType: string, attrs?: Record<string, unknown>): void {
-    log.info(`[VV] event=${eventType}`, attrs ?? {})
-  },
-
-  debug(eventType: string, attrs?: Record<string, unknown>): void {
-    log.debug(`[VV] event=${eventType}`, attrs ?? {})
-  },
-
-  warn(eventType: string, errorCode?: string, attrs?: Record<string, unknown>): void {
-    const msg = `${eventType}${errorCode ? ` [${errorCode}]` : ''}`
-    log.warn(`[VV] ${msg}`, attrs ?? {})
-    forwardToBackend(buildPayload('WARN', eventType, errorCode, msg, attrs))
-  },
-
-  /**
-   * ERROR szintu - lokalis electron-log + backend forward.
-   *
-   * @param errorCode - kotelezo, AI-olvashato (pl. 'VV-VOICE-001').
-   *                    Lasd packages/shared-logging/error-codes.yaml.
-   */
-  error(
-    errorCode: string,
-    eventType: string,
-    cause?: Error | unknown,
-    attrs?: Record<string, unknown>,
-  ): void {
-    const causeMsg = cause instanceof Error ? `: ${cause.message}` : ''
-    const msg = `${eventType} [${errorCode}]${causeMsg}`
-    log.error(`[VV] ${msg}`, cause, attrs ?? {})
-    forwardToBackend(buildPayload('ERROR', eventType, errorCode, msg, attrs, cause))
-  },
-}
+export const configureVvLogger = handle.configure
 
 export default vvLogger

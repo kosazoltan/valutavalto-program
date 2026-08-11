@@ -23,6 +23,7 @@
  */
 
 import { app, ipcMain, safeStorage } from 'electron'
+import { resolveWasmPath, loadToken } from '../../packages/electron-platform/src'
 import path from 'node:path'
 import fs from 'node:fs'
 import { randomUUID } from 'node:crypto'
@@ -44,19 +45,7 @@ import {
 } from '../../packages/local-first-core/src'
 import type { OutboxEntry } from '../../packages/local-first-core/src'
 
-function resolveWasmPath(): string {
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'sql-wasm.wasm')
-  }
-  const candidates = [
-    path.join(__dirname, '../node_modules/sql.js/dist/sql-wasm.wasm'),
-    path.join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm'),
-  ]
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c
-  }
-  throw new Error(`sql-wasm.wasm not found. Tried: ${candidates.join(', ')}`)
-}
+// `resolveWasmPath` a kozos platform-retegben: packages/electron-platform/src/local-first-paths.ts
 
 // --- Conflict policies ---
 
@@ -196,15 +185,8 @@ class RateMakerSyncEngine extends SyncEngineBase {
 let syncEngine: RateMakerSyncEngine | null = null
 let cachedToken: string | null = null
 
-function loadPersistedToken(): string | null {
-  try {
-    const tokenFilePath = path.join(app.getPath('userData'), 'auth-token.bin')
-    if (!safeStorage.isEncryptionAvailable() || !fs.existsSync(tokenFilePath)) return null
-    return safeStorage.decryptString(fs.readFileSync(tokenFilePath))
-  } catch {
-    return null
-  }
-}
+// A perzisztalt token betoltese a kozos platform-primitivvel tortenik
+// (`loadToken`), amely ugyanazt az auth-token.bin fajlt olvassa.
 
 // --- Public API ---
 
@@ -226,7 +208,7 @@ export async function initLocalFirst(_apiUrl: string): Promise<void> {
     wasmPath: resolveWasmPath(),
   })
 
-  cachedToken = loadPersistedToken()
+  cachedToken = loadToken()
 
   log.info(
     '[LocalFirst] Rate Maker local-first initialized (sync-motor KIHAGYVA — közvetlen REST publikálás)',
