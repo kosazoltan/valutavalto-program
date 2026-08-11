@@ -1,15 +1,8 @@
 package hu.puzzleir.valuta.controller;
 
-import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CameraAccessLog;
 import hu.puzzleir.valuta.entity.CameraConfig;
-import hu.puzzleir.valuta.entity.CameraRecording;
-import hu.puzzleir.valuta.exception.ResourceNotFoundException;
-import hu.puzzleir.valuta.repository.BranchRepository;
-import hu.puzzleir.valuta.repository.CameraAccessLogRepository;
-import hu.puzzleir.valuta.repository.CameraConfigRepository;
-import hu.puzzleir.valuta.repository.CameraRecordingRepository;
-import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.CameraAccessService;
 import hu.puzzleir.valuta.service.CameraCleanupService;
 import hu.puzzleir.valuta.service.CameraUploadService;
 import jakarta.validation.Valid;
@@ -24,8 +17,15 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
+/**
+ * Kamera-adminisztráció (konfiguráció, tárhely, takarítás, hozzáférési napló).
+ *
+ * <p><b>Réteg-megjegyzés.</b> A korábbi négy közvetlen repository-injektálás és a
+ * {@code CameraController}-rel <b>bitre azonos</b> privát {@code enforceBranchAccess}
+ * megszűnt: mindkettő a közös {@link CameraAccessService}-be került, tranzakción belülre.
+ * Egy tenant-guard két másolatban két helyen driftelhetne szét.
+ */
 @ConditionalOnProperty(name = "camera.enabled", havingValue = "true")
 @RestController
 @RequestMapping("/api/v1/camera/admin")
@@ -33,12 +33,9 @@ import java.util.stream.Collectors;
 @PreAuthorize("hasRole('ADMIN')")
 public class CameraAdminController {
 
-    private final CameraConfigRepository configRepository;
-    private final CameraAccessLogRepository accessLogRepository;
     private final CameraCleanupService cleanupService;
     private final CameraUploadService uploadService;
-    private final BranchRepository branchRepository;
-    private final CameraRecordingRepository recordingRepository;
+    private final CameraAccessService cameraAccessService;
 
     /**
      * List all camera configurations.
@@ -48,10 +45,9 @@ public class CameraAdminController {
     public ResponseEntity<List<CameraConfig>> getConfigs(
             @RequestParam(required = false) UUID branchId) {
         if (branchId != null) {
-            enforceBranchAccess(branchId);
-            return ResponseEntity.ok(configRepository.findByBranchId(branchId));
+            return ResponseEntity.ok(cameraAccessService.getConfigsForBranch(branchId));
         }
-        return ResponseEntity.ok(getAccessibleConfigs());
+        return ResponseEntity.ok(cameraAccessService.getAccessibleConfigs());
     }
 
     /**
@@ -60,8 +56,8 @@ public class CameraAdminController {
      */
     @PostMapping("/configs")
     public ResponseEntity<CameraConfig> saveConfig(@Valid @RequestBody CameraConfig config) {
-        enforceBranchAccess(config.getBranchId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(configRepository.save(config));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(cameraAccessService.saveConfig(config));
     }
 
     /**
@@ -70,10 +66,7 @@ public class CameraAdminController {
      */
     @DeleteMapping("/configs/{id}")
     public ResponseEntity<Void> deleteConfig(@PathVariable UUID id) {
-        CameraConfig config = configRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Kamera konfiguráció nem található: " + id));
-        enforceBranchAccess(config.getBranchId());
-        configRepository.deleteById(id);
+        cameraAccessService.deleteConfig(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -116,25 +109,6 @@ public class CameraAdminController {
      */
     @GetMapping("/access-logs/{recordingId}")
     public ResponseEntity<List<CameraAccessLog>> getAccessLogs(@PathVariable UUID recordingId) {
-        CameraRecording recording = recordingRepository.findById(recordingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Kamera felvétel nem található: " + recordingId));
-        enforceBranchAccess(recording.getBranchId());
-        return ResponseEntity.ok(accessLogRepository.findByRecordingIdOrderByCreatedAtDesc(recordingId));
-    }
-
-    private List<CameraConfig> getAccessibleConfigs() {
-        return branchRepository.findByCompanyId(SecurityUtils.getCurrentCompanyId()).stream()
-                .map(Branch::getId)
-                .flatMap(branchId -> configRepository.findByBranchId(branchId).stream())
-                .collect(Collectors.toList());
-    }
-
-    private void enforceBranchAccess(UUID branchId) {
-        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
-        Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
-        if (branch.getCompany() == null || !currentCompanyId.equals(branch.getCompany().getId())) {
-            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
-        }
+        return ResponseEntity.ok(cameraAccessService.getAccessLogs(recordingId));
     }
 }

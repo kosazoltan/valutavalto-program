@@ -2,21 +2,11 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.camera.CameraStatusDto;
 import hu.puzzleir.valuta.dto.camera.RecordingMetadataDto;
-import hu.puzzleir.valuta.entity.Branch;
-import hu.puzzleir.valuta.entity.CameraAccessLog;
-import hu.puzzleir.valuta.entity.CameraConfig;
 import hu.puzzleir.valuta.entity.CameraRecording;
 import hu.puzzleir.valuta.entity.CameraTransactionLink;
-import hu.puzzleir.valuta.exception.ResourceNotFoundException;
-import hu.puzzleir.valuta.repository.BranchRepository;
-import hu.puzzleir.valuta.repository.CameraAccessLogRepository;
-import hu.puzzleir.valuta.repository.CameraConfigRepository;
-import hu.puzzleir.valuta.repository.CameraRecordingRepository;
-import hu.puzzleir.valuta.repository.CameraTransactionLinkRepository;
-import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.CameraAccessService;
 import hu.puzzleir.valuta.service.CameraRecordingService;
 import hu.puzzleir.valuta.service.CameraTransactionLinker;
-import hu.puzzleir.valuta.util.TransactionIdentityCodec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
@@ -29,6 +19,15 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Kamera-végpontok (live stream, felvétel-keresés).
+ *
+ * <p><b>Réteg-megjegyzés.</b> Ez a controller korábban öt repository-t injektált
+ * közvetlenül, és a tenant-guardot saját privát metódusban tartotta. Az adatelérés és a
+ * jogosultság-ellenőrzés mostantól a {@link CameraAccessService} use-case rétegében,
+ * tranzakción belül fut — az OSIV ki van kapcsolva, és a guard lazy asszociációt olvas.
+ * A controller feladata csak a HTTP-leképezés és a DTO-építés.
+ */
 @ConditionalOnProperty(name = "camera.enabled", havingValue = "true")
 @RestController
 @RequestMapping("/api/v1/camera")
@@ -37,11 +36,7 @@ public class CameraController {
 
     private final CameraRecordingService recordingService;
     private final CameraTransactionLinker transactionLinker;
-    private final CameraRecordingRepository recordingRepository;
-    private final CameraTransactionLinkRepository linkRepository;
-    private final CameraAccessLogRepository accessLogRepository;
-    private final CameraConfigRepository cameraConfigRepository;
-    private final BranchRepository branchRepository;
+    private final CameraAccessService cameraAccessService;
 
     /**
      * Get live JPEG frame from a camera.
@@ -50,7 +45,7 @@ public class CameraController {
     @GetMapping(value = "/stream/{cameraId}", produces = MediaType.IMAGE_JPEG_VALUE)
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<byte[]> getLiveFrame(@PathVariable String cameraId) {
-        enforceCameraAccess(cameraId);
+        cameraAccessService.assertCameraAccessible(cameraId);
         byte[] frame = recordingService.getLiveFrame(cameraId);
         if (frame == null) {
             return ResponseEntity.notFound().build();
@@ -67,7 +62,7 @@ public class CameraController {
     @GetMapping("/status")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<List<CameraStatusDto>> getCameraStatus() {
-        Set<String> allowedCameraIds = getAllowedCameraIds();
+        Set<String> allowedCameraIds = cameraAccessService.getAllowedCameraIds();
         Set<String> activeCameras = recordingService.getActiveCameraIds();
         List<CameraStatusDto> statuses = new ArrayList<>();
 
@@ -99,12 +94,8 @@ public class CameraController {
             @RequestParam LocalDateTime start,
             @RequestParam LocalDateTime end) {
 
-        enforceBranchAccess(branchId);
-
-        List<CameraRecording> recordings = recordingRepository
-                .findByBranchIdAndStartTimeBetween(branchId, start, end);
-
-        List<RecordingMetadataDto> dtos = recordings.stream()
+        List<RecordingMetadataDto> dtos = cameraAccessService
+                .findRecordings(branchId, start, end).stream()
                 .map(this::toMetadataDto)
                 .collect(Collectors.toList());
 
@@ -118,16 +109,11 @@ public class CameraController {
     @GetMapping("/recordings/{id}")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<RecordingMetadataDto> getRecording(@PathVariable UUID id) {
-        CameraRecording recording = recordingRepository.findById(id)
-                .orElse(null);
+        // A tenant-guard es a VIEW audit-bejegyzes a service tranzakciojan belul tortenik.
+        CameraRecording recording = cameraAccessService.findRecordingForViewing(id);
         if (recording == null) {
             return ResponseEntity.notFound().build();
         }
-        enforceBranchAccess(recording.getBranchId());
-
-        // Audit log
-        logAccess(recording, "VIEW");
-
         return ResponseEntity.ok(toMetadataDto(recording));
     }
 
@@ -139,10 +125,8 @@ public class CameraController {
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<List<CameraTransactionLink>> findByReceipt(
             @PathVariable String receiptNumber) {
-        List<CameraTransactionLink> links = transactionLinker.findByReceiptNumber(receiptNumber).stream()
-                .filter(this::canAccessLink)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(links);
+        return ResponseEntity.ok(cameraAccessService.filterAccessibleLinks(
+                transactionLinker.findByReceiptNumber(receiptNumber)));
     }
 
     /**
@@ -154,15 +138,11 @@ public class CameraController {
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public ResponseEntity<List<CameraTransactionLink>> findByTransaction(
             @PathVariable String transactionId) {
-        List<CameraTransactionLink> links = transactionLinker.findByTransactionId(
-                        Long.parseLong(transactionId)).stream()
-                .filter(this::canAccessLink)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(links);
+        return ResponseEntity.ok(cameraAccessService.filterAccessibleLinks(
+                transactionLinker.findByTransactionId(Long.parseLong(transactionId))));
     }
 
     private RecordingMetadataDto toMetadataDto(CameraRecording r) {
-        int linkedTx = linkRepository.findByRecordingId(r.getId()).size();
         return RecordingMetadataDto.builder()
                 .id(r.getId())
                 .branchId(r.getBranchId())
@@ -173,57 +153,7 @@ public class CameraController {
                 .uploadedToServer(Boolean.TRUE.equals(r.getUploadedToServer()))
                 .expiresAt(r.getExpiresAt())
                 .status(r.getStatus().name())
-                .linkedTransactions(linkedTx)
+                .linkedTransactions(cameraAccessService.countLinkedTransactions(r.getId()))
                 .build();
-    }
-
-    private Set<String> getAllowedCameraIds() {
-        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
-        return branchRepository.findByCompanyId(currentCompanyId).stream()
-                .map(Branch::getId)
-                .flatMap(branchId -> cameraConfigRepository.findByBranchIdAndEnabled(branchId, true).stream())
-                .map(CameraConfig::getCameraId)
-                .collect(Collectors.toSet());
-    }
-
-    private void enforceCameraAccess(String cameraId) {
-        if (!getAllowedCameraIds().contains(cameraId)) {
-            throw new ResourceNotFoundException("Kamera nem található: " + cameraId);
-        }
-    }
-
-    private void enforceBranchAccess(UUID branchId) {
-        UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
-        Branch branch = branchRepository.findById(branchId)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
-        if (branch.getCompany() == null || !currentCompanyId.equals(branch.getCompany().getId())) {
-            throw new ResourceNotFoundException("Iroda nem található: " + branchId);
-        }
-    }
-
-    private boolean canAccessLink(CameraTransactionLink link) {
-        try {
-            UUID branchId = link.getRecording() != null ? link.getRecording().getBranchId() : null;
-            if (branchId == null) {
-                return false;
-            }
-            enforceBranchAccess(branchId);
-            return true;
-        } catch (RuntimeException ex) {
-            return false;
-        }
-    }
-
-    private void logAccess(CameraRecording recording, String action) {
-        try {
-            CameraAccessLog log = CameraAccessLog.builder()
-                    .recording(recording)
-                    .workerId(SecurityUtils.getCurrentWorkerId())
-                    .action(action)
-                    .build();
-            accessLogRepository.save(log);
-        } catch (Exception ignored) {
-            // Don't fail the main operation if audit logging fails
-        }
     }
 }
