@@ -322,10 +322,17 @@ jobs:
           Copy-Item -Path $jar.FullName -Destination "$stageBackend/valuta-backend.jar" -Force
           Write-Host "Backend JAR staged: $($jar.Name)"
 
-      - name: Install dependencies (root + penztar-client + frontend-react)
+      - name: Install dependencies (root + penztar-client + frontend-react + shared packages)
         shell: pwsh
         run: |
           npm ci --no-audit --no-fund
+          # PLATFORM-REFAKTOR (2026-08-10): a penztar electron-kod (vv-logger) a
+          # megosztott packages/electron-platform retegre epul. A vite a FORRAST
+          # bundle-eli, de a csomag sajat dependency-i (electron-log) telepitve
+          # kell legyenek, kulonben a build elbukik.
+          Push-Location packages/electron-platform
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
           Push-Location penztar-client
           npm ci --no-audit --no-fund
           Pop-Location
@@ -456,10 +463,20 @@ jobs:
         shell: pwsh
         run: dotnet tool install --global AzureSignTool
 
-      - name: Install dependencies (kozponti + frontend-react)
+      - name: Install dependencies (kozponti + frontend-react + shared packages)
         shell: pwsh
         run: |
           npm ci --no-audit --no-fund
+          # PLATFORM-REFAKTOR (2026-08-10): a kozponti electron-kod megosztott
+          # csomagokra epul (packages/electron-platform, packages/local-first-core).
+          # A vite a FORRAST bundle-eli, de a csomagok sajat dependency-i
+          # (pl. electron-log) telepitve kell legyenek, kulonben a build elbukik.
+          Push-Location packages/local-first-core
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
+          Push-Location packages/electron-platform
+          npm ci --legacy-peer-deps --no-audit --no-fund
+          Pop-Location
           Push-Location kozponti-client
           npm ci --no-audit --no-fund
           Pop-Location

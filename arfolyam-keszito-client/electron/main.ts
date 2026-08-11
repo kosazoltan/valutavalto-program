@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, safeStorage, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, session } from 'electron'
 import log from 'electron-log/main'
 import { release as getOsRelease } from 'node:os'
 import fs from 'node:fs'
@@ -16,6 +16,14 @@ import {
   setAuthToken,
   registerLocalFirstIpcHandlers,
 } from './local-first'
+import {
+  readConfig,
+  writeConfig,
+  deleteConfigKey,
+  storeToken,
+  loadToken,
+  clearToken,
+} from '../../packages/electron-platform/src'
 
 const osBuild = Number.parseInt(getOsRelease().split('.')[2] || '0', 10)
 if (osBuild >= 26200) {
@@ -49,33 +57,11 @@ const defaultApiUrl = 'https://excvaluta.com/api/v1'
 
 let mainWindow: BrowserWindow | null = null
 
-function configPath(): string {
-  return path.join(app.getPath('userData'), 'config.json')
-}
-
-function tokenPath(): string {
-  return path.join(app.getPath('userData'), 'auth-token.bin')
-}
-
-function readConfig(): Record<string, string> {
-  try {
-    const raw = fs.readFileSync(configPath(), 'utf8')
-    const parsed = JSON.parse(raw) as unknown
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, string>)
-      : {}
-  } catch {
-    return {}
-  }
-}
-
-function writeConfig(config: Record<string, string>): void {
-  const target = configPath()
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  const tmp = `${target}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(config, null, 2), { encoding: 'utf8', mode: 0o600 })
-  fs.renameSync(tmp, target)
-}
+// A config/token primitivek (configPath, tokenPath, readConfig, writeConfig,
+// deleteConfigKey, storeToken, loadToken, clearToken) a KOZOS platform-retegben
+// elnek: packages/electron-platform/src/config-store.ts
+// Az utvonalat a platform MINDEN HIVASKOR ujra oldja fel az
+// `app.getPath('userData')`-bol (#ERR-INST-01 invarians).
 
 function getConfig(key: string): string | null {
   if (key === 'app_mode') return 'rate-maker'
@@ -95,10 +81,9 @@ function setConfig(key: string, value: string): void {
 }
 
 function deleteConfig(key: string): void {
+  // Kliens-specifikus guard: az app_mode kulcs NEM torolheto.
   if (key === 'app_mode') return
-  const config = readConfig()
-  delete config[key]
-  writeConfig(config)
+  deleteConfigKey(key)
 }
 
 function normalizeApiUrl(value: string): string {
@@ -249,31 +234,28 @@ function registerIpcHandlers(): void {
   ipcMain.handle('delete-config', (_event, key: string) => deleteConfig(key))
 
   ipcMain.handle('secure-store-token', (_event, token: string): boolean => {
-    if (!safeStorage.isEncryptionAvailable()) {
+    // A perzisztalas a kozos platform-primitivvel tortenik; a `setAuthToken`
+    // hivas KLIENS-OLDALI es KOTELEZO: enelkul a token nem jutna el a
+    // local-first / sync reteghez (csendes funkcionalis regresszio lenne).
+    if (!storeToken(token)) {
       log.warn('[Security] safeStorage nem elérhető, token nincs perzisztálva.')
       return false
     }
-    fs.mkdirSync(app.getPath('userData'), { recursive: true })
-    fs.writeFileSync(tokenPath(), safeStorage.encryptString(token), { mode: 0o600 })
     setAuthToken(token)
     return true
   })
 
   ipcMain.handle('secure-load-token', (): string | null => {
-    try {
-      if (!safeStorage.isEncryptionAvailable() || !fs.existsSync(tokenPath())) return null
-      return safeStorage.decryptString(fs.readFileSync(tokenPath()))
-    } catch (err) {
-      log.warn('[Security] token visszafejtés sikertelen:', err)
-      return null
+    const token = loadToken()
+    if (token === null) {
+      log.debug('[Security] nincs visszafejthető perzisztált token.')
     }
+    return token
   })
 
   ipcMain.handle('secure-clear-token', (): void => {
-    try {
-      if (fs.existsSync(tokenPath())) fs.unlinkSync(tokenPath())
-    } catch (err) {
-      log.warn('[Security] token törlés sikertelen:', err)
+    if (!clearToken()) {
+      log.warn('[Security] token törlés sikertelen.')
     }
     setAuthToken(null)
   })

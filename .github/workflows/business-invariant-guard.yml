@@ -111,6 +111,17 @@ jobs:
           # backend-drift-et is. Eltérésnél exit 1 (BLOCKING).
           node scripts/check-version-sync.mjs
 
+      - name: 15. (BLOCKING) Platform-hatar — kliens->kliens import tilalom
+        run: |
+          # PLATFORM-REFAKTOR (2026-08-10): a kozos Electron-modulok a
+          # packages/electron-platform retegbe kerultek (vv-logger: 3 peldany ->
+          # 1 forras; google-oauth cross-client shimek atkotve). Ez a kapu orzi,
+          # hogy a csatolas NE szivarogjon vissza: kliens -> platform szabad,
+          # kliens -> KLIENS tilos. Egyetlen dokumentalt kivetel a platform
+          # google-oauth re-exportja (l. a script ALLOWED listaja).
+          # Elteresnel exit 1 (BLOCKING).
+          node scripts/check-platform-boundaries.mjs
+
       - name: Sum-up
         if: success()
         run: |
