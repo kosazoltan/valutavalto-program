@@ -244,6 +244,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPendingTransactionCount: (): Promise<number> =>
     ipcRenderer.invoke('get-pending-transaction-count'),
 
+  // FKH-D2/F5: sync-gate-elt gyari reset. A `getUnsyncedSummary` MINDEN offline
+  // outbox-tablat nez (13 db), nem csak a `pending_transactions`-t.
+  getUnsyncedSummary: (): Promise<{ total: number; byTable: Record<string, number> }> =>
+    ipcRenderer.invoke('get-unsynced-summary'),
+
+  factoryResetLocalDatabase: (): Promise<{
+    ok: boolean;
+    blockedBy?: { total: number; byTable: Record<string, number> };
+    deletedPath?: string;
+  }> => ipcRenderer.invoke('factory-reset-local-database'),
+
   getPendingConversions: (): Promise<
     Array<{
       id: number;

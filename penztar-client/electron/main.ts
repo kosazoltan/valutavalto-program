@@ -100,6 +100,10 @@ import {
   markBankTransactionSynced,
   markStornoSynced,
   getPendingTransactionCount,
+  getUnsyncedSummary,
+  factoryResetLocalDatabase,
+  type UnsyncedSummary,
+  type FactoryResetResult,
   savePendingDistribution,
   savePendingTransfer,
   savePendingCollection,
@@ -751,6 +755,27 @@ ipcMain.handle(
 
 ipcMain.handle('get-pending-transaction-count', async (): Promise<number> => {
   return getPendingTransactionCount();
+});
+
+// --- FKH-D2/F5: sync-gate-elt gyari reset ---
+// A telepito NEM torolheti a `~/.valuta/local.db`-t (D2: admin-kontextusban a
+// rossz profilra oldodna fel), az app viszont garantaltan a helyes profilban fut.
+ipcMain.handle('get-unsynced-summary', async (): Promise<UnsyncedSummary> => {
+  return getUnsyncedSummary();
+});
+
+ipcMain.handle('factory-reset-local-database', async (): Promise<FactoryResetResult> => {
+  const result = factoryResetLocalDatabase();
+  if (!result.ok) {
+    log.warn(
+      `[FactoryReset] BLOKKOLVA: ${result.blockedBy?.total ?? 0} szinkronizalatlan sor - ${JSON.stringify(result.blockedBy?.byTable ?? {})}`,
+    );
+  } else if (result.deletedPath) {
+    log.info('[FactoryReset] Lokalis adatbazis torolve.');
+  } else {
+    log.info('[FactoryReset] Nem volt lokalis adatbazis.');
+  }
+  return result;
 });
 
 ipcMain.handle('mark-transaction-synced', async (_event, id: number): Promise<void> => {

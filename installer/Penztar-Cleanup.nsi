@@ -145,11 +145,30 @@ Section "Eltavolitas"
     ; --- 4a. Electron userData cleanup (Setup Wizard fix) ---
     ; Az %APPDATA%\valuta-penztar\ mappaban van a .env (SETUP_COMPLETED flag).
     ; Ha nem toroljuk, ujratelepites utan a Setup Wizard NEM indul automatikusan.
-    ; SetShellVarContext current: az admin-context-ben futo uninstaller-ben
-    ; a $APPDATA a *current user* Roaming mappajara mutat (nem az admin-ere).
+    ; FIGYELEM (D2, 2026-08-11 meressel igazolva): a `SetShellVarContext current`
+    ; a FUTO PROCESS TOKENJENEK felhasznalojara oldodik fel, NEM automatikusan a
+    ; penztarosera. Onelevacional ("Futtatas rendszergazdakent" a bejelentkezett
+    ; user altal) ez a penztaros profilja, DE kulon admin-fiokkal (runas,
+    ; domain-admin) az ADMIN-e, `/S` SCCM/GPO alatt pedig a LocalSystem
+    ; systemprofile-ja. Ilyenkor az alabbi torles NEM a penztaros userData-jat
+    ; erinti. A `~/.valuta` offline penzugyi DB-t ezert a telepito TUDATOSAN nem
+    ; kezeli (l. installer-cleanup-parity.tests.ps1 5. szekcio).
+    ;
+    ; ==== FKH-036 (D1 fix): PRESERVE_DATA=1 eseten NEM TOROLJUK ====
+    ; Ez a script mar a .onInit-ben parsolja a /PRESERVE_DATA= flaget (l. fent),
+    ; de eddig CSAK a ProgramData-t vedte vele (4. lepes) - a userData torlese
+    ; feltetel nelkul futott. Igy frissitesi (adat-megorzo) modban is elveszett a
+    ; `.env`, benne a Setup Wizard altal generalt JWT_SECRET + SQLCIPHER_KEY
+    ; titkokkal es a SETUP_COMPLETED markerrel.
+    ; A Helga-tunet (2026-05-04) ellen ma mar runtime-vedelem van:
+    ; `main.ts` userData `.env` migration + `first-run.ts` ujra-wizard.
     DetailPrint "4a/5 - Electron userData (.env, config) torlese..."
     SetShellVarContext current
-    RMDir /r "$APPDATA\valuta-penztar"
+    ${If} $PreserveData == "1"
+        DetailPrint "  PRESERVE_DATA=1: userData MEGTARTVA - $APPDATA\valuta-penztar"
+    ${Else}
+        RMDir /r "$APPDATA\valuta-penztar"
+    ${EndIf}
     SetShellVarContext all
 
     ; --- 4b. Firewall rules cleanup (BUG-03 fix) ---
