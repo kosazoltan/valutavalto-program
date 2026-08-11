@@ -149,6 +149,12 @@ Var UPGRADE_MODE
 Var INSTALL_MODE
 Var DLG_RB_THIN
 Var DLG_RB_FULL
+; FKH-036 (D1 fix): az UNINSTALLER oldali /PRESERVE_DATA= flag.
+; A telepito upgrade-agban mar ma is atadja (`ExecWait '$R0 /S /PRESERVE_DATA=1'`),
+; de az uninstaller eddig NEM parsolta -> a userData (`.env`: JWT_SECRET,
+; SQLCIPHER_KEY, SETUP_COMPLETED) a "beallitasok MEGMARADNAK" igeret ellenere
+; feltetel nelkul torlodott. "1" = frissites (userData megorzes), "0" = teljes wipe.
+Var UN_PRESERVE_DATA
 
 ; =============================================================================
 ; v2.5.9 Egyseges telepito - InstallMode valaszto custom page (nsDialogs)
@@ -1347,10 +1353,37 @@ Section "un.Eltavolitas"
     ; FRISS SetupWizard induljon. A regi mojibake-os ".env" + "https://" ures URL bug-os
     ; userData NEM tornyosulhat ki a kovetkezo verzionak.
     ;
-    ; SetShellVarContext current: a $APPDATA a current-user `Roaming\` mappajara mutat,
-    ; nem az admin-user-ere (a uninstaller admin-context-ben fut).
+    ; FIGYELEM (D2, 2026-08-11 meressel igazolva): a `SetShellVarContext current`
+    ; a FUTO PROCESS TOKENJENEK felhasznalojara oldodik fel. Ha a telepitest a
+    ; bejelentkezett felhasznalo inditja "Futtatas rendszergazdakent"-tel (a
+    ; docs/INSTALL_WINDOWS.md:63 szerinti ajanlott ut), akkor ez valoban a
+    ; penztaros profilja. DE kulon admin-fiokkal (runas, domain-admin, jelszavas
+    ; UAC-prompt) ez az ADMIN profilja, `uninstall.exe /S` SCCM/GPO alatt pedig a
+    ; LocalSystem systemprofile-ja. Ezekben az esetekben az alabbi torles NEM a
+    ; penztaros userData-jat erinti. Ezert a `~/.valuta` offline penzugyi DB-t a
+    ; telepito TUDATOSAN nem kezeli (l. installer-cleanup-parity.tests.ps1 5. sz.).
+    ;
+    ; ==== FKH-036 (D1 fix): FRISSITESKOR NEM TOROLJUK ====
+    ; A telepito upgrade-agja azt igeri, hogy "az adatbazis es a helyi beallitasok
+    ; MEGMARADNAK", es `/PRESERVE_DATA=1`-gyel hivja ezt az uninstallert. Ez a blokk
+    ; viszont eddig FELTETEL NELKUL futott, azaz torolte a `.env`-et, benne a Setup
+    ; Wizard altal generalt JWT_SECRET + SQLCIPHER_KEY titkokkal es a
+    ; SETUP_COMPLETED markerrel -> az igeret hamis volt.
+    ;
+    ; A Helga-tunet (2026-05-04) ellen ma mar KETTOS runtime-vedelem van, ezert a
+    ; torles frissiteskor nem szukseges:
+    ;   1. `penztar-client/electron/main.ts` userData `.env` migration: a hibas
+    ;      `VITE_API_URL="https://"` erteket a titkok MEGORZESE mellett atirja.
+    ;   2. `first-run.ts` ervenytelen `.env` eseten ujra futtatja a Setup Wizardot.
+    ; Ugyanez az indoklas mar egyszer megjelent a telepito oldalan is (v2.5.13),
+    ; ahol az installer-oldali torlest szinten visszavontak.
+    ;
+    ; Teljes eltavolitas / gyari reset (`PRESERVE_DATA=0`, vagy Add/Remove
+    ; Programs-bol inditott manualis uninstall) eseten a torles VALTOZATLAN.
     SetShellVarContext current
-    ${If} ${FileExists} "$APPDATA\valuta-penztar\*.*"
+    ${If} $UN_PRESERVE_DATA == "1"
+        DetailPrint "Frissites (PRESERVE_DATA=1): userData MEGTARTVA - $APPDATA\valuta-penztar"
+    ${ElseIf} ${FileExists} "$APPDATA\valuta-penztar\*.*"
         DetailPrint "Felhasznaloi adatok (Setup config + logok) torlese: $APPDATA\valuta-penztar"
         RMDir /r "$APPDATA\valuta-penztar"
     ${EndIf}
@@ -1417,10 +1450,12 @@ Function .onInit
         ; Interactive user dialog (3 opcio)
         MessageBox MB_YESNOCANCEL|MB_ICONQUESTION \
             "Mar van egy telepitett Penztar verzio.$\r$\n$\r$\nMit szeretnel tenni?$\r$\n$\r$\n\
-IGEN = FRISSITES (ajanlott)$\r$\n    Az adatbazis es a beallitasok MEGMARADNAK.$\r$\n\
+IGEN = FRISSITES (ajanlott)$\r$\n    Az adatbazis es a helyi beallitasok MEGMARADNAK.$\r$\n\
+    A szerver-kapcsolati configot a telepito ujragenerlja.$\r$\n\
     Csak a program reszei frissulnek.$\r$\n$\r$\n\
-NEM = GYARI RESET (teljes wipe)$\r$\n    MINDEN adat TOROLVE lesz (DB, config, tranzakciok).$\r$\n\
-    Szuzen indul, mintha elso telepites lenne.$\r$\n$\r$\n\
+NEM = GYARI RESET$\r$\n    A program, a helyi beallitasok es a szerver-oldali adatbazis$\r$\n\
+    TOROLVE lesz. FIGYELEM: a penztaros gepen tarolt offline$\r$\n\
+    tranzakcios adatbazis (.valuta) NEM torlodik.$\r$\n$\r$\n\
 MEGSE = Telepites megszakitasa" \
             /SD IDYES \
             IDYES upgrade_mode \
@@ -1509,6 +1544,29 @@ FunctionEnd
 
 ; F-N-02 fix: silent uninstall confirmation skip
 Function un.onInit
+    ; FKH-036 (D1 fix): a /PRESERVE_DATA= flag parsolasa.
+    ;
+    ; MIERT ITT, AZ IfSilent ELOTT: a ${GetOptions} makro tobb tucat NSIS-
+    ; utasitasra expandal. Az alabbi `IfSilent +3` RELATIV ugras (F-N-02 idioma),
+    ; ezert a makro NEM kerulhet az IfSilent es a MessageBox koze - kulonben a +3
+    ; a makro kozepere ugrana, es silent modban megjelenne a megerosito dialogus
+    ; (vagy Abort futna). A parsolas ezert a fuggveny legelso muvelete.
+    ;
+    ; Kontraktus: a telepito upgrade-agja `/S /PRESERVE_DATA=1`-et ad at,
+    ; wipe-agja `/PRESERVE_DATA=0`-t. Ures/hianyzo ertek (pl. Add/Remove
+    ; Programs-bol inditott manualis eltavolitas) = "0" = teljes eltavolitas,
+    ; azaz a korabbi viselkedes valtozatlan.
+    StrCpy $UN_PRESERVE_DATA "0"
+    ClearErrors
+    ${GetOptions} "$CMDLINE" "/PRESERVE_DATA=" $UN_PRESERVE_DATA
+    ${If} ${Errors}
+        StrCpy $UN_PRESERVE_DATA "0"
+    ${EndIf}
+    ${If} $UN_PRESERVE_DATA != "1"
+        StrCpy $UN_PRESERVE_DATA "0"
+    ${EndIf}
+    DetailPrint "Eltavolitas: PRESERVE_DATA=$UN_PRESERVE_DATA"
+
     IfSilent +3
     MessageBox MB_YESNO|MB_ICONQUESTION "Biztosan eltavolitja a Valutavalto Penztart?" IDYES +2
     Abort

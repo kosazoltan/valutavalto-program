@@ -100,6 +100,11 @@ export const OUTBOX_TABLES = [
   'pending_transfer_stornos',
   'pending_shipment_receipts',
   'pending_circular_replies',
+  // 2026-08-11 (FKH-D2/F5 felderites): ez a tabla KIMARADT a listabol, pedig van
+  // `company_code` (:849) es `synced` (:852) oszlopa. Emiatt az
+  // `ensureOutboxCompanyColumns` multi-tenant backfill kihagyta -> a szinkronizalatlan
+  // szkennelt dokumentumok `company_code`-ja NULL maradhatott.
+  'pending_scanned_documents',
   'pending_distributions',
   'pending_collections',
   'pending_stocktake_items',
@@ -3909,4 +3914,91 @@ export function getSchemaVersion(): number {
   const result = db.exec('PRAGMA user_version');
   const firstRow = result[0];
   return firstRow?.values?.[0]?.[0] != null ? Number(firstRow.values[0]![0]) : 0;
+}
+
+// =============================================================================
+// FKH-D2/F5 — sync-gate-elt gyari reset (2026-08-11)
+// =============================================================================
+// A telepito NEM torolheti a `~/.valuta/local.db`-t: admin-kontextusban a rossz
+// felhasznaloi profilra oldodna fel (D2), es szinkronizalatlan valodi penzugyi
+// tranzakciokat semmisitene meg. Az app viszont GARANTALTAN a helyes profilban
+// fut (`getDbPath()` -> `app.getPath('home')`), ezert a wipe itt a helye.
+//
+// FONTOS: a `getPendingTransactionCount()` CSAK a `pending_transactions` tablat
+// nezi — az offline outbox viszont 13 uzleti tablat hasznal (l. `OUTBOX_TABLES`,
+// :93). Egy csak arra epulo gate hamis biztonsagot adna, ezert itt MINDET
+// ellenorizzuk. Ujrahasznositjuk a meglevo, mar multi-tenant celra hasznalt
+// listat, hogy ne keletkezzen ket, egymastol elsodrodo forras.
+
+export interface UnsyncedSummary {
+  total: number;
+  byTable: Record<string, number>;
+}
+
+/**
+ * Megszamolja MINDEN offline outbox-tabla szinkronizalatlan sorait.
+ * Ez a gyari reset kapuja — nem a szukebb `getPendingTransactionCount()`.
+ */
+export function getUnsyncedSummary(): UnsyncedSummary {
+  const byTable: Record<string, number> = {};
+  let total = 0;
+  if (!db) return { total: 0, byTable };
+
+  for (const table of OUTBOX_TABLES) {
+    // A tabla hianyozhat regebbi sema mellett — ilyenkor 0-nak vesszuk.
+    const exists = db.exec(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='${table}'`,
+    );
+    if (!exists.length) continue;
+
+    const stmt = db.prepare(`SELECT COUNT(*) AS cnt FROM ${table} WHERE synced = 0`);
+    stmt.step();
+    const row = stmt.getAsObject();
+    stmt.free();
+    const count = (row['cnt'] as number) ?? 0;
+    if (count > 0) {
+      byTable[table] = count;
+      total += count;
+    }
+  }
+  return { total, byTable };
+}
+
+export interface FactoryResetResult {
+  ok: boolean;
+  /** Ha `ok === false`, itt van, mi tartja vissza a torlest. */
+  blockedBy?: UnsyncedSummary;
+  deletedPath?: string;
+}
+
+/**
+ * Sync-gate-elt gyari reset: CSAK akkor torli a lokalis adatbazist, ha egyetlen
+ * szinkronizalatlan sor sincs. Kulonben FAIL-LOUD: visszaadja, mi tartja vissza.
+ *
+ * Szandekosan NEM tesz mentest: titkositatlan `.bak` egy „gyari reset" utan
+ * pontosan az a hamis biztonsag lenne, amit az FKH-036 F2 review elvetett.
+ */
+export function factoryResetLocalDatabase(): FactoryResetResult {
+  const summary = getUnsyncedSummary();
+  if (summary.total > 0) {
+    // Szandekosan nem naplozunk itt: ez a modul (eddig) logger-mentes, a
+    // naplozas a hivo `main.ts` IPC-handler feladata.
+    return { ok: false, blockedBy: summary };
+  }
+
+  const dbPath = getDbPath();
+
+  // A sql.js memoriaban dolgozik; ha nyitva hagyjuk, egy kesobbi saveDatabase()
+  // visszairna a torolt fajlt. Ezert eloszor elengedjuk a handle-t.
+  if (db) {
+    db.close();
+    db = null;
+  }
+
+  const existed = fs.existsSync(dbPath);
+  if (existed) {
+    fs.unlinkSync(dbPath);
+  }
+
+  return { ok: true, deletedPath: existed ? dbPath : undefined };
 }

@@ -6,7 +6,15 @@
     "output": "release"
   },
   "asar": true,
-  "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "package.json",
+    "!node_modules/sql.js/dist/sql-asm*.js",
+    "!node_modules/sql.js/dist/worker.sql-asm*.js",
+    "!node_modules/sql.js/dist/*-debug.js",
+    "!node_modules/sql.js/dist/*-debug.wasm"
+  ],
   "win": {
     "icon": "../penztar-client/build/icons/app-icon-bestchange.ico",
     "target": [
