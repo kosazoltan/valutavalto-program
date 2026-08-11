@@ -1,12 +1,12 @@
-generated_at: 2026-08-11T09:26:41.565Z
+generated_at: 2026-08-11T14:50:47.685Z
 schema_version: 1
-source_count: 1060
+source_count: 1062
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
     type: short-term-core
     path: AGENTS.md
-    sha256: 89e294d1e8d1b24602201caa8b9890a53987e52cd2494ef5b6e6ce7508aef0d5
+    sha256: 663033d66e5e8aa87a43da6f5770d3b45e2b300d90ebd6030253ce27f1f8e178
     summary: "# AGENTS.md - AI coding agent szabalyzat > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPECET > KELL"
     areas: [aml, arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, legacy, napzaras, penztar, riport, security, specifikacio, sync, tenant]
     keywords: [agents, coding, agent, szabalyzat, kotelezo, ervenyu, szabaly, teszt, integritas, nincs, kivetel, minden]
@@ -22,7 +22,7 @@ short_term:
     title: Valutavalto ERP - Claude/agent projektkontekstus
     type: short-term-core
     path: CLAUDE.md
-    sha256: ed2068c6477667991d7502193857901f226620c19e5aa823b85f025e6bf3141e
+    sha256: 75c689735751be579dfc7be7e0c62c8584d5f0c184a670ea9fd011ed0d75e964
     summary: "# Valutavalto ERP - Claude/agent projektkontekstus > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPEC"
     areas: [aml, arfolyam, cimletezes, database, deploy, frontend, installer, napzaras, penztar, security, tenant]
     keywords: [valutavalto, erp, claude, agent, projektkontekstus, kotelezo, ervenyu, szabaly, teszt, integritas, nincs, kivetel]
@@ -390,23 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 0eccccd7a8ac1659
-    title: "Autonóm éjszakai session — v2.3.31 emergency hotfix → v2.3.46 (16 PR)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-autonom-night-session-v2.3.31-46.md
-    status: in_progress
-    sha256: 08b18175e92d1f000ee05d2e3ba8fb3505e0cf4290633b4e8a4ee7efddaf9b52
-    summary: "--- date: 2026-04-29 title: Autonóm éjszakai session — v2.3.31 emergency hotfix → v2.3.46 (16 PR) type: session duration: ~22:00 → 23:42 CEST (1h 42 perc) status: in_progress total_prs: 16 --- # Autonóm éjszakai session — 2026-04-29 ## Eredmény (eddig) **16 PR** mergelve, **production HTTP 200** mind végig fenntartva, **7+ Hetzner deploy SUCCESS**. | PR | Verzió | Audit fix | Típus | |----|--------|-----------|------"
-    areas: [database, deploy, ertektar, napzaras, penztar, tenant]
-    keywords: [autonom, ejszakai, session, emergency, hotfix, date, 2026, title, type, duration, cest, perc]
-  - id: 28db8f9f7f67b43f
-    title: "2026-04-29 — Értéktári mode (mode='ertektar') teljes audit"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-ertektar-mode-audit.md
-    sha256: 628f216e0cfcf3b7fb95c2c859bea68bd83e555833e0f42eff7f11b8ce10afbe
-    summary: "--- date: 2026-04-29 session_type: ertektar-mode-audit context: v2.3.9 reinstall után, user 2. teszt — ezúttal mode='ertektar' priority: P0 — éles érték-treasury teszt --- # 2026-04-29 — Értéktári mode (mode='ertektar') teljes audit ## Setup - App: Penztar.exe v2.3.9 (post-Setup-2.3.9) - App mode: **ertektar** (sidebar group: \"ÉRTÉKTÁR (LOKÁL)\" mutatva) - User: bootstrap admin (Pénztáros: \"Rendszer Admin\") - Branch ("
-    areas: [arfolyam, deploy, ertektar, frontend, installer, napzaras, penztar, security, sync]
-    keywords: [2026, ertektari, mode, ertektar, teljes, audit, date, session_type, context, reinstall, utan, user]
   - id: 6234106868a2d2fe
     title: "2026-04-29 — Főértéktáros teljes menüpont-audit (33/33 elemes)"
     type: medium-term-episodic
@@ -1703,6 +1686,22 @@ medium_term:
     summary: "# Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\\repo\\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált"
     areas: [arfolyam, deploy, installer, legacy, penztar, specifikacio, sync]
     keywords: [platform, refaktor, vegrehajtasi, zarojelentes, datum, 2026, repo, valutavalto, program, kiindulas, 47522cb8, main]
+  - id: b0780f14de102d14
+    title: "Platform-refaktor 3. kör — zárójelentés"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md
+    sha256: 7e2290a2a8eadd57aac21c8cd2479aca09945043f9c3fe051723e1a41806dde8
+    summary: "# Platform-refaktor 3. kör — zárójelentés **Dátum:** 2026-08-11 | **Repo:** `D:\\repo\\valutavalto-program` | **HEAD:** `47522cb8` (v2.28.76) **Fázis:** az előterjesztés **1. fázisa** (platform-kiemelés). **NEM** app-merge (3-5. fázis, D2 blokkolja), **NEM** installer-merge. --- ## 1. Eredmény | Metrika | 1. kör előtt | 2. kör után | **MOST** | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 90 | **84** | | **Cr"
+    areas: [installer, penztar, security, sync]
+    keywords: [platform, refaktor, kor, zarojelentes, datum, 2026, repo, valutavalto, program, head, 47522cb8, fazis]
+  - id: afd81b9e0bc11daa
+    title: "Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md
+    sha256: 666df71f4af78215e94552939c0d59e1dd80219e94829e49b4aac68a93afdad6
+    summary: "# Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`."
+    areas: [arfolyam, deploy, napzaras, penztar]
+    keywords: [handoff, 2026, teljes, ciklus, lezaras, merge, lanc, inditas, statusz, kesz, release, workflow]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic
@@ -2222,7 +2221,7 @@ operational:
     type: operational-procedure
     path: vault/procedures/layer-ratchet-eljaras.md
     status: active
-    sha256: 3d4a24e401c8bd17c59b6c721a6d088daad538297c849f51cbf9f3a21437a27d
+    sha256: 99ede11d6cbcad6b2843c95f9abbc62a1249874feb23c2027e17aece109d5b96
     summary: "--- title: Réteg-ratchet eljárás (Clean Architecture függőségi szabály) type: operational-procedure tags: architecture, clean-architecture, ratchet, ci-gate, technical-debt, backend areas: database, tenant, security, deploy created: 2026-08-11 status: active --- # Réteg-ratchet eljárás ## Mit véd A Clean Architecture **függőségi szabályát**: a függőségek befelé mutatnak (Frameworks → Adapters → Application → Domain)."
     areas: [deploy]
     keywords: [reteg, ratchet, eljaras, clean, architecture, fuggosegi, szabaly, title, type, operational, procedure, tags]
@@ -6417,7 +6416,7 @@ long_term:
     title: "Kliens-összevonás — döntési előterjesztés"
     type: semantic-reference
     path: docs/architecture/kliens-osszevonas-eloterjesztes.md
-    sha256: fa265aff44f7b5431d1e756420a66d8db44f97b635c073d0816e330688f48a87
+    sha256: 2b3c6d8ba5b07455fad64aa29d1a6463bcff1c6380f277ee58071dea7deec34c
     summary: "# Kliens-összevonás — döntési előterjesztés **Készült:** 2026-08-10 | **Repo-állapot:** `47522cb8` (v2.28.74) **Státusz:** DÖNTÉSRE VÁR — kód nem készült hozzá **Kapcsolódó:** `.hermes/tickets/2026-08-10-fkh036-*`, `.hermes/evidence/2026-08-10/architektura-duplikacio-felmeres.md` --- ## 1. Kérdés, amire döntés kell Legyen-e **egyetlen** Electron-kliens a mai három helyett, amely belépéskor, a szerepkör alapján dönti"
     areas: [arfolyam, database, deploy, ertektar, frontend, installer, penztar, security, specifikacio, sync]
     keywords: [kliens, osszevonas, dontesi, eloterjesztes, keszult, 2026, repo, allapot, 47522cb8, statusz, dontesre, var]
@@ -6425,9 +6424,9 @@ long_term:
     title: "Helyi főértéktárosi árfolyamkészítő architektúra"
     type: semantic-reference
     path: docs/architecture/local-rate-maker-architecture.md
-    sha256: 2ad359fbc22835c9fd1b9fe8f8d99454ddb3481ffdd69956312401cf9bec5cd9
+    sha256: 611d26e9505dc3532d6024c87e553f2dc1514bd01c840aea9a41715d376a872f
     summary: "# Helyi főértéktárosi árfolyamkészítő architektúra Állapot: elfogadott irány, 2026-05-12. ## Döntés Az árfolyamot nem a szerveren kell szerkeszteni. A főértéktáros külön, helyileg telepített árfolyamkészítő alkalmazásban állítja össze az árfolyamcsomagot. A szerver szerepe: - hitelesített átvétel, - szerveroldali validáció, - idempotens publikálás, - audit trail, - `exchange_rate` éles törzs frissítése, - outbox/WebS"
-    areas: [arfolyam, database, deploy, ertektar, frontend, installer, penztar, security, sync, tenant]
+    areas: [arfolyam, database, ertektar, frontend, installer, penztar, security, sync, tenant]
     keywords: [helyi, foertektarosi, arfolyamkeszito, architektura, allapot, elfogadott, irany, 2026, dontes, arfolyamot, nem, szerveren]
   - id: 2eb89504298aa7a9
     title: "Flyway migration notes — defensive guard pattern"
@@ -7490,7 +7489,7 @@ long_term:
     type: long-term-reference
     path: vault/elvi/mernoki-alapelvek-valutavalto-kontextus.md
     status: active
-    sha256: dbb6748adc953f04cd2f69af385cbcc56068e80377b8b51eba322160f25088e9
+    sha256: aefb0360c2150a2b6c8780b519eb95c0db5e874b50f1181221b5bd0f15d31d47
     summary: "--- title: Mérnöki alapelvek a Valutaváltó ERP kontextusában (Clean Architecture, SOLID, DDD, REST, konkurencia, DORA) type: long-term-reference tags: architecture, clean-architecture, solid, ddd, rest, concurrency, dora, devops, modernizacio, backend, java, electron areas: database, security, riport, tenant, penztar, frontend, deploy created: 2026-08-11 status: active --- # Mérnöki alapelvek a Valutaváltó ERP kontex"
     areas: [aml, arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, legacy, napzaras, penztar, riport, security, specifikacio, sync, tenant]
     keywords: [mernoki, alapelvek, valutavalto, erp, kontextusaban, clean, architecture, solid, ddd, rest, konkurencia, dora]

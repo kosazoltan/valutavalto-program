@@ -32,7 +32,6 @@ function Get-SafeFileName {
 function Test-InstallerArtifactsExist {
   $artifactPaths = @(
     (Join-Path $WorkspaceRoot 'penztar-client\release\Penztar-Setup-2.27.96.exe'),
-    (Join-Path $WorkspaceRoot 'arfolyam-keszito-client\release\Arfolyamkeszito-Setup-2.27.96.exe'),
     (Join-Path $WorkspaceRoot 'kozponti-client\release\Kozponti-Munkaallomas-Setup-2.27.96.exe')
   )
 
@@ -153,7 +152,7 @@ $summary = [pscustomobject]@{
     'Staging or production full business acceptance execution evidence',
     'Real backup restore drill with row counts, Flyway state, audit hash-chain smoke, and measured RTO',
     'Deployed monitoring scrape, dashboard load, and alert delivery evidence',
-    'Clean Windows VM installer smoke for penztar, kozponti, and arfolyam-keszito clients',
+    'Clean Windows VM installer smoke for penztar and kozponti clients',
     'Compliance go-live decision and environment export for relevant system_parameter values',
     'Completed docs\PRODUCT_READY_EXTERNAL_EVIDENCE_TEMPLATE_2026-06-09.json artifact and passing product-ready:external-evidence:complete gate'
   )

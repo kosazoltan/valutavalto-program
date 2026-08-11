@@ -31,7 +31,7 @@ from pathlib import Path
 ROOT    = Path(__file__).resolve().parent.parent.parent
 IGNORED = {"node_modules", ".git", "target", "dist", ".vite", "coverage"}
 
-ELECTRON_DIRS = ["penztar-client", "kozponti-client", "arfolyam-keszito-client"]
+ELECTRON_DIRS = ["penztar-client", "kozponti-client"]
 
 CRITICAL_PATTERNS = [
     ("NODE-INTEGRATION",

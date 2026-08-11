@@ -6,7 +6,6 @@ $ErrorActionPreference = 'Stop'
 
 $clients = @(
   [pscustomobject]@{ directory = 'penztar-client'; artifact = 'Penztar-Setup-2.27.96.exe' },
-  [pscustomobject]@{ directory = 'arfolyam-keszito-client'; artifact = 'Arfolyamkeszito-Setup-2.27.96.exe' },
   [pscustomobject]@{ directory = 'kozponti-client'; artifact = 'Kozponti-Munkaallomas-Setup-2.27.96.exe' }
 )
 

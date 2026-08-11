@@ -204,40 +204,38 @@ function Set-PomXmlVersion {
 function Get-AllProjectVersions {
     <#
     .SYNOPSIS
-      Reads all 6 version locations across the monorepo.
+      Reads all 5 version locations across the monorepo.
     .DESCRIPTION
       Single source of truth for what "the version" means in this repo:
         1. package.json (root)
         2. frontend-react/package.json
         3. penztar-client/package.json
-        4. arfolyam-keszito-client/package.json
-        5. kozponti-client/package.json
-        6. backend/pom.xml (top-level <version>)
-      All 6 must always be in sync. Kanonikus forras: scripts/check-version-sync.mjs.
+        4. kozponti-client/package.json
+        5. backend/pom.xml (top-level <version>)
+      All 5 must always be in sync. Kanonikus forras: scripts/check-version-sync.mjs.
       Documented in CLAUDE.md and PR #177.
+      (2026-08-11: az arfolyam-keszito-client torolve — 6 helybol 5 maradt.)
     .PARAMETER RepoRoot
       Repository root directory.
     .OUTPUTS
-      PSCustomObject with Root, FrontendReact, PenztarClient, ArfolyamKeszitoClient,
-      KozpontiClient, BackendPom properties and IsConsistent boolean.
+      PSCustomObject with Root, FrontendReact, PenztarClient, KozpontiClient,
+      BackendPom properties and IsConsistent boolean.
     #>
     param([Parameter(Mandatory = $true)][string]$RepoRoot)
 
     $rootPkg = Join-Path $RepoRoot 'package.json'
     $feReactPkg = Join-Path $RepoRoot 'frontend-react\package.json'
     $clientPkg = Join-Path $RepoRoot 'penztar-client\package.json'
-    $arfolyamPkg = Join-Path $RepoRoot 'arfolyam-keszito-client\package.json'
     $kozpontiPkg = Join-Path $RepoRoot 'kozponti-client\package.json'
     $pomXml = Join-Path $RepoRoot 'backend\pom.xml'
 
     $rootVer       = (Get-Content $rootPkg -Raw     | ConvertFrom-Json).version
     $feReactVer    = (Get-Content $feReactPkg -Raw  | ConvertFrom-Json).version
     $clientVer     = (Get-Content $clientPkg -Raw   | ConvertFrom-Json).version
-    $arfolyamVer   = (Get-Content $arfolyamPkg -Raw | ConvertFrom-Json).version
     $kozpontiVer   = (Get-Content $kozpontiPkg -Raw | ConvertFrom-Json).version
     $backendPomVer = Get-PomXmlVersion -Path $pomXml
 
-    $versions = @($rootVer, $feReactVer, $clientVer, $arfolyamVer, $kozpontiVer, $backendPomVer)
+    $versions = @($rootVer, $feReactVer, $clientVer, $kozpontiVer, $backendPomVer)
     $unique = $versions | Sort-Object -Unique
     $isConsistent = ($unique.Count -eq 1)
 
@@ -245,7 +243,6 @@ function Get-AllProjectVersions {
         Root                  = $rootVer
         FrontendReact         = $feReactVer
         PenztarClient         = $clientVer
-        ArfolyamKeszitoClient = $arfolyamVer
         KozpontiClient        = $kozpontiVer
         BackendPom            = $backendPomVer
         IsConsistent          = $isConsistent

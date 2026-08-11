@@ -1,6 +1,0 @@
-node_modules/
-dist/
-dist-core/
-dist-electron/
-release/
-.dev-user-data/

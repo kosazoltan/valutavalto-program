@@ -44,13 +44,13 @@ Egyetlen lenyeges elteres van a modulok kozott, ezert a config `overrides`
 mechanizmussal **minden modul a sajat, jelenlegi stilusat** kapja:
 
 - **`penztar-client`** → `semi: true` (pontosvesszos). Override-ban rogzitve.
-- **`frontend-react`, `kozponti-client`, `arfolyam-keszito-client`** → `semi: false`
+- **`frontend-react`, `kozponti-client`** → `semi: false`
   (pontosvesszo nelkuli). Ez a config alapertelmezese.
 
 Igy a Prettier bevezetese egyik modulban sem csap at pontosvesszot — a status
 quot kodifikalja, nem irja felul.
 
-> Megjegyzes: a `kozponti-client` es `arfolyam-keszito-client` ket-ket portolt
+> Megjegyzes: a `kozponti-client` ket portolt
 > fajlja (`local-first.ts`, `vv-logger.ts`) tortenetileg pontosvesszos (a
 > `penztar-client`-bol szarmazik). Ezek a modul native (no-semi) stilusahoz
 > igazodnak, amikor legkozelebb formazva lesznek.

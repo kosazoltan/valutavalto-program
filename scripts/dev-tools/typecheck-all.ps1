@@ -19,8 +19,7 @@ $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $Projects = @(
     [PSCustomObject]@{ Name = 'frontend-react';         Dir = 'frontend-react'          },
     [PSCustomObject]@{ Name = 'penztar-client';          Dir = 'penztar-client'           },
-    [PSCustomObject]@{ Name = 'kozponti-client';         Dir = 'kozponti-client'          },
-    [PSCustomObject]@{ Name = 'arfolyam-keszito-client'; Dir = 'arfolyam-keszito-client'  }
+    [PSCustomObject]@{ Name = 'kozponti-client';         Dir = 'kozponti-client'          }
 )
 
 Write-Host "typecheck-all — $($Projects.Count) projects" -ForegroundColor Cyan

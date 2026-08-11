@@ -8,8 +8,9 @@ version: 2
 #   - csak `production` deps frontend-en (test-only deps mentesek a hetente kell-e check-ben)
 # Ezzel a Sourcery rate-limit nem kerul elhasznalva mar a kedd esti batch-en.
 # Frissites 2026-07-28 (PR #1506): ket uj npm ecosystem bejegyzes kerult be
-# (kozponti-client, arfolyam-keszito-client) -> jelenleg 6 ecosystem.
-# Az open-pull-requests-limit valtozatlanul 3/ecosystem -> max 18 nyitott PR.
+# (kozponti-client, arfolyam-keszito-client) -> akkor 6 ecosystem.
+# 2026-08-11: az arfolyam-keszito-client torolve -> jelenleg 5 ecosystem.
+# Az open-pull-requests-limit valtozatlanul 3/ecosystem -> max 15 nyitott PR.
 
 updates:
   # Backend (Java / Maven)
@@ -61,25 +62,6 @@ updates:
     open-pull-requests-limit: 3
     groups:
       kozponti-minor-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-    labels:
-      - "dependencies"
-      - "electron"
-
-  # Arfolyam-keszito-client (legacy/kozos kodforras, onallo release nincs)
-  - package-ecosystem: "npm"
-    directory: "/arfolyam-keszito-client"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "08:00"
-      timezone: "Europe/Budapest"
-    open-pull-requests-limit: 3
-    groups:
-      arfolyam-keszito-minor-patch:
         applies-to: version-updates
         update-types:
           - "minor"

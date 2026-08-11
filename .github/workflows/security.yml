@@ -211,11 +211,12 @@ jobs:
           cd penztar-client && npm ci --legacy-peer-deps
           npm audit --audit-level=high
 
-      # AUDIT 2026-08-07: a kozponti-client es az arfolyam-keszito-client eddig
-      # KIMARADT az auditbol, ezert bennuk eszrevetlenul allt egy brace-expansion
+      # AUDIT 2026-08-07: a kozponti-client (es az azota megszunt arfolyam-keszito-client)
+      # eddig KIMARADT az auditbol, ezert bennuk eszrevetlenul allt egy brace-expansion
       # high (DoS) es egy electron moderate talalat. Mindketto Electron-kliens,
       # amit alairt installerkent szallitunk — ugyanaz a kockazati osztaly, mint a
-      # penztar-client. A lefedettseg mostantol mind a NEGY npm-csomagra kiterjed.
+      # penztar-client. (2026-08-11: az arfolyam-keszito-client torolve, a kozponti
+      # rate-maker flavorja szolgalja ki az RFM modot — a lefedettseg megmaradt.)
       - name: Kozponti-client npm audit
         id: kozponti_audit
         continue-on-error: true
@@ -223,19 +224,11 @@ jobs:
           cd kozponti-client && npm ci --legacy-peer-deps
           npm audit --audit-level=high
 
-      - name: Arfolyam-keszito-client npm audit
-        id: arfolyam_audit
-        continue-on-error: true
-        run: |
-          cd arfolyam-keszito-client && npm ci --legacy-peer-deps
-          npm audit --audit-level=high
-
       - name: Fail on high/critical npm audit findings
         if: |
           steps.frontend_audit.outcome == 'failure' ||
           steps.penztar_audit.outcome == 'failure' ||
-          steps.kozponti_audit.outcome == 'failure' ||
-          steps.arfolyam_audit.outcome == 'failure'
+          steps.kozponti_audit.outcome == 'failure'
         run: |
           echo "::error::npm audit found high/critical vulnerabilities in one or more packages."
           exit 1
@@ -288,9 +281,10 @@ jobs:
       # kovetkezo sprint-ben az osszes szoveg lokalizalva lesz t()-vel.
       - run: cd frontend-react && npm run lint:i18n-gate --if-present
 
-  # Audit #1026 (2026-06-04): a kozponti + arfolyam Electron-kliensek typecheck-je eddig NEM volt
-  # CI-ben (csak a penztar + frontend-react) -> egy kliens-specifikus type-hiba (pl. hianyzo @types/sql.js)
-  # eszrevetlen maradt. EGY kombinalt job, mert a kliensek electron-kodja megosztott csomagokra epul.
+  # Audit #1026 (2026-06-04): a kozponti (+ azota megszunt arfolyam) Electron-kliensek
+  # typecheck-je eddig NEM volt CI-ben (csak a penztar + frontend-react) -> egy
+  # kliens-specifikus type-hiba (pl. hianyzo @types/sql.js) eszrevetlen maradt.
+  # EGY kombinalt job, mert a kliensek electron-kodja megosztott csomagokra epul.
   #
   # PLATFORM-REFAKTOR (2026-08-10): a korabbi CROSS-CLIENT csatolas MEGSZUNT.
   # Korabban:
@@ -304,8 +298,11 @@ jobs:
   # A penztar-client telepitese TOVABBRA IS szukseges, mert a platform google-oauth
   # modulja a penztar production-tesztelt RFC 8252 + PKCE implementaciojat
   # re-exportalja (a forras athelyezese kulon, viselkedes-semleges lepes lehet).
+  #
+  # 2026-08-11: az arfolyam-keszito-client torolve (a kozponti rate-maker flavorja
+  # szolgalja ki az RFM modot) — a job kozponti-only lett.
   electron-clients-typecheck:
-    name: Electron clients TypeCheck (kozponti + arfolyam)
+    name: Electron clients TypeCheck (kozponti)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -317,8 +314,6 @@ jobs:
       - run: cd packages/local-first-core && npm ci --legacy-peer-deps
       - run: cd packages/electron-platform && npm ci --legacy-peer-deps
       - run: cd penztar-client && npm ci --legacy-peer-deps
-      - run: cd arfolyam-keszito-client && npm ci --legacy-peer-deps
       - run: cd kozponti-client && npm ci --legacy-peer-deps
       - run: cd packages/electron-platform && npm run typecheck
-      - run: cd arfolyam-keszito-client && npm run typecheck
       - run: cd kozponti-client && npm run typecheck
