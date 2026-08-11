@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.repository.CameraAccessLogRepository;
 import hu.puzzleir.valuta.repository.CameraConfigRepository;
 import hu.puzzleir.valuta.repository.CameraRecordingRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.CameraAccessService;
 import hu.puzzleir.valuta.service.CameraCleanupService;
 import hu.puzzleir.valuta.service.CameraUploadService;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,7 @@ class CameraAdminControllerSecurityTest {
     @Mock private CameraUploadService uploadService;
     @Mock private BranchRepository branchRepository;
     @Mock private CameraRecordingRepository recordingRepository;
+    @Mock private hu.puzzleir.valuta.repository.CameraTransactionLinkRepository linkRepository;
 
     private CameraAdminController controller;
 
@@ -43,15 +45,28 @@ class CameraAdminControllerSecurityTest {
     private static final UUID OWN_BRANCH_ID = UUID.randomUUID();
     private static final UUID FOREIGN_BRANCH_ID = UUID.randomUUID();
 
+    /**
+     * Réteg-refaktor (2026-08-11): az adatelérés és a tenant-guard a
+     * {@link CameraAccessService} use-case rétegébe került.
+     *
+     * <p><b>Az assertek VÁLTOZATLANOK.</b> A teszt a VALÓDI service-t példányosítja
+     * ugyanazokkal a mockolt repository-kkal, amiket korábban a controller kapott —
+     * ezért továbbra is a végponti viselkedést bizonyítják (cég-szűrés, cross-tenant
+     * elutasítás, törlés-tiltás).
+     */
     @BeforeEach
     void setUp() {
-        controller = new CameraAdminController(
+        CameraAccessService cameraAccessService = new CameraAccessService(
+                branchRepository,
                 configRepository,
-                accessLogRepository,
+                recordingRepository,
+                linkRepository,
+                accessLogRepository
+        );
+        controller = new CameraAdminController(
                 cleanupService,
                 uploadService,
-                branchRepository,
-                recordingRepository
+                cameraAccessService
         );
     }
 
