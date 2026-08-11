@@ -10,17 +10,21 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * FK-076: engedelyezett cimlet-katalogus (torzsadat).
+ * FK-076/FK-080: engedelyezett cimlet-katalogus (torzsadat).
  *
  * A `denomination` tabla teljes, jegybanki forrasbol (V320/V328) szarmazo
  * katalogusaval szemben ez a tabla kizarolag a ténylegesen forgalmazott
  * bankjegy/erme kombinaciokat tartalmazza. Deviza-szintu es fiok-fuggetlen
  * (nincs branch_id), cegenkent szeparalt (company_id).
  *
- * HUF szandekosan NINCS benne (Scope OUT) - a zaras-validacio HUF-ra explicit
- * ki van kapcsolva, kulonben minden HUF-zaras tevesen elutasitasra kerulne.
+ * FK-080 ota ez az EGYETLEN igazsagforras, es a HUF-ot IS tartalmazza (V379):
+ * erme kizarolag HUF 200/100/50/20/10/5 es EUR 2/1 lehet, minden mas deviza
+ * minden nevertekben BANKNOTE. A HUF 1 es 2 forint szandekosan hianyzik
+ * (az MNB 2008-ban bevonta oket). A zaras-validacio HUF-ra mar NINCS
+ * kikapcsolva — minden deviza ugyanazon a gaton megy at.
  *
- * Migracio: V376__denomination_allowed_catalog_and_seed.sql
+ * Migraciok: V376__denomination_allowed_catalog_and_seed.sql (katalogus + deviza-seed),
+ *            V379__fk080_denomination_allowed_huf_seed.sql (HUF-seed)
  */
 @Entity
 @Table(name = "denomination_allowed", indexes = {

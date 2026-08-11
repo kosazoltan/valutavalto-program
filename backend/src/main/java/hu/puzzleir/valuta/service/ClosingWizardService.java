@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStatusDto;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardStepDto;
 import hu.puzzleir.valuta.entity.*;
+import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.ClosingWizardRepository;
@@ -571,52 +572,59 @@ public class ClosingWizardService {
                 .findByBranchIdAndCurrencyIdAndFaceValue(branchId, currency.getId(), faceValue)
                 .orElseGet(() -> {
                     Branch branch = findBranchInCurrentCompany(branchId);
-                    // FK-076 (FR-3): nem-HUF auto-create a save() elott a denomination_allowed
-                    // torzsadat (V376) ellen validal — nem engedelyezett kombinaciora
-                    // elutasitas, NEM csendes uj denomination-sor letrehozas.
-                    // HUF-ra ez a validacio explicit ki van kapcsolva (a HUF szandekosan
-                    // nincs benne a tablaban) — HUF-zaras semmilyen korulmenyek kozott nem
-                    // utasithato el emiatt (NFR-6, dedikalt teszt bizonyitja).
-                    if (!"HUF".equals(currency.getCode())) {
-                        // ellenor1 WARNING-1 (FK-076 review): a companyId a SecurityUtils-bol jon,
-                        // NEM a branch.getCompany() lazy-proxy lancbol — ugyanaz a megbizhato
-                        // forras, amit a findBranchInCurrentCompany is hasznal. Fallback a
-                        // branch-re (batch/scheduler kontextus, ahol nincs SecurityContext).
-                        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
-                        if (companyId == null && branch.getCompany() != null) {
-                            companyId = branch.getCompany().getId();
-                        }
-                        boolean allowed = companyId != null
-                                && denominationAllowedRepository.existsAllowed(
-                                        companyId, currency.getId(), faceValue);
-                        if (!allowed) {
-                            // REQUIRES_NEW audit: a rollback ellenere is megmaradjon. A
-                            // companyId==null (fail-closed) ag is auditalando — korabban
-                            // AUDIT NELKUL utasitott el (ellenor1 WARNING-1).
-                            if (companyId != null) {
-                                auditLogService.logInNewTransactionForCompany(
-                                        "DENOMINATION_ALLOWED_REJECTED",
-                                        String.format(
-                                                "{\"KAT\":\"VALID\",\"error_code\":\"VV-VALID-006\","
-                                                        + "\"branch_id\":\"%s\",\"currency_code\":\"%s\","
-                                                        + "\"face_value\":\"%s\"}",
-                                                branchId, currency.getCode(), faceValue.toPlainString()),
-                                        branchId.toString(),
-                                        companyId);
-                            } else {
-                                log.warn("VV-VALID-006 elutasitas company-kontextus NELKUL "
-                                                + "(audit nem irhato): branch={}, currency={}, faceValue={}",
-                                        branchId, currency.getCode(), faceValue.toPlainString());
-                            }
-                            throw new ValidationException(
-                                    "VV-VALID-006: Nem engedélyezett címlet-kombináció: "
-                                            + currency.getCode() + " " + faceValue.toPlainString());
-                        }
+                    // FK-076 (FR-3) + FK-080 (FR-3/FR-4): az auto-create a save() elott a
+                    // denomination_allowed torzsadat (V376 + V379) ellen validal — nem
+                    // engedelyezett kombinaciora elutasitas, NEM csendes uj denomination-sor.
+                    //
+                    // FK-080: a korabbi HUF-kivetel MEGSZUNT. A V379 ota a HUF is benne van a
+                    // katalogusban (12 sor: 6 erme + 6 bankjegy), ezert MINDEN deviza ugyanazon
+                    // a gaton megy at. Az NFR-6 ("torvenyes HUF-zaras soha nem utasithato el")
+                    // tovabbra is teljesul — de mostantol ADAT biztositja (a 12 torvenyes HUF
+                    // ertek mind szerepel a katalogusban), nem egy kod-ag. Cserebe a bevont
+                    // HUF 1/2 forint es a szemet nevertek (pl. HUF 3) elutasitasra kerul.
+                    //
+                    // ellenor1 WARNING-1 (FK-076 review): a companyId a SecurityUtils-bol jon,
+                    // NEM a branch.getCompany() lazy-proxy lancbol — ugyanaz a megbizhato
+                    // forras, amit a findBranchInCurrentCompany is hasznal. Fallback a
+                    // branch-re (batch/scheduler kontextus, ahol nincs SecurityContext).
+                    UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+                    if (companyId == null && branch.getCompany() != null) {
+                        companyId = branch.getCompany().getId();
                     }
-                    // HUF szabaly: >= 200 Ft bankjegy, < 200 Ft erme; nem-HUF-ra is BANKNOTE default.
-                    DenominationType denomType = faceValue.compareTo(BigDecimal.valueOf(200)) >= 0
-                            ? DenominationType.BANKNOTE
-                            : DenominationType.COIN;
+                    // FK-080 (FR-3): a katalogus-SOR kell, nem csak egy boolean — a cimlet
+                    // tipusa (BANKNOTE/COIN) is innen jon, nem nevertek-kuszobbol.
+                    DenominationAllowed allowed = companyId == null ? null
+                            : denominationAllowedRepository
+                                    .findActiveAllowed(companyId, currency.getId(), faceValue)
+                                    .orElse(null);
+                    if (allowed == null) {
+                        // REQUIRES_NEW audit: a rollback ellenere is megmaradjon. A
+                        // companyId==null (fail-closed) ag is auditalando — korabban
+                        // AUDIT NELKUL utasitott el (ellenor1 WARNING-1).
+                        if (companyId != null) {
+                            auditLogService.logInNewTransactionForCompany(
+                                    "DENOMINATION_ALLOWED_REJECTED",
+                                    String.format(
+                                            "{\"KAT\":\"VALID\",\"error_code\":\"VV-VALID-006\","
+                                                    + "\"branch_id\":\"%s\",\"currency_code\":\"%s\","
+                                                    + "\"face_value\":\"%s\"}",
+                                            branchId, currency.getCode(), faceValue.toPlainString()),
+                                    branchId.toString(),
+                                    companyId);
+                        } else {
+                            log.warn("VV-VALID-006 elutasitas company-kontextus NELKUL "
+                                            + "(audit nem irhato): branch={}, currency={}, faceValue={}",
+                                    branchId, currency.getCode(), faceValue.toPlainString());
+                        }
+                        throw new ValidationException(
+                                "VV-VALID-006: Nem engedélyezett címlet-kombináció: "
+                                        + currency.getCode() + " " + faceValue.toPlainString());
+                    }
+                    // FK-080 (FR-3): a tipus a katalogus-sorbol jon. A korabbi
+                    // "faceValue >= 200 -> BANKNOTE, egyebkent COIN" szabaly devizatol
+                    // fuggetlenul dontott, ezert hozott letre hibas kulfoldi ERME sorokat
+                    // (pl. RSD 10, CZK 10, TRY 1) — pontosan az a defekt, amit az FK-080 javit.
+                    DenominationType denomType = allowed.getDenominationType();
                     Denomination d = Denomination.builder()
                             .company(branch.getCompany())
                             .branch(branch)

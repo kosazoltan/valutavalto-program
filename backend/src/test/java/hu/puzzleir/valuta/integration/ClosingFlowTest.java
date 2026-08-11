@@ -191,10 +191,19 @@ class ClosingFlowTest {
             when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufC));
             when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurC));
 
-            // FK-076 (FR-3): az EUR auto-create ág a denomination_allowed ellen validál —
-            // EUR 100 és EUR 50 a V376 seedben engedélyezett kombinációk.
-            when(denominationAllowedRepository.existsAllowed(eq(COMPANY_ID), eq(4L), any()))
-                    .thenReturn(true);
+            // FK-076 (FR-3) + FK-080 (FR-4, WU-8d): az auto-create ág a
+            // denomination_allowed ellen validál — MINDEN pénznemre, a HUF-ot is beleértve
+            // (a HUF-kivétel megszűnt, a V379 óta a HUF is a katalógusban van). Ezért a
+            // stubnak MINDKÉT itt használt pénznemet le kell fednie, különben a HUF-sorok
+            // VV-VALID-006-tal elutasításra kerülnének.
+            when(denominationAllowedRepository.findActiveAllowed(eq(COMPANY_ID), eq(3L), any()))
+                    .thenReturn(Optional.of(hu.puzzleir.valuta.entity.DenominationAllowed.builder()
+                            .denominationType(hu.puzzleir.valuta.entity.DenominationType.BANKNOTE)
+                            .active(true).build()));
+            when(denominationAllowedRepository.findActiveAllowed(eq(COMPANY_ID), eq(4L), any()))
+                    .thenReturn(Optional.of(hu.puzzleir.valuta.entity.DenominationAllowed.builder()
+                            .denominationType(hu.puzzleir.valuta.entity.DenominationType.BANKNOTE)
+                            .active(true).build()));
 
             // Denomination auto-create path: mindig ures Optional -> save-el ujat
             when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(eq(BRANCH_ID), any(), any()))

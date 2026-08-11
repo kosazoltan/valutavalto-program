@@ -42,10 +42,12 @@ public class BranchService {
     // dependency elkerülésére (CashBalanceService branchRepository-t is használ).
     private final CashBalanceService cashBalanceService;
     // 2026-04-29 v2.3.27 (B3 P0 fix): denomination auto-init új branch-nél.
-    // A `DenominationService.HUF_DENOMINATIONS` 14 hivatalos magyar címlet-et tartalmaz
-    // (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000), de
-    // az `initializeBranchDenominations(branchId)` metódust EDDIG SOHA NEM hívta senki —
-    // ezért új branch létrehozásakor üres marad a denomination tábla.
+    // FK-080 (FR-2, 2026-08-11): az új fiók címletsorai — a HUF is — a
+    // `denomination_allowed` katalógusból jönnek (V376 deviza-seed + V379 HUF-seed).
+    // A korábban itt hivatkozott `DenominationService.HUF_DENOMINATIONS` 14 elemű
+    // konstans megszűnt: érme kizárólag HUF 200/100/50/20/10/5 és EUR 2/1 lehet,
+    // az 1 és 2 forintos érme-sor nem jön létre többé (2008-ban bevonták).
+    // A `create()` változatlanul hívja az `initializeBranchDenominations(branchId)`-t.
     private final DenominationService denominationService;
     // #891 self-review P0-1: ERTEKTAR-szintű territorialis ellenőrzéshez a saját region_code lookup.
     private final AccessScopeService accessScopeService;

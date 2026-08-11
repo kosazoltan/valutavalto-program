@@ -31,7 +31,11 @@ import java.util.stream.Collectors;
  * Címletezés szolgáltatás.
  *
  * Legacy: CIMLET tábla kezelés - napi zárás címletvalidálás
- * 14-féle HUF címlet: 20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1
+ *
+ * FK-080 (FR-2): MINDEN címletsor — a HUF is — a `denomination_allowed`
+ * törzsadatból (V376 + V379) származik. A korábbi 14 elemű, hardkódolt HUF
+ * tömb és a névérték-küszöbre épülő típus-besorolás megszűnt: a katalógus az
+ * egyetlen igazságforrás, érme kizárólag HUF 200/100/50/20/10/5 és EUR 2/1.
  */
 @Service
 @RequiredArgsConstructor
@@ -44,32 +48,15 @@ public class DenominationService {
     private final CurrencyRepository currencyRepository;
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
-    // FK-076: az engedelyezett kulfoldi cimlet-katalogus (denomination_allowed torzsadat).
+    // FK-076/FK-080: az engedelyezett cimlet-katalogus (denomination_allowed torzsadat) —
+    // MINDEN deviza, a HUF-ot is beleertve (V376 deviza-seed + V379 HUF-seed).
     private final DenominationAllowedRepository denominationAllowedRepository;
 
-    // HUF címletek (legacy kompatibilitás)
-    private static final BigDecimal[] HUF_DENOMINATIONS = {
-        new BigDecimal("20000"),
-        new BigDecimal("10000"),
-        new BigDecimal("5000"),
-        new BigDecimal("2000"),
-        new BigDecimal("1000"),
-        new BigDecimal("500"),
-        new BigDecimal("200"),
-        new BigDecimal("100"),
-        new BigDecimal("50"),
-        new BigDecimal("20"),
-        new BigDecimal("10"),
-        new BigDecimal("5"),
-        new BigDecimal("2"),
-        new BigDecimal("1")
-    };
-
-    // FK-076 (2026-08-07): a statikus FOREIGN_DENOMINATIONS Map (teljes jegybanki
-    // katalogus) es a DenominationSpec record megszunt — az uj branch-inicializalast
-    // a denomination_allowed torzsadat (V376 migracio) vezerli: csak uzletileg
-    // engedelyezett kombinaciok (tort cimlet sehol, nem-EUR erme sehol; egyetlen
-    // erme-kivetel EUR 1/2). Lásd: DenominationAllowedRepository.
+    // FK-076 (2026-08-07) + FK-080 (2026-08-11): a statikus FOREIGN_DENOMINATIONS Map
+    // (teljes jegybanki katalogus), a DenominationSpec record, a 14 elemu
+    // HUF_DENOMINATIONS tomb es a classifyHufDenomination() mind megszunt — a
+    // branch-inicializalast KIZAROLAG a denomination_allowed torzsadat vezerli
+    // (V376 deviza-seed + V379 HUF-seed). Lásd: DenominationAllowedRepository.
 
     /**
      * Címletek lekérdezése az aktuális irodához és valutához
@@ -194,22 +181,6 @@ public class DenominationService {
     }
 
     /**
-     * HUF címlet típus meghatározása.
-     *
-     * >= 500 → BANKNOTE, < 500 → COIN (MNB: bankjegyek 500–20 000 Ft,
-     * érmék 5–200 Ft; Copilot #1108 — a Javadoc a tényleges küszöbhöz igazítva).
-     */
-    DenominationType classifyHufDenomination(BigDecimal faceValue) {
-        // MNB-tény: forgalomban lévő bankjegyek 500-20000 Ft, érmék 5-200 Ft.
-        // Az 500 Ft BANKJEGY (Rákóczi, megújított sorozat) — 500 Ft-os érme nem
-        // létezik. A korábbi >=1000 küszöb (és a rá épülő V169) téves volt; a
-        // meglévő sorokat a V320 tipus-korrekciója javítja.
-        return faceValue.compareTo(new BigDecimal("500")) >= 0
-                ? DenominationType.BANKNOTE
-                : DenominationType.COIN;
-    }
-
-    /**
      * Címletek inicializálása új irodához.
      *
      * 2026-04-29 v2.3.29 (Codex P1 PR #292 follow-up):
@@ -220,6 +191,13 @@ public class DenominationService {
      * Spring iparági pattern: auxiliary/optional init logika REQUIRES_NEW-vel
      * izolált, hogy a parent operation (branch létrehozás) sikeres maradjon
      * akkor is, ha a kiegészítő init dob.
+     *
+     * FK-080 (FR-2): a korábbi KÜLÖN HUF-ág (14 elemű hardkódolt tömb +
+     * classifyHufDenomination küszöb) MEGSZŰNT. A HUF ugyanazon az egyetlen
+     * cikluson megy át, mint minden más deviza, és a típusát — akárcsak a többi —
+     * a katalógus-sor `denominationType` mezője adja. Következmény: új fiók
+     * pontosan 6 HUF érme-sort kap (200/100/50/20/10/5), nem 8-at; az 1 és 2
+     * forintos érme-sor többé nem jön létre (2008-ban bevonták).
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void initializeBranchDenominations(UUID branchId) {
@@ -230,55 +208,40 @@ public class DenominationService {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található"));
 
-        // HUF címletek inicializálása
-        Currency huf = currencyRepository.findByCode("HUF")
-                .orElseThrow(() -> new ResourceNotFoundException("HUF valuta nem található"));
-
-        for (BigDecimal faceValue : HUF_DENOMINATIONS) {
-            if (denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(branchId, huf.getId(), faceValue).isEmpty()) {
-                Denomination denomination = Denomination.builder()
-                        .company(company)
-                        .branch(branch)
-                        .currency(huf)
-                        .faceValue(faceValue)
-                        .denominationType(classifyHufDenomination(faceValue))
-                        .quantity(0)
-                        .active(true)
-                        .build();
-                denominationRepository.save(denomination);
-            }
-        }
-
-        log.info("HUF címletek inicializálva irodához: {}", branch.getName());
-
-        // FK-076 (FR-2): kulfoldi cimletek inicializalasa a denomination_allowed
-        // torzsadatbol (V376) — a korabbi FOREIGN_DENOMINATIONS Map (teljes jegybanki
-        // katalogus, tort es nem-EUR ermekkel) helyett. Az EUA-kivetel megszunik:
-        // az EUA-nak nincs sora a tablaban -> 0 cimlet-sor jon letre.
+        // FK-076 (FR-2) + FK-080 (FR-2): MINDEN cimlet — a HUF is — a
+        // denomination_allowed torzsadatbol (V376 deviza-seed + V379 HUF-seed) jon letre.
+        // A korabbi FOREIGN_DENOMINATIONS Map (teljes jegybanki katalogus, tort es
+        // nem-EUR ermekkel) es a HUF-specifikus ag egyarant megszunt. Az EUA-kivetel
+        // sem kell: az EUA-nak nincs sora a tablaban -> 0 cimlet-sor jon letre.
         // Idempotens (meglévő bejegyzések kihagyva), csak AKTIV valutakra.
+        int created = 0;
         for (DenominationAllowed allowed : denominationAllowedRepository.findActiveByCompanyId(companyId)) {
-            Currency foreignCurrency = allowed.getCurrency();
-            if (!Boolean.TRUE.equals(foreignCurrency.getActive())) {
+            Currency currency = allowed.getCurrency();
+            if (!Boolean.TRUE.equals(currency.getActive())) {
                 continue;
             }
             if (denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(
-                    branchId, foreignCurrency.getId(), allowed.getFaceValue()).isEmpty()) {
+                    branchId, currency.getId(), allowed.getFaceValue()).isEmpty()) {
                 Denomination denomination = Denomination.builder()
                         .company(company)
                         .branch(branch)
-                        .currency(foreignCurrency)
+                        .currency(currency)
                         .faceValue(allowed.getFaceValue())
                         .denominationType(allowed.getDenominationType())
                         .quantity(0)
                         .active(true)
                         .build();
                 denominationRepository.save(denomination);
+                created++;
                 // ellenor1 NIT-1 (FK-076 review): a log CSAK a tenyleges INSERT-et naplozza —
                 // az if-en kivul minden mar letezo sorra is tuzelt (126 felrevezeto sor/branch).
-                log.debug("{} {} címlet inicializálva irodához: {}", foreignCurrency.getCode(),
+                log.debug("{} {} címlet inicializálva irodához: {}", currency.getCode(),
                         allowed.getFaceValue(), branch.getName());
             }
         }
+
+        log.info("Címletek inicializálva irodához: {} ({} új sor a denomination_allowed katalógusból)",
+                branch.getName(), created);
     }
 
     /**

@@ -35,8 +35,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p>Amit bizonyít:
  * <ul>
- *   <li>FR-1: pontosan 126 sor company-nként (124 banknote 21 devizára + EUR 1/2 érme);
- *       HUF és EUA nélkül; minden face_value egész szám. Két company esetén a seed
+ *   <li>FR-1: pontosan 138 sor company-nként — 126 a V376-bol (124 banknote 21 devizara
+ *       + EUR 1/2 erme) es 12 a V379 HUF-seedbol (FK-080); EUA nelkul; minden face_value egész szám. Két company esetén a seed
  *       mindkettőnek 126-126 sort ad (spec §4 edge case: „két company egyszerre").</li>
  *   <li>NFR-5: a meglévő denomination tábla tartalma bit-azonos a migráció előtt/után
  *       (se DELETE, se UPDATE nem érintheti) — teljes sor-snapshot, nem csak darabszám.</li>
@@ -52,15 +52,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Testcontainers
 class DenominationAllowedFk076MigrationPostgresTest {
 
-    private static final long ROWS_PER_COMPANY = 126L;
-    private static final long COIN_ROWS_PER_COMPANY = 2L; // EUR 1 és EUR 2
-    private static final long DISTINCT_CURRENCIES = 21L;
+    // FK-080 delta: a V379 minden companynek +12 HUF sort ad (6 erme + 6 bankjegy),
+    // ezert a migrateToLatest() utani vart ertekek 126->138, 2->8, 21->22 lettek.
+    private static final long ROWS_PER_COMPANY = 138L;      // 126 (V376) + 12 HUF (V379)
+    private static final long COIN_ROWS_PER_COMPANY = 8L;   // EUR 1/2 + HUF 200/100/50/20/10/5
+    private static final long DISTINCT_CURRENCIES = 22L;    // 21 (V376) + HUF
+    private static final long HUF_ROWS_PER_COMPANY = 12L;
 
     private static final Path MIGRATION_DIR =
             Path.of("src", "main", "resources", "db", "migration");
     /** A FK-076 migráció fájl-mintája — a V-szám nem hardkódolt (átszámozás-biztos). */
     private static final Pattern V376_FILE_PATTERN =
             Pattern.compile("(?i)^V(\\d+)__denomination_allowed.*\\.sql$");
+    /**
+     * A FK-080 HUF-seed (V379) fájl-mintája — szintén átszámozás-biztos.
+     * Azért kell, mert az NFR-5 bit-azonosság mérése PONTOSAN eddig migrálhat:
+     * a rá következő V380 szándékosan módosítja a `denomination` táblát.
+     */
+    private static final Pattern HUF_SEED_FILE_PATTERN =
+            Pattern.compile("(?i)^V(\\d+)__fk080_denomination_allowed_huf_seed\\.sql$");
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
@@ -85,7 +95,7 @@ class DenominationAllowedFk076MigrationPostgresTest {
     // kézi újrafuttatása nem duplikál
     // =====================================================================
     @Test
-    @DisplayName("V376: 126 sor company-nként (2 company = 252 sor), 21 devizakód, HUF/EUA nélkül; denomination-tábla bit-azonos; idempotens")
+    @DisplayName("V376+V379: 138 sor company-nként (2 company = 276 sor), 22 devizakód, HUF-fal (12 sor), EUA nélkül; denomination-tábla bit-azonos; idempotens")
     void v376SeedsExactlyTheAllowedCatalogPerCompany() throws Exception {
         migrateToVersion(previousExistingVersion());
 
@@ -102,8 +112,20 @@ class DenominationAllowedFk076MigrationPostgresTest {
                 .as("A seed-minta feltételezi legalább egy company-sor létét (EBC seed + a teszt második companyja)")
                 .isGreaterThanOrEqualTo(2);
 
-        // A teljes migráció-lánc futtatása a V376-tal együtt.
-        migrateToLatest();
+        // Migracio a V379-ig — NEM migrateToLatest().
+        //
+        // FK-080 (WU-8c): a lanc vegen ott van a V380 is, ami SZANDEKOSAN modositja a
+        // `denomination` tablat (a tiltott COIN sorokat inaktivalja). Az itteni NFR-5
+        // allitas viszont azt bizonyitja, hogy a KATALOGUS-SEED (V376 + a V379 HUF-seed)
+        // nem nyul a `denomination` tablahoz. A migrateToLatest() a ket kulonbozo
+        // szandekot egy meresbe olvasztotta, es a V380 sajat, helyes viselkedesetol
+        // bukott el (merve: 304 tiltott COIN sor inaktivalva, koztuk a HUF 1/2).
+        //
+        // Ezert a mereshez a V379-ig migralunk: a V379 additiv a denomination_allowed-ra
+        // (+12 HUF sor company-nkent) es a `denomination` tablat nem erinti — igy minden
+        // itteni allitas ervenyes marad. A V380 hatasat a dedikalt
+        // ForbiddenCoinDeactivationFk080MigrationPostgresTest bizonyitja.
+        migrateToVersion(hufSeedVersion());
 
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
             // FR-1: 126 sor company-nként.
@@ -120,7 +142,7 @@ class DenominationAllowedFk076MigrationPostgresTest {
                 }
             }
             assertThat(perCompanyCounts)
-                    .as("Minden company pontosan 126 sort kap (nincs részleges seed)")
+                    .as("Minden company pontosan 138 sort kap (nincs részleges seed)")
                     .hasSize((int) companiesBefore)
                     .allSatisfy(row -> assertThat(row).endsWith("|" + ROWS_PER_COMPANY));
 
@@ -128,12 +150,30 @@ class DenominationAllowedFk076MigrationPostgresTest {
                     "SELECT count(DISTINCT currency_id) FROM denomination_allowed");
             assertThat(distinctCurrencies).isEqualTo(DISTINCT_CURRENCIES);
 
-            // HUF és EUA kizárva.
-            long hufOrEua = count(st,
+            // FK-080: a HUF MAR BENNE VAN (V379) — company-nkent pontosan 12 sor.
+            // Az EUA tovabbra is kizarva.
+            long hufRows = count(st,
                     "SELECT count(*) FROM denomination_allowed da "
                             + "JOIN currency c ON c.id = da.currency_id "
-                            + "WHERE c.code IN ('HUF','EUA')");
-            assertThat(hufOrEua).isZero();
+                            + "WHERE c.code = 'HUF'");
+            assertThat(hufRows)
+                    .as("FK-080: a HUF a katalogus resze (12 sor company-nkent)")
+                    .isEqualTo(HUF_ROWS_PER_COMPANY * companiesBefore);
+
+            // A bevont HUF 1 es 2 forint SOHA nem kerulhet be (FK-080 FR-1).
+            long hufOneOrTwo = count(st,
+                    "SELECT count(*) FROM denomination_allowed da "
+                            + "JOIN currency c ON c.id = da.currency_id "
+                            + "WHERE c.code = 'HUF' AND da.face_value IN (1, 2)");
+            assertThat(hufOneOrTwo)
+                    .as("HUF 1 es 2 forint (2008-ban bevonva) nem engedelyezett")
+                    .isZero();
+
+            long eua = count(st,
+                    "SELECT count(*) FROM denomination_allowed da "
+                            + "JOIN currency c ON c.id = da.currency_id "
+                            + "WHERE c.code = 'EUA'");
+            assertThat(eua).isZero();
 
             // NFR-5 (tört címlet tilos): minden face_value egész; az egyetlen érme-kivétel
             // az EUR 1 és EUR 2 (2 sor company-nként).
@@ -146,15 +186,17 @@ class DenominationAllowedFk076MigrationPostgresTest {
                     "SELECT count(*) FROM denomination_allowed "
                             + "WHERE denomination_type = 'COIN'");
             assertThat(coins)
-                    .as("Csak EUR 1 és EUR 2 érme lehet (2 sor company-nként)")
+                    .as("Csak EUR 1/2 és HUF 200..5 érme lehet (8 sor company-nként)")
                     .isEqualTo(COIN_ROWS_PER_COMPANY * companiesBefore);
 
-            long nonEurCoin = count(st,
+            // FK-080: erme kizarolag EUR (1/2) es HUF (200..5) lehet — minden mas
+            // deviza minden nevertekben BANKNOTE.
+            long coinOutsideEurAndHuf = count(st,
                     "SELECT count(*) FROM denomination_allowed da "
                             + "JOIN currency c ON c.id = da.currency_id "
-                            + "WHERE da.denomination_type = 'COIN' AND c.code <> 'EUR'");
-            assertThat(nonEurCoin)
-                    .as("Nem-EUR érme (egész értékű is) tilos")
+                            + "WHERE da.denomination_type = 'COIN' AND c.code NOT IN ('EUR','HUF')");
+            assertThat(coinOutsideEurAndHuf)
+                    .as("EUR-on es HUF-on kivul erme (egesz erteku is) tilos")
                     .isZero();
 
             // NFR-5: a meglévő denomination tábla bit-azonos a migráció előtt/után.
@@ -256,6 +298,16 @@ class DenominationAllowedFk076MigrationPostgresTest {
             assertThat(matcher.matches()).isTrue();
             return Integer.parseInt(matcher.group(1));
         }
+    }
+
+    /**
+     * A FK-080 HUF-seed (V379) verziószáma — az NFR-5 mérés felső határa.
+     *
+     * <p>A rá következő V380 szándékosan módosítja a `denomination` táblát, ezért a
+     * bit-azonosság mérése nem futhat a teljes láncon (lásd a mérési pont kommentjét).
+     */
+    private static int hufSeedVersion() throws IOException {
+        return version(HUF_SEED_FILE_PATTERN);
     }
 
     /**

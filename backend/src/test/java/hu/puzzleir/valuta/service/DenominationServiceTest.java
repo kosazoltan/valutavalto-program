@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,42 +68,95 @@ class DenominationServiceTest {
     private static final UUID TEST_COMPANY_ID = UUID.randomUUID();
 
     // ============================================================
-    // Bug 1: HUF coin/banknote threshold
+    // FK-080 (WU-8b): a classifyHufDenomination() nevertek-kuszob MEGSZUNT.
+    //
+    // Az 5 korabbi egysegteszt (100/200 -> COIN, 500/1000/20000 -> BANKNOTE) egy
+    // olyan metodust hivott, ami mar nem letezik: a tipus mostantol a
+    // denomination_allowed katalogus-sorbol jon (V376 + V379), nem szamitasbol.
+    // A lefedettseg NEM veszett el — ugyanaz az 5 nevertek-allitas itt marad, csak
+    // a HELYES forrason: a katalogus-vezerelt inicializalason keresztul merjuk.
+    // Ez az FK-080 kert viselkedese (FR-2/FR-3), es egyben az OK, amiert a regi
+    // kuszob hibas volt: devizatol fuggetlenul dontott.
     // ============================================================
 
     @Test
-    @DisplayName("classifyHufDenomination: 100 Ft → COIN")
-    void huf100FtShouldBeCoin() {
-        DenominationType result = denominationService.classifyHufDenomination(new BigDecimal("100"));
-        assertThat(result).isEqualTo(DenominationType.COIN);
+    @DisplayName("FK-080 FR-2: a HUF tipusa a katalogusbol jon — 200/100 ERME, 500/1000/20000 BANKJEGY (nem nevertek-kuszobbol)")
+    void hufDenominationTypeComesFromCatalogNotFromThreshold() {
+        Company company = new Company();
+        company.setId(TEST_COMPANY_ID);
+        Branch branch = new Branch();
+        branch.setId(TEST_BRANCH_ID);
+        branch.setName("Teszt iroda");
+
+        // A V379 HUF-seed alapjan: 200 es 100 ERME, 500/1000/20000 BANKJEGY.
+        List<DenominationAllowed> catalog = List.of(
+                allowed("HUF", "20000", DenominationType.BANKNOTE),
+                allowed("HUF", "1000", DenominationType.BANKNOTE),
+                allowed("HUF", "500", DenominationType.BANKNOTE),
+                allowed("HUF", "200", DenominationType.COIN),
+                allowed("HUF", "100", DenominationType.COIN));
+
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(TEST_COMPANY_ID);
+            when(companyRepository.findById(TEST_COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(denominationAllowedRepository.findActiveByCompanyId(TEST_COMPANY_ID))
+                    .thenReturn(catalog);
+            when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(any(), any(), any()))
+                    .thenReturn(Optional.empty());
+
+            denominationService.initializeBranchDenominations(TEST_BRANCH_ID);
+
+            ArgumentCaptor<Denomination> saved = ArgumentCaptor.forClass(Denomination.class);
+            verify(denominationRepository, times(5)).save(saved.capture());
+
+            Map<BigDecimal, DenominationType> typeByFaceValue = saved.getAllValues().stream()
+                    .collect(Collectors.toMap(Denomination::getFaceValue, Denomination::getDenominationType));
+
+            assertThat(typeByFaceValue.get(new BigDecimal("100"))).isEqualTo(DenominationType.COIN);
+            assertThat(typeByFaceValue.get(new BigDecimal("200"))).isEqualTo(DenominationType.COIN);
+            assertThat(typeByFaceValue.get(new BigDecimal("500"))).isEqualTo(DenominationType.BANKNOTE);
+            assertThat(typeByFaceValue.get(new BigDecimal("1000"))).isEqualTo(DenominationType.BANKNOTE);
+            assertThat(typeByFaceValue.get(new BigDecimal("20000"))).isEqualTo(DenominationType.BANKNOTE);
+        }
     }
 
     @Test
-    @DisplayName("classifyHufDenomination: 200 Ft → COIN")
-    void huf200FtShouldBeCoin() {
-        DenominationType result = denominationService.classifyHufDenomination(new BigDecimal("200"));
-        assertThat(result).isEqualTo(DenominationType.COIN);
-    }
+    @DisplayName("FK-080 FR-2: a bevont HUF 1 es 2 forint NEM jon letre — nincs katalogus-soruk")
+    void withdrawnHufCoinsAreNeverCreated() {
+        Company company = new Company();
+        company.setId(TEST_COMPANY_ID);
+        Branch branch = new Branch();
+        branch.setId(TEST_BRANCH_ID);
+        branch.setName("Teszt iroda");
 
-    @Test
-    @DisplayName("classifyHufDenomination: 500 Ft → BANKNOTE (MNB: az 500 Ft bankjegy, 500 Ft-os érme nincs)")
-    void huf500FtShouldBeBanknote() {
-        DenominationType result = denominationService.classifyHufDenomination(new BigDecimal("500"));
-        assertThat(result).isEqualTo(DenominationType.BANKNOTE);
-    }
+        // A V379 katalogus a 6 torvenyes ermet tartalmazza — 1 es 2 forint NINCS benne.
+        List<DenominationAllowed> catalog = List.of(
+                allowed("HUF", "200", DenominationType.COIN),
+                allowed("HUF", "100", DenominationType.COIN),
+                allowed("HUF", "50", DenominationType.COIN),
+                allowed("HUF", "20", DenominationType.COIN),
+                allowed("HUF", "10", DenominationType.COIN),
+                allowed("HUF", "5", DenominationType.COIN));
 
-    @Test
-    @DisplayName("classifyHufDenomination: 1000 Ft → BANKNOTE")
-    void huf1000FtShouldBeBanknote() {
-        DenominationType result = denominationService.classifyHufDenomination(new BigDecimal("1000"));
-        assertThat(result).isEqualTo(DenominationType.BANKNOTE);
-    }
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(TEST_COMPANY_ID);
+            when(companyRepository.findById(TEST_COMPANY_ID)).thenReturn(Optional.of(company));
+            when(branchRepository.findById(TEST_BRANCH_ID)).thenReturn(Optional.of(branch));
+            when(denominationAllowedRepository.findActiveByCompanyId(TEST_COMPANY_ID))
+                    .thenReturn(catalog);
+            when(denominationRepository.findByBranchIdAndCurrencyIdAndFaceValue(any(), any(), any()))
+                    .thenReturn(Optional.empty());
 
-    @Test
-    @DisplayName("classifyHufDenomination: 20000 Ft → BANKNOTE")
-    void huf20000FtShouldBeBanknote() {
-        DenominationType result = denominationService.classifyHufDenomination(new BigDecimal("20000"));
-        assertThat(result).isEqualTo(DenominationType.BANKNOTE);
+            denominationService.initializeBranchDenominations(TEST_BRANCH_ID);
+
+            ArgumentCaptor<Denomination> saved = ArgumentCaptor.forClass(Denomination.class);
+            // Pontosan 6 erme-sor — a korabbi hardkodolt tomb 8-at hozott letre (1 es 2 forinttal).
+            verify(denominationRepository, times(6)).save(saved.capture());
+            assertThat(saved.getAllValues())
+                    .extracting(Denomination::getFaceValue)
+                    .doesNotContain(BigDecimal.ONE, new BigDecimal("2"));
+        }
     }
 
     // ============================================================

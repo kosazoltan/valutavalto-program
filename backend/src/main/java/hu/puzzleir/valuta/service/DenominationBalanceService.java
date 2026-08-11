@@ -6,11 +6,14 @@ import hu.puzzleir.valuta.dto.denomination.DenominationQuantityUpdateRequestDto;
 import hu.puzzleir.valuta.dto.denomination.DenominationSelfCheckDto;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Denomination;
+import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationBalance;
 import hu.puzzleir.valuta.entity.DenominationCategory;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -43,6 +46,65 @@ public class DenominationBalanceService {
     private final CashRegisterDeviceRepository cashRegisterDeviceRepository;
     private final BranchRepository branchRepository;
     private final CashBalanceRepository cashBalanceRepository;
+    // FK-080 (FR-5): az engedelyezett cimlet-katalogus — a mentes-ut gatja.
+    private final DenominationAllowedRepository denominationAllowedRepository;
+
+    /**
+     * FK-080 (FR-5): a mentes elott a hivatkozott denomination sort ELLENORIZZUK.
+     *
+     * <p>Ket, szandekosan KULONBOZO elutasitas:
+     * <ul>
+     *   <li>(a) mas ceg sora vagy nem letezo id → {@link ResourceNotFoundException} (404).
+     *       Ugyanaz a szerzodes, mint a {@link #requireOwnCashDesk(UUID)}-nal: masik tenant
+     *       azonositojanak a LETEZESE se szivarogjon ki. Ez egy valos IDOR-t zar be: korabban
+     *       barmelyik ceg denominationId-jara lehetett menteni, ha volt hozza balance-sor.</li>
+     *   <li>(b) inaktiv sor, vagy a (deviza, nevertek, tipus) harmas nincs a hivo cege AKTIV
+     *       katalogusaban → {@link ValidationException} VV-VALID-007 (400). Uzleti
+     *       szabalysertes egy olyan soron, ami legitimen a hivoe.</li>
+     * </ul>
+     *
+     * <p>A sorrend kotott: eloszb a tenant-ellenorzes (404), utana az uzleti gat (400).
+     *
+     * <p>A gat a 4-argumentumu updateQuantity-ben ul, amelyen MINDEN nyilvanos belepesi pont
+     * atmegy (a 3-argumentumu updateQuantity es mindket batchUpdate is ide delegal), igy egy
+     * helyen zarja az osszes iro utat.
+     *
+     * <p>A tipus-egyezes is szamit: egy COIN-kent tarolt sor, amit a katalogus BANKNOTE-kent
+     * engedelyez, elutasitasra kerul — a teljes harmasra validalunk, nem csak a nevertekre.
+     *
+     * <p>OSIV ki van kapcsolva, ezert a lazy asszociaciok ({@code getCompany()},
+     * {@code getCurrency()}) olvasasa ITT, a service-tranzakcion belul tortenik.
+     */
+    private Denomination requireAllowedDenomination(Long denominationId) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Denomination denom = denominationRepository.findById(denominationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Címlet nem található: " + denominationId));
+
+        // (a) tenant-gat: azonos uzenet a nem letezo es az idegen sorra (nincs informacio-szivargas).
+        if (denom.getCompany() == null || !companyId.equals(denom.getCompany().getId())) {
+            throw new ResourceNotFoundException("Címlet nem található: " + denominationId);
+        }
+
+        // (b) inaktiv sor: a V380 altal inaktivalt tiltott ermekre sem menthető uj darabszam.
+        if (!Boolean.TRUE.equals(denom.getActive())) {
+            throw new ValidationException(notAllowedMessage(denom));
+        }
+
+        DenominationAllowed allowed = denominationAllowedRepository
+                .findActiveAllowed(companyId, denom.getCurrency().getId(), denom.getFaceValue())
+                .orElse(null);
+        if (allowed == null || allowed.getDenominationType() != denom.getDenominationType()) {
+            throw new ValidationException(notAllowedMessage(denom));
+        }
+        return denom;
+    }
+
+    /** NFR-2: magyar nyelvu elutasito uzenet, egyetlen helyen (addendum A-10: explicit name()). */
+    private static String notAllowedMessage(Denomination denom) {
+        return "VV-VALID-007: Nem engedélyezett címlet ennél a pénznemnél, erre a sorra nem menthető"
+                + " darabszám: " + denom.getCurrency().getCode() + " "
+                + denom.getFaceValue().toPlainString() + " (" + denom.getDenominationType().name() + ")";
+    }
 
     /**
      * Multi-tenant IDOR guard: a cashDeskId a hivo cegehez tartozik-e.
@@ -119,21 +181,21 @@ public class DenominationBalanceService {
     public DenominationBalanceDto updateQuantity(UUID cashDeskId, Long denominationId, int quantity,
                                                  DenominationCategory category) {
         requireOwnCashDesk(cashDeskId);
+        // FK-080 (FR-5): a cimlet-sor gatja — cross-tenant/nem letezo → 404, tiltott vagy
+        // inaktiv sor → VV-VALID-007 (400). A sort MINDIG betoltjuk (nem csak az orElseGet
+        // agban), mert a szabaly a SORRA vonatkozik, nem arra, hogy van-e mar egyenlege.
+        Denomination denomination = requireAllowedDenomination(denominationId);
         DenominationCategory effectiveCategory =
                 category == null ? DenominationCategory.EVENING : category;
         DenominationBalance balance = denominationBalanceRepository
                 .findByCashDeskIdAndDenominationIdAndCategory(cashDeskId, denominationId, effectiveCategory)
-                .orElseGet(() -> {
-                    Denomination denom = denominationRepository.findById(denominationId)
-                            .orElseThrow(() -> new ResourceNotFoundException("Címlet nem található: " + denominationId));
-                    return DenominationBalance.builder()
-                            .cashDeskId(cashDeskId)
-                            .denomination(denom)
-                            .quantity(0)
-                            .totalValue(BigDecimal.ZERO)
-                            .denominationCategory(effectiveCategory)
-                            .build();
-                });
+                .orElseGet(() -> DenominationBalance.builder()
+                        .cashDeskId(cashDeskId)
+                        .denomination(denomination)
+                        .quantity(0)
+                        .totalValue(BigDecimal.ZERO)
+                        .denominationCategory(effectiveCategory)
+                        .build());
 
         balance.setQuantity(quantity);
         balance.setDenominationCategory(effectiveCategory);

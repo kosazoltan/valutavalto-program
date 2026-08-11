@@ -5,6 +5,8 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Denomination;
+import hu.puzzleir.valuta.entity.DenominationAllowed;
+import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -35,6 +38,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,11 +50,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * FK-076 FR-3 + NFR-6: a záró-varázsló nem-HUF auto-create ága a denomination_allowed
- * törzsadat (V376) ellen validál — nem engedélyezett kombinációra 4xx-elutasítás
- * (VV-VALID-006), NEM csendes új denomination-sor. HUF-ra a validáció explicit ki van
- * kapcsolva: MINDEN HUF címlet (mind a 14, bankjegy és érme) bármikor menthető — ez a
- * legmagasabb prioritású teszteset a kérésben (NFR-6 HUF-védelem).
+ * FK-076 FR-3 + FK-080 FR-4: a záró-varázsló auto-create ága a denomination_allowed
+ * törzsadat ellen validál — nem engedélyezett kombinációra 4xx-elutasítás
+ * (VV-VALID-006), NEM csendes új denomination-sor.
+ *
+ * <p><b>FK-080 által MEGFORDÍTOTT invariáns (szándékos, dokumentált spec-változás):</b>
+ * az FK-076 idején a HUF-ra a validáció explicit KI VOLT kapcsolva (a HUF nem szerepelt
+ * a katalógusban), és az akkori teszt épp azt bizonyította, hogy a katalógus-lekérdezés
+ * HUF-ra SOHA nem fut le. A V379 óta a HUF is a katalógusban van (12 sor), ezért minden
+ * pénznem UGYANAZON a gáton megy át — a lekérdezés HUF-ra MOST MÁR LEFUT.
+ *
+ * <p>Az NFR-6 ("törvényes HUF-zárás soha nem utasítható el") változatlanul érvényes, de
+ * mostantól ADAT garantálja: mind a 12 törvényes HUF névérték (5–200 érme, 500–20000
+ * bankjegy) benne van a katalógusban. Cserébe a 2008-ban bevont HUF 1/2 forint és a
+ * szemét névérték (pl. HUF 3) elutasításra kerül — ez az FK-080 kért viselkedése.
  */
 @ExtendWith(MockitoExtension.class)
 class ClosingWizardDenominationAllowedFk076Test {
@@ -77,6 +90,10 @@ class ClosingWizardDenominationAllowedFk076Test {
     private final UUID companyId = UUID.randomUUID();
     private final LocalDate businessDate = LocalDate.of(2026, 8, 7);
 
+    /** A HUF törvényes érme-névértékei (V379 katalógus). */
+    private static final java.util.Set<Integer> HUF_COIN_VALUES =
+            java.util.Set.of(5, 10, 20, 50, 100, 200);
+
     @BeforeEach
     void setUp() {
         Company company = Company.builder().id(companyId).build();
@@ -102,23 +119,60 @@ class ClosingWizardDenominationAllowedFk076Test {
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 
-    @ParameterizedTest(name = "HUF {0} menthető — soha nem utasítható el")
-    @ValueSource(ints = {20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1})
-    @DisplayName("NFR-6 HUF-védelem: mind a 14 HUF címlet mentése soha nem dob VV-VALID-006-ot")
-    void everyHufDenominationIsAlwaysAccepted(int faceValue) {
+    /** Katalógus-sor a HUF törvényes névértékeihez (érme 5–200, bankjegy 500–20000). */
+    private static DenominationAllowed hufCatalogRow(int faceValue) {
+        return DenominationAllowed.builder()
+                .faceValue(BigDecimal.valueOf(faceValue))
+                .denominationType(HUF_COIN_VALUES.contains(faceValue)
+                        ? DenominationType.COIN : DenominationType.BANKNOTE)
+                .active(true)
+                .build();
+    }
+
+    @ParameterizedTest(name = "HUF {0} menthető — a törvényes címletek soha nem utasíthatók el")
+    @ValueSource(ints = {20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5})
+    @DisplayName("NFR-6 HUF-védelem (FK-080): mind a 12 TÖRVÉNYES HUF címlet átmegy — a gát MOST MÁR lefut HUF-ra is")
+    void everyLawfulHufDenominationIsAcceptedThroughTheSameGateFk080(int faceValue) {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyId);
+            when(denominationAllowedRepository.findActiveAllowed(
+                    companyId, 1L, BigDecimal.valueOf(faceValue)))
+                    .thenReturn(Optional.of(hufCatalogRow(faceValue)));
 
             assertThatCode(() ->
                     service.countDenominations(branchId, businessDate,
                             Map.of("HUF", Map.of(faceValue, 1))))
                     .doesNotThrowAnyException();
 
-            // HUF-ra a denomination_allowed ellenőrzés TILOS — a HUF szándékosan nincs
-            // a táblában; bármilyen existsAllowed-hívás azt jelentené, hogy a validáció
-            // nincs kikapcsolva, és HUF-zárás elutasíthatóvá válna.
-            verify(denominationAllowedRepository, never())
-                    .existsAllowed(any(), any(), any());
+            // MEGFORDÍTOTT INVARIÁNS (FK-080 FR-4): az FK-076 idején itt
+            // verify(never()).existsAllowed(...) állt, mert a HUF ki volt véve a
+            // validáció alól. A V379 óta a HUF is a katalógusban van, ezért a
+            // lekérdezésnek MEG KELL történnie — a HUF nem kivétel többé.
+            verify(denominationAllowedRepository)
+                    .findActiveAllowed(companyId, 1L, BigDecimal.valueOf(faceValue));
+        }
+    }
+
+    @ParameterizedTest(name = "HUF {0} elutasítva — nincs katalógus-sora")
+    @ValueSource(ints = {1, 2, 3})
+    @DisplayName("FK-080 FR-4: a bevont HUF 1/2 forint és a szemét névérték (3) VV-VALID-006-tal elutasítva")
+    void unlawfulHufDenominationIsRejectedFk080(int faceValue) {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyId);
+            when(denominationAllowedRepository.findActiveAllowed(
+                    companyId, 1L, BigDecimal.valueOf(faceValue)))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() ->
+                    service.countDenominations(branchId, businessDate,
+                            Map.of("HUF", Map.of(faceValue, 1))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("VV-VALID-006")
+                    .hasMessageContaining("HUF " + faceValue);
+
+            // Korábban ez CSENDESEN létrehozott egy HUF 1/2 forintos ÉRME sort.
+            verify(denominationRepository, never()).save(any());
+            verify(denominationBalanceRepository, never()).save(any());
         }
     }
 
@@ -128,8 +182,8 @@ class ClosingWizardDenominationAllowedFk076Test {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyId);
             // CHF 5 érme nincs a denomination_allowed-ban (nem-EUR érme sehol).
-            when(denominationAllowedRepository.existsAllowed(companyId, 5L, new BigDecimal("5")))
-                    .thenReturn(false);
+            when(denominationAllowedRepository.findActiveAllowed(companyId, 5L, new BigDecimal("5")))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
                     service.countDenominations(branchId, businessDate,
@@ -151,17 +205,24 @@ class ClosingWizardDenominationAllowedFk076Test {
     }
 
     @Test
-    @DisplayName("FR-3b: engedélyezett nem-HUF kombináció (EUR 500) változatlanul ment")
+    @DisplayName("FR-3b: engedélyezett nem-HUF kombináció (EUR 500) változatlanul ment, a típus a katalógusból jön")
     void allowedForeignDenominationStillPersisted() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyId);
-            when(denominationAllowedRepository.existsAllowed(companyId, 4L, new BigDecimal("500")))
-                    .thenReturn(true);
+            when(denominationAllowedRepository.findActiveAllowed(companyId, 4L, new BigDecimal("500")))
+                    .thenReturn(Optional.of(DenominationAllowed.builder()
+                            .faceValue(new BigDecimal("500"))
+                            .denominationType(DenominationType.BANKNOTE)
+                            .active(true)
+                            .build()));
 
             service.countDenominations(branchId, businessDate,
                     Map.of("EUR", Map.of(500, 2)));
 
-            verify(denominationRepository).save(any(Denomination.class));
+            // FK-080 FR-3: a mentett sor típusa a katalógus-soré, nem névérték-küszöbé.
+            ArgumentCaptor<Denomination> saved = ArgumentCaptor.forClass(Denomination.class);
+            verify(denominationRepository).save(saved.capture());
+            assertThat(saved.getValue().getDenominationType()).isEqualTo(DenominationType.BANKNOTE);
             verify(denominationBalanceRepository).save(any());
         }
     }
@@ -183,7 +244,7 @@ class ClosingWizardDenominationAllowedFk076Test {
                             Map.of("EUR", Map.of(1, 2))))
                     .doesNotThrowAnyException();
 
-            verify(denominationAllowedRepository, never()).existsAllowed(any(), anyLong(), any());
+            verify(denominationAllowedRepository, never()).findActiveAllowed(any(), anyLong(), any());
         }
     }
 
@@ -200,8 +261,8 @@ class ClosingWizardDenominationAllowedFk076Test {
             su.when(SecurityUtils::getCurrentCompanyIdOrNull).thenReturn(companyId);
             lenient().when(branchRepository.findByIdAndCompanyId(branchId, companyId))
                     .thenReturn(Optional.of(branchWithoutCompany));
-            when(denominationAllowedRepository.existsAllowed(companyId, 5L, new BigDecimal("5")))
-                    .thenReturn(false);
+            when(denominationAllowedRepository.findActiveAllowed(companyId, 5L, new BigDecimal("5")))
+                    .thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
                     service.countDenominations(branchId, businessDate,

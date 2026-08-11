@@ -122,8 +122,17 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
                 .as("A seed-minta feltetelezi legalabb egy company-sor letet (EBC seed + a teszt masodik companyja)")
                 .isGreaterThanOrEqualTo(2);
 
-        // A teljes migracio-lanc futtatasa a V379-cel egyutt.
-        migrateToLatest();
+        // Migracio PONTOSAN a V379-ig — NEM migrateToLatest().
+        //
+        // Ez a teszt a V379 allitasait meri, koztuk az NFR-5-ot: "a denomination tabla
+        // bit-azonos a migracio elott/utan". A V380 (FR-6) SZANDEKOSAN modositja a
+        // denomination tablat (tiltott COIN sorok inaktivalasa) — ha a lanc a V380-ig
+        // futna, az NFR-5 assert a V380 sajat, HELYES hatasatol bukna el (merve:
+        // 304 tiltott COIN sor valt active=false-ra, koztuk a HUF 1/2 forint).
+        // A V379-nel megallva az assert azt meri, amit allit: a V379 EGYEDUL nem nyul
+        // a denomination tablahoz. A V380 hatasat a
+        // ForbiddenCoinDeactivationFk080MigrationPostgresTest bizonyitja kulon.
+        migrateToVersion(v379Version);
 
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
             // A V379 tenylegesen lefutott (szerepel a Flyway schema_history-ban).

@@ -1,17 +1,21 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.CashBalance;
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Denomination;
+import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationBalance;
 import hu.puzzleir.valuta.entity.DenominationCategory;
 import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
+import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.denomination.DenominationSelfCheckDto;
 import hu.puzzleir.valuta.dto.denomination.DenominationQuantityUpdateRequestDto;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -40,11 +44,13 @@ class DenominationBalanceServiceTest {
     @Mock private CashRegisterDeviceRepository cashRegisterDeviceRepository;
     @Mock private BranchRepository branchRepository;
     @Mock private CashBalanceRepository cashBalanceRepository;
+    // FK-080 (FR-5): a mentes-ut allowlist-gatjanak katalogus-repoja.
+    @Mock private DenominationAllowedRepository denominationAllowedRepository;
 
     private DenominationBalanceService service() {
         return new DenominationBalanceService(
                 balanceRepository, denominationRepository, cashRegisterDeviceRepository, branchRepository,
-                cashBalanceRepository);
+                cashBalanceRepository, denominationAllowedRepository);
     }
 
     @Test
@@ -54,6 +60,11 @@ class DenominationBalanceServiceTest {
         Currency huf = Currency.builder().id(1L).code("HUF").build();
         Denomination denomination = Denomination.builder()
                 .id(2L)
+                // FK-080 (FR-5): a mentes-ut gatja a sor cegehez ES aktiv allapotahoz kotott,
+                // ezert a fixture teljes (company + active), nem csonka. A HUF 1000 a V379
+                // katalogusban BANKNOTE-kent szerepel.
+                .company(Company.builder().id(companyId).build())
+                .active(true)
                 .currency(huf)
                 .faceValue(new BigDecimal("1000"))
                 .denominationType(DenominationType.BANKNOTE)
@@ -68,6 +79,15 @@ class DenominationBalanceServiceTest {
                 .build();
         when(branchRepository.existsByIdAndCompanyId(cashDeskId, companyId)).thenReturn(false);
         when(cashRegisterDeviceRepository.existsByIdAndCompanyId(cashDeskId, companyId)).thenReturn(true);
+        // FK-080 (FR-5): a gat MINDEN mentes-uton lefut, ezert a sort es a katalogus-sort
+        // is be kell allitani — korabban a save-ut nem toltotte be a denomination-t.
+        when(denominationRepository.findById(2L)).thenReturn(Optional.of(denomination));
+        when(denominationAllowedRepository.findActiveAllowed(companyId, 1L, new BigDecimal("1000")))
+                .thenReturn(Optional.of(DenominationAllowed.builder()
+                        .faceValue(new BigDecimal("1000"))
+                        .denominationType(DenominationType.BANKNOTE)
+                        .active(true)
+                        .build()));
         // FK-078 (FR-3): az upsert-kulcs mostantol a kategoriat is tartalmazza.
         when(balanceRepository.findByCashDeskIdAndDenominationIdAndCategory(
                 cashDeskId, 2L, DenominationCategory.EVENING))
@@ -167,6 +187,9 @@ class DenominationBalanceServiceTest {
         Currency huf = Currency.builder().id(1L).code("HUF").build();
         Denomination denomination = Denomination.builder()
                 .id(5L)
+                // FK-080 (FR-5): teljes fixture — a gat a sor cegehez es aktiv allapotahoz kotott.
+                .company(Company.builder().id(companyId).build())
+                .active(true)
                 .currency(huf)
                 .faceValue(new BigDecimal("5000"))
                 .denominationType(DenominationType.BANKNOTE)
@@ -176,6 +199,13 @@ class DenominationBalanceServiceTest {
                 branchId, 5L, DenominationCategory.HANDLING_FEE))
                 .thenReturn(Optional.empty());
         when(denominationRepository.findById(5L)).thenReturn(Optional.of(denomination));
+        // FK-080 (FR-5): a HUF 5000 a V379 katalogusban BANKNOTE — engedelyezett.
+        when(denominationAllowedRepository.findActiveAllowed(companyId, 1L, new BigDecimal("5000")))
+                .thenReturn(Optional.of(DenominationAllowed.builder()
+                        .faceValue(new BigDecimal("5000"))
+                        .denominationType(DenominationType.BANKNOTE)
+                        .active(true)
+                        .build()));
         when(balanceRepository.save(any())).thenAnswer(invocation -> {
             DenominationBalance saved = invocation.getArgument(0);
             saved.setId(UUID.randomUUID());

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.DenominationAllowed;
+import hu.puzzleir.valuta.entity.DenominationType;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
@@ -88,8 +90,13 @@ class ClosingWizardZeroFaceValueAutoCreateFk072Test {
         // FK-076 (FR-3): a nem-HUF auto-create ág most a denomination_allowed ellen
         // validál. EUR 1 és EUR 2 valósan ENGEDÉLYEZETT kombinációk (V376 seed), ezért a
         // korábbi "egész kulcsok mentődnek" regresszió hűen modellezhető true stubbal.
-        lenient().when(denominationAllowedRepository.existsAllowed(any(), any(), any()))
-                .thenReturn(true);
+        // FK-080 (WU-8e): a boolean existsAllowed helyett a katalógus-SORT adó
+        // findActiveAllowed — compile-szintű átállítás, azonos lenient/any-szemantikával.
+        // Az FK-072 állítások változatlanok; a stub BANKNOTE sort ad, mert a címlet
+        // típusa mostantól a katalógusból jön (FR-3), nem névérték-küszöbből.
+        lenient().when(denominationAllowedRepository.findActiveAllowed(any(), any(), any()))
+                .thenReturn(Optional.of(DenominationAllowed.builder()
+                        .denominationType(DenominationType.BANKNOTE).build()));
     }
 
     @Test
