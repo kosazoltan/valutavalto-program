@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-09T22:19:54.930Z",
-  "source_count": 1054,
+  "generated_at": "2026-08-11T09:26:41.565Z",
+  "source_count": 1060,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -18,7 +18,7 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "d6d2d1bba12183165b75330e8e569e6908e72cf0b903a42dbc8b3961ad2a1669",
+      "sha256": "89e294d1e8d1b24602201caa8b9890a53987e52cd2494ef5b6e6ce7508aef0d5",
       "type": "short-term-core",
       "areas": [
         "aml",
@@ -85,7 +85,7 @@
     },
     {
       "path": "CLAUDE.md",
-      "sha256": "945f1cb00adfcec44a742fe15ba66ee55b4ab5293bd29b005a32ec9ce91abcf8",
+      "sha256": "ed2068c6477667991d7502193857901f226620c19e5aa823b85f025e6bf3141e",
       "type": "short-term-core",
       "areas": [
         "aml",
@@ -6339,6 +6339,23 @@
       ]
     },
     {
+      "path": "docs/architecture/kliens-osszevonas-eloterjesztes.md",
+      "sha256": "fa265aff44f7b5431d1e756420a66d8db44f97b635c073d0816e330688f48a87",
+      "type": "semantic-reference",
+      "areas": [
+        "arfolyam",
+        "database",
+        "deploy",
+        "ertektar",
+        "frontend",
+        "installer",
+        "penztar",
+        "security",
+        "specifikacio",
+        "sync"
+      ]
+    },
+    {
       "path": "docs/architecture/local-rate-maker-architecture.md",
       "sha256": "2ad359fbc22835c9fd1b9fe8f8d99454ddb3481ffdd69956312401cf9bec5cd9",
       "type": "semantic-reference",
@@ -8412,6 +8429,29 @@
       ]
     },
     {
+      "path": "vault/elvi/mernoki-alapelvek-valutavalto-kontextus.md",
+      "sha256": "dbb6748adc953f04cd2f69af385cbcc56068e80377b8b51eba322160f25088e9",
+      "type": "long-term-reference",
+      "areas": [
+        "aml",
+        "arfolyam",
+        "cimletezes",
+        "database",
+        "deploy",
+        "ertektar",
+        "frontend",
+        "installer",
+        "legacy",
+        "napzaras",
+        "penztar",
+        "riport",
+        "security",
+        "specifikacio",
+        "sync",
+        "tenant"
+      ]
+    },
+    {
       "path": "vault/elvi/vv-elvi-mirror.md",
       "sha256": "4a2caea30083230747e569e24b3dc40318f7b4d40a2f74ccfee7a6522606731c",
       "type": "semantic-reference",
@@ -8993,6 +9033,14 @@
         "ertektar",
         "installer",
         "penztar"
+      ]
+    },
+    {
+      "path": "vault/procedures/layer-ratchet-eljaras.md",
+      "sha256": "3d4a24e401c8bd17c59b6c721a6d088daad538297c849f51cbf9f3a21437a27d",
+      "type": "operational-procedure",
+      "areas": [
+        "deploy"
       ]
     },
     {
@@ -12338,6 +12386,48 @@
       "areas": [
         "deploy",
         "napzaras"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md",
+      "sha256": "b12f1d4f4ac397ed621e14cf80f19842a77e9cc8277b7dd7154c3724e95f724e",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "installer",
+        "penztar",
+        "security",
+        "specifikacio",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md",
+      "sha256": "b328783f1adb5f0a987f6031903d3b21290473e9caa1a7fdaf6853318e36a828",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "installer",
+        "penztar",
+        "security",
+        "sync",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-10-platform-refaktor.md",
+      "sha256": "612b75cb715769bd364a96b8199331f50d55f38954031e9f467330506558b2f1",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "installer",
+        "legacy",
+        "penztar",
+        "specifikacio",
+        "sync"
       ]
     },
     {

@@ -82,6 +82,7 @@
     "self-check:before-deploy": "npm run check:four-area-alignment && npm run agent:guard && node scripts/ci-error-digest.mjs --fail-on-findings",
     "check:four-area-alignment": "node scripts/check-four-area-alignment.mjs",
     "check:platform-boundaries": "node scripts/check-platform-boundaries.mjs",
+    "check:layer-ratchet": "python scripts/dev-tools/layer-violation-scan.py --check-baseline",
     "verify:status": "node scripts/product-ready-verifier.mjs status",
     "verify:final-gate": "node scripts/product-ready-verifier.mjs final-gate",
     "verify:acceptance:complete": "node scripts/product-ready-verifier.mjs acceptance",

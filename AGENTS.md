@@ -268,6 +268,32 @@ A repo fejlesztese PLATFORM-JELLEGU. Egyetlen szabaly, CI-blokkolo:
 - Reszletes eljaras + buktatok: `valutavalto-platform-architecture` skill es
   `.hermes.md` "PLATFORM-JELLEGU FEJLESZTES" szakasz.
 
+### Reteg-ratchet — Clean Architecture fuggosegi szabaly (2026-08-11 ota kotelezo)
+
+A fuggosegek BEFELE mutatnak: Frameworks -> Adapters -> Application -> Domain.
+Mert kiindulas (2026-08-11): a domain-mag EP (entity -> service/repository: 0),
+az adossag a szeleken van: 39 sertes / 23 controller (Controller -> Repository).
+
+> **Controller SOHA nem injektal Repository-t.** A tranzakciohatar es a
+> CashLockOrdering a service-retegben el; az OSIV ki van kapcsolva, ezert a
+> controller-szintu repository-olvasasnak nincs tranzakcioja.
+
+- Kapu: `npm run check:layer-ratchet`
+  (`scripts/dev-tools/layer-violation-scan.py --check-baseline`),
+  CI: `business-invariant-guard.yml` **#16 (BLOCKING)**.
+- **RATCHET, nem big-bang**: a mert adossag baseline-ban rogzitve
+  (`scripts/dev-tools/layer-violation.baseline.json`). UJ/nott sertes -> exit 1.
+  Javitas utan `--write-baseline` + a csokkent szam commitolasa. A szam
+  **csak lefele mozdulhat** — a baseline NOVELESE indoklas nelkul elutasitando.
+- Kiegesziti (nem duplikalja) az ArchUnit `ArchitectureRulesTest`-et: az a
+  repository/entity felfele-fuggest es a controller-security-t orzi, a
+  `Controller -> Repository` rest NEM fedte.
+- Reteg-refaktor csak **karakterisztikus teszttel** (a REGI viselkedesre irva,
+  a valtoztatas ELOTT) — az egyenertekuseg bizonyitek, nem ranezes.
+- Eljaras + buktatok: `vault/procedures/layer-ratchet-eljaras.md`,
+  elvi hatter: `vault/elvi/mernoki-alapelvek-valutavalto-kontextus.md`,
+  Hermes skill: `architecture-quality-review`.
+
 ### Celzott ellenorzes eleg, ha
 
 - kis, lokalis kod- vagy dokumentacios valtozas tortent;

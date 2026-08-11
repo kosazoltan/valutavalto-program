@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-09T22:19:54.930Z
+generated: 2026-08-11T09:26:41.565Z
 format: gfm
 ---
 
@@ -111,18 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — 2026-07-07 FS-5 TELJES (4/4 slice mergelve)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-07-fs5-complete.md`
-  - summary: # Handoff — 2026-07-07 FS-5 TELJES (4/4 slice mergelve) ## 1. AKTUÁLIS ÁLLAPOT - **Main HEAD:** `094bc809` = PR #1352 (FS-5 S4) squash-merge. - **FS-5 KÉSZ** — okmány elő/hátlap képpár + törvényi kódos nagyítás + pénztár scan-törlés sync után. - Working tree tiszta, worktree-k eltávolítva. - Flyway max a repóban: **V345** (V344 scanned_document_image, V345 document_view_grant). - Prod deploy: NEM ellenőriztem ebben a
-
-- **Handoff — FS-7 S3 merged, FS-7 TELJES (2026-07-07)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-07-fs7-s3-complete.md`
-  - summary: # Handoff — FS-7 S3 merged, FS-7 TELJES (2026-07-07) ## Mi történt FS-7 (10M+ jövedelemforrás-igazolás → email a compliance-címzetteknek → zero-persistence) **záró szelete (S3) merged** → **FS-7 TELJES (3/3)**. - **PR #1355** (squash 70fa72ff): center `IncomeProofRecipientsPanel` + SettingsPage tab (`Jövedelemig. címzettek`) + `incomeSourceDocApi` getRecipients/putRecipients a MEGLÉVŐ `services/api/incomeSourceDocs.t
-
-- **Handoff — FS-9 S1 merged, FS-9 folyamatban (2026-07-07)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-07-fs9-s1-merged.md`
-  - summary: # Handoff — FS-9 S1 merged, FS-9 folyamatban (2026-07-07) ## Mi történt FS-9 (címletképek center→pénztár sync) **S1 backend foundation merged**. - **PR #1356** (squash 1e74af97): `CurrencyDenominationImage` entity + V346 migráció (FK-mentes, új tábla) + repository (findByIdAndCompanyId IDOR-guard + bájtmentes MetaView-projekció) + service (fail-closed upload, cross-tenant IDOR minden útvonalon) + controller (/upload
 
 - **Handoff — FS-10 S2 (center compliance kérdés-szerkesztő UI) — 2026-07-08** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-08-fs10-s2-merged.md`
@@ -243,6 +231,18 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md`
   - summary: # Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás ## Release: v2.28.73 (FKH-031 / V377) — KIADVA, élesben igazolva - main `a54e4890`; main CI 6/6 zöld; prod `/api/v1/version` → 2.28.73, health `ok:true`. - **Gate B 7/7 PASS** (`scripts/verify-fkh031-gate-b.sh`): V377 lefutott ÉS ÍRT (`[FKH-031 V377]` marker 2 soron), AA035100003→COMPLETED, AA035100004→CANCELLED, `cash_balance` BR035/BR020 USD
+
+- **Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md`
+  - summary: # Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés ## Mi történt User kérdése az „architekturális duplikáció / 17 szolgáltatás" fordítására indult, majd a 17-es szám felülvizsgálatára, végül a kliens-összevonás + pénztár-eltávolító végrehajtására (kétszeresen ellenőrzött terv alapján). ## Mért eredmények (nem becslés) - **Duplikáció: nem 17, hanem 19 klaszter.** 10 001 indexelt függvénytörzsbő
+
+- **Platform-refaktor 2. kör — zárójelentés (a telepítőig)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md`
+  - summary: # Platform-refaktor 2. kör — zárójelentés (a telepítőig) **Dátum:** 2026-08-10 | **Repo:** `D:\repo\valutavalto-program` **Megbízás:** a platform-refaktor befejezése, szeletenként **kétszer ellenőrzött terv**, majd autonóm verifikált futás **a telepítőig**. --- ## 1. Eredmény egy táblázatban | Metrika | 1. kör előtt | 1. kör után | MOST | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 96 | **90** | | **Cross-
+
+- **Platform-refaktor — végrehajtási zárójelentés** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-10-platform-refaktor.md`
+  - summary: # Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\repo\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`

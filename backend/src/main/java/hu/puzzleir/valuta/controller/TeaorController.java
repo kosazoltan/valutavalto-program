@@ -1,10 +1,8 @@
 package hu.puzzleir.valuta.controller;
 
-import hu.puzzleir.valuta.entity.TeaorCode;
-import hu.puzzleir.valuta.repository.TeaorCodeRepository;
+import hu.puzzleir.valuta.service.TeaorService;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
-import org.springframework.data.domain.Limit;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +13,10 @@ import java.util.List;
  * TEÁOR'08 tevékenységi kód kereső endpoint (legacy: teaorvalasztas / TEAORTABLA).
  *
  * <p>A jogi-személy ügyfél tevékenységi kódjának typeahead-kiválasztásához.</p>
+ *
+ * <p>A keresés a {@link TeaorService} use-case rétegében fut (tranzakcióhatár);
+ * a controller feladata csak a HTTP-adaptáció és az entitás → DTO leképezés,
+ * hogy a JPA-entitás ne szivárogjon ki az API-határon.</p>
  */
 @RestController
 @RequestMapping("/api/v1/teaor")
@@ -22,9 +24,7 @@ import java.util.List;
 @PreAuthorize("isAuthenticated()")
 public class TeaorController {
 
-    private static final int MAX_RESULTS = 20;
-
-    private final TeaorCodeRepository teaorCodeRepository;
+    private final TeaorService teaorService;
 
     /**
      * TEÁOR-kód keresés kód-prefix vagy megnevezés alapján.
@@ -33,10 +33,7 @@ public class TeaorController {
      */
     @GetMapping
     public ResponseEntity<List<TeaorDto>> search(@RequestParam(name = "q", required = false) String q) {
-        if (q == null || q.isBlank()) {
-            return ResponseEntity.ok(List.of());
-        }
-        List<TeaorDto> dtos = teaorCodeRepository.search(q.trim(), Limit.of(MAX_RESULTS)).stream()
+        List<TeaorDto> dtos = teaorService.search(q).stream()
                 .map(t -> new TeaorDto(t.getCode(), t.getName()))
                 .toList();
         return ResponseEntity.ok(dtos);
