@@ -61,8 +61,9 @@ tenyszeruen megtortent.
 - Frontend: React + TypeScript + Vite.
 - Desktop: vegfelhasznaloi Electron telepitok: `penztar-client` es
   `kozponti-client`. Az arfolyamkeszito/rate-maker mod a `kozponti-client`
-  resze; az `arfolyam-keszito-client` legacy/kozos kodforras, onallo
-  release-telepito nem keszul belole.
+  resze. (2026-08-11: a korabbi `arfolyam-keszito-client` torolve — repo-n
+  beluli fogyasztoja nem volt, az RFM modot a kozponti rate-maker flavorja
+  szolgalja ki; bizonyitek: .hermes/evidence/2026-08-11/E-arfolyam-torles-bizonyitek.md.)
 
 ## Fontos invariansok
 
@@ -131,7 +132,7 @@ kell, nem minden apro kod- vagy dokumentacios szerkeszteshez.
 Gepfuggetlen formazas: a gyoker `.prettierrc.json` rogziti a stilust (Prettier 3.x,
 pinned verzio). Ellenorzes `npm run format:check`, teljes formazas `npm run format`,
 egy fajl `npx prettier --write <fajl>`. Modul-elteres: `penztar-client` pontosvesszos
-(`semi: true`), a tobbi modul (frontend-react, kozponti-client, arfolyam-keszito-client)
+(`semi: true`), a tobbi modul (frontend-react, kozponti-client)
 pontosvesszo nelkuli. Az ESLint NEM formaz, igy nincs utkozes. Reszletes leiras es a
 masik-gep / masik-ugynok munkafolyamat: `docs/code-style.md`.
 
