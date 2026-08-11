@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-09T22:19:54.930Z
+generated: 2026-08-11T09:26:41.565Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-09T22:19:54.930Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1054
-- generated: 2026-08-09T22:19:54.930Z
+- sources: 1060
+- generated: 2026-08-11T09:26:41.565Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -569,6 +569,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Felmeres es Anti legacy tudaslefedettsegi audit]] — `docs/architecture/felmeres-anti-knowledge-coverage-audit-2026-05-12.md` (semantic-reference)
 - [[Frontend-backend contract audit - 2026-06-19]] — `docs/architecture/frontend-backend-contract-audit-2026-06-19.md` (semantic-reference)
 - [[Google OAuth Auto-Detection Setup]] — `docs/architecture/google-oauth-auto-detection-setup.md` (semantic-reference)
+- [[Kliens-összevonás — döntési előterjesztés]] — `docs/architecture/kliens-osszevonas-eloterjesztes.md` (semantic-reference)
 - [[Helyi főértéktárosi árfolyamkészítő architektúra]] — `docs/architecture/local-rate-maker-architecture.md` (semantic-reference)
 - [[Flyway migration notes — defensive guard pattern]] — `docs/database/MIGRATION_NOTES.md` (semantic-reference)
 - [[Legacy vs Modern — Összehasonlítás és Gap Analízis]] — `docs/knowledge/analysis/gap-comparison-2026-04-07.md` (semantic-reference)
@@ -729,6 +730,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[decision-log.jsonl]] — `vault/agent-archive/decision-log.jsonl` (operational-archive)
 - [[EBC Hangsegéd (Voice Assistant) — implementációs fázisterv]] — `vault/architecture/voice-assistant-implementation-plan-2026-05-18.md` (semantic-reference)
 - [[EBC Hangsegéd — Implementáció összefoglaló (Phase 1–10)]] — `vault/architecture/voice-assistant-implementation-summary-2026-05-18.md` (architecture)
+- [[Mérnöki alapelvek a Valutaváltó ERP kontextusában (Clean Architecture, SOLID, DDD, REST, konkurencia, DORA)]] — `vault/elvi/mernoki-alapelvek-valutavalto-kontextus.md` (long-term-reference)
 - [[VV-ELVI tükör (rövid, kanonikus)]] — `vault/elvi/vv-elvi-mirror.md` (semantic-reference)
 - [[FK-006 – Visszajelzés a telepítés után]] — `vault/feedback/FK-006_visszajelzes_telepites_utan.md` (short-term-preferences)
 - [[Aktiv agent mandate index]] — `vault/feedback/_active_mandates.md` (short-term-preferences)
@@ -784,6 +786,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[CI hibauzenet beolvasas es blokk-szintu javitas]] — `vault/procedures/ci-error-intake-and-block-fix.md` (operational-procedure)
 - [[Dev-tools használati protokoll]] — `vault/procedures/dev-tools-usage-protocol.md` (operational-procedure)
 - [[Telepítők kötelező kimenete és verziózása]] — `vault/procedures/installer-output-rule.md` (operational-procedure)
+- [[Réteg-ratchet eljárás (Clean Architecture függőségi szabály)]] — `vault/procedures/layer-ratchet-eljaras.md` (operational-procedure)
 - [[Helyi árfolyamkészítő publikálási eljárás]] — `vault/procedures/local-rate-maker-publication.md` (operational-procedure)
 - [[Parallax AgentWard repo-protokoll]] — `vault/procedures/parallax-agentward-protocol.md` (operational-procedure)
 - [[Push → Merge → Deploy ciklus minden PR-re]] — `vault/procedures/push-merge-cycle.md` (operational-procedure)
@@ -1064,5 +1067,8 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele]] — `vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md` (medium-term-episodic)
 - [[Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása]] — `vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md` (medium-term-episodic)
 - [[Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás]] — `vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md` (medium-term-episodic)
+- [[Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés]] — `vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md` (medium-term-episodic)
+- [[Platform-refaktor 2. kör — zárójelentés (a telepítőig)]] — `vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md` (medium-term-episodic)
+- [[Platform-refaktor — végrehajtási zárójelentés]] — `vault/sessions/handoff-2026-08-10-platform-refaktor.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)

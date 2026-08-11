@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-09T22:19:54.930Z
+generated_at: 2026-08-11T09:26:41.565Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -3901,6 +3901,13 @@ nodes:
     summary: "# Google OAuth Auto-Detection Setup Date: 2026-05-12 Status: active decision ## Decision The local Electron applications use Google OAuth auto-detection for non-cashier workers. The worker's verified Google email identifies the account, branch, and role from server-side master data. Cashiers remain on username/password login. The first-run setup wizard no longer has to ask leaders for a local/admin password. It start"
     tags: [google, oauth, auto, detection, setup, date, 2026, status, active, decision]
     areas: [penztar]
+  - id: edec329f23982bff
+    type: semantic-reference
+    title: "Kliens-összevonás — döntési előterjesztés"
+    source_path: docs/architecture/kliens-osszevonas-eloterjesztes.md
+    summary: "# Kliens-összevonás — döntési előterjesztés **Készült:** 2026-08-10 | **Repo-állapot:** `47522cb8` (v2.28.74) **Státusz:** DÖNTÉSRE VÁR — kód nem készült hozzá **Kapcsolódó:** `.hermes/tickets/2026-08-10-fkh036-*`, `.hermes/evidence/2026-08-10/architektura-duplikacio-felmeres.md` --- ## 1. Kérdés, amire döntés kell Legyen-e **egyetlen** Electron-kliens a mai három helyett, amely belépéskor, a szerepkör alapján dönti"
+    tags: [kliens, osszevonas, dontesi, eloterjesztes, keszult, 2026, repo, allapot, 47522cb8, statusz]
+    areas: [arfolyam, database, deploy, ertektar, frontend, installer, penztar, security, specifikacio, sync]
   - id: cf4772dfdd4fa619
     type: semantic-reference
     title: "Helyi főértéktárosi árfolyamkészítő architektúra"
@@ -5021,6 +5028,13 @@ nodes:
     summary: "--- title: \"EBC Hangsegéd — Implementáció összefoglaló (Phase 1–10)\" date: 2026-05-18 type: architecture status: in-progress source_directive: \"EBC_Hangseged_Claude_Code_Implementacios_Utasitas.md (1625 sor) — user-private, NEM commit-olt\" --- # EBC Hangsegéd — Implementáció összefoglaló (Phase 1–10) > **Hatály:** 2026-05-18 · **Forrás:** felhasználói direktíva (1625 sor, user-private, repo-on kívüli) > **Állapot:**"
     tags: [ebc, hangseged, implementacio, osszefoglalo, phase, title, date, 2026, type, architecture]
     areas: [aml, arfolyam, deploy, frontend, penztar, riport, security]
+  - id: 2279cda9be18608c
+    type: long-term-reference
+    title: "Mérnöki alapelvek a Valutaváltó ERP kontextusában (Clean Architecture, SOLID, DDD, REST, konkurencia, DORA)"
+    source_path: vault/elvi/mernoki-alapelvek-valutavalto-kontextus.md
+    summary: "--- title: Mérnöki alapelvek a Valutaváltó ERP kontextusában (Clean Architecture, SOLID, DDD, REST, konkurencia, DORA) type: long-term-reference tags: architecture, clean-architecture, solid, ddd, rest, concurrency, dora, devops, modernizacio, backend, java, electron areas: database, security, riport, tenant, penztar, frontend, deploy created: 2026-08-11 status: active --- # Mérnöki alapelvek a Valutaváltó ERP kontex"
+    tags: [mernoki, alapelvek, valutavalto, erp, kontextusaban, clean, architecture, solid, ddd, rest]
+    areas: [aml, arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, legacy, napzaras, penztar, riport, security, specifikacio, sync, tenant]
   - id: fbd7f6495ee47097
     type: semantic-reference
     title: "VV-ELVI tükör (rövid, kanonikus)"
@@ -5406,6 +5420,13 @@ nodes:
     summary: "--- title: Telepítők kötelező kimenete és verziózása date: 2026-05-12 status: active trigger: \"telepítő, installer, setup exe, csomagolás, package\" --- # Telepítők kötelező kimenete és verziózása Felhasználói kötelező utasítás: minden elkészített telepítőt mindig át kell másolni a felhasználó Letöltések mappájába is. Felhasználói kötelező utasítás: minden új telepítőnek nagyobb verziószámot kell kapnia, mint az előző"
     tags: [telepitok, kotelezo, kimenete, verziozasa, title, date, 2026, status, active, trigger]
     areas: [arfolyam, deploy, ertektar, installer, penztar]
+  - id: 8e3f75b4cced08a3
+    type: operational-procedure
+    title: "Réteg-ratchet eljárás (Clean Architecture függőségi szabály)"
+    source_path: vault/procedures/layer-ratchet-eljaras.md
+    summary: "--- title: Réteg-ratchet eljárás (Clean Architecture függőségi szabály) type: operational-procedure tags: architecture, clean-architecture, ratchet, ci-gate, technical-debt, backend areas: database, tenant, security, deploy created: 2026-08-11 status: active --- # Réteg-ratchet eljárás ## Mit véd A Clean Architecture **függőségi szabályát**: a függőségek befelé mutatnak (Frameworks → Adapters → Application → Domain)."
+    tags: [reteg, ratchet, eljaras, clean, architecture, fuggosegi, szabaly, title, type, operational]
+    areas: [deploy]
   - id: d6573fd10b871a9a
     type: operational-procedure
     title: "Helyi árfolyamkészítő publikálási eljárás"
@@ -7366,6 +7387,27 @@ nodes:
     summary: "# Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás ## Release: v2.28.73 (FKH-031 / V377) — KIADVA, élesben igazolva - main `a54e4890`; main CI 6/6 zöld; prod `/api/v1/version` → 2.28.73, health `ok:true`. - **Gate B 7/7 PASS** (`scripts/verify-fkh031-gate-b.sh`): V377 lefutott ÉS ÍRT (`[FKH-031 V377]` marker 2 soron), AA035100003→COMPLETED, AA035100004→CANCELLED, `cash_balance` BR035/BR020 USD"
     tags: [handoff, 2026, release, ket, prod, uzemeltetesi, javitas, fkh, 031, v377]
     areas: [deploy, napzaras]
+  - id: f784325d168a2ae6
+    type: medium-term-episodic
+    title: "Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés"
+    source_path: vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md
+    summary: "# Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés ## Mi történt User kérdése az „architekturális duplikáció / 17 szolgáltatás\" fordítására indult, majd a 17-es szám felülvizsgálatára, végül a kliens-összevonás + pénztár-eltávolító végrehajtására (kétszeresen ellenőrzött terv alapján). ## Mért eredmények (nem becslés) - **Duplikáció: nem 17, hanem 19 klaszter.** 10 001 indexelt függvénytörzsbő"
+    tags: [handoff, 2026, fkh, 036, telepito, javitas, duplikacio, felmeres, tortent, user]
+    areas: [arfolyam, deploy, installer, penztar, security, specifikacio, sync]
+  - id: b72f91141cd6ddd5
+    type: medium-term-episodic
+    title: "Platform-refaktor 2. kör — zárójelentés (a telepítőig)"
+    source_path: vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md
+    summary: "# Platform-refaktor 2. kör — zárójelentés (a telepítőig) **Dátum:** 2026-08-10 | **Repo:** `D:\\repo\\valutavalto-program` **Megbízás:** a platform-refaktor befejezése, szeletenként **kétszer ellenőrzött terv**, majd autonóm verifikált futás **a telepítőig**. --- ## 1. Eredmény egy táblázatban | Metrika | 1. kör előtt | 1. kör után | MOST | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 96 | **90** | | **Cross-"
+    tags: [platform, refaktor, kor, zarojelentes, telepitoig, datum, 2026, repo, valutavalto, program]
+    areas: [arfolyam, deploy, installer, penztar, security, sync, tenant]
+  - id: a79b67aa99062718
+    type: medium-term-episodic
+    title: "Platform-refaktor — végrehajtási zárójelentés"
+    source_path: vault/sessions/handoff-2026-08-10-platform-refaktor.md
+    summary: "# Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\\repo\\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált"
+    tags: [platform, refaktor, vegrehajtasi, zarojelentes, datum, 2026, repo, valutavalto, program, kiindulas]
+    areas: [arfolyam, deploy, installer, legacy, penztar, specifikacio, sync]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -14716,6 +14758,36 @@ edges:
   - from: a7fc55c68eade1da
     to: area_penztar
     relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_database
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_deploy
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_frontend
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_installer
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_penztar
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_security
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_specifikacio
+    relation: belongs_to_area
+  - from: edec329f23982bff
+    to: area_sync
+    relation: belongs_to_area
   - from: cf4772dfdd4fa619
     to: area_arfolyam
     relation: belongs_to_area
@@ -17590,6 +17662,54 @@ edges:
   - from: cb9d2c696189d2f5
     to: area_security
     relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_aml
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_database
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_installer
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_legacy
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_riport
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_security
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_specifikacio
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_sync
+    relation: belongs_to_area
+  - from: 2279cda9be18608c
+    to: area_tenant
+    relation: belongs_to_area
   - from: fbd7f6495ee47097
     to: area_aml
     relation: belongs_to_area
@@ -18195,6 +18315,9 @@ edges:
     relation: belongs_to_area
   - from: 51ae609a4c30a3cd
     to: area_penztar
+    relation: belongs_to_area
+  - from: 8e3f75b4cced08a3
+    to: area_deploy
     relation: belongs_to_area
   - from: d6573fd10b871a9a
     to: area_arfolyam
@@ -22363,6 +22486,69 @@ edges:
   - from: 5854e5999d2a6bf0
     to: area_napzaras
     relation: belongs_to_area
+  - from: f784325d168a2ae6
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: f784325d168a2ae6
+    to: area_deploy
+    relation: belongs_to_area
+  - from: f784325d168a2ae6
+    to: area_installer
+    relation: belongs_to_area
+  - from: f784325d168a2ae6
+    to: area_penztar
+    relation: belongs_to_area
+  - from: f784325d168a2ae6
+    to: area_security
+    relation: belongs_to_area
+  - from: f784325d168a2ae6
+    to: area_specifikacio
+    relation: belongs_to_area
+  - from: f784325d168a2ae6
+    to: area_sync
+    relation: belongs_to_area
+  - from: b72f91141cd6ddd5
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: b72f91141cd6ddd5
+    to: area_deploy
+    relation: belongs_to_area
+  - from: b72f91141cd6ddd5
+    to: area_installer
+    relation: belongs_to_area
+  - from: b72f91141cd6ddd5
+    to: area_penztar
+    relation: belongs_to_area
+  - from: b72f91141cd6ddd5
+    to: area_security
+    relation: belongs_to_area
+  - from: b72f91141cd6ddd5
+    to: area_sync
+    relation: belongs_to_area
+  - from: b72f91141cd6ddd5
+    to: area_tenant
+    relation: belongs_to_area
+  - from: a79b67aa99062718
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: a79b67aa99062718
+    to: area_deploy
+    relation: belongs_to_area
+  - from: a79b67aa99062718
+    to: area_installer
+    relation: belongs_to_area
+  - from: a79b67aa99062718
+    to: area_legacy
+    relation: belongs_to_area
+  - from: a79b67aa99062718
+    to: area_penztar
+    relation: belongs_to_area
+  - from: a79b67aa99062718
+    to: area_specifikacio
+    relation: belongs_to_area
+  - from: a79b67aa99062718
+    to: area_sync
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22420,15 +22606,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: ec80bc2dacc727a0
-    to: repo_project_state
-    relation: informs
-  - from: e787de7feffa3dc1
-    to: repo_project_state
-    relation: informs
-  - from: ccbbcc571d2686ce
-    to: repo_project_state
-    relation: informs
   - from: e7821e87f571bcc2
     to: repo_project_state
     relation: informs
@@ -22652,6 +22829,15 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 5854e5999d2a6bf0
+    to: repo_project_state
+    relation: informs
+  - from: f784325d168a2ae6
+    to: repo_project_state
+    relation: informs
+  - from: b72f91141cd6ddd5
+    to: repo_project_state
+    relation: informs
+  - from: a79b67aa99062718
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58
