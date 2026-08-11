@@ -35,7 +35,6 @@ COVERAGE_PATHS = [
     "frontend-react/coverage/coverage-summary.json",
     "penztar-client/coverage/coverage-summary.json",
     "kozponti-client/coverage/coverage-summary.json",
-    "arfolyam-keszito-client/coverage/coverage-summary.json",
 ]
 
 

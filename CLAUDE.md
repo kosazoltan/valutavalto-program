@@ -160,8 +160,8 @@ Telepito/release feladatnal kotelezo, sorrendben:
    `electron-builder.json` fajlok.
 2. Dependency-t nem szabad "hianyzik" alapon atlepni. Ellenorizni vagy telepiteni
    kell lockfile-bol: root, `frontend-react`, `penztar-client`,
-   `kozponti-client`, es ha typecheck/kodkapcsolat igenyli, a legacy
-   `arfolyam-keszito-client` alatt `npm ci`; Python
+   `kozponti-client` es a `packages/electron-platform` alatt `npm ci` (a platform
+   sajat fuggeit a platform lockfilejabol kell telepiteni); Python
    requirement eseten celzott `python -m pip install -r ...`; Mavennel a repo
    wrapper (`mvnw.cmd`) hasznalando. Letoltott/binaris dependency csak forras-
    es hash-ellenorzes utan hasznalhato.

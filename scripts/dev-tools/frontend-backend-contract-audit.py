@@ -38,8 +38,6 @@ FRONTEND_ROOTS = [
     ROOT / "penztar-client" / "electron",
     ROOT / "penztar-client" / "src",
     ROOT / "penztar-client" / "main.js",
-    ROOT / "arfolyam-keszito-client" / "src",
-    ROOT / "arfolyam-keszito-client" / "electron",
     ROOT / "kozponti-client" / "src",
     ROOT / "kozponti-client" / "electron",
 ]

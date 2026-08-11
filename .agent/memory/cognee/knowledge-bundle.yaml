@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-11T09:26:41.565Z
+generated_at: 2026-08-11T14:50:47.685Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -3914,7 +3914,7 @@ nodes:
     source_path: docs/architecture/local-rate-maker-architecture.md
     summary: "# Helyi főértéktárosi árfolyamkészítő architektúra Állapot: elfogadott irány, 2026-05-12. ## Döntés Az árfolyamot nem a szerveren kell szerkeszteni. A főértéktáros külön, helyileg telepített árfolyamkészítő alkalmazásban állítja össze az árfolyamcsomagot. A szerver szerepe: - hitelesített átvétel, - szerveroldali validáció, - idempotens publikálás, - audit trail, - `exchange_rate` éles törzs frissítése, - outbox/WebS"
     tags: [helyi, foertektarosi, arfolyamkeszito, architektura, allapot, elfogadott, irany, 2026, dontes, arfolyamot]
-    areas: [arfolyam, database, deploy, ertektar, frontend, installer, penztar, security, sync, tenant]
+    areas: [arfolyam, database, ertektar, frontend, installer, penztar, security, sync, tenant]
   - id: 2eb89504298aa7a9
     type: semantic-reference
     title: "Flyway migration notes — defensive guard pattern"
@@ -7408,6 +7408,20 @@ nodes:
     summary: "# Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\\repo\\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált"
     tags: [platform, refaktor, vegrehajtasi, zarojelentes, datum, 2026, repo, valutavalto, program, kiindulas]
     areas: [arfolyam, deploy, installer, legacy, penztar, specifikacio, sync]
+  - id: b0780f14de102d14
+    type: medium-term-episodic
+    title: "Platform-refaktor 3. kör — zárójelentés"
+    source_path: vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md
+    summary: "# Platform-refaktor 3. kör — zárójelentés **Dátum:** 2026-08-11 | **Repo:** `D:\\repo\\valutavalto-program` | **HEAD:** `47522cb8` (v2.28.76) **Fázis:** az előterjesztés **1. fázisa** (platform-kiemelés). **NEM** app-merge (3-5. fázis, D2 blokkolja), **NEM** installer-merge. --- ## 1. Eredmény | Metrika | 1. kör előtt | 2. kör után | **MOST** | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 90 | **84** | | **Cr"
+    tags: [platform, refaktor, kor, zarojelentes, datum, 2026, repo, valutavalto, program, head]
+    areas: [installer, penztar, security, sync]
+  - id: afd81b9e0bc11daa
+    type: medium-term-episodic
+    title: "Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)"
+    source_path: vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md
+    summary: "# Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`."
+    tags: [handoff, 2026, teljes, ciklus, lezaras, merge, lanc, inditas, statusz, kesz]
+    areas: [arfolyam, deploy, napzaras, penztar]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -14793,9 +14807,6 @@ edges:
     relation: belongs_to_area
   - from: cf4772dfdd4fa619
     to: area_database
-    relation: belongs_to_area
-  - from: cf4772dfdd4fa619
-    to: area_deploy
     relation: belongs_to_area
   - from: cf4772dfdd4fa619
     to: area_ertektar
@@ -22549,6 +22560,30 @@ edges:
   - from: a79b67aa99062718
     to: area_sync
     relation: belongs_to_area
+  - from: b0780f14de102d14
+    to: area_installer
+    relation: belongs_to_area
+  - from: b0780f14de102d14
+    to: area_penztar
+    relation: belongs_to_area
+  - from: b0780f14de102d14
+    to: area_security
+    relation: belongs_to_area
+  - from: b0780f14de102d14
+    to: area_sync
+    relation: belongs_to_area
+  - from: afd81b9e0bc11daa
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: afd81b9e0bc11daa
+    to: area_deploy
+    relation: belongs_to_area
+  - from: afd81b9e0bc11daa
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: afd81b9e0bc11daa
+    to: area_penztar
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22606,12 +22641,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: e7821e87f571bcc2
-    to: repo_project_state
-    relation: informs
-  - from: 0fb39661965caf8d
-    to: repo_project_state
-    relation: informs
   - from: 95b8596fd7a2e97e
     to: repo_project_state
     relation: informs
@@ -22838,6 +22867,12 @@ edges:
     to: repo_project_state
     relation: informs
   - from: a79b67aa99062718
+    to: repo_project_state
+    relation: informs
+  - from: b0780f14de102d14
+    to: repo_project_state
+    relation: informs
+  - from: afd81b9e0bc11daa
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

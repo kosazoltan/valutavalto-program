@@ -110,8 +110,7 @@ def main():
             issues.extend(scan_java(f))
 
     if not java_only:
-        for mod in ("frontend-react", "penztar-client", "kozponti-client",
-                    "arfolyam-keszito-client"):
+        for mod in ("frontend-react", "penztar-client", "kozponti-client"):
             src = ROOT / mod / "src"
             if not src.exists():
                 continue

@@ -373,7 +373,7 @@ kockazatnal, push/merge/deploy/release elott kotelezo.
 A kod gepfuggetlen formazasat a gyoker `.prettierrc.json` rogziti (Prettier 3.x,
 pinned verzio). Uj vagy szerkesztett kodot eszerint formazz: `npx prettier --write <fajl>`,
 ellenorzes `npm run format:check`. Modul-elteres: `penztar-client` pontosvesszos
-(`semi: true`), a tobbi modul (frontend-react, kozponti-client, arfolyam-keszito-client)
+(`semi: true`), a tobbi modul (frontend-react, kozponti-client)
 pontosvesszo nelkuli. Az ESLint NEM formaz, igy nincs utkozes a Prettierrel. Reszletes
 leiras es a masik-gep / masik-ugynok munkafolyamat: `docs/code-style.md`.
 

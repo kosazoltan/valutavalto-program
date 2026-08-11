@@ -152,14 +152,6 @@ $clients = @(
     userData = Join-Path $env:APPDATA 'Valutavalto Penztar'
   },
   [pscustomobject]@{
-    name = 'arfolyam-keszito-client'
-    productName = 'Valutavalto Arfolyamkeszito'
-    artifact = Join-Path $WorkspaceRoot 'arfolyam-keszito-client\release\Arfolyamkeszito-Setup-2.27.96.exe'
-    expectedExe = 'Valutavalto Arfolyamkeszito.exe'
-    processName = 'Valutavalto Arfolyamkeszito'
-    userData = Join-Path $env:APPDATA 'Valutavalto Arfolyamkeszito'
-  },
-  [pscustomobject]@{
     name = 'kozponti-client'
     productName = 'Valutavalto Kozponti Munkaallomas'
     artifact = Join-Path $WorkspaceRoot 'kozponti-client\release\Kozponti-Munkaallomas-Setup-2.27.96.exe'

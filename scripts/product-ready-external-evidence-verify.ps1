@@ -1504,7 +1504,7 @@ function Add-StructuredSignedInstallerReportChecks {
     -ArgumentList @('-CheckArtifacts', '-RequireSignature') `
     -Expected 'Current installer artifact verifier passes the current signed artifacts with -CheckArtifacts -RequireSignature'
 
-  foreach ($area in @('penztar-client', 'arfolyam-keszito-client', 'kozponti-client')) {
+  foreach ($area in @('penztar-client', 'kozponti-client')) {
     foreach ($checkName in @(
         'installer artifact exists',
         'installer artifact age',
@@ -1582,7 +1582,7 @@ function Add-StructuredCleanVmInstallerReportChecks {
   Add-Check -Name 'installer clean VM environment check:disposable clean VM confirmation' -Status (Convert-ReviewStatus (Test-CheckPass -Checks $cleanVmChecks -Area 'environment' -Name 'disposable clean VM confirmation')) `
     -Evidence 'area=environment; check=disposable clean VM confirmation' -Expected 'PASS'
 
-  foreach ($area in @('penztar-client', 'arfolyam-keszito-client', 'kozponti-client')) {
+  foreach ($area in @('penztar-client', 'kozponti-client')) {
     foreach ($checkName in @(
         'installer artifact exists',
         'installer artifact age',
@@ -1876,7 +1876,7 @@ try {
     Add-RequiredTrueCheck -Name 'installer.signedArtifactsVerified' -Value (Get-PropertyValue $installer 'signedArtifactsVerified')
 
     $clients = @(Get-PropertyValue $installer 'clients')
-    foreach ($clientName in @('penztar', 'arfolyam-keszito', 'kozponti')) {
+    foreach ($clientName in @('penztar', 'kozponti')) {
       $client = $clients | Where-Object { (Get-PropertyValue $_ 'name') -eq $clientName } | Select-Object -First 1
       if (Add-SectionExistsCheck -Name "installer.clients.$clientName" -Value $client) {
         Add-RequiredTrueCheck -Name "installer.clients.$clientName.installed" -Value (Get-PropertyValue $client 'installed')

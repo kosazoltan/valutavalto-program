@@ -32,7 +32,9 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
-const CLIENTS = ['penztar-client', 'kozponti-client', 'arfolyam-keszito-client']
+// 2026-08-11: az arfolyam-keszito-client torolve (a kozponti-client rate-maker
+// flavorja szolgalja ki az RFM modot; bizonyitek: .hermes/evidence/2026-08-11/).
+const CLIENTS = ['penztar-client', 'kozponti-client']
 const PLATFORM_DIR = join('packages', 'electron-platform')
 
 /**
@@ -191,9 +193,11 @@ if (existsSync(storePath)) {
 }
 
 // --- 5. A token-perzisztalas utan a kliens setAuthToken-t HIV (regresszio-or) -
-// A platform nem hivhatja (kliens-modul), ezert MINDKET kliensben ott kell
-// maradnia: enelkul a token nem jut el a local-first / sync reteghez.
-for (const client of ['kozponti-client', 'arfolyam-keszito-client']) {
+// A platform nem hivhatja (kliens-modul), ezert MINDEN megmaradt Electron-kliensben
+// ott kell maradnia: enelkul a token nem jut el a local-first / sync reteghez.
+// (2026-08-11: az arfolyam-keszito-client torolve; a kozponti-client rate-maker
+// flavorja szolgalja ki az RFM modot.)
+for (const client of ['kozponti-client']) {
   const mainPath = join(client, 'electron', 'main.ts')
   if (!existsSync(mainPath)) continue
   const src = readFileSync(mainPath, 'utf8')

@@ -22,7 +22,7 @@ on:
       - '.github/workflows/legacy-binary-analysis.yml'
       - 'legacy-transfer/**'
       - 'frontend-react/src/pages/rates/**'
-      - 'arfolyam-keszito-client/src/**'
+  # 2026-08-11: az arfolyam-keszito-client/src/** path-trigger torolve (a kliens megszunt).
   push:
     branches: [main]
     paths:

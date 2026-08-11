@@ -58,7 +58,6 @@ const packagePaths = [
   'package.json',
   'frontend-react/package.json',
   'penztar-client/package.json',
-  'arfolyam-keszito-client/package.json',
   'kozponti-client/package.json',
 ]
 const versions = packagePaths.map((relativePath) => ({
@@ -68,7 +67,7 @@ const versions = packagePaths.map((relativePath) => ({
 const uniqueVersions = new Set(versions.map((entry) => entry.version))
 check(
   uniqueVersions.size === 1,
-  'a monorepo, frontend és három telepíthető kliens verziója nincs szinkronban',
+  'a monorepo, frontend és két telepíthető kliens verziója nincs szinkronban',
   versions.map((entry) => `${entry.relativePath}=${entry.version}`).join(', '),
 )
 
@@ -96,20 +95,11 @@ const installers = [
     flavor: null,
   },
   {
-    name: 'rfm-keszito-client',
-    packagePath: 'arfolyam-keszito-client/package.json',
-    builderPath: 'arfolyam-keszito-client/electron-builder.json',
-    mainPath: 'arfolyam-keszito-client/electron/main.ts',
-    expectedAppId: 'com.bestchange.arfolyamkeszito',
-    expectedProductName: 'Valutavalto Arfolyamkeszito',
-    expectedArtifactName: 'Arfolyamkeszito-Setup-${version}.exe',
-    flavor: 'rate-maker',
-    fixedMode: 'rate-maker',
-  },
-  {
     // 2026-05-24: az összevont „Központi munkaállomás" — induláskori mód-választóval
     // KÉT módot szolgál ki (full = Központi irányítóközpont, rate-maker = Árfolyamkészítő),
     // mindkét frontend-flavor SAJÁT VITE_APP_FLAVOR-jával fordítva, külön dist-subdir-be.
+    // 2026-08-11: a korábbi önálló `rfm-keszito-client` bejegyzés törölve — az RFM
+    // mód egyetlen szállítója ez az összevont kliens (arfolyam-keszito-client megszűnt).
     name: 'kozponti-client',
     packagePath: 'kozponti-client/package.json',
     builderPath: 'kozponti-client/electron-builder.json',

@@ -1,16 +1,17 @@
-// 4-way (4+1) verzió-szinkron ellenőrző — release-atomikusság (VV-ELVI 11.1).
+// 4-way (3+1) verzió-szinkron ellenőrző — release-atomikusság (VV-ELVI 11.1).
 //
 // CSAK a verziókat hasonlítja össze, semmilyen más invariánst (URL, route, electron-builder)
 // — ellentétben a check-four-area-alignment.mjs-szel, ami sok egyéb dolgot is ellenőriz és
 // ezért nem alkalmas szűk, blocking "version drift" gate-nek.
 //
-// Ellenőrzött 6 forrás (mind egyeznie KELL):
+// Ellenőrzött 5 forrás (mind egyeznie KELL):
 //   - package.json (root)
 //   - frontend-react/package.json
 //   - penztar-client/package.json
-//   - arfolyam-keszito-client/package.json
 //   - kozponti-client/package.json
 //   - backend/pom.xml  <project><version>   (a valuta-backend artifact verziója, NEM a parent)
+//
+// (2026-08-11: az arfolyam-keszito-client megszűnt → 6 forrásból 5 maradt.)
 //
 // Eltérés esetén exit 1 (BLOCKING gate a business-invariant-guard.yml #14-ben).
 
@@ -28,7 +29,6 @@ const packageJsonPaths = [
   'package.json',
   'frontend-react/package.json',
   'penztar-client/package.json',
-  'arfolyam-keszito-client/package.json',
   'kozponti-client/package.json',
 ]
 
@@ -69,4 +69,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log(`[version-sync] OK — mind a 6 forrás verziója egyezik: ${sources[0].version}`)
+console.log(`[version-sync] OK — mind az 5 forrás verziója egyezik: ${sources[0].version}`)

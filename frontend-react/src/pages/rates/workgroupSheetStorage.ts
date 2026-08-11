@@ -351,9 +351,11 @@ function getLocalFirstApi(): RateMakerLocalFirstApi | null {
 
 /**
  * FK02-D / Codex P1: a group-rate SQLite IPC TÉNYLEGES elérhetősége. NEM elég `isElectron()`-t
- * nézni: a standalone rate-maker host (`arfolyam-keszito-client`) Electron, de a group-rate IPC
- * (`saveGroupRateValues`/`getGroupRateValues`) csak a `kozponti-client`-ben van bekötve. Ahol az
- * IPC hiányzik, a localStorage az autoritás — onnan kell tölteni (különben `{}` → adatvesztés).
+ * nézni: a group-rate IPC (`saveGroupRateValues`/`getGroupRateValues`) csak a `kozponti-client`
+ * rate-maker módjában van bekötve. Ahol az IPC hiányzik (pl. böngésző), a localStorage az
+ * autoritás — onnan kell tölteni (különben `{}` → adatvesztés).
+ * (2026-08-11: a korábbi standalone `arfolyam-keszito-client` megszűnt; az RFM mód
+ * egyetlen Electron-hostja a kozponti-client rate-maker flavorja.)
  */
 export function isGroupRateOfflineDbAvailable(): boolean {
   const lf = getLocalFirstApi()

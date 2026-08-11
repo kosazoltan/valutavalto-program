@@ -109,8 +109,7 @@ def main():
         else:
             i += 1
 
-    modules = (["frontend-react", "penztar-client", "kozponti-client",
-                "arfolyam-keszito-client"]
+    modules = (["frontend-react", "penztar-client", "kozponti-client"]
                if not mod_filter else [mod_filter])
 
     all_issues = []
