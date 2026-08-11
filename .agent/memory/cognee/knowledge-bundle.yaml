@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-11T14:50:47.685Z
+generated_at: 2026-08-11T15:10:38.485Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7421,7 +7421,7 @@ nodes:
     source_path: vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md
     summary: "# Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`."
     tags: [handoff, 2026, teljes, ciklus, lezaras, merge, lanc, inditas, statusz, kesz]
-    areas: [arfolyam, deploy, napzaras, penztar]
+    areas: [arfolyam, deploy, legacy, napzaras, penztar]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22577,6 +22577,9 @@ edges:
     relation: belongs_to_area
   - from: afd81b9e0bc11daa
     to: area_deploy
+    relation: belongs_to_area
+  - from: afd81b9e0bc11daa
+    to: area_legacy
     relation: belongs_to_area
   - from: afd81b9e0bc11daa
     to: area_napzaras

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T14:50:47.685Z",
+  "generated_at": "2026-08-11T15:10:38.485Z",
   "source_count": 1062,
   "sources": [
     {
@@ -12442,11 +12442,12 @@
     },
     {
       "path": "vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md",
-      "sha256": "666df71f4af78215e94552939c0d59e1dd80219e94829e49b4aac68a93afdad6",
+      "sha256": "617bd51d29a63043c9581633d7725fd726fcad336d2ed5dcc8064aaf15173c6d",
       "type": "medium-term-episodic",
       "areas": [
         "arfolyam",
         "deploy",
+        "legacy",
         "napzaras",
         "penztar"
       ]

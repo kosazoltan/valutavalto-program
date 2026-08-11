@@ -1,4 +1,4 @@
-generated_at: 2026-08-11T14:50:47.685Z
+generated_at: 2026-08-11T15:10:38.485Z
 schema_version: 1
 source_count: 1062
 short_term:
@@ -1698,9 +1698,9 @@ medium_term:
     title: "Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)"
     type: medium-term-episodic
     path: vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md
-    sha256: 666df71f4af78215e94552939c0d59e1dd80219e94829e49b4aac68a93afdad6
+    sha256: 617bd51d29a63043c9581633d7725fd726fcad336d2ed5dcc8064aaf15173c6d
     summary: "# Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`."
-    areas: [arfolyam, deploy, napzaras, penztar]
+    areas: [arfolyam, deploy, legacy, napzaras, penztar]
     keywords: [handoff, 2026, teljes, ciklus, lezaras, merge, lanc, inditas, statusz, kesz, release, workflow]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
