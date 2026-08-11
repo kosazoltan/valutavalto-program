@@ -29,59 +29,58 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * FK-080 (FR-6, V380): a tiltott COIN denomination-sorok inaktivalasanak valos-DB
- * bizonyitasa (Testcontainers + Flyway, az FK-076 teszt infrastruktorat masolva).
+ * FK-080 (FR-6 + NFR-4, V380): a tiltott COIN denomination-sorok inaktivalasanak
+ * valos-DB bizonyitasa (Testcontainers + Flyway, az FK-076 teszt infrastrukturajat
+ * masolva).
  *
  * <p>Amit bizonyit:
  * <ul>
- *   <li>Csak azokat az AKTIV COIN sorokat inaktivalja, amelyek (company, currency,
- *       face_value) harmasa NEM szerepel az adott company aktiv COIN katalogusaban
- *       (CHF 5, CZK 10 → inaktiv; EUR 2, HUF 100, EUR 500 BANKNOTE → erintetlen).</li>
+ *   <li>FR-6: csak azokat az AKTIV COIN sorokat inaktivalja, amelyek
+ *       (company, currency, face_value) harmasara NINCS az adott company AKTIV COIN
+ *       denomination_allowed katalogusaban sor (CHF 5, CZK 10 → inaktiv);
+ *       az engedelyezettek (EUR 2, HUF 100) es a nem-COIN sorok (EUR 500 BANKNOTE)
+ *       erintetlenek.</li>
  *   <li>Mindket active-oszlopot (active ES is_active) explicit false-ra allitja
  *       (ticket C3 — nem fugg a trg_sync_active_columns trigger tukrozeseitol).</li>
+ *   <li>A mar eleve inaktiv sor nem valtozik.</li>
  *   <li>Nincs DELETE: a denomination sorok darabszama valtozatlan.</li>
- *   <li>NFR-4: a denomination_balance tabla bit-azonos a migracio elott/utan, es a
+ *   <li>NFR-4: a denomination_balance tabla bit-azonos a V380 elott/utan, es a
  *       deactivated sorhoz tartozo egyenleg-sor FK-n keresztul tovabbra is olvashato.</li>
  *   <li>Cross-tenant (spec §6.b): a predikatum company-szintu — company B sajat,
  *       ENGEDELYEZETT CHF 5 COIN sora NEM inaktivalodik, mig company A ugyanilyen
  *       (engedelyezetlen) sora igen. Egy company-agnosztikus NOT EXISTS ellen
- *       ez a teszt elbukna.</li>
+ *       ez a teszt elbukna (B katalogus-sora A sorat is megvedene).</li>
  *   <li>Idempotencia: az UPDATE masodik nyers futtatasa 0 sort modosit.</li>
  * </ul>
  *
- * <p>Arrange-struktura: a fixture companykat meg a V376 ELOTT szurjuk be, hogy a
- * V376/V379 katalogus-seed az o soraikat is feltoltse — ezert marad az EUR 2 COIN
- * es a HUF 100 COIN engedelyezett (es aktiv) a V380 utan. A fixture branch-eket es
- * denomination-sorokat CSAK ezutan (a V380 elotti utolso verzion) szurjuk be, igy a
- * V320/V328 regi katalogus-backfill (amely a seed-branch-ekre futott le) nem keveredik
- * a fixture-alleitasokba.
+ * <p>Arrange-struktura: a ket fixture companyt a V376 ELUTT szurjuk be, hogy a
+ * V376/V379 seed az o katalogusukat is feltoltse (ezert marad aktiv a V380 utan
+ * az EUR 2 COIN es — a V379-nek koszonhetoen — a HUF 100 COIN). A fixture
+ * denomination-sorok ezutan, a V380 futasa ELOTT kerulnek be, a V380-t pedig a
+ * teljes lanc (migrateToLatest) futtatja.
  */
 @Testcontainers
 class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
 
     private static final Path MIGRATION_DIR =
             Path.of("src", "main", "resources", "db", "migration");
-    /** A FK-080 tiltott-erme migracio fajl-mintaja (addendum A-8). */
+    /**
+     * A FK-080 tiltott-erme migracio fajl-mintaja (addendum A-8: a tervezett nevvel
+     * ellenorizve — V380__fk080_tiltott_erme_sorok_inaktivalasa.sql). A V-szam nem
+     * hardkódolt (atrszamoszas-biztos).
+     */
     private static final Pattern V380_FILE_PATTERN =
             Pattern.compile("(?i)^V(\\d+)__fk080_tiltott_erme.*\\.sql$");
-    /** A FK-076 katalogus-migracio mintaja (a company-beszuras idozitesehez). */
+    /**
+     * Az FK-076 katalogus-migracio fajl-mintaja — a ketlepcsos arrange-hoz: a
+     * fixture companykat a V376 seed ELUTT kell beszurni, hogy a katalogusuk
+     * feltoltodjon (V376: 126 sor, V379: +12 HUF sor).
+     */
     private static final Pattern V376_FILE_PATTERN =
             Pattern.compile("(?i)^V(\\d+)__denomination_allowed.*\\.sql$");
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
-
-    private UUID companyA;
-    private UUID branchA;
-    private UUID companyB;
-    private UUID branchB;
-    private long chf5CoinIdA;
-    private long czk10CoinIdA;
-    private long eur2CoinIdA;
-    private long huf100CoinIdA;
-    private long eur500BanknoteIdA;
-    private long chf5InactiveIdA;
-    private long chf5CoinIdB;
 
     /**
      * A @Container statikus, igy a tesztek EGY Postgres-en osztoznak — minden teszt
@@ -100,21 +99,62 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
     @Test
     @DisplayName("V380: tiltott COIN sorok inaktivalva, engedelyezettek es BANKNOTE-k erintetlenek; nincs DELETE; balance bit-azonos; cross-tenant")
     void v380DeactivatesOnlyForbiddenActiveCoinRows() throws Exception {
-        arrangeFixtures();
+        // RED-bizonyitek: a V380 migracios fajlnak pontosan EGYnek kell lennie —
+        // a migracio hianyaban ez az assert bukik eloszor.
+        version(V380_FILE_PATTERN);
+
+        // 1. lepcső: fixture companyk beszurasa a V376 ELATT (a seed szamoljon veluk).
+        migrateToVersion(previousExistingVersionBefore(V376_FILE_PATTERN));
+        UUID companyA = insertCompany("FK-080 Tenant A", "FK080A");
+        UUID companyB = insertCompany("FK-080 Tenant B", "FK080B");
+
+        // 2. lepcső: migracio a V380 elotti utolso verzióig — V376/V379 katalogus-seed
+        // a ket uj company-ra is; a denomination tabla ekkor meg ures a fixture
+        // branch-ek szamara.
+        migrateToVersion(previousExistingVersionBefore(V380_FILE_PATTERN));
+
+        UUID branchA = insertBranch(companyA, "FK080-BR-A");
+        UUID branchB = insertBranch(companyB, "FK080-BR-B");
+
+        long chf = currencyId("CHF");
+        long czk = currencyId("CZK");
+        long eur = currencyId("EUR");
+        long huf = currencyId("HUF");
+
+        // Company A: ket tiltott, ket engedelyezett COIN, egy BANKNOTE, egy eleve
+        // inaktiv sor.
+        long chf5CoinIdA = insertDenominationRow(companyA, branchA, chf, 5, "COIN", true);
+        long czk10CoinIdA = insertDenominationRow(companyA, branchA, czk, 10, "COIN", true);
+        long eur2CoinIdA = insertDenominationRow(companyA, branchA, eur, 2, "COIN", true);
+        long huf100CoinIdA = insertDenominationRow(companyA, branchA, huf, 100, "COIN", true);
+        long eur500BanknoteIdA = insertDenominationRow(companyA, branchA, eur, 500, "BANKNOTE", true);
+        long chf5InactiveIdA = insertDenominationRow(companyA, branchA, chf, 5, "COIN", false);
+
+        // Company B: ugyanaz a par, de B sajat katalogusa ENGEDELYEZI a CHF 5 COIN-t.
+        long chf5CoinIdB = insertDenominationRow(companyB, branchB, chf, 5, "COIN", true);
+        // CSAK company B kap engedelyezett CHF 5 COIN katalogus-sort (a V376 seedben
+        // CHF-hez csak bankjegy-sorok vannak — a (company,currency,face_value) kulcs
+        // nem utkozik, mert CHF 5 COIN-sor nincs a seedben).
+        insertAllowedRow(companyB, chf, 5, "COIN");
+
+        // NFR-4: egyenleg-sor (quantity=7) company A tiltott CHF 5 COIN soran.
+        insertBalanceRow(branchA, chf5CoinIdA, 7);
 
         long denominationCountBefore;
         List<String> balanceSnapshotBefore;
-        List<String> denominationSnapshotBefore;
+        List<String> denominationSnapshotAfterFirstRun;
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
             denominationCountBefore = count(st, "SELECT count(*) FROM denomination");
             balanceSnapshotBefore = snapshotDenominationBalanceTable(connection);
-            denominationSnapshotBefore = snapshotDenominationTable(connection);
         }
-        assertThat(balanceSnapshotBefore).as("A fixture balance-sora bekerult").isNotEmpty();
+        assertThat(balanceSnapshotBefore)
+                .as("A fixture egyenleg-sora bekerult a denomination_balance tablabar")
+                .isNotEmpty();
         assertThat(denominationCountBefore)
                 .as("A fixture denomination-sorai bekerultek")
                 .isGreaterThanOrEqualTo(7);
 
+        // 3. lepcső: a teljes lanc — a V380 most fut.
         migrateToLatest();
 
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
@@ -144,12 +184,20 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
             assertThat(snapshotDenominationBalanceTable(connection))
                     .as("A denomination_balance tartalma nem modosulhatott (NFR-4)")
                     .isEqualTo(balanceSnapshotBefore);
-            assertThat(count(st,
-                    "SELECT count(*) FROM denomination_balance db "
-                            + "JOIN denomination d ON d.id = db.denomination_id "
-                            + "WHERE db.quantity = 7"))
-                    .as("A quantity=7 egyenleg-sor az inaktivalas utan is olvashato az FK-n keresztul")
-                    .isEqualTo(1);
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT b.quantity FROM denomination_balance b "
+                            + "JOIN denomination d ON d.id = b.denomination_id "
+                            + "WHERE b.denomination_id = ?")) {
+                ps.setLong(1, chf5CoinIdA);
+                try (ResultSet rs = ps.executeQuery()) {
+                    assertThat(rs.next())
+                            .as("A quantity=7 egyenleg-sor az inaktivalas utan is olvashato az FK-n keresztul")
+                            .isTrue();
+                    assertThat(rs.getInt(1)).isEqualTo(7);
+                }
+            }
+
+            denominationSnapshotAfterFirstRun = snapshotDenominationTable(connection);
         }
 
         // Idempotencia: az UPDATE nyers ujrafuttatasa 0 sort modosit, snapshot stabil.
@@ -160,87 +208,19 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
         try (Connection connection = openConnection()) {
             assertThat(snapshotDenominationTable(connection))
                     .as("Az idempotens masodik futas utan a denomination tabla valtozatlan")
-                    .isEqualTo(denominationSnapshotBefore);
+                    .isEqualTo(denominationSnapshotAfterFirstRun);
         }
-    }
-
-    // ============================ FIXTURE ============================
-
-    /**
-     * Company A + branch A: CHF 5 COIN aktiv (tiltott), CZK 10 COIN aktiv (tiltott),
-     * EUR 2 COIN aktiv (engedelyezett), HUF 100 COIN aktiv (engedelyezett — V379),
-     * EUR 500 BANKNOTE aktiv (nem COIN, erintetlen), CHF 5 COIN mar inaktiv.
-     * Company B + branch B: CHF 5 COIN aktiv, es company B-hez ENGEDELYEZETT
-     * katalogus-sor kerul → az o sora nem inaktivalodik (cross-tenant bizonyitek).
-     * Plusz egy denomination_balance sor (quantity=7) company A CHF 5 COIN sorara.
-     *
-     * <p>A companykat a V376 ELOTT szurjuk be (a seed szamoljon veluk); a V320/V328
-     * regi backfill sorait a V380 futasa elott toroljuk (lasd osztaly-Javadoc).
-     */
-    private void arrangeFixtures() throws Exception {
-        // A companykat meg a V376 ELOTT szurjuk be, hogy a katalogus-seed (V376 + V379)
-        // az o soraikat is feltoltse: ezert marad az EUR 2 COIN es a HUF 100 COIN
-        // engedelyezett company A-nal (a V380 ezeket nem inaktivalhatja).
-        migrateToVersion(highestExistingBelow(V376_FILE_PATTERN));
-
-        companyA = insertCompany("FK-080 Tenant A", "FK080A");
-        companyB = insertCompany("FK-080 Tenant B", "FK080B");
-
-        // Migracio a V380 elotti utolso verzioig (V376/V377/V378/V379 lefut,
-        // V380 meg nem). A V320/V328 backfill a seed-branch-eken mar lefutott,
-        // a most beszurt companyknak akkor meg nem volt branch-e.
-        migrateToVersion(previousExistingVersion());
-
-        branchA = insertBranch(companyA, "FK080-BR-A");
-        branchB = insertBranch(companyB, "FK080-BR-B");
-
-        long chf = currencyId("CHF");
-        long czk = currencyId("CZK");
-        long eur = currencyId("EUR");
-        long huf = currencyId("HUF");
-
-        chf5CoinIdA = insertDenominationRow(companyA, branchA, chf, 5, "COIN", true);
-        czk10CoinIdA = insertDenominationRow(companyA, branchA, czk, 10, "COIN", true);
-        eur2CoinIdA = insertDenominationRow(companyA, branchA, eur, 2, "COIN", true);
-        huf100CoinIdA = insertDenominationRow(companyA, branchA, huf, 100, "COIN", true);
-        eur500BanknoteIdA = insertDenominationRow(companyA, branchA, eur, 500, "BANKNOTE", true);
-        chf5InactiveIdA = insertDenominationRow(companyA, branchA, chf, 5, "COIN", false);
-
-        chf5CoinIdB = insertDenominationRow(companyB, branchB, chf, 5, "COIN", true);
-        // CSAK company B kap engedelyezett CHF 5 COIN katalogus-sort (a V376 seedben
-        // CHF-hez csak bankjegy-sorok vannak — a (company,currency,face_value) kulcs
-        // nem utkozik, mert CHF 5 COIN-sor nincs a seedben).
-        insertAllowedRow(companyB, chf, 5, "COIN");
-
-        insertBalanceRow(branchA, chf5CoinIdA, 7);
     }
 
     // ============================ FLYWAY HELPEREK ============================
 
     /**
-     * A V380 elotti LEGMAGASABB letezo verzió (gap-safe — NEM `version - 1`;
-     * a nyitott PR-ek miatt a szamozas nem feltetlenul folytonos).
+     * Az adott mintaju migraciot ELOZO utolso LETEZO verzió (gap-safe — NEM
+     * `version - 1`: a nyitott PR-ek miatt a szamozas nem feltetlenul folytonos,
+     * es az aritmetikai alak CI-ben FlywayException-hoz vezet, ha a szomszedos
+     * fajl nincs a checkoutban).
      */
-    private static int previousExistingVersion() throws IOException {
-        int target = version(V380_FILE_PATTERN);
-        Pattern any = Pattern.compile("(?i)^V(\\d+)__.*\\.sql$");
-        try (Stream<Path> files = Files.list(MIGRATION_DIR)) {
-            return files
-                    .map(p -> any.matcher(p.getFileName().toString()))
-                    .filter(Matcher::matches)
-                    .map(m -> Integer.parseInt(m.group(1)))
-                    .filter(v -> v < target)
-                    .max(Integer::compareTo)
-                    .orElseThrow(() -> new AssertionError(
-                            "Nincs migracio a V" + target + " elott"));
-        }
-    }
-
-    /**
-     * A megadott fajl-mintaju migracio ELOTTI LEGMAGASABB letezo verzió
-     * (gap-safe — NEM `version - 1`).
-     */
-    private static int highestExistingBelow(Pattern targetPattern) throws IOException {
+    private static int previousExistingVersionBefore(Pattern targetPattern) throws IOException {
         int target = version(targetPattern);
         Pattern any = Pattern.compile("(?i)^V(\\d+)__.*\\.sql$");
         try (Stream<Path> files = Files.list(MIGRATION_DIR)) {
@@ -279,7 +259,7 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
                     .filter(p -> pattern.matcher(p.getFileName().toString()).matches())
                     .toList();
             assertThat(matches)
-                    .as("Pontosan 1 db FK-080 tiltott-erme migracios fajl varva")
+                    .as("Pontosan 1 db megfelelo FK-080 migracios fajl varva")
                     .hasSize(1);
             Matcher matcher = pattern.matcher(matches.get(0).getFileName().toString());
             assertThat(matcher.matches()).isTrue();
@@ -288,7 +268,7 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
     }
 
     /**
-     * A V380 UPDATE-je nyers ujrafuttatasa (a DO-blokk UPDATE utasitasa az elso
+     * A V380 UPDATE-jenek nyers ujrafuttatasa (az UPDATE utasitas az elso
      * pontosvesszoig — a GET DIAGNOSTICS/RAISE NOTICE reszek nelkul). A masodik
      * futasnak 0 sort kell modositania (idempotencia).
      */
@@ -316,9 +296,10 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
 
     // ============================ SQL HELPEREK ============================
 
+    // CodeQL java/concatenated-sql-query: minden paraméterezett INSERT PreparedStatement-tel.
+
     private static UUID insertCompany(String name, String code) throws Exception {
         UUID id = UUID.randomUUID();
-        // CodeQL java/concatenated-sql-query: PreparedStatement, nem string-konkatenacio.
         try (Connection connection = openConnection();
              PreparedStatement ps = connection.prepareStatement(
                      "INSERT INTO company (id, name, code, is_active, created_at) "
@@ -385,6 +366,7 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
         }
     }
 
+    /** Engedelyezett katalogus-sor beszurasa egy adott companynek. */
     private static void insertAllowedRow(UUID companyId, long currencyId,
                                          int faceValue, String type) throws Exception {
         try (Connection connection = openConnection();
@@ -400,20 +382,20 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
         }
     }
 
-    private static void insertBalanceRow(UUID branchId, long denominationId, int quantity) throws Exception {
-        UUID id = UUID.randomUUID();
+    /** Egyenleg-sor a megadott denomination soron (cash_desk_id = branch UUID). */
+    private static void insertBalanceRow(UUID branchId, long denominationId, int quantity)
+            throws Exception {
         // CHF 5 erme x 7 db = 35.00 ertek.
         BigDecimal totalValue = BigDecimal.valueOf(5L * quantity).setScale(2);
         try (Connection connection = openConnection();
              PreparedStatement ps = connection.prepareStatement(
-                     "INSERT INTO denomination_balance (id, cash_desk_id, denomination_id, "
+                     "INSERT INTO denomination_balance (cash_desk_id, denomination_id, "
                              + "quantity, total_value, denomination_category, submission_date) "
-                             + "VALUES (?, ?, ?, ?, ?, 'EVENING', CURRENT_DATE)")) {
-            ps.setObject(1, id);
-            ps.setObject(2, branchId);
-            ps.setLong(3, denominationId);
-            ps.setInt(4, quantity);
-            ps.setBigDecimal(5, totalValue);
+                             + "VALUES (?, ?, ?, ?, 'EVENING', CURRENT_DATE)")) {
+            ps.setObject(1, branchId);
+            ps.setLong(2, denominationId);
+            ps.setInt(3, quantity);
+            ps.setBigDecimal(4, totalValue);
             ps.executeUpdate();
         }
     }

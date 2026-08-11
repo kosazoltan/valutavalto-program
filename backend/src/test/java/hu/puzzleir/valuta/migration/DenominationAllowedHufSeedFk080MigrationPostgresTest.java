@@ -29,22 +29,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * FK-080 (FR-1 + NFR-4/NFR-5): a denomination_allowed HUF-seed migracio (V379)
- * valós-DB viselkedése (Testcontainers + Flyway, a FK-076 precedens-minta szerint).
+ * valos-DB viselkedese (Testcontainers + Flyway, a FK-076 precedens-minta szerint).
  *
- * <p>Amit bizonyít:
+ * <p>Amit bizonyit:
  * <ul>
- *   <li>FR-1: company-nként pontosan 12 HUF sor — COIN {200,100,50,20,10,5} és
- *       BANKNOTE {500,1000,2000,5000,10000,20000}; HUF 1 és 2 NINCS (2008-ban bevonva).
- *       Összesen 138 sor company-nként (126 V376 + 12 HUF), 22 deviza, EUA továbbra
- *       is távol.</li>
- *   <li>NFR-5: a meglévő denomination tábla bit-azonos a migráció előtt/után —
- *       V379 kizárólag a denomination_allowed táblába ír.</li>
- *   <li>Idempotencia: a seed-INSERT kézi újrafuttatása 0 sort illeszt be
- *       (WHERE NOT EXISTS gát), a COMMENT ON TABLE újrafuttatása ártalmatlan.</li>
- *   <li>A tábla-komment már NEM állítja a HUF kizárását (V376 kommentje a V379
- *       COMMENT ON TABLE utasításával frissül — a V376 fájl itself érintetlen,
+ *   <li>FR-1: company-nkent pontosan 12 HUF sor — COIN {200,100,50,20,10,5} es
+ *       BANKNOTE {500,1000,2000,5000,10000,20000}; HUF 1 es 2 NINCS (2008-ban bevonva).
+ *       Osszesen 138 sor company-nkent (126 V376 + 12 HUF), 22 deviza, EUA tovabbra
+ *       is tavol.</li>
+ *   <li>NFR-5: a meglevo denomination tabla bit-azonos a migracio elott/utan —
+ *       V379 kizarolag a denomination_allowed tablabar ir.</li>
+ *   <li>Idempotencia: a seed-INSERT kezi ujrafuttatasa 0 sort illeszt be
+ *       (WHERE NOT EXISTS gat), a COMMENT ON TABLE ujrafuttatasa artalmatlan.</li>
+ *   <li>A tabla-komment mar NEM allitja a HUF kizarasat (V376 kommentje a V379
+ *       COMMENT ON TABLE utasitasaval frissul — maga a V376 fajl erintetlen,
  *       checksum-immutable).</li>
  * </ul>
+ *
+ * <p>Arrange-struktura: a masodik companyt a V376 ELUTT szurjuk be, hogy mindket
+ * seed (V376: 126 sor, V379: 12 HUF sor) az o katalogusat is feltoltse — igy a
+ * "138 sor company-nkent" allitas tenyleg mindket tenantot meri (spec §4 edge
+ * case: "ket company egyszerre").
  */
 @Testcontainers
 class DenominationAllowedHufSeedFk080MigrationPostgresTest {
@@ -57,13 +62,19 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
     private static final Path MIGRATION_DIR =
             Path.of("src", "main", "resources", "db", "migration");
     /**
-     * A FK-080 HUF-seed migráció fájl-mintája — a V-szám nem hardkódolt
-     * (átszámozás-biztos). A minta a tervezett névvel ellenőrizve:
-     * V379__fk080_denomination_allowed_huf_seed.sql.
+     * A FK-080 HUF-seed migracio fajl-mintaja (addendum A-8: a terv peldamintaja
+     * helyett ez a helyes — a tervezett nevvel ellenorizve:
+     * V379__fk080_denomination_allowed_huf_seed.sql). A V-szam nem hardkódolt.
      */
     private static final Pattern V379_FILE_PATTERN =
             Pattern.compile("(?i)^V(\\d+)__fk080_denomination_allowed.*\\.sql$");
-    /** A FK-076 katalogus-migracio mintaja (a company-beszuras idozitesehez). */
+    /**
+     * Az FK-076 katalogus-migracio fajl-mintaja (az FK-076 teszt mintaja) — kizarolag
+     * a V379 elotti kiindulo verzió meghatarozasahoz. Addendum A-1: ennek a mintanak
+     * pontosan EGY fajlra kell illeszkednie; ha a V379 fajlneve utkozne, a szigoru
+     * assert hangosan elbukik — a mintat nem lazitjuk, szukseg esetan az uj fajlnevet
+     * kell atnevezni.
+     */
     private static final Pattern V376_FILE_PATTERN =
             Pattern.compile("(?i)^V(\\d+)__denomination_allowed.*\\.sql$");
 
@@ -71,8 +82,8 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
     /**
-     * A @Container statikus, így a tesztek EGY Postgres-en osztoznak — a determinisztikus,
-     * sorrendfüggetlen állapothoz minden teszt tiszta DB-ről indul (FK066/FK070-minta).
+     * A @Container statikus, igy a tesztek EGY Postgres-en osztoznak — a determinisztikus,
+     * sorrendfuggetlen allapothoz minden teszt tiszta DB-rol indul (FK066/FK070-minta).
      */
     @BeforeEach
     void cleanDatabase() {
@@ -85,18 +96,20 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
     }
 
     // =====================================================================
-    // FR-1 + NFR-5 + idempotencia: 138 sor company-nként, 12 HUF sor pontos
-    // COIN/BANKNOTE halmaza, HUF 1/2 nélkül; denomination-tábla bit-azonos;
-    // a seed kézi újrafuttatása nem duplikál
+    // FR-1 + NFR-5 + idempotencia: 138 sor company-nkent, 12 HUF sor pontos
+    // COIN/BANKNOTE halmaza, HUF 1/2 nelkul; denomination-tabla bit-azonos;
+    // a seed kezi ujrafuttatasa nem duplikal
     // =====================================================================
     @Test
-    @DisplayName("V379: 138 sor company-nként, ebből 12 HUF (6 COIN + 6 BANKNOTE), HUF 1/2 nélkül; denomination-tábla bit-azonos; idempotens")
+    @DisplayName("V379: 138 sor company-nkent, ebbol 12 HUF (6 COIN + 6 BANKNOTE), HUF 1/2 nelkul; denomination-tabla bit-azonos; idempotens")
     void v379SeedsExactlyTheHufCatalogPerCompany() throws Exception {
-        // A masodik companyt meg a V376 ELOTT szurjuk be, hogy a katalogus-seed
-        // (V376 + V379) az o sorait is feltoltse — a company-nkenti 138 soros
-        // szorzas csak igy bizonyithato (a V376 utan beszurt company katalogusa
-        // ures maradna). Spec §4 edge case: ket company egyideju seederese.
-        migrateToVersion(highestExistingBelow(V376_FILE_PATTERN));
+        // RED-bizonyitek: a V379 migracios fajlnak pontosan EGYnek kell lennie —
+        // a migracio hianyaban ez az assert bukik eloszor.
+        int v379Version = version(V379_FILE_PATTERN);
+
+        // A masodik companyt a V376 ELUTT szurjuk be, hogy a V376 (126 sor) es a
+        // V379 (12 HUF sor) seed is szamoljon vele.
+        migrateToVersion(previousExistingVersionBefore(V376_FILE_PATTERN));
         insertSecondCompany();
 
         long companiesBefore;
@@ -106,20 +119,28 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
             denominationSnapshotBefore = snapshotDenominationTable(connection);
         }
         assertThat(companiesBefore)
-                .as("A seed-minta feltételezi legalább egy company-sor létét (EBC seed + a teszt második companyja)")
+                .as("A seed-minta feltetelezi legalabb egy company-sor letet (EBC seed + a teszt masodik companyja)")
                 .isGreaterThanOrEqualTo(2);
 
-        // CSAK a V379-ig migralunk: a denomination bit-azonossag bizonyitasa a V379
-        // ablaka. A V380 (tiltott COIN sorok inaktivalasa) csak a V379 UTAN futtathato,
-        // es a hatasat a ForbiddenCoinDeactivationFk080MigrationPostgresTest bizonyitja.
-        migrateToVersion(version(V379_FILE_PATTERN));
+        // A teljes migracio-lanc futtatasa a V379-cel egyutt.
+        migrateToLatest();
 
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
-            // FR-1: 138 sor company-nként (126 V376 + 12 HUF).
+            // A V379 tenylegesen lefutott (szerepel a Flyway schema_history-ban).
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT count(*) FROM flyway_schema_history WHERE version = ?")) {
+                ps.setString(1, String.valueOf(v379Version));
+                try (ResultSet rs = ps.executeQuery()) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getLong(1)).as("A V379 migracio alkalmazva").isEqualTo(1);
+                }
+            }
+
+            // FR-1: 138 sor company-nkent (126 V376 + 12 HUF).
             long allowedRows = count(st, "SELECT count(*) FROM denomination_allowed");
             assertThat(allowedRows).isEqualTo(ROWS_PER_COMPANY * companiesBefore);
 
-            // Company-nkénti bontás: MINDEN company pontosan 138 sort kapott.
+            // Company-nkenti bontas: MINDEN company pontosan 138 sort kapott.
             List<String> perCompanyCounts = new ArrayList<>();
             try (ResultSet rs = st.executeQuery(
                     "SELECT company_id || '|' || count(*) FROM denomination_allowed "
@@ -129,7 +150,7 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
                 }
             }
             assertThat(perCompanyCounts)
-                    .as("Minden company pontosan 138 sort kap (nincs részleges seed)")
+                    .as("Minden company pontosan 138 sort kap (nincs reszleges seed)")
                     .hasSize((int) companiesBefore)
                     .allSatisfy(row -> assertThat(row).endsWith("|" + ROWS_PER_COMPANY));
 
@@ -137,7 +158,7 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
                     "SELECT count(DISTINCT currency_id) FROM denomination_allowed");
             assertThat(distinctCurrencies).isEqualTo(DISTINCT_CURRENCIES);
 
-            // HUF: company-nként pontosan 12 sor.
+            // HUF: company-nkent pontosan 12 sor.
             List<String> hufPerCompany = new ArrayList<>();
             try (ResultSet rs = st.executeQuery(
                     "SELECT da.company_id || '|' || count(*) FROM denomination_allowed da "
@@ -152,8 +173,8 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
                     .hasSize((int) companiesBefore)
                     .allSatisfy(row -> assertThat(row).endsWith("|" + HUF_ROWS_PER_COMPANY));
 
-            // FR-1: a HUF COIN halmaz pontosan {200,100,50,20,10,5} — darabszám helyett
-            // a teljes, névérték szerint rendezett lista (face_value|tipus).
+            // FR-1: a HUF COIN halmaz pontosan {5,10,20,50,100,200} — darabszam helyett
+            // a teljes, nevertek szerint rendezett lista (face_value|tipus).
             List<String> hufCoins = new ArrayList<>();
             try (ResultSet rs = st.executeQuery(
                     "SELECT TRUNC(da.face_value, 0)::bigint || '|' || da.denomination_type "
@@ -172,7 +193,7 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
                 }
             }
             assertThat(hufCoins)
-                    .as("HUF érme: kizárólag 200/100/50/20/10/5 (company-nként)")
+                    .as("HUF erme: kizarolag 200/100/50/20/10/5 (company-nkent)")
                     .containsExactlyElementsOf(expectedCoins);
 
             // FR-1: a HUF BANKNOTE halmaz pontosan {500,1000,2000,5000,10000,20000}.
@@ -195,83 +216,89 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
                 }
             }
             assertThat(hufBanknotes)
-                    .as("HUF bankjegy: kizárólag 500/1000/2000/5000/10000/20000 (company-nként)")
+                    .as("HUF bankjegy: kizarolag 500/1000/2000/5000/10000/20000 (company-nkent)")
                     .containsExactlyElementsOf(expectedBanknotes);
 
-            // HUF 1 és 2 forint szándékosan nincs (2008-ban bevonva).
+            // HUF 1 es 2 forint szandekosan nincs (2008-ban bevonva).
             long hufOneOrTwo = count(st,
                     "SELECT count(*) FROM denomination_allowed da "
                             + "JOIN currency c ON c.id = da.currency_id "
                             + "WHERE c.code = 'HUF' AND da.face_value IN (1, 2)");
             assertThat(hufOneOrTwo).isZero();
 
-            // EUA továbbra is távol.
+            // EUA tovabbra is tavol.
             long eua = count(st,
                     "SELECT count(*) FROM denomination_allowed da "
                             + "JOIN currency c ON c.id = da.currency_id "
                             + "WHERE c.code = 'EUA'");
             assertThat(eua).isZero();
 
-            // Az érme-készlet: EUR 1/2 + HUF 200/100/50/20/10/5 = 8 sor company-nként.
+            // Az erme-keszlet: EUR 1/2 + HUF 200/100/50/20/10/5 = 8 sor company-nkent.
             long coins = count(st,
                     "SELECT count(*) FROM denomination_allowed "
                             + "WHERE denomination_type = 'COIN'");
             assertThat(coins)
-                    .as("Csak EUR 1/2 és HUF 200..5 érme lehet (8 sor company-nként)")
+                    .as("Csak EUR 1/2 es HUF 200..5 erme lehet (8 sor company-nkent)")
                     .isEqualTo(COIN_ROWS_PER_COMPANY * companiesBefore);
 
-            // NFR-5: a meglévő denomination tábla bit-azonos a migráció előtt/után.
+            // NFR-5: a meglevo denomination tabla bit-azonos a migracio elott/utan.
             assertThat(snapshotDenominationTable(connection))
-                    .as("A denomination tábla tartalma nem módosulhatott (NFR-5)")
+                    .as("A denomination tabla tartalma nem modosulhatott (NFR-5)")
                     .isEqualTo(denominationSnapshotBefore);
         }
 
-        // Idempotencia: a seed-INSERT kézi újrafuttatása nem duplikál.
+        // Idempotencia: a seed-INSERT kezi ujrafuttatasa nem duplikal.
         runSeedInsertRaw();
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
             assertThat(count(st, "SELECT count(*) FROM denomination_allowed"))
-                    .as("A seed kézi újrafuttatása után a sorok száma változatlan")
+                    .as("A seed kezi ujrafuttatasa utan a sorok szama valtozatlan")
                     .isEqualTo(ROWS_PER_COMPANY * companiesBefore);
         }
     }
 
     // =====================================================================
-    // Tábla-komment: a V376 "HUF szandekosan nincs benne" állítása a V379
-    // COMMENT ON TABLE utasításával frissül; az utasítás ismételhető
+    // Tabla-komment: a V376 "HUF szandekosan nincs benne" allitasa a V379
+    // COMMENT ON TABLE utasitasaval frissul; az utasitas ismetelheto
     // =====================================================================
     @Test
-    @DisplayName("V379: a tábla-komment már nem állítja a HUF kizárását, a COMMENT újrafuttatása ártalmatlan")
+    @DisplayName("V379: a tabla-komment mar nem allitja a HUF kizarasat, a COMMENT ujrafuttatasa artalmatlan")
     void v379TableCommentNoLongerClaimsHufExclusion() throws Exception {
+        // RED-bizonyitek: a V379 migracios fajlnak pontosan EGYnek kell lennie.
+        version(V379_FILE_PATTERN);
+
         migrateToLatest();
 
-        try (Connection connection = openConnection(); Statement st = connection.createStatement();
-             ResultSet rs = st.executeQuery(
-                     "SELECT obj_description('denomination_allowed'::regclass)")) {
-            assertThat(rs.next()).isTrue();
-            assertThat(rs.getString(1))
-                    .as("A V376 komment HUF-kizáró állítása a V379-cel frissül")
-                    .doesNotContain("szandekosan nincs");
+        long companies;
+        try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
+            companies = count(st, "SELECT count(*) FROM company");
+
+            try (ResultSet rs = st.executeQuery(
+                    "SELECT obj_description('denomination_allowed'::regclass)")) {
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getString(1))
+                        .as("A V376 komment HUF-kizaro allitasa a V379-cel frissul")
+                        .doesNotContain("szandekosan nincs");
+            }
         }
 
-        // A COMMENT ON TABLE utasítás kézi újrafuttatása ártalmatlan.
+        // A COMMENT ON TABLE utasitas kezi ujrafuttatasa artalmatlan.
         runTableCommentRaw();
-        try (Connection connection = openConnection(); Statement st = connection.createStatement();
-             ResultSet rs = st.executeQuery("SELECT count(*) FROM denomination_allowed")) {
-            assertThat(rs.next()).isTrue();
-            assertThat(rs.getLong(1))
-                    .as("A COMMENT újrafuttatása nem ír sort")
-                    .isEqualTo(ROWS_PER_COMPANY * count(st, "SELECT count(*) FROM company"));
+        try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
+            assertThat(count(st, "SELECT count(*) FROM denomination_allowed"))
+                    .as("A COMMENT ujrafuttatasa nem ir sort")
+                    .isEqualTo(ROWS_PER_COMPANY * companies);
         }
     }
 
     // ============================ FLYWAY HELPEREK ============================
 
     /**
-     * A megadott fajl-mintaju migracio ELOTTI LEGMAGASABB letezo verzió (gap-safe —
-     * NEM `version - 1`; a nyitott PR-ek miatt a szamozas nem feltetlenul folytonos,
-     * es az aritmetikai alak CI-ben FlywayException-hoz vezetne).
+     * Az adott mintaju migraciot ELOZO utolso LETEZO verzió (gap-safe — NEM
+     * `version - 1`: a nyitott PR-ek miatt a szamozas nem feltetlenul folytonos,
+     * es az aritmetikai alak CI-ben FlywayException-hoz vezet, ha a szomszedos
+     * fajl nincs a checkoutban).
      */
-    private static int highestExistingBelow(Pattern targetPattern) throws IOException {
+    private static int previousExistingVersionBefore(Pattern targetPattern) throws IOException {
         int target = version(targetPattern);
         Pattern any = Pattern.compile("(?i)^V(\\d+)__.*\\.sql$");
         try (Stream<Path> files = Files.list(MIGRATION_DIR)) {
@@ -309,7 +336,7 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
                     .filter(p -> pattern.matcher(p.getFileName().toString()).matches())
                     .toList();
             assertThat(matches)
-                    .as("Pontosan 1 db fk080_denomination_allowed migráció várt")
+                    .as("Pontosan 1 db megfelelo FK-080 migracios fajl varva")
                     .hasSize(1);
             Matcher matcher = pattern.matcher(matches.get(0).getFileName().toString());
             assertThat(matcher.matches()).isTrue();
@@ -318,31 +345,36 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
     }
 
     /**
-     * Kizárólag a seed-INSERT futtatása nyersen — a WHERE NOT EXISTS gátnak 0 új
-     * sort kell adnia. Az INSERT a fájl egyetlen táblába író utasítása.
+     * Kizarolag a seed-INSERT futtatasa nyersen — a WHERE NOT EXISTS gatnak 0 uj
+     * sort kell adnia. Az INSERT a fajl egyetlen tablabba iro utasitasa.
      */
     private static void runSeedInsertRaw() throws Exception {
         String sql = Files.readString(resolveMigrationFile(), StandardCharsets.UTF_8);
         int start = sql.indexOf("INSERT INTO denomination_allowed");
-        assertThat(start).as("A seed-INSERT megtalálható a migrációs fájlban").isNotNegative();
+        assertThat(start).as("A seed-INSERT megtalalhato a migracios fajlban").isNotNegative();
         int end = sql.indexOf(';', start);
-        assertThat(end).as("A seed-INSERT lezáró pontosvesszője").isGreaterThan(start);
+        assertThat(end).as("A seed-INSERT lezaro pontosvesszoje").isGreaterThan(start);
         String seedInsert = sql.substring(start, end);
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
             int inserted = st.executeUpdate(seedInsert);
             assertThat(inserted)
-                    .as("A második futás a WHERE NOT EXISTS miatt 0 sort illeszt be")
+                    .as("A masodik futas a WHERE NOT EXISTS miatt 0 sort illeszt be")
                     .isZero();
         }
     }
 
-    /** A COMMENT ON TABLE utasítás nyers újrafuttatása (ártalmatlanság bizonyítása). */
+    /**
+     * A COMMENT ON TABLE utasitas nyers ujrafuttatasa (artalmatlansag bizonyitasa).
+     * Kivonatas a fajl UTOLSO pontosvesszojeig (a COMMENT a fajl utolso utasitasa):
+     * a sztringliteralon beluli irasjelek (proza) miatti elso-';'-vagas hibas
+     * SQL-torna adna — ez kivetelkeppeni fix, az assert maga valtozatlan.
+     */
     private static void runTableCommentRaw() throws Exception {
         String sql = Files.readString(resolveMigrationFile(), StandardCharsets.UTF_8);
         int start = sql.indexOf("COMMENT ON TABLE denomination_allowed");
-        assertThat(start).as("A COMMENT utasítás megtalálható a migrációs fájlban").isNotNegative();
-        int end = sql.indexOf(';', start);
-        assertThat(end).as("A COMMENT lezáró pontosvesszője").isGreaterThan(start);
+        assertThat(start).as("A COMMENT utasitas megtalalhato a migracios fajlban").isNotNegative();
+        int end = sql.lastIndexOf(';');
+        assertThat(end).as("A COMMENT lezaro pontosvesszoje").isGreaterThan(start);
         String comment = sql.substring(start, end);
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
             st.execute(comment);
@@ -355,13 +387,13 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
                     .filter(p -> V379_FILE_PATTERN.matcher(p.getFileName().toString()).matches())
                     .findFirst()
                     .orElseThrow(() -> new AssertionError(
-                            "A fk080_denomination_allowed migrációs fájl nem található"));
+                            "A fk080_denomination_allowed migracios fajl nem talalhato"));
         }
     }
 
     // ============================ SQL HELPEREK ============================
 
-    /** Második tenant a multi-company seed bizonyításához (spec §4 edge case). */
+    /** Masodik tenant a multi-company seed bizonyitasahoz (spec §4 edge case). */
     private static void insertSecondCompany() throws Exception {
         // CodeQL java/concatenated-sql-query (HIGH): a UUID string-konkatenacio helyett
         // PreparedStatement — a teszt sem epithet SQL-t osszefuzessel (a szabaly a
@@ -378,9 +410,9 @@ class DenominationAllowedHufSeedFk080MigrationPostgresTest {
     }
 
     /**
-     * A denomination tábla teljes sor-snapshotja determinisztikus sorrendben —
-     * az NFR-5 bit-azonosság bizonyításához (nem elég a darabszám: egy DELETE+INSERT
-     * ugyanazt a count-ot adná).
+     * A denomination tabla teljes sor-snapshotja determinisztikus sorrendben —
+     * az NFR-5 bit-azonossag bizonyitasahoz (nem eleg a darabszam: egy DELETE+INSERT
+     * ugyanazt a count-ot adna).
      */
     private static List<String> snapshotDenominationTable(Connection connection) throws Exception {
         List<String> rows = new ArrayList<>();
