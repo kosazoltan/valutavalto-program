@@ -1,6 +1,6 @@
-generated_at: 2026-08-11T15:10:38.485Z
+generated_at: 2026-08-11T20:31:57.831Z
 schema_version: 1
-source_count: 1062
+source_count: 1063
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -22,7 +22,7 @@ short_term:
     title: Valutavalto ERP - Claude/agent projektkontekstus
     type: short-term-core
     path: CLAUDE.md
-    sha256: 75c689735751be579dfc7be7e0c62c8584d5f0c184a670ea9fd011ed0d75e964
+    sha256: 963ab863cdc308792c9d6f0dc311d95a076722d8aff7f40d2e9567051d7919ce
     summary: "# Valutavalto ERP - Claude/agent projektkontekstus > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPEC"
     areas: [aml, arfolyam, cimletezes, database, deploy, frontend, installer, napzaras, penztar, security, tenant]
     keywords: [valutavalto, erp, claude, agent, projektkontekstus, kotelezo, ervenyu, szabaly, teszt, integritas, nincs, kivetel]
@@ -390,14 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 6234106868a2d2fe
-    title: "2026-04-29 — Főértéktáros teljes menüpont-audit (33/33 elemes)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-foertektar-teljes-audit.md
-    sha256: 188ac763eedaf5db4e9de703e32f1ac780ab39c59a580b7097b2c6290fa92887
-    summary: "--- date: 2026-04-29 session_type: foertektar-teljes-audit context: 33 főértéktáros menüpont production audit (excvaluta.com v2.3.12) priority: P1 — UX bugok dokumentálása --- # 2026-04-29 — Főértéktáros teljes menüpont-audit (33/33 elemes) ## Setup - **URL:** https://excvaluta.com (Hetzner production v2.3.12) - **Tool:** `mcp__Claude_in_Chrome__*` (felhasználó saját Chrome browser, auto-login cookie) - **Mode:** `fu"
-    areas: [aml, arfolyam, deploy, ertektar, penztar, riport, security]
-    keywords: [2026, foertektaros, teljes, menupont, audit, elemes, date, session_type, foertektar, context, production, excvaluta]
   - id: 2366a36a97d532a2
     title: "2026-04-29 — Pénztár app TELJES KÖRŰ menü-audit (v2.3.8) — VÉGLEGES"
     type: medium-term-episodic
@@ -1686,6 +1678,14 @@ medium_term:
     summary: "# Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\\repo\\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált"
     areas: [arfolyam, deploy, installer, legacy, penztar, specifikacio, sync]
     keywords: [platform, refaktor, vegrehajtasi, zarojelentes, datum, 2026, repo, valutavalto, program, kiindulas, 47522cb8, main]
+  - id: 0bca100deeb7a2b5
+    title: "Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md
+    sha256: a99d0595db817b19e217611fd5024e68f6238d249caa3e0b5761ad6bffd4de35
+    summary: "# Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11) **Ág:** `feature/engedelyezett-ermek-egysegesitese` · **Bázis:** `7e446839` (WU-1 RED tesztek) **Állapot:** implementáció kész, commit NINCS — a változások a munkafán állnak. ## Mi történt A `denomination_allowed` katalógus lett az EGYETLEN igazságforrás a címletekre. Korábban a HUF külön úton ment (14 elemű hardkódolt tömb + névérték-küszöb), ezért mi"
+    areas: [cimletezes, database, deploy, napzaras, penztar]
+    keywords: [handoff, 080, engedelyezett, ermek, egysegesitese, 2026, feature, bazis, 7e446839, red, tesztek, allapot]
   - id: b0780f14de102d14
     title: "Platform-refaktor 3. kör — zárójelentés"
     type: medium-term-episodic

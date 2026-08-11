@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-11T15:10:38.485Z",
-  "source_count": 1062,
+  "generated_at": "2026-08-11T20:31:57.831Z",
+  "source_count": 1063,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -85,7 +85,7 @@
     },
     {
       "path": "CLAUDE.md",
-      "sha256": "75c689735751be579dfc7be7e0c62c8584d5f0c184a670ea9fd011ed0d75e964",
+      "sha256": "963ab863cdc308792c9d6f0dc311d95a076722d8aff7f40d2e9567051d7919ce",
       "type": "short-term-core",
       "areas": [
         "aml",
@@ -12427,6 +12427,18 @@
         "penztar",
         "specifikacio",
         "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md",
+      "sha256": "a99d0595db817b19e217611fd5024e68f6238d249caa3e0b5761ad6bffd4de35",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "database",
+        "deploy",
+        "napzaras",
+        "penztar"
       ]
     },
     {

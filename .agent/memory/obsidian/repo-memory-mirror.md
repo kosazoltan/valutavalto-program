@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-11T15:10:38.485Z
+generated: 2026-08-11T20:31:57.831Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-11T15:10:38.485Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1062
-- generated: 2026-08-11T15:10:38.485Z
+- sources: 1063
+- generated: 2026-08-11T20:31:57.831Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1070,6 +1070,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés]] — `vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md` (medium-term-episodic)
 - [[Platform-refaktor 2. kör — zárójelentés (a telepítőig)]] — `vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md` (medium-term-episodic)
 - [[Platform-refaktor — végrehajtási zárójelentés]] — `vault/sessions/handoff-2026-08-10-platform-refaktor.md` (medium-term-episodic)
+- [[Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11)]] — `vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md` (medium-term-episodic)
 - [[Platform-refaktor 3. kör — zárójelentés]] — `vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md` (medium-term-episodic)
 - [[Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)]] — `vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)

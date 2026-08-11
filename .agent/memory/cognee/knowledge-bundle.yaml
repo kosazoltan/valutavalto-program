@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-11T15:10:38.485Z
+generated_at: 2026-08-11T20:31:57.831Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7408,6 +7408,13 @@ nodes:
     summary: "# Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\\repo\\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált"
     tags: [platform, refaktor, vegrehajtasi, zarojelentes, datum, 2026, repo, valutavalto, program, kiindulas]
     areas: [arfolyam, deploy, installer, legacy, penztar, specifikacio, sync]
+  - id: 0bca100deeb7a2b5
+    type: medium-term-episodic
+    title: "Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11)"
+    source_path: vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md
+    summary: "# Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11) **Ág:** `feature/engedelyezett-ermek-egysegesitese` · **Bázis:** `7e446839` (WU-1 RED tesztek) **Állapot:** implementáció kész, commit NINCS — a változások a munkafán állnak. ## Mi történt A `denomination_allowed` katalógus lett az EGYETLEN igazságforrás a címletekre. Korábban a HUF külön úton ment (14 elemű hardkódolt tömb + névérték-küszöb), ezért mi"
+    tags: [handoff, 080, engedelyezett, ermek, egysegesitese, 2026, feature, bazis, 7e446839, red]
+    areas: [cimletezes, database, deploy, napzaras, penztar]
   - id: b0780f14de102d14
     type: medium-term-episodic
     title: "Platform-refaktor 3. kör — zárójelentés"
@@ -22560,6 +22567,21 @@ edges:
   - from: a79b67aa99062718
     to: area_sync
     relation: belongs_to_area
+  - from: 0bca100deeb7a2b5
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 0bca100deeb7a2b5
+    to: area_database
+    relation: belongs_to_area
+  - from: 0bca100deeb7a2b5
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 0bca100deeb7a2b5
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 0bca100deeb7a2b5
+    to: area_penztar
+    relation: belongs_to_area
   - from: b0780f14de102d14
     to: area_installer
     relation: belongs_to_area
@@ -22644,9 +22666,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 95b8596fd7a2e97e
-    to: repo_project_state
-    relation: informs
   - from: b15eb48097d8ab6e
     to: repo_project_state
     relation: informs
@@ -22870,6 +22889,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: a79b67aa99062718
+    to: repo_project_state
+    relation: informs
+  - from: 0bca100deeb7a2b5
     to: repo_project_state
     relation: informs
   - from: b0780f14de102d14
