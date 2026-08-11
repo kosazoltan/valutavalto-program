@@ -157,6 +157,11 @@ import {
   saveSetupConfig,
   type SetupSavePayload,
 } from './first-run';
+import {
+  decideApiUrl,
+  promoteUserDataEnv,
+  createMediaPermissionHandler,
+} from '../../packages/electron-platform/src';
 
 // SSOT (2026-04-24): Production URL config lazy-load
 // Packaged app: process.resourcesPath/production-urls.json (electron-builder extraResources)
@@ -187,22 +192,27 @@ function loadProductionUrls(): { api_url: string; base_url: string; domain: stri
   }
 }
 
-function normalizeApiUrl(value: string): string {
-  const trimmed = value.trim().replace(/\/+$/, '');
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
-}
-
+/**
+ * A hasznalando API base URL.
+ *
+ * VISELKEDES-MEGORZES (platform-refaktor 3. kor): a `fallback` szandekosan
+ * EAGER modon szamolodik ki, meg ervenyes `server_url` eseten is — a
+ * `loadProductionUrls()` serult csomagnal `log.error` CRITICAL-t ir, es ez a
+ * megfigyelheto mellekhatas a penztar-kliensben ELVART. Lusta thunk-ra
+ * cserelve a log csendben eltunne.
+ *
+ * A DONTES a platform `decideApiUrl`-jebol jon; a fallback-agak logolasa
+ * kliens-specifikus (a kozponti/arfolyam NEM logol itt).
+ */
 function resolveConfiguredApiUrl(): string {
   const fallback = loadProductionUrls().api_url;
+  // A `getConfig` a sql.js DB-t olvassa (`db.prepare`), ami serult adatbazisnal
+  // DOBHAT. Az eredeti implementacio try-blokkja ezt is lefedte, ezert a
+  // hivas itt is vedve marad — kulonben serult DB eseten a fallback helyett
+  // kivetel szallna fel (viselkedes-valtozas).
+  let configured: string | null;
   try {
-    const configured = (getConfig('server_url') ?? '').trim();
-    if (!configured) return fallback;
-    const parsed = new URL(configured);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      log.warn('[App] server_url invalid protocol, fallback production URL:', configured);
-      return fallback;
-    }
-    return normalizeApiUrl(configured);
+    configured = getConfig('server_url');
   } catch (err) {
     log.warn(
       '[App] server_url invalid, fallback production URL:',
@@ -210,6 +220,14 @@ function resolveConfiguredApiUrl(): string {
     );
     return fallback;
   }
+  const decision = decideApiUrl(configured);
+  if (decision.kind === 'configured') return decision.url;
+  if (decision.reason === 'invalid-protocol') {
+    log.warn('[App] server_url invalid protocol, fallback production URL:', decision.detail);
+  } else if (decision.reason === 'parse-error') {
+    log.warn('[App] server_url invalid, fallback production URL:', decision.detail);
+  }
+  return fallback;
 }
 
 const isDev =
@@ -1075,31 +1093,13 @@ app.whenReady().then(async () => {
   // `import('dotenv/config')` (main.ts:3) NEM tolti be a userData/.env-et,
   // ezert a Google OAuth IPC handlers `process.env.VITE_GOOGLE_DESKTOP_*`
   // UNDEFINED-ra olvasnak es "Google Desktop OAuth client nincs konfiguralva"
-  // hibat dobnak. Itt minel hamarabb promotaljuk a userData/.env ertekeit a
-  // process.env-be, hogy a kesobbi handlers `process.env`-en talaljak meg.
-  try {
-    const envPath = path.join(app.getPath('userData'), '.env');
-    if (fs.existsSync(envPath)) {
-      const raw = fs.readFileSync(envPath, 'utf8');
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const dotenv = require('dotenv') as {
-        parse: (input: string | Buffer) => Record<string, string>;
-      };
-      const parsed = dotenv.parse(raw);
-      for (const [k, v] of Object.entries(parsed)) {
-        if (!process.env[k]) process.env[k] = v;
-      }
-      log.info(
-        `[App] userData/.env betoltve a process.env-be (${Object.keys(parsed).length} kulcs)`,
-      );
-    } else {
-      log.warn(
-        '[App] userData/.env nem letezik — Google OAuth lehet sikertelen amig a SetupWizard be nem allitja.',
-      );
-    }
-  } catch (err) {
-    log.error('[App] userData/.env betoltesi hiba:', err);
-  }
+  // hibat dobnak. A promocio a platform-retegben van (egyetlen forras).
+  promoteUserDataEnv({
+    userDataPath: app.getPath('userData'),
+    logger: log,
+    missingEnvMessage:
+      '[App] userData/.env nem letezik — Google OAuth lehet sikertelen amig a SetupWizard be nem allitja.',
+  });
 
   if (isDev) {
     const devCsp = [
@@ -1129,38 +1129,16 @@ app.whenReady().then(async () => {
   // EBC Hangsegéd Phase 9.5 — mikrofon engedély a renderer-ben futo
   // VoiceAssistantPanel WebRTC szessziohoz (OpenAI Realtime API).
   //
-  // Security finding-ek (PR #668 review round, mind 3 bot):
+  // A kezelo a PLATFORM-retegben van (`createMediaPermissionHandler`), egyetlen
+  // forrasbol mind a harom kliensnek — a szabaly nem driftelhet szet:
   //   1. Codex P1 + CodeQL + Copilot: NE startsWith()-tel ellenorizzuk az origin-t —
   //      `https://excvaluta.com.attacker.example/...` atmenne. `new URL()` parse +
   //      exact `hostname` + `protocol` compare.
   //   2. F-006 (audit 2026-05-29): a `setPermissionRequestHandler` session-global; a non-media
   //      permission-okra (notifications, geolocation, midi, clipboard, ...) a BIZTONSAGOS
   //      DEFAULT = DENY. Penzugyi kliensben nincs default-allow; csak a `media` (mic,
-  //      voice-assistant) engedelyezett, az is csak explicit origin-allowlisttel (lent).
-  session.defaultSession.setPermissionRequestHandler(
-    (_webContents, permission, callback, details) => {
-      if (permission !== 'media') {
-        log.warn('[Security] Non-media permission elutasitva (default-deny):', permission);
-        callback(false);
-        return;
-      }
-      try {
-        const url = new URL(String(details?.requestingUrl ?? ''));
-        const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost';
-        const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost';
-        const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com';
-        if (isLocalApp || isLocalHttp || isProduction) {
-          log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin);
-          callback(true);
-          return;
-        }
-        log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin);
-      } catch (err) {
-        log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err);
-      }
-      callback(false);
-    },
-  );
+  //      voice-assistant) engedelyezett, az is csak explicit origin-allowlisttel.
+  session.defaultSession.setPermissionRequestHandler(createMediaPermissionHandler(log));
 
   // IPC handlers regisztráció (app.whenReady() UTÁN, hogy ipcMain elérhető legyen)
   registerCameraHandlers();

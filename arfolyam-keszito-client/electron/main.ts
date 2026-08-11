@@ -1,9 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol, session } from 'electron'
 import log from 'electron-log/main'
 import { release as getOsRelease } from 'node:os'
 import fs from 'node:fs'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { fetchViaElectronNet, type ApiProxyRequest } from './api-proxy'
 import {
   GoogleOAuthFailedException,
@@ -23,6 +22,11 @@ import {
   storeToken,
   loadToken,
   clearToken,
+  decideApiUrl,
+  parseErrorMessage,
+  promoteUserDataEnv,
+  createMediaPermissionHandler,
+  createAppProtocolHandler,
 } from '../../packages/electron-platform/src'
 
 const osBuild = Number.parseInt(getOsRelease().split('.')[2] || '0', 10)
@@ -86,11 +90,6 @@ function deleteConfig(key: string): void {
   deleteConfigKey(key)
 }
 
-function normalizeApiUrl(value: string): string {
-  const trimmed = value.trim().replace(/\/+$/, '')
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`
-}
-
 function loadProductionUrls(): { api_url: string; base_url: string; domain: string } {
   const packagedPath = path.join(process.resourcesPath, 'production-urls.json')
   const devPath = path.join(__dirname, '..', '..', 'config', 'production-urls.json')
@@ -117,19 +116,17 @@ function loadProductionUrls(): { api_url: string; base_url: string; domain: stri
   }
 }
 
+/**
+ * A hasznalando API base URL.
+ *
+ * A DONTES a platformban van (`decideApiUrl`), a fallback-URL szamitasa itt
+ * marad — igy a `loadProductionUrls()` tovabbra is CSAK akkor fut le, ha
+ * tenylegesen fallbackre van szukseg (valtozatlan viselkedes).
+ * Ez a kliens szandekosan NEM logol a fallback-agakon (a penztar igen).
+ */
 function resolveConfiguredApiUrl(): string {
-  const configured = getConfig('server_url')?.trim()
-  if (!configured) return loadProductionUrls().api_url
-
-  try {
-    const parsed = new URL(configured)
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return loadProductionUrls().api_url
-    }
-    return normalizeApiUrl(configured)
-  } catch {
-    return loadProductionUrls().api_url
-  }
+  const decision = decideApiUrl(getConfig('server_url'))
+  return decision.kind === 'configured' ? decision.url : loadProductionUrls().api_url
 }
 
 function ensureInitialConfig(): void {
@@ -198,34 +195,8 @@ function createWindow(): void {
 
 function registerProtocol(): void {
   const distPath = path.join(__dirname, '../dist')
-  protocol.handle('app', (request) => {
-    const url = new URL(request.url)
-    let filePath = path.join(distPath, decodeURIComponent(url.pathname))
-    if (url.pathname === '/' || url.pathname === '') {
-      filePath = path.join(distPath, 'index.html')
-    }
-    if (!path.extname(filePath)) {
-      filePath = path.join(distPath, 'index.html')
-    }
-
-    const resolved = path.resolve(filePath)
-    const resolvedDist = path.resolve(distPath)
-    if (!resolved.startsWith(resolvedDist + path.sep) && resolved !== resolvedDist) {
-      log.warn('[Protocol] Path traversal blokkolva:', request.url)
-      filePath = path.join(distPath, 'index.html')
-    }
-
-    return net.fetch(pathToFileURL(filePath).toString())
-  })
-}
-
-function parseErrorMessage(responseBody: string, fallback: string): string {
-  try {
-    const parsed = JSON.parse(responseBody) as { message?: unknown; error?: unknown }
-    return String(parsed.message ?? parsed.error ?? fallback)
-  } catch {
-    return fallback
-  }
+  // A kiszolgalo (SPA fallback + path-traversal vedelem) a platform-retegben van.
+  protocol.handle('app', createAppProtocolHandler(distPath, log))
 }
 
 function registerIpcHandlers(): void {
@@ -455,55 +426,16 @@ app
   .then(async () => {
     // 2026-05-15 user-direktiva (Google OAuth fix, analog penztar-client): production
     // buildben a dotenv NEM tolti be a userData/.env-et, ezert promotaljuk most.
-    try {
-      const envPath = path.join(app.getPath('userData'), '.env')
-      if (fs.existsSync(envPath)) {
-        const raw = fs.readFileSync(envPath, 'utf8')
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const dotenv = require('dotenv') as {
-          parse: (input: string | Buffer) => Record<string, string>
-        }
-        const parsed = dotenv.parse(raw)
-        for (const [k, v] of Object.entries(parsed)) {
-          if (!process.env[k]) process.env[k] = v
-        }
-        log.info(
-          `[App] userData/.env betoltve a process.env-be (${Object.keys(parsed).length} kulcs)`,
-        )
-      } else {
-        log.warn('[App] userData/.env nem letezik — Google OAuth lehet sikertelen.')
-      }
-    } catch (err) {
-      log.error('[App] userData/.env betoltesi hiba:', err)
-    }
+    // A promocio a platform-retegben van; a userData utat HIVASI IDOBEN oldjuk fel.
+    promoteUserDataEnv({
+      userDataPath: app.getPath('userData'),
+      logger: log,
+      missingEnvMessage: '[App] userData/.env nem letezik — Google OAuth lehet sikertelen.',
+    })
 
-    // EBC Hangsegéd Phase 9.5 — mikrofon engedély (lasd penztar-client/electron/main.ts).
-    // Security: URL parse + exact hostname/protocol compare (Codex P1 + CodeQL + Copilot fix).
-    // F-006 (audit 2026-05-29): non-media permission BIZTONSAGOS DEFAULT = DENY (nem default-allow).
-    session.defaultSession.setPermissionRequestHandler(
-      (_webContents, permission, callback, details) => {
-        if (permission !== 'media') {
-          log.warn('[Security] Non-media permission elutasitva (default-deny):', permission)
-          callback(false)
-          return
-        }
-        try {
-          const url = new URL(String(details?.requestingUrl ?? ''))
-          const isLocalApp = url.protocol === 'app:' && url.hostname === 'localhost'
-          const isLocalHttp = url.protocol === 'http:' && url.hostname === 'localhost'
-          const isProduction = url.protocol === 'https:' && url.hostname === 'excvaluta.com'
-          if (isLocalApp || isLocalHttp || isProduction) {
-            log.info('[VoiceAssistant] media (mic) engedely megadva:', url.origin)
-            callback(true)
-            return
-          }
-          log.warn('[VoiceAssistant] media (mic) engedely elutasitva (idegen origin):', url.origin)
-        } catch (err) {
-          log.warn('[VoiceAssistant] media (mic) URL parse hiba — elutasitva:', err)
-        }
-        callback(false)
-      },
-    )
+    // EBC Hangsegéd Phase 9.5 — mikrofon engedély. A handler (F-006 default-deny +
+    // explicit origin-allowlist) a platform-retegben van, egyetlen forrasbol.
+    session.defaultSession.setPermissionRequestHandler(createMediaPermissionHandler(log))
 
     ensureInitialConfig()
     registerIpcHandlers()
