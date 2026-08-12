@@ -324,6 +324,63 @@ for (const client of CLIENTS) {
   )
 }
 
+// 7f. Auto-update (4. kor): a kozponti kliens a PLATFORM updater-et hasznalja, es a
+// penztar auto-update.ts NEM elesztheto ujra (suite-telepito -> duplikalt install).
+{
+  const platformUpdater = join('packages', 'electron-platform', 'src', 'auto-update.ts')
+  if (existsSync(platformUpdater)) {
+    const src = readFileSync(platformUpdater, 'utf8')
+    check(
+      'a platform auto-update modulja NEM importal electron-updater-t',
+      !/from\s+['"]electron-updater['"]/.test(src),
+      'a kliens adja at az autoUpdater peldanyt (UpdaterLike) — igy a platformnak nem kell uj dependency, amit minden CI-jobnak telepitenie kellene (v2.28.76 TS2307 lecke), es a dontesi logika unit-tesztelheto',
+    )
+    check(
+      'a platform updater exportalja az isInRollout kill-switch kaput',
+      src.includes('export function isInRollout'),
+      'a `rolloutPercent: 0` a flotta-frissites kill-switche',
+    )
+  }
+
+  const kozpontiMain = join('kozponti-client', 'electron', 'main.ts')
+  if (existsSync(kozpontiMain)) {
+    const src = readFileSync(kozpontiMain, 'utf8')
+    check(
+      'kozponti-client: az onfrissites a PLATFORM initElectronUpdater-ebol jon',
+      src.includes('initElectronUpdater('),
+      'nincs inline updater-masolat a kliensben',
+    )
+    check(
+      "kozponti-client: explicit clientLabel-t ad at (nincs rejtett default)",
+      /clientLabel:\s*'kozponti'/.test(src),
+      'a ket kliens naploja szetvalaszthato kell legyen',
+    )
+    check(
+      "kozponti-client: on-quit telepitesi mod (nincs munkat megszakito restart)",
+      /installMode:\s*'on-quit'/.test(src),
+      'a 2. dontes szerint a telepites app-kilepesnel tortenik',
+    )
+  }
+
+  // A penztar suite-telepitoje miatt TILOS a `penztar.yml`/`latest.yml` feed
+  // (docs/auto-update-terv-es-vegrehajtas.md 3.2). A release-workflow gepi kapuja
+  // ezt orzi — itt azt assertaljuk, hogy a kapu maga nem tunt el.
+  const releaseWorkflow = join('.github', 'workflows', 'windows-signed-release.yml')
+  if (existsSync(releaseWorkflow)) {
+    const src = readFileSync(releaseWorkflow, 'utf8')
+    check(
+      'release-workflow: tiltja a penztar.yml/latest.yml release-assetet',
+      src.includes("'penztar.yml', 'latest.yml'"),
+      'feed nelkul a regi penztar-flotta nem inditja el az electron-updater duplikalt telepitesi utat',
+    )
+    check(
+      'release-workflow: felkerul a munkaallomas.yml auto-update feed',
+      src.includes('release-flat/munkaallomas.yml'),
+      'enelkul a kozponti kliens onfrissitese nem talal manifestet',
+    )
+  }
+}
+
 console.log(`\nVizsgalt import-utvonal: ${checked}`)
 notes.forEach((n) => console.log('  -', n))
 
