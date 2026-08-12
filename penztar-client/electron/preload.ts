@@ -942,5 +942,44 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
   },
 
+  // Suite-frissites (docs/auto-update-terv-es-vegrehajtas.md 3.6):
+  // a renderer jelenti a muszak-allapotot, mert CSAK a renderer/backend tudja,
+  // van-e nyitott kassza, folyamatban levo tranzakcio vagy aktiv napzaras-varazslo.
+  // A telepites kizarolag `IDLE_BEFORE_OPEN` (napnyitas elott) vagy
+  // `CLOSED_AFTER_DAY_END` (napzaras utan) allapotban indulhat el; ha a renderer
+  // sosem jelent, a main process konzervativan `SHIFT_OPEN`-nek tekinti -> nem telepit.
+  suiteUpdate: {
+    setShiftState: (
+      state: 'IDLE_BEFORE_OPEN' | 'SHIFT_OPEN' | 'CLOSED_AFTER_DAY_END',
+    ): Promise<{ accepted: boolean; shiftState: string }> =>
+      ipcRenderer.invoke('suiteUpdate:setShiftState', state),
+    status: (): Promise<{
+      state: string;
+      shiftState: string;
+      readyVersion: string | null;
+      mandatory: boolean;
+    }> => ipcRenderer.invoke('suiteUpdate:status'),
+    /** Akkor tuzel, amikor egy ellenorzott frissites keszen all (jelolo a felulethez). */
+    onReady: (
+      cb: (payload: {
+        version: string;
+        mandatory: boolean;
+        notes: string | null;
+        installableNow: boolean;
+      }) => void,
+    ): (() => void) => {
+      const handler = (_e: unknown, p: unknown): void =>
+        cb(p as { version: string; mandatory: boolean; notes: string | null; installableNow: boolean });
+      ipcRenderer.on('suiteUpdate:ready', handler);
+      return () => ipcRenderer.removeListener('suiteUpdate:ready', handler);
+    },
+    /** Letoltesi folyamat (a meglevo autoUpdate:progress csatornat hasznalja ujra). */
+    onProgress: (cb: (payload: unknown) => void): (() => void) => {
+      const handler = (_e: unknown, p: unknown): void => cb(p);
+      ipcRenderer.on('autoUpdate:progress', handler);
+      return () => ipcRenderer.removeListener('autoUpdate:progress', handler);
+    },
+  },
+
   platform: process.platform,
 });

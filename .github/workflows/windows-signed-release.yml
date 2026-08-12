@@ -42,6 +42,14 @@ on:
         options:
           - 'true'
           - 'false'
+      rollout_percent:
+        # A penztar suite-updater staged rolloutja (docs/auto-update-terv-es-vegrehajtas.md 5.6).
+        # 0 = KILL-SWITCH: a flotta nem frissul (a manifest felkerul, de egyetlen gep
+        # sem fogadja el). Elso eles kor javasolt erteke: 25, majd 24 ora megfigyeles
+        # utan 100. A mar kiadott release assetje kesobb kezzel is szerkesztheto.
+        description: 'Penztar frissitesi rollout (0-100; 0 = kill-switch, nem frissul a flotta)'
+        required: false
+        default: '100'
 
 permissions:
   contents: write  # GitHub Release-hez
@@ -663,6 +671,59 @@ jobs:
           }
           Write-Host "=== Manifest ==="
           Get-Content $manifest
+
+          # === update-manifest.json (suite-updater feed a PENZTAR kliensnek) ===
+          # A penztar frissitesi egysege a TELJES suite-telepito, ezert nem
+          # electron-updater feedet kap, hanem sajat manifestet (3.4 szakasz).
+          # A hash NEM ujraszamolt: a fent generalt SHA-256 manifest soraibol jon,
+          # igy egyetlen igazsagforras van — ha a ketto elcsuszna, a kliens
+          # elutasitana a telepitot es a hibat csak a flottan latnank meg.
+          $penztarExe = Get-ChildItem $flatDir -File |
+                        Where-Object { $_.Name -like 'Penztar-Setup-*.exe' } |
+                        Sort-Object Name | Select-Object -Last 1
+          if (-not $penztarExe) {
+            Write-Host "::error::Penztar-Setup-*.exe nem talalhato a release-assetek kozott — update-manifest.json nem generalhato."
+            exit 1
+          }
+          $manifestLines = Get-Content $manifest
+          $hashLine = $manifestLines | Where-Object { $_ -match "\s$([regex]::Escape($penztarExe.Name))$" } | Select-Object -First 1
+          if (-not $hashLine) {
+            Write-Host "::error::A SHA-256 manifestben nincs sor a(z) $($penztarExe.Name) fajlhoz."
+            exit 1
+          }
+          $penztarHash = ($hashLine -split '\s+')[0]
+          if ($penztarHash -notmatch '^[0-9a-f]{64}$') {
+            Write-Host "::error::Ervenytelen SHA-256 a manifest sorban: $hashLine"
+            exit 1
+          }
+          $rollout = '${{ github.event.inputs.rollout_percent }}'
+          if ([string]::IsNullOrWhiteSpace($rollout)) { $rollout = '100' }
+          $rolloutInt = 0
+          if (-not [int]::TryParse($rollout, [ref]$rolloutInt) -or $rolloutInt -lt 0 -or $rolloutInt -gt 100) {
+            Write-Host "::error::rollout_percent erteke 0-100 kozotti egesz szam legyen (kapott: '$rollout')."
+            exit 1
+          }
+          $tag = "v${{ needs.preflight.outputs.version }}"
+          $updateManifest = [ordered]@{
+            schemaVersion  = 1
+            version        = '${{ needs.preflight.outputs.version }}'
+            releasedAt     = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            rolloutPercent = $rolloutInt
+            mandatory      = $false
+            notes          = '${{ github.event.inputs.release_notes }}'
+            penztar        = [ordered]@{
+              file       = $penztarExe.Name
+              url        = "https://github.com/${{ github.repository }}/releases/download/$tag/$($penztarExe.Name)"
+              sha256     = $penztarHash
+              sizeBytes  = $penztarExe.Length
+              silentArgs = @('/S')
+            }
+          }
+          $updateManifestPath = "$flatDir/update-manifest.json"
+          $updateManifest | ConvertTo-Json -Depth 5 | Out-File $updateManifestPath -Encoding utf8
+          Write-Host "=== update-manifest.json ==="
+          Get-Content $updateManifestPath
+
           Write-Host "=== Release assetek ==="
           Get-ChildItem $flatDir -File | Select-Object Name, Length | Format-Table -AutoSize
 
@@ -700,6 +761,7 @@ jobs:
             release-flat/*.exe
             release-flat/*.exe.blockmap
             release-flat/munkaallomas.yml
+            release-flat/update-manifest.json
             release-flat/*.jar
             release-flat/windows-signed-release-sha256.txt
           draft: false

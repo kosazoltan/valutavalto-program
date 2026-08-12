@@ -379,6 +379,82 @@ for (const client of CLIENTS) {
       'enelkul a kozponti kliens onfrissitese nem talal manifestet',
     )
   }
+
+  // 2. FAZIS — penztar suite-updater invariansok. Ezek penzugyi/biztonsagi
+  // szabalyok, nem stilus: a telepites nem szakithat meg nyitott muszakot, es
+  // ellenorizetlen exe SOHA nem indulhat el.
+  const suiteUpdate = join('penztar-client', 'electron', 'suite-update.ts')
+  if (existsSync(suiteUpdate)) {
+    const src = readFileSync(suiteUpdate, 'utf8')
+    check(
+      'penztar suite-updater: NEM importal electron-updater-t',
+      !/from\s+['"]electron-updater['"]/.test(src),
+      'a suite-telepito sajat registry-kulcsa mellett az electron-updater parhuzamos, masodik telepitest hozna letre (3.2 szakasz)',
+    )
+    check(
+      'penztar suite-updater: a telepitesi ablak kapuja letezik (isInstallWindow)',
+      src.includes('export function isInstallWindow'),
+      'a READY -> INSTALLING atmenet csak IDLE_BEFORE_OPEN / CLOSED_AFTER_DAY_END allapotban engedett (3.6)',
+    )
+    check(
+      'penztar suite-updater: nyitott muszak NEM telepitheto allapot',
+      /INSTALLABLE_STATES[^=]*=\s*\[[^\]]*'IDLE_BEFORE_OPEN'[^\]]*'CLOSED_AFTER_DAY_END'[^\]]*\]/s.test(src) &&
+        !/INSTALLABLE_STATES[^=]*=\s*\[[^\]]*'SHIFT_OPEN'/s.test(src),
+      'SHIFT_OPEN alatt csak jelzes mehet, telepito nem indulhat',
+    )
+    check(
+      'penztar suite-updater: ismeretlen muszak-allapot -> konzervativ SHIFT_OPEN',
+      /normaliseShiftState[\s\S]*?return 'SHIFT_OPEN'/.test(src),
+      'ha az allapot nem megallapithato, NEM telepitunk (fail-safe)',
+    )
+    check(
+      'penztar suite-updater: SHA-256 ellenorzes a telepites elott',
+      src.includes('sha256File(') && src.includes('manifest.penztar.sha256'),
+      'rontott hash-u exe soha nem indulhat el',
+    )
+    check(
+      'penztar suite-updater: Authenticode subject-ellenorzes (nem csak status)',
+      src.includes('verifyAuthenticode(') && src.includes('EXPECTED_SUBJECT'),
+      'egy masik ceg ervenyes tanusitvanyaval alairt exe sem fogadhato el',
+    )
+    check(
+      'penztar suite-updater: downgrade tilalom (isNewerVersion kapu)',
+      src.includes('isNewerVersion(manifest.version'),
+      'csak szigoruan nagyobb semver telepitheto',
+    )
+    check(
+      'penztar suite-updater: a rollout kapu a PLATFORMBOL jon',
+      src.includes('isInRollout('),
+      'a kill-switch logika egy forrasbol (platform auto-update modul)',
+    )
+  }
+
+  // A regi, electron-updater alapu penztar-modul nem eleszthető ujra.
+  check(
+    'penztar-client: a legacy auto-update.ts nem tert vissza',
+    !existsSync(join('penztar-client', 'electron', 'auto-update.ts')),
+    'a penztar frissitesi egysege a suite-telepito; egy visszahozott electron-updater modul duplikalt telepitest okozna',
+  )
+
+  const releaseWorkflowPath = join('.github', 'workflows', 'windows-signed-release.yml')
+  if (existsSync(releaseWorkflowPath)) {
+    const src = readFileSync(releaseWorkflowPath, 'utf8')
+    check(
+      'release-workflow: generalja es feltolti az update-manifest.json-t',
+      src.includes('update-manifest.json') && src.includes('release-flat/update-manifest.json'),
+      'enelkul a penztar suite-updater nem talal manifestet',
+    )
+    check(
+      'release-workflow: a manifest hash a SHA-256 manifestbol jon (egy igazsagforras)',
+      src.includes('$manifestLines') && src.includes('$penztarHash'),
+      'ujraszamolt hash elcsuszhatna a kozolt manifesttol',
+    )
+    check(
+      'release-workflow: rollout_percent input letezik (kill-switch)',
+      src.includes('rollout_percent:'),
+      'a staged rollout / kill-switch a release inputjabol jon',
+    )
+  }
 }
 
 console.log(`\nVizsgalt import-utvonal: ${checked}`)
