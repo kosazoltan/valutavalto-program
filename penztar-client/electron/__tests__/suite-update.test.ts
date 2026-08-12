@@ -13,10 +13,19 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
+/**
+ * Biztonsagos, utkozes-mentes temp konyvtar a teszt-fajlokhoz.
+ * (CodeQL js/insecure-temporary-file: a `Date.now()`-alapu nev josolhato, ezert
+ * `mkdtemp` + veletlen nev kell — igy symlink/utkozes-tamadas sem lehetseges.)
+ */
+function makeTempDir(): string {
+  return fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'suite-update-test-'));
+}
 
 vi.mock('electron', () => ({
   app: { getVersion: () => '2.28.78', getPath: () => os.tmpdir(), quit: vi.fn(), isPackaged: true },
@@ -35,8 +44,14 @@ vi.mock('electron-log', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-const { isNewerVersion, parseManifest, isInstallWindow, sha256File, verifyAuthenticode } =
-  await import('../suite-update');
+const {
+  isNewerVersion,
+  parseManifest,
+  isInstallWindow,
+  isSafeInstallerFileName,
+  sha256File,
+  verifyAuthenticode,
+} = await import('../suite-update');
 
 /** Ervenyes manifest-alap, amibol a tesztek rontott valtozatokat kepeznek. */
 function validManifest(overrides: Record<string, unknown> = {}) {
@@ -166,30 +181,111 @@ describe('parseManifest — fail-closed validalas', () => {
   });
 });
 
+describe('isSafeInstallerFileName — path traversal / command-injection vedelem', () => {
+  it('a valos telepito-nevet elfogadja', () => {
+    expect(isSafeInstallerFileName('Penztar-Setup-2.28.79-20260812.exe')).toBe(true);
+    expect(isSafeInstallerFileName('Penztar-Setup-2.28.100.exe')).toBe(true);
+  });
+
+  it('path-traversal ELUTASITVA (ez volt a CodeQL critical talalat)', () => {
+    const attacks = [
+      '../Penztar-Setup-1.0.0.exe',
+      '../../Penztar-Setup-1.0.0.exe',
+      '../../../Windows/System32/Penztar-Setup-1.0.0.exe',
+      '..\\..\\Penztar-Setup-1.0.0.exe',
+      'sub/Penztar-Setup-1.0.0.exe',
+      'sub\\Penztar-Setup-1.0.0.exe',
+      '/tmp/Penztar-Setup-1.0.0.exe',
+      'C:\\Temp\\Penztar-Setup-1.0.0.exe',
+      '\\\\halozat\\share\\Penztar-Setup-1.0.0.exe',
+    ];
+    for (const attack of attacks) {
+      expect(isSafeInstallerFileName(attack), attack).toBe(false);
+    }
+  });
+
+  it('idegen fajlnev ELUTASITVA (csak a telepito-nevkonvencio)', () => {
+    const rejected = [
+      'evil.exe',
+      'cmd.exe',
+      'powershell.exe',
+      'Kozponti-Munkaallomas-Setup-2.28.79.exe',
+      'Penztar-Eltavolito-2.28.79.exe',
+      'Penztar-Setup.exe.bat',
+      'Penztar-Setup-1.0.0.dll',
+      'Penztar-Setup-1.0.0.exe ',
+      '',
+    ];
+    for (const name of rejected) {
+      expect(isSafeInstallerFileName(name), name).toBe(false);
+    }
+  });
+
+  it('parancssori metakarakterek ELUTASITVA', () => {
+    for (const name of [
+      'Penztar-Setup-1.0.0.exe & calc',
+      'Penztar-Setup-1.0.0.exe|calc',
+      'Penztar-Setup-1.0.0.exe;calc',
+      'Penztar-Setup-$(whoami).exe',
+      'Penztar-Setup-`id`.exe',
+    ]) {
+      expect(isSafeInstallerFileName(name), name).toBe(false);
+    }
+  });
+
+  it('tulzottan hosszu nev ELUTASITVA', () => {
+    expect(isSafeInstallerFileName('Penztar-Setup-' + 'a'.repeat(200) + '.exe')).toBe(false);
+  });
+
+  it('parseManifest is elutasitja a traversal-t (nem csak a helper)', () => {
+    const attack = validManifest();
+    attack.penztar.file = '../../../evil.exe';
+    expect(parseManifest(attack)).toBeNull();
+
+    const attack2 = validManifest();
+    attack2.penztar.file = 'C:\\Windows\\System32\\cmd.exe';
+    expect(parseManifest(attack2)).toBeNull();
+  });
+});
+
 describe('sha256File — streamelt hash', () => {
   it('a tenyleges fajltartalom hash-et adja', async () => {
-    const tmp = path.join(os.tmpdir(), `suite-update-hash-${Date.now()}.bin`);
+    const dir = makeTempDir();
+    const tmp = path.join(dir, 'payload.bin');
     const payload = Buffer.from('valutavalto teszt tartalom');
     fs.writeFileSync(tmp, payload);
     try {
       const expected = createHash('sha256').update(payload).digest('hex');
       await expect(sha256File(tmp)).resolves.toBe(expected);
     } finally {
-      fs.unlinkSync(tmp);
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
   it('kulonbozo tartalom kulonbozo hash (a hash-ellenorzes ertelmes)', async () => {
-    const a = path.join(os.tmpdir(), `suite-a-${Date.now()}.bin`);
-    const b = path.join(os.tmpdir(), `suite-b-${Date.now()}.bin`);
+    const dir = makeTempDir();
+    const a = path.join(dir, 'a.bin');
+    const b = path.join(dir, 'b.bin');
     fs.writeFileSync(a, 'eredeti telepito');
     fs.writeFileSync(b, 'modositott telepito');
     try {
       const [ha, hb] = await Promise.all([sha256File(a), sha256File(b)]);
       expect(ha).not.toBe(hb);
     } finally {
-      fs.unlinkSync(a);
-      fs.unlinkSync(b);
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('veletlen tartalomra is a hivatalos hash-t adja (nem cache-el)', async () => {
+    const dir = makeTempDir();
+    const file = path.join(dir, 'random.bin');
+    const payload = randomBytes(4096);
+    fs.writeFileSync(file, payload);
+    try {
+      const expected = createHash('sha256').update(payload).digest('hex');
+      await expect(sha256File(file)).resolves.toBe(expected);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 });

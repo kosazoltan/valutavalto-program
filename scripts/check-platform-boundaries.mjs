@@ -427,6 +427,26 @@ for (const client of CLIENTS) {
       src.includes('isInRollout('),
       'a kill-switch logika egy forrasbol (platform auto-update modul)',
     )
+    check(
+      'penztar suite-updater: szigoru telepito-fajlnev ellenorzes (path traversal)',
+      src.includes('isSafeInstallerFileName(') && src.includes('INSTALLER_FILE_PATTERN'),
+      'a manifest `file` mezoje a letoltesi utvonal ES a spawn() elso argumentuma is — `../../evil.exe` kilepne a temp konyvtarbol (CodeQL js/command-line-injection)',
+    )
+    check(
+      'penztar suite-updater: a spawn argumentumai allowlistrol jonnek',
+      src.includes('ALLOWED_SILENT_ARGS'),
+      'szerverrol jott ertek nem kerulhet a parancssorba',
+    )
+    check(
+      'penztar suite-updater: shell: false a telepito inditasanal',
+      /spawn\([^)]*shell:\s*false/s.test(src),
+      'shell nelkul a fajlnev nem ertelmezodik parancsként',
+    )
+    check(
+      'penztar suite-updater: a spawn utvonala a sajat temp-konyvtarra van kotve',
+      src.includes('BIZTONSAGI ELUTASITAS') && src.includes('expectedDir'),
+      'csak a magunk altal letoltott es ellenorzott fajl indithato (defense in depth)',
+    )
   }
 
   // A regi, electron-updater alapu penztar-modul nem eleszthető ujra.

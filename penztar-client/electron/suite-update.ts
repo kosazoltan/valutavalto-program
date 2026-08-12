@@ -78,8 +78,33 @@ export interface SuiteUpdateManifest {
   penztar: SuiteUpdateManifestEntry;
 }
 
-/** Csak az allapotvezerelt ablakokban telepitunk. */
+/** Csak allapotvezerelt ablakokban telepitunk. */
 const INSTALLABLE_STATES: readonly ShiftState[] = ['IDLE_BEFORE_OPEN', 'CLOSED_AFTER_DAY_END'];
+
+/**
+ * A telepito-fajlnev SZIGORU mintaja.
+ *
+ * MIERT KELL (CodeQL js/command-line-injection, 2026-08-12): a manifest a szerverrol
+ * jon, es a `file` mezoje a letoltes celutvonalat ES a `spawn()` elso argumentumat is
+ * meghatarozza. Ha csak a `.exe` vegzodest ellenoriznenk, egy `../../../x.exe` ertek
+ * kilepne a temp konyvtarbol (`path.join` normalizal), es tetszoleges utvonalon levo
+ * fajl indulhatna el. Ezert: (a) csak basename fogadhato el, (b) a nev illeszkedjen a
+ * telepito nevkonvenciojara, (c) nincs benne utvonal-elvalaszto, `..`, vagy
+ * meghajto-jelzo.
+ */
+const INSTALLER_FILE_PATTERN = /^Penztar-Setup-[0-9A-Za-z._-]+\.exe$/;
+
+export function isSafeInstallerFileName(file: string): boolean {
+  if (typeof file !== 'string' || file.length === 0 || file.length > 128) return false;
+  // Utvonal-elvalaszto, meghajto-jelzo, vagy szulo-hivatkozas => elutasitva.
+  if (/[\\/]/.test(file)) return false;
+  if (file.includes('..')) return false;
+  if (/^[A-Za-z]:/.test(file)) return false;
+  // A basename-nek onmagaval kell egyeznie (Windows es POSIX szerint egyaránt).
+  if (path.basename(file) !== file) return false;
+  if (path.win32.basename(file) !== file) return false;
+  return INSTALLER_FILE_PATTERN.test(file);
+}
 
 export function isInstallWindow(state: ShiftState): boolean {
   return INSTALLABLE_STATES.includes(state);
@@ -123,7 +148,9 @@ export function parseManifest(raw: unknown): SuiteUpdateManifest | null {
   const entry = obj.penztar;
   if (typeof entry !== 'object' || entry === null) return null;
   const e = entry as Record<string, unknown>;
-  if (typeof e.file !== 'string' || !e.file.toLowerCase().endsWith('.exe')) return null;
+  // SZIGORU fajlnev-ellenorzes: ez a nev a letoltes celutvonala ES a `spawn()`
+  // elso argumentuma is lesz, ezert path-traversal itt kizarando (nem eleg a .exe).
+  if (typeof e.file !== 'string' || !isSafeInstallerFileName(e.file)) return null;
   if (typeof e.url !== 'string' || !e.url.startsWith('https://')) return null;
   // A hash 64 hexa karakter — rovid/rontott hash eseten nem indulunk el.
   if (typeof e.sha256 !== 'string' || !/^[0-9a-f]{64}$/i.test(e.sha256)) return null;
@@ -311,7 +338,16 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
   async function downloadAndVerify(manifest: SuiteUpdateManifest): Promise<void> {
     const targetDir = path.join(app.getPath('temp'), 'valutavalto-update');
     fs.mkdirSync(targetDir, { recursive: true });
-    const finalPath = path.join(targetDir, manifest.penztar.file);
+    // MASODIK VEDELMI VONAL (defense in depth): a `parseManifest` mar szurte a nevet,
+    // de itt is bizonyitjuk, hogy a celutvonal a sajat konyvtarunkon BELUL van —
+    // igy egy jovobeli validalas-lazitas sem vezethet konyvtaron kivuli irashoz vagy
+    // idegen utvonalon levo exe inditasahoz.
+    const finalPath = path.resolve(targetDir, path.basename(manifest.penztar.file));
+    if (path.dirname(finalPath) !== path.resolve(targetDir)) {
+      log.error(`[suiteUpdate] utvonal-ellenorzes bukott, letoltes megszakitva: ${manifest.penztar.file}`);
+      runtime.state = 'IDLE';
+      return;
+    }
     const tempPath = `${finalPath}.part`;
 
     runtime.state = 'DOWNLOADING';
@@ -440,11 +476,40 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
   }
 
   function startSilentInstall(exePath: string, manifest: SuiteUpdateManifest): void {
+    // HARMADIK VEDELMI VONAL: csak a MAGUNK altal letoltott, ellenorzott es a sajat
+    // temp-alkonyvtarunkban levo fajl indithato. A `spawn` argumentumai fix konstansok
+    // (`/S`) — a manifest `silentArgs`-ebol csak engedelyezett zaszlot fogadunk el, hogy
+    // szerverrol jott ertek ne kerulhessen a parancssorba.
+    const expectedDir = path.resolve(path.join(app.getPath('temp'), 'valutavalto-update'));
+    const resolved = path.resolve(exePath);
+    if (path.dirname(resolved) !== expectedDir || !isSafeInstallerFileName(path.basename(resolved))) {
+      log.error(`[suiteUpdate] BIZTONSAGI ELUTASITAS — nem sajat, ellenorzott telepito: ${exePath}`);
+      runtime.state = 'IDLE';
+      return;
+    }
+    if (!fs.existsSync(resolved)) {
+      log.error(`[suiteUpdate] a telepito eltunt a lemezrol: ${resolved}`);
+      runtime.state = 'IDLE';
+      return;
+    }
+    const ALLOWED_SILENT_ARGS = new Set(['/S', '/NCRC']);
+    const requested = manifest.penztar.silentArgs ?? ['/S'];
+    const rejected = requested.filter((arg) => !ALLOWED_SILENT_ARGS.has(arg));
+    if (rejected.length > 0) {
+      log.warn(`[suiteUpdate] nem engedelyezett silentArgs eldobva: ${rejected.join(' ')}`);
+    }
+    const args = requested.filter((arg) => ALLOWED_SILENT_ARGS.has(arg));
+    if (args.length === 0) args.push('/S');
+
     runtime.state = 'INSTALLING';
-    const args = manifest.penztar.silentArgs?.length ? manifest.penztar.silentArgs : ['/S'];
-    log.info(`[suiteUpdate] csendes telepites indul: ${exePath} ${args.join(' ')}`);
+    log.info(`[suiteUpdate] csendes telepites indul: ${resolved} ${args.join(' ')}`);
     try {
-      const child = spawn(exePath, args, { detached: true, stdio: 'ignore', windowsHide: true });
+      const child = spawn(resolved, args, {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+        shell: false,
+      });
       child.unref();
       // A telepito allitja le/inditja a service-eket es a vegen a Penztar.exe-t.
       setTimeout(() => app.quit(), 1_000);
