@@ -345,7 +345,7 @@ nélkül (a központi gépből kevés van, a pénztárból sok).
 ### 5.4 — Pénztár suite-updater
 
 1. **NSI csendes-upgrade audit** (KÖTELEZŐ ELŐFELTÉTEL): olvasd végig a
-   `installer/Penztar-Setup.nsi` upgrade-ágát, és bizonyítsd tesztvel (VM-ben:
+   `installer/Penztar-Setup.nsi` upgrade-ágát, és bizonyítsd teszttel (VM-ben:
    régi verzió telepítve → új Setup `/S`-sel):
    - a meglévő `InstallDir`-be települ (`InstallDirRegKey` — megvan, 109. sor),
    - NSSM service-ek stop → fájlcsere → start sorrend hibamentes,

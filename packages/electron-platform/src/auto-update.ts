@@ -37,6 +37,11 @@ export interface UpdaterLike {
   autoInstallOnAppQuit: boolean
   on(event: string, listener: (...args: unknown[]) => void): unknown
   checkForUpdates(): Promise<unknown>
+  /**
+   * A letoltes explicit inditasa. KELL, mert az `autoDownload` false: a staged
+   * rolloutot csak a FELAJANLOTT verzio ismereteben lehet helyesen kiertekelni.
+   */
+  downloadUpdate(): Promise<unknown>
   quitAndInstall(): void
 }
 
@@ -92,7 +97,11 @@ export interface ElectronUpdaterOptions {
 
 /** Az `initElectronUpdater` visszateresi erteke — a timerek leallithatosaga miatt. */
 export interface ElectronUpdaterHandle {
-  /** Igaz, ha a staged rollout kizarta ezt a telepitest (nem indult idozito). */
+  /**
+   * Mindig `false`. Megtartva a visszamenoleges kompatibilitas miatt: a rollout-kapu
+   * 2026-08-12 ota NEM a bekotesnel dont (az tartos kizarast okozott), hanem
+   * verziankent, az `update-available` eventben — igy az updater mindig elindul.
+   */
   excludedByRollout: boolean
   /** Leallitja az idozitoket (teszt / app-shutdown). */
   dispose(): void
@@ -147,13 +156,20 @@ export function initElectronUpdater(options: ElectronUpdaterOptions): ElectronUp
   logger.info(`${tag} Current version: ${currentVersion}`)
   logger.info(`${tag} Staged rollout: ${rolloutPercent}% | install mode: ${installMode}`)
 
-  if (!isInRollout(currentVersion, rolloutPercent, machineId)) {
-    logger.info(`${tag} Staged rollout excluded this install — updater nem indul.`)
-    return { excludedByRollout: true, dispose: () => {} }
-  }
-
   updater.logger = logger
-  updater.autoDownload = true
+  // FONTOS (PR #1618 review, P2): az `autoDownload` SZANDEKOSAN false.
+  //
+  // A staged rolloutot a FELAJANLOTT verziora kell hashelni, nem a telepitettre.
+  // A korabbi valtozat a bekotes ELOTT dontott a `currentVersion` alapjan, es
+  // kizaras eseten idozito NELKUL visszatert — igy az a gep soha nem tudta meg,
+  // milyen verzio van kinalva, es MINDEN kovetkezo release-nel ugyanabban a kizart
+  // bucketben maradt (valtozatlan szazalek mellett), mikozben a frissult gepek az
+  // uj verziojukkal ujra-bucketelodtek. Ez a flotta egy fix reszen tartos, csendes
+  // lemaradast okozott volna.
+  //
+  // Ezert: MINDIG ellenorzunk, es a rollout-kaput az `update-available` eventben,
+  // a felajanlott verziora ertekeljuk ki; a letoltes csak azutan indul.
+  updater.autoDownload = false
   // `prompt` modban is igaz: ha a felhasznalo a "Kesobb"-et valasztja, a frissites
   // a kovetkezo kilepesnel telepul — igy nem marad orokre elmaradt verzio.
   updater.autoInstallOnAppQuit = true
@@ -165,9 +181,20 @@ export function initElectronUpdater(options: ElectronUpdaterOptions): ElectronUp
   updater.on('update-available', (...args: unknown[]) => {
     const version = readVersion(args[0])
     logger.info(`${tag} update-available: ${version}`)
+    // A kapu a CEL verziora vonatkozik (lasd a fenti indoklast) — igy egy kizart
+    // gep a KOVETKEZO verziot ujra kiertekeli, nem ragad be a bucketjebe.
+    if (!isInRollout(version, rolloutPercent, machineId)) {
+      logger.info(
+        `${tag} a staged rollout (${rolloutPercent}%) kizarta ezt a gepet a v${version} verziobol — ` +
+          'letoltes nem indul; a kovetkezo verzio ujra ertekelesre kerul.',
+      )
+      return
+    }
     notify('Frissítés érhető el', `A v${version} letöltése megkezdődött a háttérben.`)
+    void updater.downloadUpdate().catch((err) => {
+      logger.error(`${tag} downloadUpdate failed:`, err)
+    })
   })
-
   updater.on('update-not-available', () => {
     logger.info(`${tag} update-not-available`)
   })
@@ -227,20 +254,23 @@ export function initElectronUpdater(options: ElectronUpdaterOptions): ElectronUp
       return
     }
 
-    const choice = await dialog.showMessageBox(
-      mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined!,
-      {
-        type: 'info',
-        buttons: ['Újraindítás és telepítés', 'Később'],
-        defaultId: 0,
-        cancelId: 1,
-        title: 'Frissítés telepítése',
-        message: `Új verzió érhető el: v${version}`,
-        detail:
-          'A telepítéshez az alkalmazás újraindul. Kérjük, mentse el a munkát. ' +
-          'A „Később" választásával a frissítés a program bezárásakor települ.',
-      },
-    )
+    // A ket overloadot KULON kell hivni (PR #1618 review): a 2-arg-os valtozatnak
+    // `undefined!`-t atadni futasidoben hibazhat, ha nincs elo ablak.
+    const options = {
+      type: 'info' as const,
+      buttons: ['Újraindítás és telepítés', 'Később'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Frissítés telepítése',
+      message: `Új verzió érhető el: v${version}`,
+      detail:
+        'A telepítéshez az alkalmazás újraindul. Kérjük, mentse el a munkát. ' +
+        'A „Később" választásával a frissítés a program bezárásakor települ.',
+    }
+    const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+    const choice = parent
+      ? await dialog.showMessageBox(parent, options)
+      : await dialog.showMessageBox(options)
     if (choice.response === 0) {
       logger.info(`${tag} felhasznaloi megerosites -> quitAndInstall()`)
       updater.quitAndInstall()

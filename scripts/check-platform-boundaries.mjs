@@ -340,6 +340,17 @@ for (const client of CLIENTS) {
       src.includes('export function isInRollout'),
       'a `rolloutPercent: 0` a flotta-frissites kill-switche',
     )
+    check(
+      'a platform updater a FELAJANLOTT verziora ertekeli a rolloutot',
+      src.includes('isInRollout(version, rolloutPercent, machineId)') &&
+        src.includes('updater.autoDownload = false'),
+      'a telepitett verziora hashelo, bekotes-idoben donto kapu tartosan kizarta volna a flotta egy fix reszet minden kovetkezo release-bol (PR #1618 review, P2)',
+    )
+    check(
+      'a platform updater NEM ter vissza korai kizarassal (mindig ellenoriz)',
+      !src.includes('Staged rollout excluded this install'),
+      'kizarasnal is futnia kell az ellenorzesnek, kulonben a gep sosem tudja meg, milyen verzio van kinalva',
+    )
   }
 
   const kozpontiMain = join('kozponti-client', 'electron', 'main.ts')

@@ -48,12 +48,17 @@ function makeUpdater() {
     autoInstallOnAppQuit: false,
     quitAndInstallCalls: 0,
     checkCalls: 0,
+    downloadCalls: 0,
     on(event: string, listener: Listener) {
       listeners.set(event, listener);
       return this;
     },
     checkForUpdates() {
       this.checkCalls += 1;
+      return Promise.resolve({});
+    },
+    downloadUpdate() {
+      this.downloadCalls += 1;
       return Promise.resolve({});
     },
     quitAndInstall() {
@@ -126,7 +131,7 @@ describe('isInRollout — staged rollout kapu', () => {
   });
 });
 
-describe('initElectronUpdater — bekotes es rollout-kizaras', () => {
+describe('initElectronUpdater — bekotes es rollout (verziankenti kiertekeles)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     showMessageBoxMock.mockClear();
@@ -138,20 +143,54 @@ describe('initElectronUpdater — bekotes es rollout-kizaras', () => {
     vi.useRealTimers();
   });
 
-  it('rollout-kizarasnal NEM kot be eventet es nem indit idozitot', () => {
+  it('0%-os rollout mellett is BEKOT es ellenoriz (nem ragad be a gep)', () => {
+    // REGRESSZIO-VEDELEM (PR #1618 review, P2): a korabbi valtozat a bekotesnel
+    // dontott a TELEPITETT verzio alapjan, es kizarasnal idozito nelkul visszatert.
+    // Igy a gep soha nem tudta meg, mi van kinalva, es MINDEN kovetkezo release-nel
+    // ugyanabban a kizart bucketben maradt. Most mindig ellenorzunk.
     const { updater, handle } = init({ rolloutPercent: 0 });
-    expect(handle.excludedByRollout).toBe(true);
-    expect(updater.hasListener('update-downloaded')).toBe(false);
-    vi.advanceTimersByTime(24 * 60 * 60 * 1000);
-    expect(updater.checkCalls).toBe(0);
+    expect(handle.excludedByRollout).toBe(false);
+    expect(updater.hasListener('update-available')).toBe(true);
+    vi.advanceTimersByTime(10_000);
+    expect(updater.checkCalls).toBe(1);
   });
 
-  it('bekotesnel autoDownload es autoInstallOnAppQuit is igaz', () => {
-    const { updater, handle } = init();
-    expect(handle.excludedByRollout).toBe(false);
-    expect(updater.autoDownload).toBe(true);
-    // Ha a felhasznalo elhalasztja, a frissites a kilepesnel telepul -> nem marad
-    // orokre elmaradt verzio a gepen.
+  it('kizart verzio: NEM tolt le, de az ellenorzes tovabb fut', () => {
+    const { updater } = init({ rolloutPercent: 0 });
+    updater.emit('update-available', { version: '2.28.79' });
+    expect(updater.downloadCalls).toBe(0);
+    // A kovetkezo ciklus tovabb ellenoriz -> egy kesobbi verzio bekerulhet.
+    vi.advanceTimersByTime(10_000);
+    expect(updater.checkCalls).toBe(1);
+  });
+
+  it('rolloutban levo verzio: explicit letoltes indul', () => {
+    const { updater } = init({ rolloutPercent: 100 });
+    updater.emit('update-available', { version: '2.28.79' });
+    expect(updater.downloadCalls).toBe(1);
+    expect(notificationShowMock).toHaveBeenCalled();
+  });
+
+  it('a rollout a FELAJANLOTT verziora hashel, nem a telepitettre', () => {
+    // A LENYEG: verziok kozott a bucket VALTOZIK, tehat egy 50%-os korbol kimarado
+    // gep egy kesobbi verzionál bekerulhet — nem ragad be orokre. Ezt a flotta
+    // szintjen kell merni: minden gepnek van olyan verzio, amire igaz, ES olyan is,
+    // amire hamis (nem determinisztikus per-gep dontes, hanem per-(gep,verzio)).
+    const versions = Array.from({ length: 30 }, (_, i) => `2.28.${79 + i}`);
+    let machinesThatEverChange = 0;
+    const machines = Array.from({ length: 40 }, (_, i) => `PENZTAR-${i}`);
+    for (const machine of machines) {
+      const results = versions.map((v) => isInRollout(v, 50, machine));
+      if (new Set(results).size > 1) machinesThatEverChange += 1;
+    }
+    // Minden gep bucketje valtozik a verziok soran — nincs orokre kizart gep.
+    expect(machinesThatEverChange).toBe(machines.length);
+  });
+
+  it('autoDownload FALSE (a rollout csak a cel-verzio ismereteben ertekelheto)', () => {
+    const { updater } = init();
+    expect(updater.autoDownload).toBe(false);
+    // Ha a felhasznalo elhalasztja, a frissites a kilepesnel telepul.
     expect(updater.autoInstallOnAppQuit).toBe(true);
   });
 
@@ -178,6 +217,17 @@ describe('initElectronUpdater — bekotes es rollout-kizaras', () => {
     return Promise.resolve().then(() => {
       expect(logger.error).toHaveBeenCalled();
     });
+  });
+
+  it('downloadUpdate hibaja nem dol el', () => {
+    const { updater, logger } = init({ rolloutPercent: 100 });
+    updater.downloadUpdate = () => Promise.reject(new Error('halozat'));
+    updater.emit('update-available', { version: '2.28.79' });
+    return Promise.resolve()
+      .then(() => Promise.resolve())
+      .then(() => {
+        expect(logger.error).toHaveBeenCalled();
+      });
   });
 });
 
