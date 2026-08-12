@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-11T20:31:57.831Z
+generated: 2026-08-12T14:31:49.341Z
 format: gfm
 ---
 
@@ -232,9 +232,9 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `vault/sessions/handoff-2026-08-10-platform-refaktor.md`
   - summary: # Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\repo\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált
 
-- **Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11)** (medium-term-episodic)
+- **Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md`
-  - summary: # Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11) **Ág:** `feature/engedelyezett-ermek-egysegesitese` · **Bázis:** `7e446839` (WU-1 RED tesztek) **Állapot:** implementáció kész, commit NINCS — a változások a munkafán állnak. ## Mi történt A `denomination_allowed` katalógus lett az EGYETLEN igazságforrás a címletekre. Korábban a HUF külön úton ment (14 elemű hardkódolt tömb + névérték-küszöb), ezért mi
+  - summary: # Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12) **Állapot: pipeline PASS, merge a felhasználó döntése.** Branch `feature/engedelyezett-ermek-egysegesitese`, bázis `4ad7c54d`, 6 commit, fa tiszta, `main == origin/main` (érintetlen). ## Mi készült el `denomination_allowed` = egyetlen igazságforrás, a HUF-ot is beleértve. - **V379**: HUF-seed, cégenként 12 sor (nincs 1/2 Ft). **V380**: tiltott COIN
 
 - **Platform-refaktor 3. kör — zárójelentés** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md`

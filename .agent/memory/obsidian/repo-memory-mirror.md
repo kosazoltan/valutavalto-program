@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-11T20:31:57.831Z
+generated: 2026-08-12T14:31:49.341Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-11T20:31:57.831Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1063
-- generated: 2026-08-11T20:31:57.831Z
+- sources: 1065
+- generated: 2026-08-12T14:31:49.341Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -536,6 +536,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[ReceiptService.java]] — `backend/src/main/java/hu/puzzleir/valuta/service/ReceiptService.java` (operational-receipt)
 - [[LegacyCompanyIdentityCodec.java]] — `backend/src/main/java/hu/puzzleir/valuta/util/LegacyCompanyIdentityCodec.java` (semantic-reference)
 - [[ShipmentUnifiedReceiptControllerTest.java]] — `backend/src/test/java/hu/puzzleir/valuta/controller/ShipmentUnifiedReceiptControllerTest.java` (operational-receipt)
+- [[V380AgainstLegacySchemaPostgresTest.java]] — `backend/src/test/java/hu/puzzleir/valuta/migration/V380AgainstLegacySchemaPostgresTest.java` (semantic-reference)
 - [[ShipmentRequestRepositoryUnifiedReceiptContractTest.java]] — `backend/src/test/java/hu/puzzleir/valuta/repository/ShipmentRequestRepositoryUnifiedReceiptContractTest.java` (operational-receipt)
 - [[JwtLegacyTokenCompatTest.java]] — `backend/src/test/java/hu/puzzleir/valuta/security/JwtLegacyTokenCompatTest.java` (semantic-reference)
 - [[MaterialReceiptCashierEntityIdFkh029Test.java]] — `backend/src/test/java/hu/puzzleir/valuta/service/MaterialReceiptCashierEntityIdFkh029Test.java` (operational-receipt)
@@ -781,6 +782,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[V196 fresh-deploy fix — runbook]] — `vault/operations/v196-fresh-deploy-fix.md` (semantic-reference)
 - [[V211 fresh-deploy fix runbook]] — `vault/operations/v211-fresh-deploy-fix.md` (semantic-reference)
 - [[V232 hotfix runbook — worker.id UUID → BIGINT]] — `vault/operations/v232-hotfix-worker-id-bigint-2026-05-18.md` (semantic-reference)
+- [[V380 éles hotfix — oszlop-agnosztikus tiltott-érme inaktiválás (2026-08-12)]] — `vault/operations/v380-eles-oszlop-agnosztikus-hotfix-2026-08-12.md` (semantic-reference)
 - [[EBC Hangsegéd — Kollégai útmutató (1 oldal)]] — `vault/operations/voice-assistant-kollegai-utmutato-2026-05-18.md` (operations)
 - [[Valutavalto Windows signed release runbook]] — `vault/operations/windows-signed-release-runbook.md` (runbook)
 - [[CI hibauzenet beolvasas es blokk-szintu javitas]] — `vault/procedures/ci-error-intake-and-block-fix.md` (operational-procedure)
@@ -1070,7 +1072,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés]] — `vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md` (medium-term-episodic)
 - [[Platform-refaktor 2. kör — zárójelentés (a telepítőig)]] — `vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md` (medium-term-episodic)
 - [[Platform-refaktor — végrehajtási zárójelentés]] — `vault/sessions/handoff-2026-08-10-platform-refaktor.md` (medium-term-episodic)
-- [[Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11)]] — `vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md` (medium-term-episodic)
+- [[Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12)]] — `vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md` (medium-term-episodic)
 - [[Platform-refaktor 3. kör — zárójelentés]] — `vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md` (medium-term-episodic)
 - [[Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)]] — `vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
