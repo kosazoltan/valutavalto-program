@@ -395,25 +395,6 @@ export const dailyJournalApi = {
 
 // ================== AVERAGE RATE REPORT API ==================
 
-/** Tranzakció-típus szűrő: vétel / eladás. */
-export type TransactionDirection = 'BUY' | 'SELL'
-
-/** Súlyozott átlag árfolyam riport sor — legacy ATLAGARF parity. */
-export interface AverageRateReport {
-  periodStart: string
-  periodEnd: string
-  branchId: string | null
-  branchCode: string | null
-  currencyId: number
-  currencyCode: string
-  /** null = mind (aggregált sor), különben BUY / SELL. */
-  transactionType: TransactionDirection | null
-  transactionCount: number
-  totalCurrencyAmount: number
-  totalHufAmount: number
-  weightedAverageRate: number
-}
-
 /** FK-027 pivot: oszlopcsoport (8 terület + összesítő, vagy 1 fiók). */
 export interface AverageRateColumnGroup {
   groupCode: string
@@ -444,25 +425,6 @@ export interface AverageRatePivotResponse {
 }
 
 export const averageRateApi = {
-  /**
-   * Súlyozott átlagárfolyam riport (HUF-súlyozott, NEM számtani átlag).
-   * Backend: GET /api/v1/reports/average-rate?from&to[&branchId][&currencyId][&transactionType]
-   */
-  getReport: async (
-    from: string,
-    to: string,
-    branchId?: string,
-    currencyId?: number,
-    transactionType?: TransactionDirection,
-  ): Promise<AverageRateReport[]> => {
-    const params: Record<string, string | number> = { from, to }
-    if (branchId) params.branchId = branchId
-    if (currencyId) params.currencyId = currencyId
-    if (transactionType) params.transactionType = transactionType
-    const response = await api.get<AverageRateReport[]>('/reports/average-rate', { params })
-    return response.data
-  },
-
   /**
    * FK-027 pivot riport: sorok = 22 valuta, oszlopcsoportok = 8 terület + "EXCLUSIVE BEST
    * CHANGE ZRT" összesítő (branchId=null), vagy 1 fiók. Vétel és Eladás párhuzamosan.

@@ -8,14 +8,12 @@ import { vi, describe, beforeEach, it, expect } from 'vitest'
 import AverageRateReportPage from './AverageRateReportPage'
 
 const mockGetPivot = vi.fn()
-const mockGetReport = vi.fn()
 const mockExportExcel = vi.fn()
 const mockListActive = vi.fn()
 
 vi.mock('../../services/api/index', () => ({
   averageRateApi: {
     getPivot: (...args: unknown[]) => mockGetPivot(...args),
-    getReport: (...args: unknown[]) => mockGetReport(...args),
     exportExcel: (...args: unknown[]) => mockExportExcel(...args),
   },
   branchApi: {
@@ -48,22 +46,6 @@ const PIVOT = {
   ],
 }
 
-const LINE_ROWS = [
-  {
-    periodStart: '2026-06-01',
-    periodEnd: '2026-06-30',
-    branchId: null,
-    branchCode: null,
-    currencyId: 1,
-    currencyCode: 'EUR',
-    transactionType: 'BUY' as const,
-    transactionCount: 3,
-    totalCurrencyAmount: 1500,
-    totalHufAmount: 601875,
-    weightedAverageRate: 401.25,
-  },
-]
-
 function renderPage() {
   return render(<AverageRateReportPage />)
 }
@@ -71,11 +53,9 @@ function renderPage() {
 describe('AverageRateReportPage — FK-027 pivot', () => {
   beforeEach(() => {
     mockGetPivot.mockReset()
-    mockGetReport.mockReset()
     mockExportExcel.mockReset()
     mockListActive.mockReset()
     mockListActive.mockResolvedValue([])
-    mockGetReport.mockResolvedValue([])
     global.URL.createObjectURL = vi.fn(() => 'blob:mock')
     global.URL.revokeObjectURL = vi.fn()
   })
@@ -91,21 +71,6 @@ describe('AverageRateReportPage — FK-027 pivot', () => {
     // Vétel/Eladás alfejlécek (4 oszlop / csoport)
     expect(screen.getAllByText('Vétel Árfolyam').length).toBe(2) // 2 oszlopcsoport
     expect(screen.getAllByText('Eladás Összeg').length).toBe(2)
-  })
-
-  it('a base súlyozott riport endpointot is lekéri és külön soros összesítőben megjeleníti', async () => {
-    mockGetPivot.mockResolvedValue(PIVOT)
-    mockGetReport.mockResolvedValue(LINE_ROWS)
-
-    renderPage()
-    fireEvent.click(screen.getByText('Lekérdezés'))
-
-    await waitFor(() => expect(screen.getByTestId('average-rate-line-summary')).toBeInTheDocument())
-    expect(mockGetReport).toHaveBeenCalledWith(expect.any(String), expect.any(String), undefined)
-    expect(screen.getByText('Soros súlyozott összesítő')).toBeInTheDocument()
-    expect(screen.getAllByText('Vétel').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('401,2500').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('601 875').length).toBeGreaterThan(0)
   })
 
   it('FR-7: nincs "Típus" és "Valuta" szűrő, csak Iroda', () => {
