@@ -60,9 +60,33 @@ A V379 ezzel szemben **sikeresen alkalmazva** van: azt tilos módosítani, és n
 
 - `V380AgainstLegacySchemaPostgresTest` — a hibát reprodukáló regressziós teszt:
   eldobja az `active` oszlopot (csonka éles séma), majd futtatja a V380 logikáját.
-  A javítás előtti statikus SQL-lel ez a teszt 42703-mal bukik.
-- Teljes backend suite XML-aggregációval.
-- Deploy után: `/api/v1/auth/bootstrap-status` HTTP 200 + `/api/v1/version`.
+  **Mutációval igazolva:** a javítás előtti statikus SQL-lel ez a teszt pontosan az éles
+  hibával (`ERROR: column d.active does not exist`) bukik; visszaállítás után zöld.
+- Teljes backend suite XML-aggregációval: **487 suite, 3758 teszt, 0 hiba**.
+
+## Helyreállítás — mért eredmény (2026-08-12 01:52 UTC)
+
+Hotfix commit: `6e3dfaf7`. A deploy MINDEN job-ja sikeres:
+
+| Job | Eredmény |
+|---|---|
+| Gate A — Hetzner LOKÁLIS DB migration (BLOKKOLÓ) | success |
+| Deploy to Hetzner | success |
+| Gate B — Neon backup DB | success |
+| Sync JAR to Scaleway standby (hot) | success |
+
+```
+Hetzner LOKÁLIS Flyway max = V380 | repo max = V380 | failed sorok = 0
+OK — a lokális (szolgáló) Hetzner DB a repo max verzión (V380).
+FK-080 V380: 0 tiltott COIN denomination sor inaktivalva (active=f, is_active=t)   [Neon]
+```
+
+Az `active=f, is_active=t` naplósor bizonyítja, hogy a dinamikus oszlop-felismerés
+pontosan úgy működik, ahogy tervezve volt: a csonka sémán csak az `is_active` oszlopot írja.
+
+**Éles állapot a javítás után:** `GET /api/v1/auth/bootstrap-status` → **HTTP 200**,
+`/api/v1/version` → `2.28.76` (buildTime `2026-08-12T01:51:37Z`).
+Kiesés hossza: ~01:24 → ~01:52 UTC (≈28 perc, éjszakai időszak).
 
 ## Tanulság (követő feladat)
 
