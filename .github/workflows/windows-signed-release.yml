@@ -42,6 +42,14 @@ on:
         options:
           - 'true'
           - 'false'
+      rollout_percent:
+        # A penztar suite-updater staged rolloutja (docs/auto-update-terv-es-vegrehajtas.md 5.6).
+        # 0 = KILL-SWITCH: a flotta nem frissul (a manifest felkerul, de egyetlen gep
+        # sem fogadja el). Elso eles kor javasolt erteke: 25, majd 24 ora megfigyeles
+        # utan 100. A mar kiadott release assetje kesobb kezzel is szerkesztheto.
+        description: 'Penztar frissitesi rollout (0-100; 0 = kill-switch, nem frissul a flotta)'
+        required: false
+        default: '100'
 
 permissions:
   contents: write  # GitHub Release-hez
@@ -540,11 +548,61 @@ jobs:
             exit 1
           }
 
+      - name: Verify Kozponti update manifest (munkaallomas.yml <-> signed exe hash)
+        shell: pwsh
+        # MIERT KELL: az electron-updater a `munkaallomas.yml`-ben kozolt sha512 alapjan
+        # fogadja el a letoltott telepitot. A yml-t az electron-builder a csomagolas
+        # vegen, a MAR ALAIRT exe-rol generalja (a signtool-hook a csomagolas kozben fut),
+        # tehat a ket fajlnak egyutt kell utaznia es az exe-t a yml generalasa UTAN mar
+        # nem szabad felulirni. Ez a lepes ezt gepileg bizonyitja: eltero hash eseten a
+        # release NEM keszul el, mert a flotta amugy is elutasitana a frissitest
+        # ("checksum mismatch"), csak eppen a hibat a telepitett gepeken latnank meg.
+        run: |
+          $yml = "kozponti-client/release/munkaallomas.yml"
+          if (-not (Test-Path $yml)) {
+            Write-Host "::error::munkaallomas.yml nem keszult el — az electron-updater feed nelkul a kozponti kliens NEM tud frissulni."
+            exit 1
+          }
+          Write-Host "=== munkaallomas.yml ==="
+          Get-Content $yml
+          $ymlText = Get-Content $yml -Raw
+          # A `path:` a telepito fajlnevet, a `sha512:` a base64-kodolt SHA-512-t adja.
+          $pathMatch = [regex]::Match($ymlText, '(?m)^\s*path:\s*(.+?)\s*$')
+          $shaMatch  = [regex]::Match($ymlText, '(?m)^\s*sha512:\s*(.+?)\s*$')
+          if (-not $pathMatch.Success -or -not $shaMatch.Success) {
+            Write-Host "::error::munkaallomas.yml-bol nem olvashato ki a path/sha512 — ertelmezhetetlen manifest."
+            exit 1
+          }
+          $exeName = $pathMatch.Groups[1].Value.Trim("'", '"')
+          $expected = $shaMatch.Groups[1].Value
+          $exePath = Join-Path "kozponti-client/release" $exeName
+          if (-not (Test-Path $exePath)) {
+            Write-Host "::error::A manifestben hivatkozott telepito nem talalhato: $exeName"
+            exit 1
+          }
+          $sha512 = [System.Security.Cryptography.SHA512]::Create()
+          $stream = [System.IO.File]::OpenRead((Resolve-Path $exePath))
+          try { $actual = [Convert]::ToBase64String($sha512.ComputeHash($stream)) }
+          finally { $stream.Dispose(); $sha512.Dispose() }
+          Write-Host "manifest sha512: $expected"
+          Write-Host "actual   sha512: $actual"
+          if ($actual -ne $expected) {
+            Write-Host "::error::munkaallomas.yml sha512 NEM egyezik az alairt exe hash-evel — a flotta elutasitana a frissitest."
+            exit 1
+          }
+          Write-Host "Update manifest hash OK — az electron-updater feed konzisztens az alairt telepitovel."
+
       - name: Upload Kozponti artifacts
         uses: actions/upload-artifact@v7
         with:
           name: kozponti-signed-${{ needs.preflight.outputs.version }}
-          path: kozponti-client/release/Kozponti-Munkaallomas-Setup-*.exe
+          # A `.blockmap` (delta-letoltes) es a `munkaallomas.yml` (electron-updater feed)
+          # nelkul a kozponti kliens onfrissitese NEM mukodik — v2.28.78-ig ezek
+          # legeneralodtak a release/ ala, de sosem kerultek fel a release-be.
+          path: |
+            kozponti-client/release/Kozponti-Munkaallomas-Setup-*.exe
+            kozponti-client/release/Kozponti-Munkaallomas-Setup-*.exe.blockmap
+            kozponti-client/release/munkaallomas.yml
           if-no-files-found: error
           retention-days: 14
 
@@ -577,6 +635,28 @@ jobs:
           Get-ChildItem release-artifacts -Recurse -Filter "*.jar" | ForEach-Object {
             Copy-Item $_.FullName -Destination $flatDir -Force
           }
+          # Auto-update assetek (electron-updater feed a KOZPONTI kliensnek):
+          # a .blockmap adja a delta-letoltest, a munkaallomas.yml a feed-manifest.
+          Get-ChildItem release-artifacts -Recurse -Filter "*.exe.blockmap" | ForEach-Object {
+            Copy-Item $_.FullName -Destination $flatDir -Force
+          }
+          Get-ChildItem release-artifacts -Recurse -Filter "munkaallomas.yml" | ForEach-Object {
+            Copy-Item $_.FullName -Destination $flatDir -Force
+          }
+          # BIZTONSAGI KAPU (docs/auto-update-terv-es-vegrehajtas.md 3.2 + 7. szakasz):
+          # `penztar.yml` / `latest.yml` NEM kerulhet a release-be. A mar kint levo
+          # penztar-telepitesek `app-update.yml`-je a `penztar` channelt keresi; ha
+          # kapnanak feedet, az electron-updater a sajat GUID-alapu registry-kulcsa
+          # szerint egy MASODIK, parhuzamos telepitest hozna letre, miközben a suite
+          # (backend JAR, JRE, PostgreSQL, NSSM service-ek) a regi helyen, regi
+          # verzion maradna -> kliens/lokalis-backend verzio-szetcsuszas.
+          # A penztar frissitese a teljes suite-telepitovel tortenik (2. fazis).
+          $forbidden = Get-ChildItem $flatDir -File |
+                       Where-Object { $_.Name -in 'penztar.yml', 'latest.yml' }
+          if ($forbidden) {
+            Write-Host "::error::TILOS update-manifest a release-ben: $($forbidden.Name -join ', ') — a regi penztar-flotta duplikalt telepitest kapna (3.2 szakasz)."
+            exit 1
+          }
           $manifest = "$flatDir/windows-signed-release-sha256.txt"
           "# Valutavalto v${{ needs.preflight.outputs.version }} signed release SHA-256" | Out-File $manifest
           "# Build date: ${{ needs.preflight.outputs.build_date }}" | Out-File $manifest -Append
@@ -592,6 +672,61 @@ jobs:
           Write-Host "=== Manifest ==="
           Get-Content $manifest
 
+          # === update-manifest.json (suite-updater feed a PENZTAR kliensnek) ===
+          # A penztar frissitesi egysege a TELJES suite-telepito, ezert nem
+          # electron-updater feedet kap, hanem sajat manifestet (3.4 szakasz).
+          # A hash NEM ujraszamolt: a fent generalt SHA-256 manifest soraibol jon,
+          # igy egyetlen igazsagforras van — ha a ketto elcsuszna, a kliens
+          # elutasitana a telepitot es a hibat csak a flottan latnank meg.
+          $penztarExe = Get-ChildItem $flatDir -File |
+                        Where-Object { $_.Name -like 'Penztar-Setup-*.exe' } |
+                        Sort-Object Name | Select-Object -Last 1
+          if (-not $penztarExe) {
+            Write-Host "::error::Penztar-Setup-*.exe nem talalhato a release-assetek kozott — update-manifest.json nem generalhato."
+            exit 1
+          }
+          $manifestLines = Get-Content $manifest
+          $hashLine = $manifestLines | Where-Object { $_ -match "\s$([regex]::Escape($penztarExe.Name))$" } | Select-Object -First 1
+          if (-not $hashLine) {
+            Write-Host "::error::A SHA-256 manifestben nincs sor a(z) $($penztarExe.Name) fajlhoz."
+            exit 1
+          }
+          $penztarHash = ($hashLine -split '\s+')[0]
+          if ($penztarHash -notmatch '^[0-9a-f]{64}$') {
+            Write-Host "::error::Ervenytelen SHA-256 a manifest sorban: $hashLine"
+            exit 1
+          }
+          $rollout = '${{ github.event.inputs.rollout_percent }}'
+          if ([string]::IsNullOrWhiteSpace($rollout)) { $rollout = '100' }
+          $rolloutInt = 0
+          if (-not [int]::TryParse($rollout, [ref]$rolloutInt) -or $rolloutInt -lt 0 -or $rolloutInt -gt 100) {
+            Write-Host "::error::rollout_percent erteke 0-100 kozotti egesz szam legyen (kapott: '$rollout')."
+            exit 1
+          }
+          $tag = "v${{ needs.preflight.outputs.version }}"
+          $updateManifest = [ordered]@{
+            schemaVersion  = 1
+            version        = '${{ needs.preflight.outputs.version }}'
+            releasedAt     = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            rolloutPercent = $rolloutInt
+            mandatory      = $false
+            notes          = '${{ github.event.inputs.release_notes }}'
+            penztar        = [ordered]@{
+              file       = $penztarExe.Name
+              url        = "https://github.com/${{ github.repository }}/releases/download/$tag/$($penztarExe.Name)"
+              sha256     = $penztarHash
+              sizeBytes  = $penztarExe.Length
+              silentArgs = @('/S')
+            }
+          }
+          $updateManifestPath = "$flatDir/update-manifest.json"
+          $updateManifest | ConvertTo-Json -Depth 5 | Out-File $updateManifestPath -Encoding utf8
+          Write-Host "=== update-manifest.json ==="
+          Get-Content $updateManifestPath
+
+          Write-Host "=== Release assetek ==="
+          Get-ChildItem $flatDir -File | Select-Object Name, Length | Format-Table -AutoSize
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -605,6 +740,12 @@ jobs:
             - `Penztar-Setup-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — penztaros kliens
             - `Penztar-Eltavolito-${{ needs.preflight.outputs.version }}-${{ needs.preflight.outputs.build_date }}.exe` — uninstaller
             - `Kozponti-Munkaallomas-Setup-${{ needs.preflight.outputs.version }}.exe` — kozponti irodavezetoi munkaallomas (tartalmazza az arfolyamkeszito/rate-maker modot is, inditaskori mod-valasztoval)
+            - `munkaallomas.yml` + `.exe.blockmap` — **auto-update feed a kozponti munkaallomashoz** (electron-updater; ne torolje, kulonben a mar telepitett gepek nem talalnak frissitest)
+
+            > A **penztaros kliens** frissitese NEM ezen a feeden tortenik, hanem a teljes
+            > suite-telepitovel (backend JAR + JRE + PostgreSQL + NSSM service-ek egyben) —
+            > lasd `docs/auto-update-terv-es-vegrehajtas.md` 3.2 es 3.6 szakasz.
+            > `penztar.yml`-t TILOS a release-hez adni (duplikalt telepitest okoz a regi flottan).
 
             ## Verifikalas
             ```powershell
@@ -618,6 +759,9 @@ jobs:
             Git SHA: ${{ github.sha }}
           files: |
             release-flat/*.exe
+            release-flat/*.exe.blockmap
+            release-flat/munkaallomas.yml
+            release-flat/update-manifest.json
             release-flat/*.jar
             release-flat/windows-signed-release-sha256.txt
           draft: false

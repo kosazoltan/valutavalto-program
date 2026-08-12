@@ -29,7 +29,9 @@ import {
   promoteUserDataEnv,
   createMediaPermissionHandler,
   createAppProtocolHandler,
+  initElectronUpdater,
 } from '../../packages/electron-platform/src'
+import { autoUpdater } from 'electron-updater'
 
 const osBuild = Number.parseInt(getOsRelease().split('.')[2] || '0', 10)
 if (osBuild >= 26200) {
@@ -595,6 +597,22 @@ app
     }
 
     createWindow()
+
+    // Onfrissites (docs/auto-update-terv-es-vegrehajtas.md 8. szakasz, 2. dontes):
+    // a kozponti gepen nincs penztari munkafolyamat, ezert `on-quit` mod — a
+    // frissites a hatterben letolt, es a kovetkezo app-kilepesnel telepul,
+    // munkamegszakitas nelkul. A dontesi logika (rollout, event-wiring, dialogok)
+    // a platform-retegben van; az `electron-updater` peldanyt itt adjuk at.
+    // A penztar-kliens NEM ezt hasznalja (suite-telepito -> 3.2/3.6 szakasz).
+    initElectronUpdater({
+      updater: autoUpdater as never,
+      logger: log,
+      currentVersion: app.getVersion(),
+      installMode: 'on-quit',
+      clientLabel: 'kozponti',
+      mainWindow,
+      rolloutPercent: Number.parseInt(process.env.UPDATE_ROLLOUT_PERCENT || '100', 10),
+    })
   })
   .catch((err) => {
     log.error('[App] startup failed:', err)

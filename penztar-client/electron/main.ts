@@ -14,7 +14,7 @@ import {
   session,
   Menu,
 } from 'electron';
-import { initAutoUpdate } from './auto-update';
+import { initSuiteUpdate } from './suite-update';
 import { createBeforeInputHandler } from './input-guard';
 import { release as getOsRelease } from 'node:os';
 
@@ -1629,11 +1629,16 @@ app.whenReady().then(async () => {
   syncEngine.start(30_000);
   log.info('[App] SyncEngine elindítva');
 
-  // Electron auto-update (vezerlokonyv par.29)
+  // Suite-frissites (docs/auto-update-terv-es-vegrehajtas.md 3.2 + 3.6):
+  // a penztar frissitesi EGYSEGE a teljes alairt suite-telepito (Electron +
+  // backend JAR + JRE + PostgreSQL + NSSM service-ek), NEM az electron-updater —
+  // az ugyanis parhuzamos, masodik telepitest hozna letre es szetcsuszna a
+  // kliens/lokalis-backend verzio. A telepites CSAK allapotvezerelt ablakban
+  // indul (napnyitas ELOTT vagy napzaras UTAN), nyitott muszak alatt csak jelez.
   if (app.isPackaged) {
-    initAutoUpdate(mainWindow);
+    initSuiteUpdate(mainWindow);
   } else {
-    log.info('[App] Auto-update kihagyva (dev mode)');
+    log.info('[App] Suite-update kihagyva (dev mode)');
   }
 });
 

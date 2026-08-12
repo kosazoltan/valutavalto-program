@@ -613,6 +613,37 @@ export interface ElectronAPI {
     onUpdate(cb: (payload: CustomerDisplayPayload) => void): () => void
   }
 
+  // --- Suite-frissítés (docs/auto-update-terv-es-vegrehajtas.md 3.6) ---
+  // A pénztár a TELJES aláírt suite-telepítővel frissül (Electron + backend JAR +
+  // JRE + PostgreSQL + NSSM service-ek), és a telepítés CSAK állapotvezérelt
+  // ablakban indul: napnyitás ELŐTT vagy napzárás UTÁN. Nyitott műszak alatt a
+  // main process csak jelez. Az állapotot a renderer jelenti, mert csak itt
+  // tudható, van-e nyitott napi munkamenet.
+  suiteUpdate?: {
+    /** Jelenti a műszak-állapotot a main processnek (ez engedi/tiltja a telepítést). */
+    setShiftState(
+      state: 'IDLE_BEFORE_OPEN' | 'SHIFT_OPEN' | 'CLOSED_AFTER_DAY_END',
+    ): Promise<{ accepted: boolean; shiftState: string }>
+    /** Az updater aktuális állapota + a készen álló verzió (ha van). */
+    status(): Promise<{
+      state: string
+      shiftState: string
+      readyVersion: string | null
+      mandatory: boolean
+    }>
+    /** Akkor tüzel, amikor egy ellenőrzött frissítés készen áll. Unsubscribe-ot ad vissza. */
+    onReady(
+      cb: (payload: {
+        version: string
+        mandatory: boolean
+        notes: string | null
+        installableNow: boolean
+      }) => void,
+    ): () => void
+    /** Letöltési folyamat. Unsubscribe-ot ad vissza. */
+    onProgress(cb: (payload: unknown) => void): () => void
+  }
+
   // --- Platform ---
   platform: string
 }

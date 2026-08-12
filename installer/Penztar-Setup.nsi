@@ -6,7 +6,9 @@
 ;       postgres superuser gets random password (generate-secrets.ps1 5th output line).
 ;       .pgpass created at $DATA_DIR\config\.pgpass for service/maintenance access.
 ;       Upgrade path: passwords set while PG running (trust), then pg_hba hardened after stop.
-; v6.1: Eszter review fixes: E6-01 IfSilent +2->+1 (fatal abort in silent mode),
+; v6.1: Eszter review fixes: E6-01 fatal abort in silent mode (a +2->+1 valtoztatas
+;     v2.28.79-ben VISSZAJAVITVA +2 0-ra: a +1 nem ugrott semmit, igy a MessageBox
+;     /S modban is megjelent es a nema telepito blokkolt — empirikusan mérve),
 ;       E6-02 config dir ACL hardening (inheritance removed, explicit grants),
 ;       E6-03 uninstaller process-death wait loop, E6-04 firewall remoteip=127.0.0.1,
 ;       S6-01 default password warning, S6-05 backend dir RX+logs F,
@@ -553,14 +555,17 @@ Section "Telepites" SecInstall
     ${WordFind} $R0 "$\r$\n" "+5" $9
 
     ; F3-C: Abort if secret generation failed (no weak fallback)
-    ; E6-01 fix: IfSilent +1 (only skip MessageBox, NOT Abort)
+    ; E6-01 fix (v2.28.79): IfSilent +2 0 — a MessageBox kimarad, az Abort lefut.
+    ; A korabbi `IfSilent +1` HIBAS volt: NSIS-ben a +1 a KOVETKEZO utasitas,
+    ; azaz nem ugrik semmit, igy a MessageBox /S modban IS megjelent es a nema
+    ; telepito orokre blokkolt rajta. Empirikus meres: .hermes/tmp/ifsilent-probe.nsi
     ${If} $1 != 0
     ${OrIf} $2 == ""
     ${OrIf} $4 == ""
     ${OrIf} $6 == ""
     ${OrIf} $8 == ""
     ${OrIf} $9 == ""
-        IfSilent +1
+        IfSilent +2 0
         MessageBox MB_OK|MB_ICONSTOP "HIBA: A biztonsagi kulcsok generalasa sikertelen (PowerShell).$\r$\nEllenorizze, hogy a PowerShell elerheto-e.$\r$\nHibakod: $1"
         Abort
     ${EndIf}
@@ -631,9 +636,9 @@ Section "Telepites" SecInstall
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\initdb.exe" -D "$DATA_DIR\pgsql\data" -U postgres -E UTF8 --locale=C --auth=trust'
         Pop $0
         Pop $1  ; stdout (stack balance)
-        ; E6-01 fix: IfSilent +1
+        ; E6-01 fix (v2.28.79): IfSilent +2 0 (a +1 nem ugrott semmit -> /S blokkolt)
         ${If} $0 != 0
-            IfSilent +1
+            IfSilent +2 0
             MessageBox MB_OK|MB_ICONSTOP "HIBA: Az adatbazis inicializalas sikertelen (initdb).$\r$\nHibakod: $0$\r$\n$\r$\nEllenorizze, hogy van-e eleg hely a lemezen."
             Abort
         ${EndIf}
@@ -655,9 +660,9 @@ Section "Telepites" SecInstall
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" start -D "$DATA_DIR\pgsql\data" -l "$DATA_DIR\pgsql\log\postgresql.log" -w -t 30'
         Pop $0
         Pop $1  ; stdout (stack balance)
-        ; E6-01 fix: IfSilent +1
+        ; E6-01 fix (v2.28.79): IfSilent +2 0 (a +1 nem ugrott semmit -> /S blokkolt)
         ${If} $0 != 0
-            IfSilent +1
+            IfSilent +2 0
             MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem indult el.$\r$\nEllenorizze a log fajlt:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
             Abort
         ${EndIf}
@@ -667,9 +672,10 @@ Section "Telepites" SecInstall
         StrCpy $R0 0
         pg_wait_loop:
             IntOp $R0 $R0 + 1
-            ; E6-01 fix: IfSilent +1 (pg_ctl stop + Abort always runs)
+            ; E6-01 fix (v2.28.79): IfSilent +2 0 — a MessageBox kimarad, a pg_ctl stop
+            ; ES az Abort is lefut (a +2 a MessageBox UTANI utasitasra ugrik).
             ${If} $R0 > 20
-                IfSilent +1
+                IfSilent +2 0
                 MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem valaszol 20 masodpercen belul."
                 nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 10'
                 Abort
@@ -780,7 +786,7 @@ Section "Telepites" SecInstall
             RMDir /r "$DATA_DIR\scripts"
             RMDir /r "$INSTDIR"
         ${EndIf}
-        IfSilent +1
+        IfSilent +2 0
         MessageBox MB_OK|MB_ICONSTOP "HIBA: A valuta_user adatbazis felhasznalo letrehozasa/ellenorzese sikertelen.$\r$\nA telepito rollbackelte a felkesz allapotot.$\r$\n$\r$\nVerify output: [$R2]$\r$\nEllenorizze a PostgreSQL logot:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
         Abort
         verify_user_ok:
@@ -822,7 +828,7 @@ Section "Telepites" SecInstall
                 DetailPrint "  HIBA: pg_hba.conf trust-validacio nem futtathato (findstr kod: $0) — fail-closed!"
             ${EndIf}
             nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 10'
-            IfSilent +1
+            IfSilent +2 0
             MessageBox MB_OK|MB_ICONSTOP "HIBA: Az adatbazis-hitelesites nem ellenorizheto biztonsagosan (pg_hba.conf trust-ellenorzes kod: $0).$\r$\nA telepito biztonsagi okbol leallt."
             Abort
         ${EndIf}
@@ -1150,7 +1156,7 @@ Section "Telepites" SecInstall
     DetailPrint "  pg_hba.conf visszaallitva (hardened)"
 
     ; S6-01 fix: Figyelmeztetes az alapertelmezett jelszavakra
-    IfSilent +1
+    IfSilent +2 0
     MessageBox MB_OK|MB_ICONEXCLAMATION "FONTOS: A dolgozok alapertelmezett jelszava '1234'.$\r$\n$\r$\nAz elso bejelentkezes utan AZONNAL valtoztassa meg a jelszavakat!$\r$\n$\r$\nErintett felhasznalok: BORSI, BALI, KASZA"
 
     ${EndIf} ; <-- v2.5.9: VEGE a FULL-only blokknak (FAZIS 3-6: config + DB init + service + firewall + seed)

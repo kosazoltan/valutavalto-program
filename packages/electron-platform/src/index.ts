@@ -72,3 +72,13 @@ export {
   type PlatformLogger,
   type PromoteUserDataEnvOptions,
 } from './app-runtime'
+
+export {
+  initElectronUpdater,
+  isInRollout,
+  type ElectronUpdaterHandle,
+  type ElectronUpdaterOptions,
+  type UpdateInstallMode,
+  type UpdateLogger,
+  type UpdaterLike,
+} from './auto-update'
