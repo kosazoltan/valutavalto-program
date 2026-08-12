@@ -234,6 +234,12 @@ const MANIFEST_URL =
 const EXPECTED_SUBJECT = 'EXCLUSIVE BEST Change Zrt.';
 const INITIAL_DELAY_MS = 10_000;
 const POLL_INTERVAL_MS = 4 * 60 * 60 * 1000;
+/**
+ * A telepito felso meretkorlatja (600 MB). A valos suite ~280 MB; a duplaja feletti
+ * ertek mar hibara utal. Enelkul egy manipulalt vagy hibasan valaszolo szerver
+ * teleirhatna a penztargep lemezét a `.part` fajllal.
+ */
+const MAX_INSTALLER_BYTES = 600 * 1024 * 1024;
 
 interface SuiteUpdateRuntime {
   state: SuiteUpdateState;
@@ -358,9 +364,20 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
       const total = Number(response.headers.get('content-length') ?? manifest.penztar.sizeBytes ?? 0);
       let received = 0;
       const out = fs.createWriteStream(tempPath);
-      // @ts-expect-error — a Node 20+ fetch body aszinkron iteralhato.
-      for await (const chunk of response.body) {
-        received += (chunk as Uint8Array).length;
+      // A letoltott bajtok TARTALMA itt meg nem megbizhato (CodeQL js/http-to-file-access):
+      // ez a modul lenyege — a telepitot le KELL tolteni ahhoz, hogy ellenorizni tudjuk.
+      // A vedelem nem az iras megakadalyozasa, hanem hogy a fajl SOHA nem fut le
+      // SHA-256 + Authenticode ellenorzes nelkul (lasd lentebb), az utvonal a sajat
+      // temp-alkonyvtarunkhoz van kotve, es a meret felso korlatos: enelkul egy
+      // manipulalt vagy hibas szerver teleirhatna a penztargep lemezét (a `.part`
+      // fajl a lemez megtelteig nott volna).
+      for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+        received += chunk.length;
+        if (received > MAX_INSTALLER_BYTES) {
+          throw new Error(
+            `a letoltes tullepte a megengedett meretet (${received} > ${MAX_INSTALLER_BYTES} bajt)`,
+          );
+        }
         out.write(chunk);
         if (total > 0 && mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('autoUpdate:progress', {
