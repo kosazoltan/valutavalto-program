@@ -32,9 +32,14 @@ import java.util.UUID;
  *
  * <p>v2.5.66 Sprint A P2.5: súlyozott átlagárfolyam időszak + iroda + valuta szerint.</p>
  *
- * <p>A súlyozott átlag = SUM(huf_amount) / SUM(currency_amount). Nem aritmetikus átlag
- * a tranzakciós exchange_rate-eken (az torz lenne, mert kis és nagy tranzakciók
- * ugyanúgy számítanának). A HUF-súlyozott a valódi pénzügyi átlagárfolyam.</p>
+ * <p>FK-083: a súlyozott átlag a nettó HUF-ból számít: nettó = SUM(huf_amount) ± SUM(handling_fee)
+ * − SUM(rounding_amount), ahol BUY HOZZÁADJA a díjat (a hufAmount-ból a díj már le volt vonva),
+ * SELL pedig LEVONJA (a hufAmount-hoz a díj hozzá volt adva); a kerekítés mindkét irányban levonandó
+ * (előjel-bizonyíték: Transaction.java:574-585). rate = nettó / SUM(currency_amount), 4 tizedes,
+ * HALF_UP, osztás csak signum() &gt; 0 esetén. Nem aritmetikus átlag a tranzakciós
+ * exchange_rate-eken (az torz lenne, mert kis és nagy tranzakciók ugyanúgy számítanának);
+ * a HUF-súlyozott nettó átlag a valódi pénzügyi átlagárfolyam. Az Excel-export ugyanazt a
+ * generatePivot()-ot hívja, így a javítást örökli (AverageRateReportExcelService).</p>
  *
  * <p>Multi-tenant biztonság: minden lekérdezés `company.id = :companyId`-ra szűr.</p>
  *
@@ -65,7 +70,8 @@ public class AverageRateReportService {
      *
      * <p>Csak {@code is_vault=FALSE} pénztárak, csak COMPLETED + financialEffective BUY/SELL
      * tételek — a sztornózott (REVERSED) tételek és a parent CONVERSION sorok automatikusan
-     * kimaradnak (FR-10). Súlyozott átlag = SUM(huf)/SUM(currency).</p>
+     * kimaradnak (FR-10). FK-083: súlyozott átlag = nettó HUF / SUM(currency), ahol a nettó
+     * díj- és kerekítés-korrigált (lásd a class javadoc-ot).</p>
      *
      * @param branchId null = "Összes iroda" (8 terület + összesítő); egyébként 1 fiók-oszlopcsoport
      */
@@ -121,7 +127,8 @@ public class AverageRateReportService {
         String keyExpr = singleBranch ? "t.branch.code" : "t.branch.region";
         StringBuilder jpql = new StringBuilder()
                 .append("SELECT ").append(keyExpr)
-                .append(", t.currency.code, t.transactionType, SUM(t.currencyAmount), SUM(t.hufAmount) ")
+                .append(", t.currency.code, t.transactionType, SUM(t.currencyAmount), SUM(t.hufAmount)")
+                .append(", SUM(COALESCE(t.handlingFee, 0)), SUM(COALESCE(t.roundingAmount, 0)) ")
                 .append("FROM Transaction t ")
                 .append("WHERE t.company.id = :companyId ")
                 .append("AND t.transactionDate BETWEEN :from AND :to ")
@@ -149,8 +156,8 @@ public class AverageRateReportService {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
 
-        // groupCode -> currencyCode -> [buySumCur, buySumHuf, sellSumCur, sellSumHuf]
-        Map<String, Map<String, BigDecimal[]>> acc = new HashMap<>();
+        // groupCode -> currencyCode -> Agg (BUY/SELL: currency, HUF, díj, kerekítés összegek).
+        Map<String, Map<String, Agg>> acc = new HashMap<>();
         for (Object[] row : rows) {
             String groupKey = (String) row[0];
             if (groupKey == null) {
@@ -160,9 +167,11 @@ public class AverageRateReportService {
             TransactionType type = (TransactionType) row[2];
             BigDecimal sumCur = (BigDecimal) row[3];
             BigDecimal sumHuf = (BigDecimal) row[4];
-            accumulate(acc, groupKey, currCode, type, sumCur, sumHuf);
+            BigDecimal sumFee = (BigDecimal) row[5];
+            BigDecimal sumRound = (BigDecimal) row[6];
+            accumulate(acc, groupKey, currCode, type, sumCur, sumHuf, sumFee, sumRound);
             if (!singleBranch) {
-                accumulate(acc, TOTAL_GROUP_CODE, currCode, type, sumCur, sumHuf);
+                accumulate(acc, TOTAL_GROUP_CODE, currCode, type, sumCur, sumHuf, sumFee, sumRound);
             }
         }
 
@@ -172,8 +181,8 @@ public class AverageRateReportService {
         for (Currency c : currencies) {
             Map<String, ColumnValues> values = new LinkedHashMap<>();
             for (ColumnGroup g : groups) {
-                Map<String, BigDecimal[]> byCurrency = acc.get(g.getGroupCode());
-                BigDecimal[] agg = byCurrency != null ? byCurrency.get(c.getCode()) : null;
+                Map<String, Agg> byCurrency = acc.get(g.getGroupCode());
+                Agg agg = byCurrency != null ? byCurrency.get(c.getCode()) : null;
                 values.put(g.getGroupCode(), toColumnValues(agg));
             }
             currencyRows.add(CurrencyRow.builder().currencyCode(c.getCode()).values(values).build());
@@ -188,36 +197,60 @@ public class AverageRateReportService {
                 .build();
     }
 
-    private static void accumulate(Map<String, Map<String, BigDecimal[]>> acc, String groupKey,
+    /** Per (group, currency) aggregate: BUY and SELL sums of currency, HUF, handling fee and rounding. */
+    private static final class Agg {
+        BigDecimal buyCur = BigDecimal.ZERO, buyHuf = BigDecimal.ZERO,
+                   buyFee = BigDecimal.ZERO, buyRound = BigDecimal.ZERO;
+        BigDecimal sellCur = BigDecimal.ZERO, sellHuf = BigDecimal.ZERO,
+                   sellFee = BigDecimal.ZERO, sellRound = BigDecimal.ZERO;
+    }
+
+    private static void accumulate(Map<String, Map<String, Agg>> acc, String groupKey,
                                    String currCode, TransactionType type,
-                                   BigDecimal sumCur, BigDecimal sumHuf) {
-        BigDecimal[] agg = acc.computeIfAbsent(groupKey, k -> new HashMap<>())
-                .computeIfAbsent(currCode, k -> new BigDecimal[]{
-                        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
+                                   BigDecimal sumCur, BigDecimal sumHuf,
+                                   BigDecimal sumFee, BigDecimal sumRound) {
+        Agg agg = acc.computeIfAbsent(groupKey, k -> new HashMap<>())
+                .computeIfAbsent(currCode, k -> new Agg());
         BigDecimal cur = sumCur != null ? sumCur : BigDecimal.ZERO;
         BigDecimal huf = sumHuf != null ? sumHuf : BigDecimal.ZERO;
+        BigDecimal fee = sumFee != null ? sumFee : BigDecimal.ZERO;
+        BigDecimal round = sumRound != null ? sumRound : BigDecimal.ZERO;
         if (type == TransactionType.BUY) {
-            agg[0] = agg[0].add(cur);
-            agg[1] = agg[1].add(huf);
+            agg.buyCur = agg.buyCur.add(cur);
+            agg.buyHuf = agg.buyHuf.add(huf);
+            agg.buyFee = agg.buyFee.add(fee);
+            agg.buyRound = agg.buyRound.add(round);
         } else if (type == TransactionType.SELL) {
-            agg[2] = agg[2].add(cur);
-            agg[3] = agg[3].add(huf);
+            agg.sellCur = agg.sellCur.add(cur);
+            agg.sellHuf = agg.sellHuf.add(huf);
+            agg.sellFee = agg.sellFee.add(fee);
+            agg.sellRound = agg.sellRound.add(round);
         }
     }
 
-    /** [buyCur, buyHuf, sellCur, sellHuf] → ColumnValues (üres cella = 0, nem null/hiányzó). */
-    private static ColumnValues toColumnValues(BigDecimal[] agg) {
+    /**
+     * FK-083: nettó HUF-ból számított súlyozott átlag (üres cella = 0, nem null/hiányzó).
+     *
+     * <p>Előjel-bizonyíték: Transaction.java:574-585 — BUY esetén
+     * {@code hufAmount = calcHuf − fee + rounding}, ezért a díjat VISSZAADJUK
+     * ({@code net = huf + fee − rounding}); SELL esetén {@code hufAmount = calcHuf + fee + rounding},
+     * ezért a díjat és a kerekítést is LEVONJUK ({@code net = huf − fee − rounding}).
+     * A negatív aggregált kerekítési összeg legitim és változatlanul folyik át.</p>
+     */
+    private static ColumnValues toColumnValues(Agg agg) {
         if (agg == null) {
             return ColumnValues.builder()
                     .buyAvgRate(BigDecimal.ZERO).buySumAmount(BigDecimal.ZERO)
                     .sellAvgRate(BigDecimal.ZERO).sellSumAmount(BigDecimal.ZERO).build();
         }
-        BigDecimal buyAvg = agg[0].signum() > 0
-                ? agg[1].divide(agg[0], 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
-        BigDecimal sellAvg = agg[2].signum() > 0
-                ? agg[3].divide(agg[2], 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal buyNet = agg.buyHuf.add(agg.buyFee).subtract(agg.buyRound);        // BUY:  huf + fee - rounding
+        BigDecimal sellNet = agg.sellHuf.subtract(agg.sellFee).subtract(agg.sellRound); // SELL: huf - fee - rounding
+        BigDecimal buyAvg = agg.buyCur.signum() > 0
+                ? buyNet.divide(agg.buyCur, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal sellAvg = agg.sellCur.signum() > 0
+                ? sellNet.divide(agg.sellCur, 4, RoundingMode.HALF_UP) : BigDecimal.ZERO;
         return ColumnValues.builder()
-                .buyAvgRate(buyAvg).buySumAmount(agg[0])
-                .sellAvgRate(sellAvg).sellSumAmount(agg[2]).build();
+                .buyAvgRate(buyAvg).buySumAmount(agg.buyCur)
+                .sellAvgRate(sellAvg).sellSumAmount(agg.sellCur).build();
     }
 }

@@ -84,9 +84,10 @@ class AverageRateReportServiceTest {
                 .thenReturn(aggQuery);
         lenient().when(aggQuery.setParameter(anyString(), Mockito_any())).thenReturn(aggQuery);
         when(aggQuery.getResultList()).thenReturn(Arrays.asList(
-                new Object[]{"SZEGED", "EUR", TransactionType.BUY, new BigDecimal("1000"), new BigDecimal("400000")},
-                new Object[]{"SZEGED", "EUR", TransactionType.SELL, new BigDecimal("500"), new BigDecimal("210000")},
-                new Object[]{"PECS", "EUR", TransactionType.BUY, new BigDecimal("1000"), new BigDecimal("402000")}
+                // FK-083: 7 oszlop — {groupKey, currencyCode, type, sumCur, sumHuf, sumFee, sumRounding}
+                new Object[]{"SZEGED", "EUR", TransactionType.BUY, new BigDecimal("1000"), new BigDecimal("400000"), new BigDecimal("1500"), new BigDecimal("500")},
+                new Object[]{"SZEGED", "EUR", TransactionType.SELL, new BigDecimal("500"), new BigDecimal("210000"), new BigDecimal("1000"), new BigDecimal("500")},
+                new Object[]{"PECS", "EUR", TransactionType.BUY, new BigDecimal("1000"), new BigDecimal("402000"), BigDecimal.ZERO, BigDecimal.ZERO}
         ));
 
         Currency eur = org.mockito.Mockito.mock(Currency.class);
@@ -103,11 +104,11 @@ class AverageRateReportServiceTest {
         assertThat(resp.getCurrencyRows()).hasSize(1);
 
         var eurRow = resp.getCurrencyRows().get(0);
-        // SZEGED: Vétel 400000/1000=400, Eladás 210000/500=420
-        assertThat(eurRow.getValues().get("SZEGED").getBuyAvgRate()).isEqualByComparingTo("400.0000");
-        assertThat(eurRow.getValues().get("SZEGED").getSellAvgRate()).isEqualByComparingTo("420.0000");
-        // total Vétel: (400000+402000)/(1000+1000)=401; összeg=2000
-        assertThat(eurRow.getValues().get("total").getBuyAvgRate()).isEqualByComparingTo("401.0000");
+        // FK-083 nettó formula: SZEGED Vétel (400000+1500−500)/1000=401, Eladás (210000−1000−500)/500=417
+        assertThat(eurRow.getValues().get("SZEGED").getBuyAvgRate()).isEqualByComparingTo("401.0000");
+        assertThat(eurRow.getValues().get("SZEGED").getSellAvgRate()).isEqualByComparingTo("417.0000");
+        // total Vétel: ((400000+402000)+(1500+0)−(500+0))/(1000+1000)=401.5; összeg=2000
+        assertThat(eurRow.getValues().get("total").getBuyAvgRate()).isEqualByComparingTo("401.5000");
         assertThat(eurRow.getValues().get("total").getBuySumAmount()).isEqualByComparingTo("2000");
         // PECS: nincs Eladás → 0 (nem null/hiányzó)
         assertThat(eurRow.getValues().get("PECS").getSellAvgRate()).isEqualByComparingTo("0");
@@ -142,7 +143,9 @@ class AverageRateReportServiceTest {
         assertThat(regionJpql).contains("LEFT JOIN b.branchType").contains("VAULT_COUNTERPARTY");
         String aggJpql = cap.getAllValues().stream()
                 .filter(s -> s.contains("SUM(t.currencyAmount)")).findFirst().orElseThrow();
-        assertThat(aggJpql).contains("VAULT_COUNTERPARTY");
+        assertThat(aggJpql).contains("VAULT_COUNTERPARTY")
+                .contains("SUM(COALESCE(t.handlingFee, 0))")
+                .contains("SUM(COALESCE(t.roundingAmount, 0))");
     }
 
     @Test
@@ -169,5 +172,33 @@ class AverageRateReportServiceTest {
         assertThat(resp.getColumnGroups()).extracting(ColumnGroup::getGroupCode)
                 .doesNotContain("ORSZAGOS")
                 .containsExactly("PECS", "SZEGED", "total");
+    }
+
+    // ============ FK-083: zéró deviza-összeg osztás-guard ============
+
+    @Test
+    @DisplayName("FK-083: sumCur=0 → buyAvgRate=0 (signum guard, nincs ArithmeticException)")
+    void generatePivot_zeroCurrencySum_rateIsZeroNotArithmeticException() {
+        Query regionsQuery = org.mockito.Mockito.mock(Query.class);
+        when(entityManager.createQuery(org.mockito.ArgumentMatchers.contains("DISTINCT b.region")))
+                .thenReturn(regionsQuery);
+        lenient().when(regionsQuery.setParameter(anyString(), Mockito_any())).thenReturn(regionsQuery);
+        when(regionsQuery.getResultList()).thenReturn(List.of("SZEGED"));
+        Query aggQuery = org.mockito.Mockito.mock(Query.class);
+        when(entityManager.createQuery(org.mockito.ArgumentMatchers.contains("SUM(t.currencyAmount)")))
+                .thenReturn(aggQuery);
+        lenient().when(aggQuery.setParameter(anyString(), Mockito_any())).thenReturn(aggQuery);
+        when(aggQuery.getResultList()).thenReturn(java.util.Collections.singletonList(
+                new Object[]{"SZEGED", "EUR", TransactionType.BUY, BigDecimal.ZERO, new BigDecimal("100000"), new BigDecimal("500"), BigDecimal.ZERO}
+        ));
+        Currency eur = org.mockito.Mockito.mock(Currency.class);
+        when(eur.getCode()).thenReturn("EUR");
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc()).thenReturn(List.of(eur));
+
+        AverageRateReportResponse resp = service.generatePivot(
+                companyId, LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), null);
+
+        var eurRow = resp.getCurrencyRows().get(0);
+        assertThat(eurRow.getValues().get("SZEGED").getBuyAvgRate()).isEqualByComparingTo("0");
     }
 }
