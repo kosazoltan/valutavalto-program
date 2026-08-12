@@ -1,11 +1,53 @@
 # Automatikus frissítés (self-update) — Terv és végrehajtási utasítás
 
-> Állapot: TERV (jóváhagyásra vár) · Készült: 2026-08-12 · Készítette: Claude (repo-elemzés alapján)
+> Állapot: **1. ÉS 2. FÁZIS IMPLEMENTÁLVA** (PR #1618, 2026-08-12) · Terv készült: 2026-08-12
+>
+> A 8. szakasz döntései jóváhagyva. A végrehajtás jegyzőkönyve és a bizonyítékok:
+> `.hermes/tickets/2026-08-12-auto-update-vegrehajtas-jegyzokonyv.md`.
+>
+> **Ami még nyitott:** (a) éles verifikáció — a feed és a manifestek csak
+> `publish_release: true` futásnál keletkeznek; (b) a renderer-oldali
+> műszak-állapot bejelentés és a „frissítés készen áll" jelölő (`frontend-react`);
+> (c) 3. fázis — flotta-rollout `rollout_percent: 25`-tel.
 >
 > Cél: a végfelhasználói kliensek (Pénztár, Központi Munkaállomás) **maguktól frissüljenek
 > a szerverről** — ne kelljen többé Drive-ról letöltögetni és kézzel újratelepíteni az új
 > telepítőt. Nem-informatikus végfelhasználó elv: a kolléga csak egy „Újraindít és telepít"
 > gombot lát, semmi mást.
+
+---
+
+## 0. Végrehajtási állapot (2026-08-12)
+
+| Terv-lépés | Állapot | Hol |
+|---|---|---|
+| 5.1 Közös update-modul | ✅ KÉSZ | `packages/electron-platform/src/auto-update.ts` (`initElectronUpdater`, `isInRollout`) |
+| 5.2 Központi kliens bekötés | ✅ KÉSZ | `kozponti-client/electron/main.ts`, `installMode: 'on-quit'` |
+| 5.3 Release: feed-assetek | ✅ KÉSZ | `munkaallomas.yml` + `.blockmap` + sha512↔exe hash-kapu + `penztar.yml`-tilalom |
+| 5.4/1 NSI `/S` audit | ✅ KÉSZ — **defektust talált és javított** | 7× `IfSilent +1` → `+2 0`; új kapu: `installer/tests/nsis-silent-mode-guard.py` |
+| 5.4/2 `suite-update.ts` | ✅ KÉSZ | állapotgép + SHA-256 + Authenticode + downgrade-tilalom + rollout |
+| 5.4/3 CI `update-manifest.json` | ✅ KÉSZ | publish job; hash a SHA-256 manifestből (egy igazságforrás) |
+| 5.4/4 régi `app-update.yml` | ⏸️ MEGHAGYVA | a kint lévő verziók miatt; az új kód nem használja |
+| 5.5 Végpont-végpont próba | ❌ NYITOTT | két egymást követő éles release kell hozzá |
+| 5.6 Rollout | ❌ NYITOTT | `rollout_percent` input kész, az éles kör még nem indult |
+| Renderer műszak-állapot UI | ❌ NYITOTT | a preload-API kész (`suiteUpdate.*`), a `frontend-react` bekötés hiányzik |
+
+**Fail-safe következmény:** amíg a renderer nem jelent műszak-állapotot, a
+suite-updater konzervatívan `SHIFT_OPEN`-t feltételez, tehát **letölt és ellenőriz,
+de nem telepít**. Ez nem hiba, hanem a 3.6/2. szabály szándékolt viselkedése.
+
+### A menet közben talált defektus (dokumentálva, mert visszatérhet)
+
+A `Penztar-Setup.nsi` 7 helyen `IfSilent +1`-et használt. NSIS-ben a `+1` a
+**következő** utasítás, azaz nem ugrik semmit → a MessageBox néma (`/S`) módban is
+megjelent, és a telepítő blokkolt. Empirikus mérés (makensis 3.x):
+
+| Változat | `/S` futás |
+|---|---|
+| `IfSilent +1` | MessageBox megjelent, process timeout (exit 124) |
+| `IfSilent +2 0` | átugorta, lefutott (exit 0) |
+
+A `Abort` néma módban **exit 2**-t ad (siker: 0) — erre támaszkodik az updater.
 
 ---
 
