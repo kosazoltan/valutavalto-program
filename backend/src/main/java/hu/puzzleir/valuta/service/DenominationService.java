@@ -214,8 +214,23 @@ public class DenominationService {
         // nem-EUR ermekkel) es a HUF-specifikus ag egyarant megszunt. Az EUA-kivetel
         // sem kell: az EUA-nak nincs sora a tablaban -> 0 cimlet-sor jon letre.
         // Idempotens (meglévő bejegyzések kihagyva), csak AKTIV valutakra.
+        List<DenominationAllowed> catalog = denominationAllowedRepository.findActiveByCompanyId(companyId);
+
+        // FK-081: a migraciok UTAN letrehozott ceg katalogusa URES (a V376/V379
+        // INSERT ... SELECT csak az akkor letezo cegekre toltott). Ures katalogussal a
+        // fiok 0 cimletsort kapna, es az FK-080 ota a torvenyes HUF-zaras is elbukna
+        // (VV-VALID-006/007 mindent elutasit). Ezert itt egyszer feltoltjuk a katalogust
+        // a meglevo, migraciobol szarmazo torzsadatbol — nincs masodik igazsagforras.
+        // A meglevo negy tenantra ez az ag SOHA nem fut le.
+        if (catalog.isEmpty()) {
+            int seededRows = denominationAllowedRepository.seedCatalogForCompany(companyId);
+            log.warn("FK-081: ures cimlet-katalogus a(z) {} cegnel — {} sor seed-elve a torzsadatbol",
+                    companyId, seededRows);
+            catalog = denominationAllowedRepository.findActiveByCompanyId(companyId);
+        }
+
         int created = 0;
-        for (DenominationAllowed allowed : denominationAllowedRepository.findActiveByCompanyId(companyId)) {
+        for (DenominationAllowed allowed : catalog) {
             Currency currency = allowed.getCurrency();
             if (!Boolean.TRUE.equals(currency.getActive())) {
                 continue;

@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.entity.DenominationAllowed;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -50,4 +51,53 @@ public interface DenominationAllowedRepository extends JpaRepository<Denominatio
     Optional<DenominationAllowed> findActiveAllowed(@Param("companyId") UUID companyId,
                                                     @Param("currencyId") Long currencyId,
                                                     @Param("faceValue") BigDecimal faceValue);
+
+    /**
+     * FK-081: a torvenyes cimlet-katalogus feltoltese egy olyan cegre, amelynek meg
+     * nincs egyetlen sora sem.
+     *
+     * <p><b>Miert kell:</b> a katalogust eddig KIZAROLAG migracio toltotte (V376
+     * deviza-seed, V379 HUF-seed), es azok `INSERT ... SELECT`-je a futasuk pillanataban
+     * letezo cegekre toltott. Egy kesobb felvett ceg katalogusa ezert URES marad, ami az
+     * FK-080 ota a torvenyes HUF-zarast is megakadalyozna (VV-VALID-006/007 mindent
+     * elutasit). Lasd: `.hermes/tickets/2026-08-11-fk081-uj-ceg-katalogus-seed.md`.
+     *
+     * <p><b>Nincs masodik igazsagforras</b> (a ticket kifejezett elvarasa): a seed nem
+     * ismetli meg a nevertek-listat Java-ban, hanem a MAR MEGLEVO, migraciobol szarmazo
+     * katalogus egy referencia-ceget masolja at. Igy a V376/V379 marad az egyetlen hely,
+     * ahol a torvenyes lista definialva van — ha az valtozik, ez automatikusan koveti.
+     *
+     * <p><b>Referencia-ceg valasztasa:</b> a legtobb aktiv katalogus-sorral rendelkezo ceg
+     * (determinisztikus tie-break a company_id-n), igy egy esetleg maga is hianyos tenant
+     * nem valik mintava.
+     *
+     * <p><b>Idempotencia:</b> a `WHERE NOT EXISTS` gat miatt ismetelt futas 0 sort ir be.
+     * <p><b>Multi-tenant:</b> a beirt sorok company_id-ja KIZAROLAG a parameterben kapott
+     * ceg — a referencia-ceg soraibol csak a (currency_id, face_value, denomination_type)
+     * harmas kerul at, a tulajdonos nem.
+     *
+     * @return a ténylegesen beszúrt sorok száma
+     */
+    @Modifying
+    @Query(value = """
+            INSERT INTO denomination_allowed
+                   (company_id, currency_id, face_value, denomination_type, is_active, created_at, updated_at)
+            SELECT :companyId, src.currency_id, src.face_value, src.denomination_type, true, now(), now()
+              FROM denomination_allowed src
+             WHERE src.company_id = (
+                       SELECT da.company_id
+                         FROM denomination_allowed da
+                        WHERE da.is_active = true
+                        GROUP BY da.company_id
+                        ORDER BY count(*) DESC, da.company_id ASC
+                        LIMIT 1)
+               AND src.is_active = true
+               AND NOT EXISTS (
+                       SELECT 1
+                         FROM denomination_allowed tgt
+                        WHERE tgt.company_id = :companyId
+                          AND tgt.currency_id = src.currency_id
+                          AND tgt.face_value = src.face_value)
+            """, nativeQuery = true)
+    int seedCatalogForCompany(@Param("companyId") UUID companyId);
 }
