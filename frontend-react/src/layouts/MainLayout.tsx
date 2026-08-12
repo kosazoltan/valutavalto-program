@@ -27,6 +27,8 @@ import { menuGroups } from './menuGroups'
 import { isMenuGroupVisible, isMenuItemVisible, type MenuVisibilityContext } from './menuVisibility'
 import { useFeatureFlags } from '../hooks/useFeatureFlags'
 import TransitBadge from '../components/TransitBadge'
+import SuiteUpdateBadge from '../components/SuiteUpdateBadge'
+import { useSuiteUpdate } from '../hooks/useSuiteUpdate'
 
 export function shouldRequireDailySession(appMode: AppMode): boolean {
   return appMode === CASHIER_APP_MODE
@@ -77,6 +79,12 @@ export default function MainLayout() {
   const [showSessionDialog, setShowSessionDialog] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const { user, logout, hasRole, hasCanonicalRole } = useAuthStore()
+
+  // Suite-frissítés: a renderer jelenti a műszak-állapotot a main processnek (csak itt
+  // tudható, van-e nyitott napi munkamenet), és innen kapjuk a "készen áll" jelzést.
+  // A telepítést NEM ez indítja — az a main process állapotgépén, felhasználói
+  // megerősítéssel történik (docs/auto-update-terv-es-vegrehajtas.md 3.6).
+  const { readyUpdate } = useSuiteUpdate()
 
   // Codex #904: a NavLink `end` (exact-match) CSAK azokra a menüpontokra kell, amelyek egy másik
   // menüpont szegmens-prefixei (pl. `/rates` ⊂ `/rates/history`) — különben együtt highlightolnának.
@@ -408,6 +416,10 @@ export default function MainLayout() {
           </div>
 
           <div className="flex min-w-0 flex-wrap items-center gap-4">
+            {/* Suite-frissítés jelölő — a telepítés a main process állapotgépén megy
+                (napnyitás előtt / napzárás után), ez csak láthatóvá teszi. */}
+            <SuiteUpdateBadge readyUpdate={readyUpdate} />
+
             {/* v2.1.4: Uton levo csomagok badge — FKH-026 v3: menüpont-láthatósághoz kötve */}
             {transitBadgeVisible && <TransitBadge />}
 

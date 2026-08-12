@@ -486,6 +486,50 @@ for (const client of CLIENTS) {
       'a staged rollout / kill-switch a release inputjabol jon',
     )
   }
+
+  // RENDERER-SZERZODES (3. kor, 2026-08-12): a muszak-allapotot a renderer jelenti,
+  // mert csak ott (ill. a backendben) tudhato, van-e nyitott napi munkamenet. Ha ez
+  // a lanc elszakad, a penztar konzervativan SHIFT_OPEN-t feltetelez -> soha nem
+  // frissul. Ezert a lanc mindket vege assertalva van.
+  const preloadPath = join('penztar-client', 'electron', 'preload.ts')
+  if (existsSync(preloadPath)) {
+    const src = readFileSync(preloadPath, 'utf8')
+    check(
+      'penztar preload: expose-olja a suiteUpdate API-t',
+      src.includes('suiteUpdate:') && src.includes("invoke('suiteUpdate:setShiftState'"),
+      'enelkul a renderer nem tudja jelenteni a muszak-allapotot',
+    )
+  }
+
+  const suiteHook = join('frontend-react', 'src', 'hooks', 'useSuiteUpdate.ts')
+  if (existsSync(suiteHook)) {
+    const src = readFileSync(suiteHook, 'utf8')
+    check(
+      'frontend: a suite-update hook a napi munkamenetbol szarmaztatja az allapotot',
+      src.includes('dailySessionApi') && src.includes('setShiftState('),
+      'a muszak-allapot forrasa a backend napi munkamenete, nem talalgatas',
+    )
+    check(
+      'frontend: hiba eseten SHIFT_OPEN-t jelent (fail-safe, nem telepitunk)',
+      /catch[\s\S]{0,400}?next = 'SHIFT_OPEN'/.test(src),
+      'egy halozati hiba SOSEM vezethet munka kozbeni telepiteshez',
+    )
+    check(
+      'frontend: CLOSED munkamenet -> CLOSED_AFTER_DAY_END',
+      src.includes("return 'CLOSED_AFTER_DAY_END'"),
+      'napzaras utan telepitheto ablak van',
+    )
+  }
+
+  const mainLayout = join('frontend-react', 'src', 'layouts', 'MainLayout.tsx')
+  if (existsSync(mainLayout)) {
+    const src = readFileSync(mainLayout, 'utf8')
+    check(
+      'frontend: a MainLayout bekoti a suite-update hookot es a jelolot',
+      src.includes('useSuiteUpdate()') && src.includes('<SuiteUpdateBadge'),
+      'a kollega csak igy latja, hogy van keszen allo frissites',
+    )
+  }
 }
 
 console.log(`\nVizsgalt import-utvonal: ${checked}`)

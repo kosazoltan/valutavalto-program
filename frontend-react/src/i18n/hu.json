@@ -2721,5 +2721,11 @@
     "macCim": "MAC cím",
     "munkaallomasok": "Munkaállomások",
     "ujMunkaallomas": "Új munkaállomás"
+  },
+  "suiteUpdate": {
+    "badgeWaiting": "Frissítés készen áll (v{{version}})",
+    "badgeInstallable": "Frissítés telepíthető (v{{version}})",
+    "readyWaiting": "A v{{version}} frissítés letöltve és ellenőrizve. A telepítés a következő napnyitás előtt vagy a napzárás után indul, hogy ne szakítsa meg a munkát.",
+    "readyInstallable": "A v{{version}} frissítés telepíthető. A program bezár, a frissítés kb. 2-3 percig tart, utána automatikusan elindul. Az adatbázis és a beállítások megmaradnak."
   }
 }
