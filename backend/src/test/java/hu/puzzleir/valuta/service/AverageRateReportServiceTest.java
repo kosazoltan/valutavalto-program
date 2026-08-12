@@ -1,13 +1,11 @@
 package hu.puzzleir.valuta.service;
 
-import hu.puzzleir.valuta.dto.report.AverageRateReportDto;
 import hu.puzzleir.valuta.dto.report.AverageRateReportResponse;
 import hu.puzzleir.valuta.dto.report.AverageRateReportResponse.ColumnGroup;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
-import hu.puzzleir.valuta.repository.TransactionRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +24,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -38,9 +35,6 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 class AverageRateReportServiceTest {
-
-    @Mock
-    private TransactionRepository transactionRepository;
 
     @Mock
     private CurrencyRepository currencyRepository;
@@ -72,159 +66,6 @@ class AverageRateReportServiceTest {
 
     private static Object Mockito_any() {
         return org.mockito.ArgumentMatchers.any();
-    }
-
-    @Test
-    @DisplayName("companyId null → IllegalArgumentException")
-    void nullCompanyId_throws() {
-        assertThatThrownBy(() -> service.generate(null,
-                LocalDate.now(), LocalDate.now(), null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("companyId");
-    }
-
-    @Test
-    @DisplayName("from null vagy to null → IllegalArgumentException")
-    void nullDates_throws() {
-        assertThatThrownBy(() -> service.generate(companyId, null, LocalDate.now(), null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("kötelező");
-
-        assertThatThrownBy(() -> service.generate(companyId, LocalDate.now(), null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("kötelező");
-    }
-
-    @Test
-    @DisplayName("from > to → IllegalArgumentException")
-    void fromAfterTo_throws() {
-        LocalDate from = LocalDate.of(2026, 5, 20);
-        LocalDate to = LocalDate.of(2026, 5, 19);
-        assertThatThrownBy(() -> service.generate(companyId, from, to, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("érvénytelen");
-    }
-
-    @Test
-    @DisplayName("Súlyozott átlag: 2 tranzakció EUR-ra, 1×100EUR×350HUF + 1×200EUR×360HUF → avg=356.67")
-    void weightedAverage_correct() {
-        // SUM(currency) = 300 EUR, SUM(huf) = 35000+72000 = 107000 → avg = 107000/300 = 356.67
-        Object[] row = {1L, "EUR", 2L, new BigDecimal("300"), new BigDecimal("107000")};
-        when(query.getResultList()).thenReturn(java.util.Collections.singletonList(row));
-
-        List<AverageRateReportDto> result = service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, null);
-
-        assertThat(result).hasSize(1);
-        AverageRateReportDto dto = result.get(0);
-        assertThat(dto.getCurrencyCode()).isEqualTo("EUR");
-        assertThat(dto.getTransactionCount()).isEqualTo(2L);
-        assertThat(dto.getTotalCurrencyAmount()).isEqualByComparingTo("300");
-        assertThat(dto.getTotalHufAmount()).isEqualByComparingTo("107000");
-        // 107000 / 300 = 356.6667 → HALF_UP scale 4 → 356.6667
-        assertThat(dto.getWeightedAverageRate()).isEqualByComparingTo(new BigDecimal("356.6667"));
-    }
-
-    @Test
-    @DisplayName("Több valuta — sor per valuta")
-    void multipleCurrencies_oneRowEach() {
-        Object[] eur = {1L, "EUR", 5L, new BigDecimal("1000"), new BigDecimal("360000")};
-        Object[] usd = {2L, "USD", 3L, new BigDecimal("500"), new BigDecimal("160000")};
-        when(query.getResultList()).thenReturn(Arrays.asList(eur, usd));
-
-        List<AverageRateReportDto> result = service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, null);
-
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).getCurrencyCode()).isEqualTo("EUR");
-        assertThat(result.get(0).getWeightedAverageRate()).isEqualByComparingTo("360.0000");
-        assertThat(result.get(1).getCurrencyCode()).isEqualTo("USD");
-        assertThat(result.get(1).getWeightedAverageRate()).isEqualByComparingTo("320.0000");
-    }
-
-    @Test
-    @DisplayName("Üres eredmény: 0 tranzakció időszakban → üres lista")
-    void noTransactions_emptyResult() {
-        when(query.getResultList()).thenReturn(List.of());
-
-        List<AverageRateReportDto> result = service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, null);
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Érvénytelen transactionType → IllegalArgumentException")
-    void invalidTransactionType_throws() {
-        assertThatThrownBy(() -> service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, "INVALID_TYPE"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("transactionType");
-    }
-
-    @Test
-    @DisplayName("Multi-tenant verify: companyId paraméter MINDIG bind-olva (regression-guard)")
-    void multiTenant_companyIdAlwaysBound() {
-        when(query.getResultList()).thenReturn(List.of());
-
-        service.generate(companyId, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31),
-                null, null, null);
-
-        org.mockito.Mockito.verify(query).setParameter("companyId", companyId);
-    }
-
-    @Test
-    @DisplayName("Optional branchId bind: ha != null, akkor a query-be bekerül")
-    void optionalBranchId_boundWhenProvided() {
-        UUID branchId = UUID.randomUUID();
-        when(query.getResultList()).thenReturn(List.of());
-
-        service.generate(companyId, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31),
-                branchId, null, null);
-
-        org.mockito.Mockito.verify(query).setParameter("branchId", branchId);
-    }
-
-    @Test
-    @DisplayName("transactionType BUY → enum bind, INVALID → IllegalArgumentException (már tesztelve fent)")
-    void validTransactionType_bound() {
-        when(query.getResultList()).thenReturn(List.of());
-
-        service.generate(companyId, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31),
-                null, null, "BUY");
-
-        org.mockito.Mockito.verify(query).setParameter("transactionType",
-                hu.puzzleir.valuta.entity.TransactionType.BUY);
-    }
-
-    @Test
-    @DisplayName("JPQL query a status=COMPLETED + financialEffective=TRUE feltételeket tartalmazza")
-    void query_filtersOnCompletedAndFinancialEffective() {
-        when(query.getResultList()).thenReturn(List.of());
-
-        service.generate(companyId, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31),
-                null, null, null);
-
-        org.mockito.ArgumentCaptor<String> jpqlCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-        org.mockito.Mockito.verify(entityManager).createQuery(jpqlCaptor.capture());
-        String jpql = jpqlCaptor.getValue();
-        assertThat(jpql).contains("COMPLETED");
-        // Copilot P0 #703 regression-guard: parent CONVERSION kizárás
-        assertThat(jpql).contains("financialEffective");
-        assertThat(jpql).contains("TRUE");
-    }
-
-    @Test
-    @DisplayName("Zero currency amount → weightedAvg=0 (NEM ArithmeticException)")
-    void zeroCurrencyAmount_avgZero() {
-        Object[] row = {1L, "EUR", 1L, BigDecimal.ZERO, new BigDecimal("100")};
-        when(query.getResultList()).thenReturn(java.util.Collections.singletonList(row));
-
-        List<AverageRateReportDto> result = service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, null);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getWeightedAverageRate()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
@@ -328,65 +169,5 @@ class AverageRateReportServiceTest {
         assertThat(resp.getColumnGroups()).extracting(ColumnGroup::getGroupCode)
                 .doesNotContain("ORSZAGOS")
                 .containsExactly("PECS", "SZEGED", "total");
-    }
-
-    // ============================================================
-    // FK Batch3-followup: generate() filter-ágak + weightedAvg NPE-guard
-    // (túlélő NegateConditionals sor 95/98/101 + null/signum guard sor 144)
-    // ============================================================
-
-    @Test
-    @DisplayName("generate — mindhárom filter (branchId+currencyId+transactionType) megadva: a JPQL tartalmazza a szűrőket")
-    void generate_allFilters_appendsClauses() {
-        // A getResultList üres, de a JPQL-append + setParameter ágak lefutnak (NegateConditionals ölése).
-        when(query.getResultList()).thenReturn(java.util.Collections.emptyList());
-
-        List<AverageRateReportDto> result = service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31),
-                UUID.randomUUID(), 4L, "BUY");
-
-        assertThat(result).isEmpty();
-        // Verifikáljuk, hogy a 3 opcionális szűrő JPQL-be került (a branchId/currencyId/type != null ágak).
-        org.mockito.ArgumentCaptor<String> jpqlCap = org.mockito.ArgumentCaptor.forClass(String.class);
-        org.mockito.Mockito.verify(entityManager).createQuery(jpqlCap.capture());
-        String jpql = jpqlCap.getValue();
-        assertThat(jpql).contains("t.branch.id = :branchId");
-        assertThat(jpql).contains("t.currency.id = :currencyId");
-        assertThat(jpql).contains("t.transactionType = :transactionType");
-    }
-
-    @Test
-    @DisplayName("generate — érvénytelen transactionType → IllegalArgumentException (sanitized üzenettel)")
-    void generate_invalidTransactionType_throws() {
-        assertThatThrownBy(() -> service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, "NEMLETEZIK"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Érvénytelen transactionType");
-    }
-
-    @Test
-    @DisplayName("generate — totalCurrency=0 → weightedAvg marad 0 (signum guard, nincs osztás)")
-    void generate_zeroCurrency_weightedAvgZero() {
-        Object[] row = {1L, "EUR", 0L, BigDecimal.ZERO, new BigDecimal("107000")};
-        when(query.getResultList()).thenReturn(java.util.Collections.singletonList(row));
-
-        List<AverageRateReportDto> result = service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, null);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getWeightedAverageRate()).isEqualByComparingTo("0");
-    }
-
-    @Test
-    @DisplayName("generate — totalHuf=null → weightedAvg marad 0 (null guard, nincs NPE)")
-    void generate_nullHuf_weightedAvgZero() {
-        Object[] row = {1L, "EUR", 2L, new BigDecimal("300"), null};
-        when(query.getResultList()).thenReturn(java.util.Collections.singletonList(row));
-
-        List<AverageRateReportDto> result = service.generate(companyId,
-                LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31), null, null, null);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getWeightedAverageRate()).isEqualByComparingTo("0");
     }
 }
