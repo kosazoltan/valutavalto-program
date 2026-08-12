@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.47"
+    "version": "2.28.77"
   },
   "servers": [
     {
@@ -68,6 +68,10 @@
     {
       "name": "Szinkronizáció",
       "description": "Sync, polling, adatgyűjtés, MNB árfolyamok"
+    },
+    {
+      "name": "Pénzforgalom riport",
+      "description": "FKH-030 — Transfer + Shipment pénzmozgások tartományra"
     },
     {
       "name": "Kedvezmény jóváhagyás",
@@ -2953,6 +2957,25 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EVENING",
+                "HANDLING_FEE",
+                "WESTERN_UNION",
+                "VAT",
+                "DEPOSIT",
+                "ECOMMERCE",
+                "AXA",
+                "MONEYGRAM",
+                "OTHER"
+              ]
             }
           }
         ],
@@ -15756,6 +15779,25 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EVENING",
+                "HANDLING_FEE",
+                "WESTERN_UNION",
+                "VAT",
+                "DEPOSIT",
+                "ECOMMERCE",
+                "AXA",
+                "MONEYGRAM",
+                "OTHER"
+              ]
+            }
           }
         ],
         "requestBody": {
@@ -15915,23 +15957,13 @@
       "post": {
         "tags": ["cash-balance-controller"],
         "operationId": "adjustBalance",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdjustBalanceDto"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/CashBalanceDto"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -22982,10 +23014,11 @@
         }
       }
     },
-    "/api/v1/reports/average-rate": {
+    "/api/v1/reports/cash-flow": {
       "get": {
-        "tags": ["average-rate-report-controller"],
-        "operationId": "generate_8",
+        "tags": ["Pénzforgalom riport"],
+        "summary": "Pénzforgalom riport lekérdezése dátumtartományra",
+        "operationId": "getReport_1",
         "parameters": [
           {
             "name": "from",
@@ -23004,32 +23037,6 @@
               "type": "string",
               "format": "date"
             }
-          },
-          {
-            "name": "branchId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "currencyId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "transactionType",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -23038,10 +23045,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AverageRateReportDto"
-                  }
+                  "$ref": "#/components/schemas/CashFlowReportDto"
                 }
               }
             }
@@ -25387,7 +25391,7 @@
     "/api/v1/mnb/reports/{id}": {
       "get": {
         "tags": ["mnb-report-controller"],
-        "operationId": "getReport_1",
+        "operationId": "getReport_2",
         "parameters": [
           {
             "name": "id",
@@ -26617,10 +26621,105 @@
         }
       }
     },
+    "/api/v1/handling-fees/pos-daily-summary": {
+      "get": {
+        "tags": ["pos-handling-fee-daily-summary-controller"],
+        "operationId": "dailySummary",
+        "parameters": [
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosHandlingFeeDailySummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/handling-fees/pos-daily-summary/csv": {
+      "get": {
+        "tags": ["pos-handling-fee-daily-summary-controller"],
+        "operationId": "dailySummaryCsv",
+        "parameters": [
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/handling-fees/daily-summary": {
       "get": {
         "tags": ["handling-fee-daily-summary-controller"],
-        "operationId": "dailySummary",
+        "operationId": "dailySummary_1",
         "parameters": [
           {
             "name": "branchId",
@@ -26667,7 +26766,7 @@
     "/api/v1/handling-fees/daily-summary/csv": {
       "get": {
         "tags": ["handling-fee-daily-summary-controller"],
-        "operationId": "dailySummaryCsv",
+        "operationId": "dailySummaryCsv_1",
         "parameters": [
           {
             "name": "branchId",
@@ -28598,6 +28697,83 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PageDecadeReportDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/daybook/{branchId}/{date}": {
+      "get": {
+        "tags": ["huf-daybook-controller"],
+        "operationId": "getDaybook",
+        "parameters": [
+          {
+            "name": "branchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/HufDaybookDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/daybook/{branchId}/{date}/pdf": {
+      "get": {
+        "tags": ["huf-daybook-controller"],
+        "operationId": "getDaybookPdf",
+        "parameters": [
+          {
+            "name": "branchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
                 }
               }
             }
@@ -30997,6 +31173,56 @@
         }
       }
     },
+    "/api/v1/closing-wizard/status": {
+      "get": {
+        "tags": ["closing-wizard-controller"],
+        "operationId": "getStatus_7",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosingWizardStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/closing-wizard/currencies-with-balance": {
+      "get": {
+        "tags": ["closing-wizard-controller"],
+        "operationId": "getCurrenciesWithBalance",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/closing-control/status": {
       "get": {
         "tags": ["closing-control-controller"],
@@ -31476,7 +31702,7 @@
     "/api/v1/central/received-data/status": {
       "get": {
         "tags": ["central-received-data-controller"],
-        "operationId": "getStatus_7",
+        "operationId": "getStatus_8",
         "parameters": [
           {
             "name": "date",
@@ -31831,6 +32057,57 @@
         }
       }
     },
+    "/api/v1/cash-desks/{cashDeskId}/denominations/self-check": {
+      "get": {
+        "tags": ["denomination-balance-controller"],
+        "operationId": "selfCheck",
+        "parameters": [
+          {
+            "name": "cashDeskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EVENING",
+                "HANDLING_FEE",
+                "WESTERN_UNION",
+                "VAT",
+                "DEPOSIT",
+                "ECOMMERCE",
+                "AXA",
+                "MONEYGRAM",
+                "OTHER"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DenominationSelfCheckDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cash-desks/{cashDeskId}/denominations/currency/{currencyId}": {
       "get": {
         "tags": ["denomination-balance-controller"],
@@ -31985,6 +32262,24 @@
                   "items": {
                     "$ref": "#/components/schemas/CashBalanceDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-balances/today-stats": {
+      "get": {
+        "tags": ["cash-balance-controller"],
+        "operationId": "getTodayStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayStats"
                 }
               }
             }
@@ -34044,7 +34339,7 @@
     "/api/v1/admin/bank-integration/status": {
       "get": {
         "tags": ["bank-integration-status-controller"],
-        "operationId": "getStatus_8",
+        "operationId": "getStatus_9",
         "responses": {
           "200": {
             "description": "OK",
@@ -35303,6 +35598,14 @@
             "type": "integer",
             "format": "int64"
           },
+          "annualJournalSequence": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stornoJournalSequence": {
+            "type": "integer",
+            "format": "int32"
+          },
           "fromBranchId": {
             "type": "string",
             "format": "uuid"
@@ -36101,7 +36404,8 @@
             "minLength": 3
           },
           "officialRate": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": ["currencyCode", "officialRate"]
@@ -39358,15 +39662,15 @@
             "type": "integer",
             "format": "int64"
           },
-          "branchId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "territoryId": {
             "type": "integer",
             "format": "int32"
           },
           "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchId": {
             "type": "string",
             "format": "uuid"
           }
@@ -39732,7 +40036,8 @@
             "format": "int64"
           },
           "amount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "hufValue": {
             "type": "number"
@@ -39785,10 +40090,12 @@
         "properties": {
           "quantity": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "minimum": 0
           },
           "faceValue": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "currencyCode": {
             "type": "string"
@@ -39807,7 +40114,8 @@
             "format": "int64"
           },
           "amount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "currencyCode": {
             "type": "string"
@@ -40002,7 +40310,8 @@
         "type": "object",
         "properties": {
           "receivedAmount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "notes": {
             "type": "string"
@@ -40032,7 +40341,7 @@
           },
           "faceValue": {
             "type": "number",
-            "minimum": 0.01
+            "minimum": 1
           },
           "quantity": {
             "type": "integer",
@@ -42158,7 +42467,8 @@
             "format": "int64"
           },
           "spread": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": ["currencyId", "spread"]
@@ -42271,10 +42581,12 @@
             "format": "int64"
           },
           "buyRate": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "sellRate": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "officialRate": {
             "type": "number"
@@ -42617,7 +42929,8 @@
             "pattern": "^[A-Za-z0-9._-]{1,64}$"
           },
           "amount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "currency": {
             "type": "string",
@@ -42723,15 +43036,18 @@
           },
           "bundleCount": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "minimum": 0
           },
           "denomination": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "minimum": 0
           },
           "bundleSize": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "minimum": 0
           },
           "notes": {
             "type": "string"
@@ -43371,7 +43687,8 @@
         "type": "object",
         "properties": {
           "receivedAmount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": ["receivedAmount"]
@@ -43487,7 +43804,8 @@
             "format": "int64"
           },
           "amount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "notes": {
             "type": "string"
@@ -43561,7 +43879,8 @@
             "format": "int64"
           },
           "newAmount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "reason": {
             "type": "string",
@@ -43581,7 +43900,8 @@
             "format": "int64"
           },
           "amount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "notes": {
             "type": "string"
@@ -43600,7 +43920,8 @@
             "format": "int64"
           },
           "amount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "notes": {
             "type": "string"
@@ -44027,7 +44348,8 @@
             "format": "int64"
           },
           "hufAmount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": ["hufAmount"]
@@ -44211,6 +44533,13 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "ageHours": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "stale": {
+            "type": "boolean"
           }
         }
       },
@@ -44677,7 +45006,8 @@
             "minLength": 1
           },
           "amount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": ["amount", "currencyCode", "targetBranchCode"]
@@ -44823,7 +45153,8 @@
             "minLength": 1
           },
           "amount": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
           },
           "note": {
             "type": "string"
@@ -47839,83 +48170,6 @@
           }
         }
       },
-      "AdjustBalanceDto": {
-        "type": "object",
-        "properties": {
-          "currencyId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "amount": {
-            "type": "number",
-            "minimum": 0.01
-          },
-          "incoming": {
-            "type": "boolean"
-          },
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": ["amount", "currencyId", "incoming"]
-      },
-      "CashBalanceDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "branchId": {
-            "type": "string"
-          },
-          "branchName": {
-            "type": "string"
-          },
-          "currencyId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "currencyCode": {
-            "type": "string"
-          },
-          "currencyName": {
-            "type": "string"
-          },
-          "currencySymbol": {
-            "type": "string"
-          },
-          "currentBalance": {
-            "type": "number"
-          },
-          "openingBalance": {
-            "type": "number"
-          },
-          "dailyChange": {
-            "type": "number"
-          },
-          "minBalance": {
-            "type": "number"
-          },
-          "maxBalance": {
-            "type": "number"
-          },
-          "lowBalanceAlert": {
-            "type": "boolean"
-          },
-          "highBalanceAlert": {
-            "type": "boolean"
-          },
-          "lastTransactionAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "CameraExportRequest": {
         "type": "object",
         "properties": {
@@ -49377,13 +49631,13 @@
       "PageWorkerAttendanceDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -49402,18 +49656,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -49430,16 +49684,16 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "paged": {
-            "type": "boolean"
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
           },
           "pageSize": {
             "type": "integer",
             "format": "int32"
           },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
           },
           "unpaged": {
             "type": "boolean"
@@ -49463,13 +49717,13 @@
       "PageWuTransactionDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -49488,18 +49742,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -50102,13 +50356,13 @@
       "PageTransferDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -50127,18 +50381,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -50148,13 +50402,13 @@
       "PageTransactionDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -50173,18 +50427,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -50258,13 +50512,13 @@
       "PageTradeDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -50283,18 +50537,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -50357,13 +50611,13 @@
       "PageSyncLogDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -50382,18 +50636,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -50636,13 +50890,13 @@
       "PageShipmentRequestResponseDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -50661,18 +50915,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -51026,10 +51280,10 @@
           "dailyChange": {
             "type": "number"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           }
         }
@@ -51905,46 +52159,49 @@
           }
         }
       },
-      "AverageRateReportDto": {
+      "CashFlowReportDto": {
         "type": "object",
         "properties": {
-          "periodStart": {
-            "type": "string",
-            "format": "date"
-          },
-          "periodEnd": {
-            "type": "string",
-            "format": "date"
-          },
-          "branchId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "branchCode": {
+          "from": {
             "type": "string"
           },
-          "currencyId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "currencyCode": {
+          "to": {
             "type": "string"
           },
-          "transactionType": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowReportRowDto"
+            }
+          }
+        }
+      },
+      "CashFlowReportRowDto": {
+        "type": "object",
+        "properties": {
+          "date": {
             "type": "string"
           },
-          "transactionCount": {
-            "type": "integer",
-            "format": "int64"
+          "receiptNumber": {
+            "type": "string"
           },
-          "totalCurrencyAmount": {
+          "partnerCode": {
+            "type": "string"
+          },
+          "partnerCategory": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "receivedAmount": {
             "type": "number"
           },
-          "totalHufAmount": {
+          "handedOverAmount": {
             "type": "number"
           },
-          "weightedAverageRate": {
-            "type": "number"
+          "storno": {
+            "type": "boolean"
           }
         }
       },
@@ -52330,7 +52587,8 @@
           },
           "lastUpdated": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "deprecated": true
           },
           "bankBuyRate": {
             "type": "number",
@@ -52384,7 +52642,8 @@
           },
           "lastUpdated": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "deprecated": true
           }
         }
       },
@@ -52664,13 +52923,13 @@
       "PagePoliceRequestDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -52689,18 +52948,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -52710,13 +52969,13 @@
       "PageNavClosingDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -52735,18 +52994,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -52897,13 +53156,13 @@
       "PageMnbReportDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -52922,18 +53181,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -53187,13 +53446,13 @@
       "PageAuditLog": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -53212,18 +53471,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -53368,16 +53627,73 @@
           }
         }
       },
-      "PageInventoryMovementDto": {
+      "CashBalanceDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
+          "id": {
             "type": "integer",
             "format": "int64"
           },
+          "branchId": {
+            "type": "string"
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "currencyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "currencyName": {
+            "type": "string"
+          },
+          "currencySymbol": {
+            "type": "string"
+          },
+          "currentBalance": {
+            "type": "number"
+          },
+          "openingBalance": {
+            "type": "number"
+          },
+          "dailyChange": {
+            "type": "number"
+          },
+          "minBalance": {
+            "type": "number"
+          },
+          "maxBalance": {
+            "type": "number"
+          },
+          "lowBalanceAlert": {
+            "type": "boolean"
+          },
+          "highBalanceAlert": {
+            "type": "boolean"
+          },
+          "lastTransactionAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PageInventoryMovementDto": {
+        "type": "object",
+        "properties": {
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -53396,18 +53712,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -53495,11 +53811,36 @@
             "type": "string",
             "format": "date"
           },
-          "buyFee": {
+          "netAmount": {
             "type": "number"
           },
-          "sellFee": {
+          "feeAmount": {
             "type": "number"
+          }
+        }
+      },
+      "PosHandlingFeeDailySummaryDto": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalNetAmount": {
+            "type": "number"
+          },
+          "totalFeeAmount": {
+            "type": "number"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyRow"
+            }
           }
         }
       },
@@ -54258,13 +54599,13 @@
       "PageClientErrorLog": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -54283,18 +54624,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -54472,13 +54813,13 @@
       "PageDecadeReportDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -54497,20 +54838,82 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
           "first": {
             "type": "boolean"
           },
           "last": {
             "type": "boolean"
           },
-          "numberOfElements": {
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "HufDaybookDto": {
+        "type": "object",
+        "properties": {
+          "branchId": {
+            "type": "string"
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "branchAddress": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HufDaybookRowDto"
+            }
+          },
+          "totalAtadasHuf": {
+            "type": "number"
+          },
+          "totalAtvetelHuf": {
+            "type": "number"
+          },
+          "openingBalanceHuf": {
+            "type": "number"
+          },
+          "closingBalanceHuf": {
+            "type": "number"
+          }
+        }
+      },
+      "HufDaybookRowDto": {
+        "type": "object",
+        "properties": {
+          "annualSequence": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "receiptNumber": {
+            "type": "string"
           },
-          "empty": {
+          "partnerCode": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "atadasHuf": {
+            "type": "number"
+          },
+          "atvetelHuf": {
+            "type": "number"
+          },
+          "storno": {
             "type": "boolean"
           }
         }
@@ -54518,13 +54921,13 @@
       "PageDataImportJobDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -54543,18 +54946,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -54961,13 +55364,13 @@
       "PageComplianceTransactionRowDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -54986,18 +55389,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -55007,13 +55410,13 @@
       "PageSuspiciousCustomerDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -55032,18 +55435,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -55283,6 +55686,42 @@
           "closedDays": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "ClosingWizardStatusDto": {
+        "type": "object",
+        "properties": {
+          "branchId": {
+            "type": "string"
+          },
+          "closingDate": {
+            "type": "string"
+          },
+          "vaultContext": {
+            "type": "boolean"
+          },
+          "denominationRecorded": {
+            "type": "boolean"
+          },
+          "exactMatch": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "differences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          },
+          "activeWizardId": {
+            "type": "string"
+          },
+          "activeWizardStatus": {
+            "type": "string"
           }
         }
       },
@@ -55531,6 +55970,48 @@
           }
         }
       },
+      "DenominationSelfCheckDto": {
+        "type": "object",
+        "properties": {
+          "currencyCode": {
+            "type": "string"
+          },
+          "currencyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "denominatedAmount": {
+            "type": "number"
+          },
+          "expectedBalance": {
+            "type": "number"
+          },
+          "difference": {
+            "type": "number"
+          },
+          "matches": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TodayStats": {
+        "type": "object",
+        "properties": {
+          "transactions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "buyTotal": {
+            "type": "number"
+          },
+          "sellTotal": {
+            "type": "number"
+          },
+          "handlingFee": {
+            "type": "number"
+          }
+        }
+      },
       "BranchBalanceSummary": {
         "type": "object",
         "properties": {
@@ -55607,10 +56088,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           }
         }
@@ -55793,13 +56274,13 @@
       "PageBankOrderDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -55818,18 +56299,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -55839,13 +56320,13 @@
       "PageBackupRecordResponse": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -55864,18 +56345,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -55937,13 +56418,13 @@
       "PageAuditLogEntryDto": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -55962,18 +56443,18 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
           },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"

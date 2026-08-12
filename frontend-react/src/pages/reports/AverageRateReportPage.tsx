@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { TrendingUp, AlertTriangle, Search, Download } from 'lucide-react'
 import { averageRateApi, branchApi } from '../../services/api/index'
-import type {
-  AverageRatePivotResponse,
-  AverageRateReport,
-  BranchInfo,
-} from '../../services/api/index'
+import type { AverageRatePivotResponse, BranchInfo } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
@@ -32,12 +28,6 @@ function formatRate(n: number): string {
   return (n ?? 0).toLocaleString('hu-HU', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
 }
 
-function formatDirection(direction: AverageRateReport['transactionType']): string {
-  if (direction === 'BUY') return 'Vétel'
-  if (direction === 'SELL') return 'Eladás'
-  return 'Összes'
-}
-
 export default function AverageRateReportPage() {
   const today = useMemo(() => new Date(), [])
   const monthStart = useMemo(() => {
@@ -51,7 +41,6 @@ export default function AverageRateReportPage() {
   const [branchId, setBranchId] = useState<string>('')
   const [branches, setBranches] = useState<BranchInfo[]>([])
   const [data, setData] = useState<AverageRatePivotResponse | null>(null)
-  const [reportRows, setReportRows] = useState<AverageRateReport[]>([])
   const [queried, setQueried] = useState(false)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -78,18 +67,13 @@ export default function AverageRateReportPage() {
     setLoading(true)
     setError(null)
     try {
-      const [resp, rows] = await Promise.all([
-        averageRateApi.getPivot(from, to, branchId || undefined),
-        averageRateApi.getReport(from, to, branchId || undefined),
-      ])
+      const resp = await averageRateApi.getPivot(from, to, branchId || undefined)
       setData(resp)
-      setReportRows(rows ?? [])
       setQueried(true)
     } catch (err) {
       logger.error('AverageRateReportPage', 'Lekérdezés hiba:', err)
       setError(getErrorMessage(err))
       setData(null)
-      setReportRows([])
       setQueried(true)
     } finally {
       setLoading(false)
@@ -211,112 +195,6 @@ export default function AverageRateReportPage() {
       </div>
 
       {loading && <div className="text-center text-sm text-gray-500 py-8">Betöltés…</div>}
-
-      {!loading && reportRows.length > 0 && (
-        <section className="bg-white rounded shadow p-4" data-testid="average-rate-line-summary">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-800">Soros súlyozott összesítő</h2>
-            <span className="text-xs text-gray-500">{reportRows.length} sor</span>
-          </div>
-
-          <div className="md:hidden space-y-3">
-            {reportRows.map((row, index) => (
-              <article
-                key={`${row.branchId ?? 'all'}-${row.currencyCode}-${row.transactionType ?? 'all'}-${index}`}
-                className="rounded border border-gray-200 p-3 text-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-xs uppercase text-gray-500">Deviza</div>
-                    <div className="font-semibold text-gray-900">{row.currencyCode}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs uppercase text-gray-500">Irány</div>
-                    <div className="font-medium text-gray-800">
-                      {formatDirection(row.transactionType)}
-                    </div>
-                  </div>
-                </div>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <dt className="text-gray-500">Tranzakció</dt>
-                    <dd className="font-mono text-gray-900">
-                      {formatAmount(row.transactionCount)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">Átlagárfolyam</dt>
-                    <dd className="font-mono text-gray-900">
-                      {formatRate(row.weightedAverageRate)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">Deviza összeg</dt>
-                    <dd className="font-mono text-gray-900">
-                      {formatAmount(row.totalCurrencyAmount)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">HUF összeg</dt>
-                    <dd className="font-mono text-gray-900">{formatAmount(row.totalHufAmount)}</dd>
-                  </div>
-                </dl>
-              </article>
-            ))}
-          </div>
-
-          <div className="hidden md:block overflow-x-auto">
-            <table className="min-w-full border-collapse text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border">
-                    Deviza
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border">
-                    Irány
-                  </th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">
-                    Tranzakció
-                  </th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">
-                    Deviza összeg
-                  </th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">
-                    HUF összeg
-                  </th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500 border">
-                    Átlagárfolyam
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportRows.map((row, index) => (
-                  <tr
-                    key={`${row.branchId ?? 'all'}-${row.currencyCode}-${row.transactionType ?? 'all'}-${index}`}
-                    className="hover:bg-gray-50"
-                  >
-                    <td className="px-3 py-1.5 font-semibold border">{row.currencyCode}</td>
-                    <td className="px-3 py-1.5 border">{formatDirection(row.transactionType)}</td>
-                    <td className="px-3 py-1.5 text-right font-mono border">
-                      {formatAmount(row.transactionCount)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right font-mono border">
-                      {formatAmount(row.totalCurrencyAmount)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right font-mono border">
-                      {formatAmount(row.totalHufAmount)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right font-mono border">
-                      {formatRate(row.weightedAverageRate)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
       {!loading && data && currencyRows.length > 0 && (
         <div className="bg-white rounded shadow">
           {/* FK-031 "ablak rögzítése" (freeze panes) + FK-033 regresszió-javítás: a táblázat saját, belső

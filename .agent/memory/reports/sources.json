@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-11T20:31:57.831Z",
-  "source_count": 1063,
+  "generated_at": "2026-08-12T14:31:49.341Z",
+  "source_count": 1065,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -5913,6 +5913,17 @@
       ]
     },
     {
+      "path": "backend/src/test/java/hu/puzzleir/valuta/migration/V380AgainstLegacySchemaPostgresTest.java",
+      "sha256": "a5d01b5f0dc63f189dbae266db0ba512a58a6eb99a03a791474c647d3b451caf",
+      "type": "semantic-reference",
+      "areas": [
+        "database",
+        "deploy",
+        "legacy",
+        "sync"
+      ]
+    },
+    {
       "path": "backend/src/test/java/hu/puzzleir/valuta/repository/ShipmentRequestRepositoryUnifiedReceiptContractTest.java",
       "sha256": "8aae67463adf62007b4e42e64ae608af16a1d16153854609ba6a0d0000417949",
       "type": "operational-receipt",
@@ -8974,6 +8985,16 @@
         "database",
         "deploy",
         "specifikacio"
+      ]
+    },
+    {
+      "path": "vault/operations/v380-eles-oszlop-agnosztikus-hotfix-2026-08-12.md",
+      "sha256": "183c728bab2e0ea75c37b7187938236777ba98b5dbbaadce1fb83980c6b9c7e6",
+      "type": "semantic-reference",
+      "areas": [
+        "database",
+        "deploy",
+        "tenant"
       ]
     },
     {
@@ -12431,14 +12452,14 @@
     },
     {
       "path": "vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md",
-      "sha256": "a99d0595db817b19e217611fd5024e68f6238d249caa3e0b5761ad6bffd4de35",
+      "sha256": "87596931038a8caac7f4c16421d677c2367589824f9bdf1e243cf4e0b0547058",
       "type": "medium-term-episodic",
       "areas": [
-        "cimletezes",
         "database",
         "deploy",
+        "installer",
         "napzaras",
-        "penztar"
+        "security"
       ]
     },
     {

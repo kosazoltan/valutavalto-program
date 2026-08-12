@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-11T20:31:57.831Z
+generated_at: 2026-08-12T14:31:49.341Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -3670,6 +3670,13 @@ nodes:
     summary: "package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest; import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto; import hu.puzzleir.valuta.service.ShipmentHandlingFeeService; import hu.puzzleir.valuta.service.ShipmentService; import hu.puzzleir.valuta.util.IdempotencyGuard; import io.swagger.v3.oas.annotations.responses.ApiResponses; import org.junit.jupiter.api"
     tags: [shipmentunifiedreceiptcontrollertest, java, package, puzzleir, valuta, controller, import, dto, shipment, shipmentdeliverrequest]
     areas: [ertektar, penztar]
+  - id: d27d0b2664c3f273
+    type: semantic-reference
+    title: V380AgainstLegacySchemaPostgresTest.java
+    source_path: backend/src/test/java/hu/puzzleir/valuta/migration/V380AgainstLegacySchemaPostgresTest.java
+    summary: "package hu.puzzleir.valuta.migration; import org.flywaydb.core.Flyway; import org.flywaydb.core.api.MigrationVersion; import org.junit.jupiter.api.BeforeEach; import org.junit.jupiter.api.DisplayName; import org.junit.jupiter.api.Test; import org.testcontainers.containers.PostgreSQLContainer; import org.testcontainers.junit.jupiter.Container; import org.testcontainers.junit.jupiter.Testcontainers; import java.sql.Con"
+    tags: [v380againstlegacyschemapostgrestest, java, package, puzzleir, valuta, migration, import, org, flywaydb, core]
+    areas: [database, deploy, legacy, sync]
   - id: 046a5142996fb766
     type: operational-receipt
     title: ShipmentRequestRepositoryUnifiedReceiptContractTest.java
@@ -5385,6 +5392,13 @@ nodes:
     summary: "--- title: V232 hotfix runbook — worker.id UUID → BIGINT date: 2026-05-18 tags: [operations, flyway, migration, hetzner, hotfix, worker] status: resolved --- # V232 Hotfix Runbook — worker.id UUID → BIGINT **Dátum:** 2026-05-18 03:00 — 05:15 CEST **Érintett migration:** `V232__remove_juhasz_norbert_exz_cross_project.sql` **Hotfix PR:** [#645](https://github.com/kosazoltan/valutavalto-program/pull/645) **Allowlist PR:"
     tags: [v232, hotfix, runbook, worker, uuid, bigint, title, date, 2026, tags]
     areas: [database, deploy, specifikacio]
+  - id: 7ef3f6c9d8e2e1c8
+    type: semantic-reference
+    title: "V380 éles hotfix — oszlop-agnosztikus tiltott-érme inaktiválás (2026-08-12)"
+    source_path: vault/operations/v380-eles-oszlop-agnosztikus-hotfix-2026-08-12.md
+    summary: "# V380 éles hotfix — oszlop-agnosztikus tiltott-érme inaktiválás (2026-08-12) **Súlyosság:** P0, éles kiesés. **Időtartam:** ~01:24–01:5x UTC (2026-08-12). **Érintett:** `excvaluta.com` backend — nem indult el, minden endpoint 502. ## Mi történt Az FK-080 release (`37960493`) main-re pusholása automatikusan indította a `deploy-hetzner.yml`-t. A V379 (HUF-seed) sikeresen lefutott, a V380 elbukott: A Flyway-hiba a Spri"
+    tags: [v380, eles, hotfix, oszlop, agnosztikus, tiltott, erme, inaktivalas, 2026, sulyossag]
+    areas: [database, deploy, tenant]
   - id: 7617fbce795736bc
     type: operations
     title: "EBC Hangsegéd — Kollégai útmutató (1 oldal)"
@@ -7410,11 +7424,11 @@ nodes:
     areas: [arfolyam, deploy, installer, legacy, penztar, specifikacio, sync]
   - id: 0bca100deeb7a2b5
     type: medium-term-episodic
-    title: "Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11)"
+    title: "Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12)"
     source_path: vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md
-    summary: "# Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11) **Ág:** `feature/engedelyezett-ermek-egysegesitese` · **Bázis:** `7e446839` (WU-1 RED tesztek) **Állapot:** implementáció kész, commit NINCS — a változások a munkafán állnak. ## Mi történt A `denomination_allowed` katalógus lett az EGYETLEN igazságforrás a címletekre. Korábban a HUF külön úton ment (14 elemű hardkódolt tömb + névérték-küszöb), ezért mi"
-    tags: [handoff, 080, engedelyezett, ermek, egysegesitese, 2026, feature, bazis, 7e446839, red]
-    areas: [cimletezes, database, deploy, napzaras, penztar]
+    summary: "# Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12) **Állapot: pipeline PASS, merge a felhasználó döntése.** Branch `feature/engedelyezett-ermek-egysegesitese`, bázis `4ad7c54d`, 6 commit, fa tiszta, `main == origin/main` (érintetlen). ## Mi készült el `denomination_allowed` = egyetlen igazságforrás, a HUF-ot is beleértve. - **V379**: HUF-seed, cégenként 12 sor (nincs 1/2 Ft). **V380**: tiltott COIN"
+    tags: [handoff, 080, engedelyezett, ermek, egysegesitese, 2026, allapot, pipeline, pass, merge]
+    areas: [database, deploy, installer, napzaras, security]
   - id: b0780f14de102d14
     type: medium-term-episodic
     title: "Platform-refaktor 3. kör — zárójelentés"
@@ -14191,6 +14205,18 @@ edges:
   - from: 3e6497efa511c2d8
     to: area_penztar
     relation: belongs_to_area
+  - from: d27d0b2664c3f273
+    to: area_database
+    relation: belongs_to_area
+  - from: d27d0b2664c3f273
+    to: area_deploy
+    relation: belongs_to_area
+  - from: d27d0b2664c3f273
+    to: area_legacy
+    relation: belongs_to_area
+  - from: d27d0b2664c3f273
+    to: area_sync
+    relation: belongs_to_area
   - from: 046a5142996fb766
     to: area_tenant
     relation: belongs_to_area
@@ -18264,6 +18290,15 @@ edges:
     relation: belongs_to_area
   - from: 439694fb2ae9eaa2
     to: area_specifikacio
+    relation: belongs_to_area
+  - from: 7ef3f6c9d8e2e1c8
+    to: area_database
+    relation: belongs_to_area
+  - from: 7ef3f6c9d8e2e1c8
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 7ef3f6c9d8e2e1c8
+    to: area_tenant
     relation: belongs_to_area
   - from: 7617fbce795736bc
     to: area_arfolyam
@@ -22568,19 +22603,19 @@ edges:
     to: area_sync
     relation: belongs_to_area
   - from: 0bca100deeb7a2b5
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 0bca100deeb7a2b5
     to: area_database
     relation: belongs_to_area
   - from: 0bca100deeb7a2b5
     to: area_deploy
     relation: belongs_to_area
   - from: 0bca100deeb7a2b5
+    to: area_installer
+    relation: belongs_to_area
+  - from: 0bca100deeb7a2b5
     to: area_napzaras
     relation: belongs_to_area
   - from: 0bca100deeb7a2b5
-    to: area_penztar
+    to: area_security
     relation: belongs_to_area
   - from: b0780f14de102d14
     to: area_installer

@@ -1,6 +1,6 @@
-generated_at: 2026-08-11T20:31:57.831Z
+generated_at: 2026-08-12T14:31:49.341Z
 schema_version: 1
-source_count: 1063
+source_count: 1065
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -1679,13 +1679,13 @@ medium_term:
     areas: [arfolyam, deploy, installer, legacy, penztar, specifikacio, sync]
     keywords: [platform, refaktor, vegrehajtasi, zarojelentes, datum, 2026, repo, valutavalto, program, kiindulas, 47522cb8, main]
   - id: 0bca100deeb7a2b5
-    title: "Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11)"
+    title: "Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12)"
     type: medium-term-episodic
     path: vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md
-    sha256: a99d0595db817b19e217611fd5024e68f6238d249caa3e0b5761ad6bffd4de35
-    summary: "# Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11) **Ág:** `feature/engedelyezett-ermek-egysegesitese` · **Bázis:** `7e446839` (WU-1 RED tesztek) **Állapot:** implementáció kész, commit NINCS — a változások a munkafán állnak. ## Mi történt A `denomination_allowed` katalógus lett az EGYETLEN igazságforrás a címletekre. Korábban a HUF külön úton ment (14 elemű hardkódolt tömb + névérték-küszöb), ezért mi"
-    areas: [cimletezes, database, deploy, napzaras, penztar]
-    keywords: [handoff, 080, engedelyezett, ermek, egysegesitese, 2026, feature, bazis, 7e446839, red, tesztek, allapot]
+    sha256: 87596931038a8caac7f4c16421d677c2367589824f9bdf1e243cf4e0b0547058
+    summary: "# Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12) **Állapot: pipeline PASS, merge a felhasználó döntése.** Branch `feature/engedelyezett-ermek-egysegesitese`, bázis `4ad7c54d`, 6 commit, fa tiszta, `main == origin/main` (érintetlen). ## Mi készült el `denomination_allowed` = egyetlen igazságforrás, a HUF-ot is beleértve. - **V379**: HUF-seed, cégenként 12 sor (nincs 1/2 Ft). **V380**: tiltott COIN"
+    areas: [database, deploy, installer, napzaras, security]
+    keywords: [handoff, 080, engedelyezett, ermek, egysegesitese, 2026, allapot, pipeline, pass, merge, felhasznalo, dontese]
   - id: b0780f14de102d14
     title: "Platform-refaktor 3. kör — zárójelentés"
     type: medium-term-episodic
@@ -6220,6 +6220,14 @@ long_term:
     summary: "package hu.puzzleir.valuta.util; import java.util.UUID; /** * UUID -> legacy Integer company identity bridge. * * Legacy modulok egy resze Integer companyId-t hasznal, * mig az uj multi-tenant modell UUID-t. A lekepzesnek stabilnak * es reprodukalhatonak kell lennie ugyanarra a UUID-re. */ public final class LegacyCompanyIdentityCodec { private LegacyCompanyIdentityCodec() { } public static Integer toLegacyInt(UUID c"
     areas: [legacy, tenant]
     keywords: [legacycompanyidentitycodec, java, package, puzzleir, valuta, util, import, uuid, legacy, integer, company, identity]
+  - id: d27d0b2664c3f273
+    title: V380AgainstLegacySchemaPostgresTest.java
+    type: semantic-reference
+    path: backend/src/test/java/hu/puzzleir/valuta/migration/V380AgainstLegacySchemaPostgresTest.java
+    sha256: a5d01b5f0dc63f189dbae266db0ba512a58a6eb99a03a791474c647d3b451caf
+    summary: "package hu.puzzleir.valuta.migration; import org.flywaydb.core.Flyway; import org.flywaydb.core.api.MigrationVersion; import org.junit.jupiter.api.BeforeEach; import org.junit.jupiter.api.DisplayName; import org.junit.jupiter.api.Test; import org.testcontainers.containers.PostgreSQLContainer; import org.testcontainers.junit.jupiter.Container; import org.testcontainers.junit.jupiter.Testcontainers; import java.sql.Con"
+    areas: [database, deploy, legacy, sync]
+    keywords: [v380againstlegacyschemapostgrestest, java, package, puzzleir, valuta, migration, import, org, flywaydb, core, flyway, api]
   - id: d43232943183cb98
     title: JwtLegacyTokenCompatTest.java
     type: semantic-reference
@@ -7535,6 +7543,14 @@ long_term:
     summary: "--- title: V232 hotfix runbook — worker.id UUID → BIGINT date: 2026-05-18 tags: [operations, flyway, migration, hetzner, hotfix, worker] status: resolved --- # V232 Hotfix Runbook — worker.id UUID → BIGINT **Dátum:** 2026-05-18 03:00 — 05:15 CEST **Érintett migration:** `V232__remove_juhasz_norbert_exz_cross_project.sql` **Hotfix PR:** [#645](https://github.com/kosazoltan/valutavalto-program/pull/645) **Allowlist PR:"
     areas: [database, deploy, specifikacio]
     keywords: [v232, hotfix, runbook, worker, uuid, bigint, title, date, 2026, tags, operations, flyway]
+  - id: 7ef3f6c9d8e2e1c8
+    title: "V380 éles hotfix — oszlop-agnosztikus tiltott-érme inaktiválás (2026-08-12)"
+    type: semantic-reference
+    path: vault/operations/v380-eles-oszlop-agnosztikus-hotfix-2026-08-12.md
+    sha256: 183c728bab2e0ea75c37b7187938236777ba98b5dbbaadce1fb83980c6b9c7e6
+    summary: "# V380 éles hotfix — oszlop-agnosztikus tiltott-érme inaktiválás (2026-08-12) **Súlyosság:** P0, éles kiesés. **Időtartam:** ~01:24–01:5x UTC (2026-08-12). **Érintett:** `excvaluta.com` backend — nem indult el, minden endpoint 502. ## Mi történt Az FK-080 release (`37960493`) main-re pusholása automatikusan indította a `deploy-hetzner.yml`-t. A V379 (HUF-seed) sikeresen lefutott, a V380 elbukott: A Flyway-hiba a Spri"
+    areas: [database, deploy, tenant]
+    keywords: [v380, eles, hotfix, oszlop, agnosztikus, tiltott, erme, inaktivalas, 2026, sulyossag, kieses, idotartam]
   - id: 9a76bb4104add98b
     title: "2026 AI Agent Memory Architecture — State of the Art"
     type: long-term-reference

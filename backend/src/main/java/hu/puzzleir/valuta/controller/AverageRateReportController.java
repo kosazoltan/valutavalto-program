@@ -1,6 +1,5 @@
 package hu.puzzleir.valuta.controller;
 
-import hu.puzzleir.valuta.dto.report.AverageRateReportDto;
 import hu.puzzleir.valuta.dto.report.AverageRateReportResponse;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.AuditEventService;
@@ -15,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -95,29 +93,5 @@ public class AverageRateReportController {
         } catch (Exception ignored) {
             // Az audit-hiba NEM blokkolhatja a riport-olvasást (best-effort, mint a diagnostics-nál).
         }
-    }
-
-    /**
-     * Súlyozott átlag árfolyam riport lekérdezés.
-     *
-     * @param from            időszak kezdete (YYYY-MM-DD)
-     * @param to              időszak vége (YYYY-MM-DD, inclusive)
-     * @param branchId        opcionális iroda-szűrő (null = összes iroda)
-     * @param currencyId      opcionális valuta-szűrő
-     * @param transactionType opcionális típus-szűrő (BUY / SELL / null=mind)
-     * @return riport sorok valuta szerint
-     */
-    @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER','SUPERVISOR','ADMIN','FOERTEKTAR','UGYVEZETO','BELSO_ELLENOR')")
-    public ResponseEntity<List<AverageRateReportDto>> generate(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(required = false) UUID branchId,
-            @RequestParam(required = false) Long currencyId,
-            @RequestParam(required = false) String transactionType
-    ) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        return ResponseEntity.ok(
-                service.generate(companyId, from, to, branchId, currencyId, transactionType));
     }
 }

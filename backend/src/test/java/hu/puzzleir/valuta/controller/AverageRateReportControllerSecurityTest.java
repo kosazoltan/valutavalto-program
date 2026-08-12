@@ -25,7 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 
 /**
- * FK-049: az Átlag árfolyam riport három végpontjának (generate / pivot / export) jogosultsági
+ * FK-049: az Átlag árfolyam riport két végpontjának (pivot / export) jogosultsági
  * körét védi method-security szinten. A régi négy fantom szerepkör-név ({@code TREASURY_MANAGER},
  * {@code MAIN_TREASURY}, {@code REGIONAL_MANAGER}, {@code CASHIER_SUPERVISOR}) eltávolítva; a
  * ténylegesen élő kanonikus szerepkörök ({@code FOERTEKTAR}, {@code UGYVEZETO}, {@code BELSO_ELLENOR})
@@ -107,13 +107,6 @@ class AverageRateReportControllerSecurityTest {
     // ----- ALLOW: kanonikus szerepkörök (FR-1..3) -----
 
     @Test
-    @WithMockUser(roles = {"FOERTEKTAR"})
-    @DisplayName("FR-1: FOERTEKTAR kanonikus → generate engedélyezett")
-    void generate_allowed_foertektar() {
-        assertAuthorized(() -> controller.generate(FROM, TO, null, null, null));
-    }
-
-    @Test
     @WithMockUser(roles = {"UGYVEZETO"})
     @DisplayName("FR-2: UGYVEZETO kanonikus → pivot engedélyezett")
     void pivot_allowed_ugyvezeto() {
@@ -137,34 +130,13 @@ class AverageRateReportControllerSecurityTest {
     // ----- ALLOW: legacy szerepkörök (FR-4 regresszió-védelem) -----
 
     @Test
-    @WithMockUser(roles = {"MANAGER"})
-    @DisplayName("FR-4: legacy MANAGER → generate engedélyezett (regresszió)")
-    void generate_allowed_legacyManager() {
-        assertAuthorized(() -> controller.generate(FROM, TO, null, null, null));
-    }
-
-    @Test
     @WithMockUser(roles = {"SUPERVISOR"})
     @DisplayName("FR-4: legacy SUPERVISOR → pivot engedélyezett (regresszió)")
     void pivot_allowed_legacySupervisor() {
         assertAuthorized(() -> controller.generatePivot(FROM, TO, null));
     }
 
-    @Test
-    @WithMockUser(roles = {"ADMIN"})
-    @DisplayName("FR-4: legacy ADMIN → generate engedélyezett (regresszió)")
-    void generate_allowed_legacyAdmin() {
-        assertAuthorized(() -> controller.generate(FROM, TO, null, null, null));
-    }
-
     // ----- DENY: nem jogosult szerepkörök -----
-
-    @Test
-    @WithMockUser(roles = {"IRODAVEZETO"})
-    @DisplayName("FR-5: IRODAVEZETO → generate elutasítva (nem tartozik a körbe)")
-    void generate_denied_irodavezeto() {
-        assertThrows(AccessDeniedException.class, () -> controller.generate(FROM, TO, null, null, null));
-    }
 
     @Test
     @WithMockUser(roles = {"IRODAVEZETO"})
@@ -178,21 +150,5 @@ class AverageRateReportControllerSecurityTest {
     @DisplayName("CASHIER → export elutasítva")
     void export_denied_cashier() {
         assertThrows(AccessDeniedException.class, () -> controller.export(FROM, TO));
-    }
-
-    @Test
-    @WithMockUser(roles = {"TREASURY_MANAGER"})
-    @DisplayName("Fantom TREASURY_MANAGER → generate elutasítva (a régi fantom név nem ad hozzáférést)")
-    void generate_denied_phantomTreasuryManager() {
-        assertThrows(AccessDeniedException.class, () -> controller.generate(FROM, TO, null, null, null));
-    }
-
-    // ----- Vegyes: legalább egy jogosult kanonikus role elég -----
-
-    @Test
-    @WithMockUser(roles = {"CASHIER", "BELSO_ELLENOR"})
-    @DisplayName("Vegyes CASHIER + BELSO_ELLENOR → generate engedélyezett (egy jogosult role elég)")
-    void generate_allowed_mixedCashierAndBelsoEllenor() {
-        assertAuthorized(() -> controller.generate(FROM, TO, null, null, null));
     }
 }

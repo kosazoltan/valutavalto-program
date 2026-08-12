@@ -9711,14 +9711,15 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/api/v1/reports/average-rate': {
+  '/api/v1/reports/cash-flow': {
     parameters: {
       query?: never
       header?: never
       path?: never
       cookie?: never
     }
-    get: operations['generate_8']
+    /** Pénzforgalom riport lekérdezése dátumtartományra */
+    get: operations['getReport_1']
     put?: never
     post?: never
     delete?: never
@@ -10807,7 +10808,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['getReport_1']
+    get: operations['getReport_2']
     put?: never
     post?: never
     delete?: never
@@ -11428,7 +11429,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/api/v1/handling-fees/daily-summary': {
+  '/api/v1/handling-fees/pos-daily-summary': {
     parameters: {
       query?: never
       header?: never
@@ -11444,7 +11445,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/api/v1/handling-fees/daily-summary/csv': {
+  '/api/v1/handling-fees/pos-daily-summary/csv': {
     parameters: {
       query?: never
       header?: never
@@ -11452,6 +11453,38 @@ export interface paths {
       cookie?: never
     }
     get: operations['dailySummaryCsv']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/handling-fees/daily-summary': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['dailySummary_1']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/handling-fees/daily-summary/csv': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['dailySummaryCsv_1']
     put?: never
     post?: never
     delete?: never
@@ -12444,6 +12477,38 @@ export interface paths {
       cookie?: never
     }
     get: operations['list_32']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/daybook/{branchId}/{date}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getDaybook']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/daybook/{branchId}/{date}/pdf': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getDaybookPdf']
     put?: never
     post?: never
     delete?: never
@@ -13612,6 +13677,38 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/closing-wizard/status': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getStatus_7']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/closing-wizard/currencies-with-balance': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getCurrenciesWithBalance']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/closing-control/status': {
     parameters: {
       query?: never
@@ -13886,7 +13983,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['getStatus_7']
+    get: operations['getStatus_8']
     put?: never
     post?: never
     delete?: never
@@ -14055,6 +14152,22 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/v1/cash-desks/{cashDeskId}/denominations/self-check': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['selfCheck']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/v1/cash-desks/{cashDeskId}/denominations/currency/{currencyId}': {
     parameters: {
       query?: never
@@ -14127,6 +14240,22 @@ export interface paths {
       cookie?: never
     }
     get: operations['getCurrentBranchBalances']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/v1/cash-balances/today-stats': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get: operations['getTodayStats']
     put?: never
     post?: never
     delete?: never
@@ -15157,7 +15286,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    get: operations['getStatus_8']
+    get: operations['getStatus_9']
     put?: never
     post?: never
     delete?: never
@@ -15740,6 +15869,10 @@ export interface components {
       serialPrefix?: string
       /** Format: int64 */
       serialNumber?: number
+      /** Format: int32 */
+      annualJournalSequence?: number
+      /** Format: int32 */
+      stornoJournalSequence?: number
       /** Format: uuid */
       fromBranchId?: string
       /** Format: uuid */
@@ -15749,7 +15882,13 @@ export interface components {
       requestedById?: number
       /** @enum {string} */
       status?:
-        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+        | 'DRAFT'
+        | 'SUBMITTED'
+        | 'APPROVED'
+        | 'IN_TRANSIT'
+        | 'DELIVERED'
+        | 'CANCELLED'
+        | 'REJECTED'
       /** Format: date */
       requestDate?: string
       /** Format: date */
@@ -15813,7 +15952,13 @@ export interface components {
       requestedByWorkerName?: string
       /** @enum {string} */
       status?:
-        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+        | 'DRAFT'
+        | 'SUBMITTED'
+        | 'APPROVED'
+        | 'IN_TRANSIT'
+        | 'DELIVERED'
+        | 'CANCELLED'
+        | 'REJECTED'
       /** Format: date */
       requestDate?: string
       /** Format: date */
@@ -15843,7 +15988,13 @@ export interface components {
       targetBranchName?: string
       /** @enum {string} */
       requestStatus?:
-        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+        | 'DRAFT'
+        | 'SUBMITTED'
+        | 'APPROVED'
+        | 'IN_TRANSIT'
+        | 'DELIVERED'
+        | 'CANCELLED'
+        | 'REJECTED'
       /** Format: date */
       requestedDeliveryDate?: string
       /** Format: int64 */
@@ -17323,12 +17474,12 @@ export interface components {
       updatedAt?: string
       /** Format: int64 */
       version?: number
-      /** Format: uuid */
-      branchId?: string
       /** Format: int32 */
       territoryId?: number
       /** Format: uuid */
       companyId?: string
+      /** Format: uuid */
+      branchId?: string
     }
     CountItemRequest: {
       /** Format: int32 */
@@ -18034,7 +18185,13 @@ export interface components {
       calculatedFee?: number
       /** @enum {string} */
       status?:
-        'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+        | 'DRAFT'
+        | 'SUBMITTED'
+        | 'APPROVED'
+        | 'IN_TRANSIT'
+        | 'DELIVERED'
+        | 'CANCELLED'
+        | 'REJECTED'
       /** Format: date-time */
       createdAt?: string
       /** Format: date-time */
@@ -19071,6 +19228,9 @@ export interface components {
       createdBy?: string
       /** Format: date-time */
       createdAt?: string
+      /** Format: int64 */
+      ageHours?: number
+      stale?: boolean
     }
     ParsedCurrencyRate: {
       currencyCode?: string
@@ -20471,35 +20631,6 @@ export interface components {
       reason?: string
       isActive?: boolean
     }
-    AdjustBalanceDto: {
-      /** Format: int64 */
-      currencyId: number
-      amount: number
-      incoming: boolean
-      reason?: string
-    }
-    CashBalanceDto: {
-      /** Format: int64 */
-      id?: number
-      branchId?: string
-      branchName?: string
-      /** Format: int64 */
-      currencyId?: number
-      currencyCode?: string
-      currencyName?: string
-      currencySymbol?: string
-      currentBalance?: number
-      openingBalance?: number
-      dailyChange?: number
-      minBalance?: number
-      maxBalance?: number
-      lowBalanceAlert?: boolean
-      highBalanceAlert?: boolean
-      /** Format: date-time */
-      lastTransactionAt?: string
-      /** Format: date-time */
-      updatedAt?: string
-    }
     CameraExportRequest: {
       /** Format: uuid */
       id?: string
@@ -21035,32 +21166,32 @@ export interface components {
       sort?: string[]
     }
     PageWorkerAttendanceDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['WorkerAttendanceDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     PageableObject: {
       /** Format: int64 */
       offset?: number
       sort?: components['schemas']['SortObject']
-      paged?: boolean
-      /** Format: int32 */
-      pageSize?: number
       /** Format: int32 */
       pageNumber?: number
+      /** Format: int32 */
+      pageSize?: number
+      paged?: boolean
       unpaged?: boolean
     }
     SortObject: {
@@ -21069,21 +21200,21 @@ export interface components {
       unsorted?: boolean
     }
     PageWuTransactionDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['WuTransactionDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     WuDailyReportDto: {
@@ -21308,39 +21439,39 @@ export interface components {
       bankFlowLines?: components['schemas']['TrbBankFlowLineDto'][]
     }
     PageTransferDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['TransferDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     PageTransactionDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['TransactionDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     DailyTurnoverSummary: {
@@ -21372,21 +21503,21 @@ export interface components {
       minAmountHuf?: number
     }
     PageTradeDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['TradeDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     ProfitSummary: {
@@ -21413,21 +21544,21 @@ export interface components {
       }
     }
     PageSyncLogDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['SyncLogDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     SystemParamDto: {
@@ -21519,21 +21650,21 @@ export interface components {
       ecommerce?: number
     }
     PageShipmentRequestResponseDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['ShipmentRequestResponseDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     SanctionStatusResponse: {
@@ -21676,8 +21807,8 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string
       dailyChange?: number
-      highBalance?: boolean
       lowBalance?: boolean
+      highBalance?: boolean
     }
     DailyClosingReport: {
       /** Format: date */
@@ -22000,23 +22131,20 @@ export interface components {
       lowDenominationAlerts?: number
       balances?: components['schemas']['CashBalance'][]
     }
-    AverageRateReportDto: {
-      /** Format: date */
-      periodStart?: string
-      /** Format: date */
-      periodEnd?: string
-      /** Format: uuid */
-      branchId?: string
-      branchCode?: string
-      /** Format: int64 */
-      currencyId?: number
-      currencyCode?: string
-      transactionType?: string
-      /** Format: int64 */
-      transactionCount?: number
-      totalCurrencyAmount?: number
-      totalHufAmount?: number
-      weightedAverageRate?: number
+    CashFlowReportDto: {
+      from?: string
+      to?: string
+      rows?: components['schemas']['CashFlowReportRowDto'][]
+    }
+    CashFlowReportRowDto: {
+      date?: string
+      receiptNumber?: string
+      partnerCode?: string
+      partnerCategory?: string
+      currency?: string
+      receivedAmount?: number
+      handedOverAmount?: number
+      storno?: boolean
     }
     AverageRateReportResponse: {
       /** Format: date */
@@ -22163,7 +22291,10 @@ export interface components {
       /** Format: date-time */
       validFrom?: string
       source?: string
-      /** Format: date-time */
+      /**
+       * Format: date-time
+       * @deprecated
+       */
       lastUpdated?: string
       /** @deprecated */
       bankBuyRate?: number
@@ -22188,7 +22319,10 @@ export interface components {
        * @deprecated
        */
       competitorId?: string
-      /** Format: date-time */
+      /**
+       * Format: date-time
+       * @deprecated
+       */
       lastUpdated?: string
     }
     RateCreationResponseDTO: {
@@ -22292,39 +22426,39 @@ export interface components {
       updatedAt?: string
     }
     PagePoliceRequestDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['PoliceRequestDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     PageNavClosingDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['NavClosingDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     NavClosingSummaryDto: {
@@ -22383,21 +22517,21 @@ export interface components {
       openAlerts?: number
     }
     PageMnbReportDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['MnbReportDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     MnbCurrencyLineDto: {
@@ -22489,21 +22623,21 @@ export interface components {
       workerRole?: string
     }
     PageAuditLog: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['AuditLog'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     LocalRateMakerBootstrapDto: {
@@ -22559,22 +22693,44 @@ export interface components {
       name?: string
       isVault?: boolean
     }
-    PageInventoryMovementDto: {
+    CashBalanceDto: {
       /** Format: int64 */
-      totalElements?: number
+      id?: number
+      branchId?: string
+      branchName?: string
+      /** Format: int64 */
+      currencyId?: number
+      currencyCode?: string
+      currencyName?: string
+      currencySymbol?: string
+      currentBalance?: number
+      openingBalance?: number
+      dailyChange?: number
+      minBalance?: number
+      maxBalance?: number
+      lowBalanceAlert?: boolean
+      highBalanceAlert?: boolean
+      /** Format: date-time */
+      lastTransactionAt?: string
+      /** Format: date-time */
+      updatedAt?: string
+    }
+    PageInventoryMovementDto: {
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['InventoryMovementDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     StockMatrixDto: {
@@ -22608,8 +22764,17 @@ export interface components {
     DailyRow: {
       /** Format: date */
       date?: string
-      buyFee?: number
-      sellFee?: number
+      netAmount?: number
+      feeAmount?: number
+    }
+    PosHandlingFeeDailySummaryDto: {
+      /** Format: date */
+      startDate?: string
+      /** Format: date */
+      endDate?: string
+      totalNetAmount?: number
+      totalFeeAmount?: number
+      rows?: components['schemas']['DailyRow'][]
     }
     HandlingFeeDailySummaryDto: {
       /** Format: date */
@@ -22897,21 +23062,21 @@ export interface components {
       userAgent?: string
     }
     PageClientErrorLog: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['ClientErrorLog'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     AuditLogEntryResponseDto: {
@@ -22978,39 +23143,60 @@ export interface components {
       denominations?: components['schemas']['Denomination'][]
     }
     PageDecadeReportDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['DecadeReportDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
+    HufDaybookDto: {
+      branchId?: string
+      branchName?: string
+      branchAddress?: string
+      date?: string
+      rows?: components['schemas']['HufDaybookRowDto'][]
+      totalAtadasHuf?: number
+      totalAtvetelHuf?: number
+      openingBalanceHuf?: number
+      closingBalanceHuf?: number
+    }
+    HufDaybookRowDto: {
+      /** Format: int32 */
+      annualSequence?: number
+      receiptNumber?: string
+      partnerCode?: string
+      timestamp?: string
+      atadasHuf?: number
+      atvetelHuf?: number
+      storno?: boolean
+    }
     PageDataImportJobDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['DataImportJobDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     BranchSyncStatusDto: {
@@ -23177,39 +23363,39 @@ export interface components {
       originalReceiptNumber?: string
     }
     PageComplianceTransactionRowDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['ComplianceTransactionRowDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     PageSuspiciousCustomerDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['SuspiciousCustomerDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     SuspiciousCustomerDto: {
@@ -23295,6 +23481,19 @@ export interface components {
       workingDays?: number
       /** Format: int32 */
       closedDays?: number
+    }
+    ClosingWizardStatusDto: {
+      branchId?: string
+      closingDate?: string
+      vaultContext?: boolean
+      denominationRecorded?: boolean
+      exactMatch?: boolean
+      message?: string
+      differences?: {
+        [key: string]: unknown
+      }[]
+      activeWizardId?: string
+      activeWizardStatus?: string
     }
     CentralReceivedDataOverviewDto: {
       /** Format: date */
@@ -23397,6 +23596,22 @@ export interface components {
       reversalRatio?: number
       rows?: components['schemas']['CashierKpiRowDto'][]
     }
+    DenominationSelfCheckDto: {
+      currencyCode?: string
+      /** Format: int64 */
+      currencyId?: number
+      denominatedAmount?: number
+      expectedBalance?: number
+      difference?: number
+      matches?: boolean
+    }
+    TodayStats: {
+      /** Format: int64 */
+      transactions?: number
+      buyTotal?: number
+      sellTotal?: number
+      handlingFee?: number
+    }
     BranchBalanceSummary: {
       /** Format: int32 */
       totalCurrencies?: number
@@ -23425,8 +23640,8 @@ export interface components {
       maxBalance?: number
       /** Format: date-time */
       lastTransactionAt?: string
-      highBalance?: boolean
       lowBalance?: boolean
+      highBalance?: boolean
     }
     DetailedCashPosition: {
       /** Format: uuid */
@@ -23502,39 +23717,39 @@ export interface components {
       fixedCounterparties?: components['schemas']['BranchDto'][]
     }
     PageBankOrderDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['BankOrderDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     PageBackupRecordResponse: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['BackupRecordResponse'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     AuditLogEntryDto: {
@@ -23557,21 +23772,21 @@ export interface components {
       createdAt?: string
     }
     PageAuditLogEntryDto: {
-      /** Format: int64 */
-      totalElements?: number
       /** Format: int32 */
       totalPages?: number
+      /** Format: int64 */
+      totalElements?: number
       /** Format: int32 */
       size?: number
       content?: components['schemas']['AuditLogEntryDto'][]
       /** Format: int32 */
       number?: number
       sort?: components['schemas']['SortObject']
-      first?: boolean
-      last?: boolean
+      pageable?: components['schemas']['PageableObject']
       /** Format: int32 */
       numberOfElements?: number
-      pageable?: components['schemas']['PageableObject']
+      first?: boolean
+      last?: boolean
       empty?: boolean
     }
     ArchivedTransaction: {
@@ -25969,6 +26184,16 @@ export interface operations {
     parameters: {
       query: {
         quantity: number
+        category?:
+          | 'EVENING'
+          | 'HANDLING_FEE'
+          | 'WESTERN_UNION'
+          | 'VAT'
+          | 'DEPOSIT'
+          | 'ECOMMERCE'
+          | 'AXA'
+          | 'MONEYGRAM'
+          | 'OTHER'
       }
       header?: never
       path: {
@@ -28662,7 +28887,13 @@ export interface operations {
     parameters: {
       query?: {
         status?:
-          'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED' | 'REJECTED'
+          | 'DRAFT'
+          | 'SUBMITTED'
+          | 'APPROVED'
+          | 'IN_TRANSIT'
+          | 'DELIVERED'
+          | 'CANCELLED'
+          | 'REJECTED'
         branchId?: string
         page?: number
         size?: number
@@ -35785,7 +36016,18 @@ export interface operations {
   }
   batchUpdate: {
     parameters: {
-      query?: never
+      query?: {
+        category?:
+          | 'EVENING'
+          | 'HANDLING_FEE'
+          | 'WESTERN_UNION'
+          | 'VAT'
+          | 'DEPOSIT'
+          | 'ECOMMERCE'
+          | 'AXA'
+          | 'MONEYGRAM'
+          | 'OTHER'
+      }
       header?: never
       path: {
         cashDeskId: string
@@ -35908,11 +36150,7 @@ export interface operations {
       path?: never
       cookie?: never
     }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['AdjustBalanceDto']
-      }
-    }
+    requestBody?: never
     responses: {
       /** @description OK */
       200: {
@@ -35920,7 +36158,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          '*/*': components['schemas']['CashBalanceDto']
+          '*/*': components['schemas']['ErrorResponse']
         }
       }
     }
@@ -40937,14 +41175,11 @@ export interface operations {
       }
     }
   }
-  generate_8: {
+  getReport_1: {
     parameters: {
       query: {
         from: string
         to: string
-        branchId?: string
-        currencyId?: number
-        transactionType?: string
       }
       header?: never
       path?: never
@@ -40958,7 +41193,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          '*/*': components['schemas']['AverageRateReportDto'][]
+          '*/*': components['schemas']['CashFlowReportDto']
         }
       }
     }
@@ -42490,7 +42725,7 @@ export interface operations {
       }
     }
   }
-  getReport_1: {
+  getReport_2: {
     parameters: {
       query?: never
       header?: never
@@ -43370,12 +43605,60 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          '*/*': components['schemas']['HandlingFeeDailySummaryDto']
+          '*/*': components['schemas']['PosHandlingFeeDailySummaryDto']
         }
       }
     }
   }
   dailySummaryCsv: {
+    parameters: {
+      query: {
+        branchId?: string
+        startDate: string
+        endDate: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
+        }
+      }
+    }
+  }
+  dailySummary_1: {
+    parameters: {
+      query: {
+        branchId?: string
+        startDate: string
+        endDate: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['HandlingFeeDailySummaryDto']
+        }
+      }
+    }
+  }
+  dailySummaryCsv_1: {
     parameters: {
       query: {
         branchId?: string
@@ -44773,6 +45056,52 @@ export interface operations {
         }
         content: {
           '*/*': components['schemas']['PageDecadeReportDto']
+        }
+      }
+    }
+  }
+  getDaybook: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        branchId: string
+        date: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['HufDaybookDto']
+        }
+      }
+    }
+  }
+  getDaybookPdf: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        branchId: string
+        date: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string
         }
       }
     }
@@ -46381,6 +46710,48 @@ export interface operations {
       }
     }
   }
+  getStatus_7: {
+    parameters: {
+      query: {
+        date: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['ClosingWizardStatusDto']
+        }
+      }
+    }
+  }
+  getCurrenciesWithBalance: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': string[]
+        }
+      }
+    }
+  }
   getAllStatus: {
     parameters: {
       query?: {
@@ -46746,7 +47117,7 @@ export interface operations {
       }
     }
   }
-  getStatus_7: {
+  getStatus_8: {
     parameters: {
       query?: {
         date?: string
@@ -46993,6 +47364,39 @@ export interface operations {
       }
     }
   }
+  selfCheck: {
+    parameters: {
+      query?: {
+        category?:
+          | 'EVENING'
+          | 'HANDLING_FEE'
+          | 'WESTERN_UNION'
+          | 'VAT'
+          | 'DEPOSIT'
+          | 'ECOMMERCE'
+          | 'AXA'
+          | 'MONEYGRAM'
+          | 'OTHER'
+      }
+      header?: never
+      path: {
+        cashDeskId: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['DenominationSelfCheckDto'][]
+        }
+      }
+    }
+  }
   getCashDeskDenominationsByCurrency: {
     parameters: {
       query?: never
@@ -47099,6 +47503,26 @@ export interface operations {
         }
         content: {
           '*/*': components['schemas']['CashBalanceDto'][]
+        }
+      }
+    }
+  }
+  getTodayStats: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          '*/*': components['schemas']['TodayStats']
         }
       }
     }
@@ -48502,7 +48926,7 @@ export interface operations {
       }
     }
   }
-  getStatus_8: {
+  getStatus_9: {
     parameters: {
       query?: never
       header?: never
