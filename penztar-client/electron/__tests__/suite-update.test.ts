@@ -49,9 +49,13 @@ const {
   parseManifest,
   isInstallWindow,
   isSafeInstallerFileName,
+  isAcceptableCacheCandidate,
+  selectStaleCacheEntries,
+  updateCacheDir,
+  INSTALL_WATCHDOG_MS,
   sha256File,
   verifyAuthenticode,
-} = await import('../suite-update');
+} = await import('../suite-update')
 
 /** Ervenyes manifest-alap, amibol a tesztek rontott valtozatokat kepeznek. */
 function validManifest(overrides: Record<string, unknown> = {}) {
@@ -247,6 +251,114 @@ describe('isSafeInstallerFileName — path traversal / command-injection vedelem
     expect(parseManifest(attack2)).toBeNull();
   });
 });
+
+describe('FK-084 cache — ujraindulas utan ne toltsunk le ujra 276 MB-ot', () => {
+  const manifestFile = 'Penztar-Setup-2.28.80-20260813.exe'
+  const goodHash = 'a'.repeat(64)
+
+  it('egyezo nev + egyezo hash -> elfogadva (E1)', () => {
+    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, goodHash, goodHash)).toBe(true)
+  })
+
+  it('kis/nagybetus hash-eltéres nem szamit (hexa normalizalas)', () => {
+    expect(
+      isAcceptableCacheCandidate(manifestFile, manifestFile, 'A'.repeat(64), 'a'.repeat(64)),
+    ).toBe(true)
+  })
+
+  it('ELTERO hash -> ELUTASITVA (E2: serult vagy manipulalt cache)', () => {
+    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, 'b'.repeat(64), goodHash)).toBe(
+      false,
+    )
+  })
+
+  it('csonka / ertelmezhetetlen hash -> ELUTASITVA (E2)', () => {
+    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, 'abc', goodHash)).toBe(false)
+    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, '', goodHash)).toBe(false)
+    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, 'z'.repeat(64), goodHash)).toBe(
+      false,
+    )
+  })
+
+  it('MAS verzio telepitoje -> ELUTASITVA (nem a manifest szerinti fajl)', () => {
+    expect(
+      isAcceptableCacheCandidate('Penztar-Setup-2.28.79-20260812.exe', manifestFile, goodHash, goodHash),
+    ).toBe(false)
+  })
+
+  it('path-traversal a cache-nevben -> ELUTASITVA (E3)', () => {
+    for (const attack of [
+      '../Penztar-Setup-2.28.80-20260813.exe',
+      '..\\Penztar-Setup-2.28.80-20260813.exe',
+      'sub/Penztar-Setup-2.28.80-20260813.exe',
+      'C:\\Temp\\Penztar-Setup-2.28.80-20260813.exe',
+    ]) {
+      expect(isAcceptableCacheCandidate(attack, manifestFile, goodHash, goodHash), attack).toBe(
+        false,
+      )
+    }
+  })
+
+  it('idegen fajlnev -> ELUTASITVA (E3)', () => {
+    expect(isAcceptableCacheCandidate('cmd.exe', manifestFile, goodHash, goodHash)).toBe(false)
+    expect(isAcceptableCacheCandidate('evil.exe', manifestFile, goodHash, goodHash)).toBe(false)
+  })
+
+  it('a cache-konyvtar a temp alatti dedikalt alkonyvtar', () => {
+    const dir = updateCacheDir('/tmp')
+    expect(dir).toContain('valutavalto-update')
+    // A `spawn` utvonal-ellenorzese ugyanezt hasznalja -> egy forras.
+    expect(updateCacheDir('/tmp')).toBe(dir)
+  })
+})
+
+describe('FK-084 takaritas — felbemaradt es elavult letoltesek (E6)', () => {
+  const keep = 'Penztar-Setup-2.28.80-20260813.exe'
+
+  it('az AKTUALIS telepitot NEM torli', () => {
+    expect(selectStaleCacheEntries([keep], keep)).toEqual([])
+  })
+
+  it('felbemaradt .part fajlt torol (app-leallas letoltes kozben)', () => {
+    expect(selectStaleCacheEntries([`${keep}.part`], keep)).toEqual([`${keep}.part`])
+  })
+
+  it('regi verziok telepitoit torli', () => {
+    const stale = selectStaleCacheEntries(
+      ['Penztar-Setup-2.28.78-20260811.exe', 'Penztar-Setup-2.28.79-20260812.exe', keep],
+      keep,
+    )
+    expect(stale).toEqual([
+      'Penztar-Setup-2.28.78-20260811.exe',
+      'Penztar-Setup-2.28.79-20260812.exe',
+    ])
+  })
+
+  it('nem-telepito fajlokat nem bant (nem a mi dolgunk)', () => {
+    expect(selectStaleCacheEntries(['jegyzet.txt', 'valami.log'], keep)).toEqual([])
+  })
+
+  it('vegyes konyvtar: csak a maradvanyokat valasztja ki', () => {
+    const stale = selectStaleCacheEntries(
+      [keep, `${keep}.part`, 'Penztar-Setup-2.28.79-20260812.exe', 'olvasd.txt'],
+      keep,
+    )
+    expect(stale.sort()).toEqual(
+      ['Penztar-Setup-2.28.79-20260812.exe', `${keep}.part`].sort(),
+    )
+  })
+})
+
+describe('FK-084 watchdog kuszob (E4)', () => {
+  it('15 perc — a valos telepites 2-3 perc, tehat ez mar rendellenes', () => {
+    expect(INSTALL_WATCHDOG_MS).toBe(15 * 60 * 1000)
+  })
+
+  it('a kuszob erdemben nagyobb a vart telepitesi idonel (nincs false-positive 3 percnel)', () => {
+    const tipikusTelepitesMs = 3 * 60 * 1000
+    expect(INSTALL_WATCHDOG_MS).toBeGreaterThan(tipikusTelepitesMs * 4)
+  })
+})
 
 describe('sha256File — streamelt hash', () => {
   it('a tenyleges fajltartalom hash-et adja', async () => {

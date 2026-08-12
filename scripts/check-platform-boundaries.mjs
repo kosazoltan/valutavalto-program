@@ -458,6 +458,38 @@ for (const client of CLIENTS) {
       src.includes('BIZTONSAGI ELUTASITAS') && src.includes('expectedDir'),
       'csak a magunk altal letoltott es ellenorzott fajl indithato (defense in depth)',
     )
+    // FK-084 (v2.28.80): a flotta elso oneros frissitese elotti megerositesek.
+    check(
+      'penztar suite-updater: a cache-elfogadas hash-kaput hasznal (nem "lemezen van, tehat jo")',
+      src.includes('isAcceptableCacheCandidate(') && src.includes('resolveVerifiedCache'),
+      'ujraindulas utan a mar letoltott telepito ujrahasznalhato, DE csak SHA-256 + Authenticode utan (FK-084/E1-E2)',
+    )
+    check(
+      'penztar suite-updater: a cache Authenticode-ellenorzest is kap',
+      /resolveVerifiedCache[\s\S]{0,1600}?verifyAuthenticode\(/.test(src),
+      'a cache-bol indulo telepites ugyanazt a ket kaput kapja, mint a friss letoltes',
+    )
+    check(
+      'penztar suite-updater: telepito-watchdog letezik (a terv 7. szakasz 1. kockazata)',
+      src.includes('INSTALL_WATCHDOG_MS') && src.includes('RIASZTAS'),
+      'ha az NSI nema modban blokkolo dialoguson ragad, enelkul nyoma sem lenne a logban',
+    )
+    check(
+      'penztar suite-updater: a nem-nulla telepito exit-kod nem nyelheto el',
+      /child\.on\('exit'/.test(src) && src.includes("runtime.state = 'READY'"),
+      'bukott telepites eseten a frissites ujra felajanlhato, nem ragad INSTALLING-ban (NSIS Abort = exit 2)',
+    )
+    check(
+      'penztar suite-updater: a letoltes-maradvanyok takaritasa megvan',
+      src.includes('selectStaleCacheEntries(') && src.includes('cleanupStaleCache('),
+      'a felbemaradt .part es a regi verziok kulonben 276 MB-os egysegekben halmozodnak',
+    )
+    check(
+      'penztar suite-updater: a cache-konyvtar EGY forrasbol jon (updateCacheDir)',
+      src.includes('export function updateCacheDir') &&
+        !/path\.join\(app\.getPath\('temp'\), 'valutavalto-update'\)/.test(src),
+      'a letoltes, a cache-feloldas es a spawn utvonal-ellenorzese nem csuszhat szet',
+    )
   }
 
   // A regi, electron-updater alapu penztar-modul nem eleszthető ujra.
