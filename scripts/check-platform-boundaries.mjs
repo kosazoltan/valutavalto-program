@@ -466,18 +466,33 @@ for (const client of CLIENTS) {
     )
     check(
       'penztar suite-updater: a cache Authenticode-ellenorzest is kap',
-      /resolveVerifiedCache[\s\S]{0,1600}?verifyAuthenticode\(/.test(src),
+      // A `resolveVerifiedCache` fuggveny-torzsere kotott minta (nem karakter-limit):
+      // a kovetkezo `async function`/`function` deklaracioig vizsgalunk, igy a kapu a
+      // fuggveny bovulesekor sem valik fals negativva (PR #1620 review).
+      (() => {
+        const start = src.indexOf('async function resolveVerifiedCache')
+        if (start === -1) return false
+        const rest = src.slice(start + 1)
+        const nextFn = rest.search(/\n {2}(?:async )?function /)
+        const body = nextFn === -1 ? rest : rest.slice(0, nextFn)
+        return body.includes('verifyAuthenticode(')
+      })(),
       'a cache-bol indulo telepites ugyanazt a ket kaput kapja, mint a friss letoltes',
     )
     check(
-      'penztar suite-updater: telepito-watchdog letezik (a terv 7. szakasz 1. kockazata)',
-      src.includes('INSTALL_WATCHDOG_MS') && src.includes('RIASZTAS'),
-      'ha az NSI nema modban blokkolo dialoguson ragad, enelkul nyoma sem lenne a logban',
+      'penztar suite-updater: a telepites kimenetet a KOVETKEZO indulas ertekeli ki',
+      src.includes('evaluateInstallAttempt(') && src.includes('reviewPreviousInstallAttempt('),
+      'in-process watchdog nem mukodhet: a telepito leallitja a Penztar.exe-t, az app 1 mp mulva kilep, igy sem a timer, sem a child exit-listener nem fut le (PR #1620 review, P1)',
     )
     check(
-      'penztar suite-updater: a nem-nulla telepito exit-kod nem nyelheto el',
-      /child\.on\('exit'/.test(src) && src.includes("runtime.state = 'READY'"),
-      'bukott telepites eseten a frissites ujra felajanlhato, nem ragad INSTALLING-ban (NSIS Abort = exit 2)',
+      'penztar suite-updater: a telepitesi kiserlet markert ir a spawn ELOTT',
+      /writeInstallMarker\(manifest\);[\s\S]{0,400}?spawn\(/.test(src),
+      'marker nelkul egy elakadt csendes telepites nyom nelkul maradna',
+    )
+    check(
+      'penztar suite-updater: bukott telepites eseten RIASZTAS a logban',
+      src.includes('RIASZTAS') && src.includes("=== 'FAILED'"),
+      'a "fagyott telepito" (a v2.28.79-ben javitott IfSilent-hiba mintaja) felismerheto kell legyen',
     )
     check(
       'penztar suite-updater: a letoltes-maradvanyok takaritasa megvan',

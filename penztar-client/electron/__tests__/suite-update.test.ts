@@ -52,10 +52,12 @@ const {
   isAcceptableCacheCandidate,
   selectStaleCacheEntries,
   updateCacheDir,
-  INSTALL_WATCHDOG_MS,
+  evaluateInstallAttempt,
+  parseInstallMarker,
+  INSTALL_MARKER_FILE,
   sha256File,
   verifyAuthenticode,
-} = await import('../suite-update')
+} = await import('../suite-update');
 
 /** Ervenyes manifest-alap, amibol a tesztek rontott valtozatokat kepeznek. */
 function validManifest(overrides: Record<string, unknown> = {}) {
@@ -253,38 +255,43 @@ describe('isSafeInstallerFileName — path traversal / command-injection vedelem
 });
 
 describe('FK-084 cache — ujraindulas utan ne toltsunk le ujra 276 MB-ot', () => {
-  const manifestFile = 'Penztar-Setup-2.28.80-20260813.exe'
-  const goodHash = 'a'.repeat(64)
+  const manifestFile = 'Penztar-Setup-2.28.80-20260813.exe';
+  const goodHash = 'a'.repeat(64);
 
   it('egyezo nev + egyezo hash -> elfogadva (E1)', () => {
-    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, goodHash, goodHash)).toBe(true)
-  })
+    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, goodHash, goodHash)).toBe(true);
+  });
 
   it('kis/nagybetus hash-eltéres nem szamit (hexa normalizalas)', () => {
     expect(
       isAcceptableCacheCandidate(manifestFile, manifestFile, 'A'.repeat(64), 'a'.repeat(64)),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
   it('ELTERO hash -> ELUTASITVA (E2: serult vagy manipulalt cache)', () => {
     expect(isAcceptableCacheCandidate(manifestFile, manifestFile, 'b'.repeat(64), goodHash)).toBe(
       false,
-    )
-  })
+    );
+  });
 
   it('csonka / ertelmezhetetlen hash -> ELUTASITVA (E2)', () => {
-    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, 'abc', goodHash)).toBe(false)
-    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, '', goodHash)).toBe(false)
+    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, 'abc', goodHash)).toBe(false);
+    expect(isAcceptableCacheCandidate(manifestFile, manifestFile, '', goodHash)).toBe(false);
     expect(isAcceptableCacheCandidate(manifestFile, manifestFile, 'z'.repeat(64), goodHash)).toBe(
       false,
-    )
-  })
+    );
+  });
 
   it('MAS verzio telepitoje -> ELUTASITVA (nem a manifest szerinti fajl)', () => {
     expect(
-      isAcceptableCacheCandidate('Penztar-Setup-2.28.79-20260812.exe', manifestFile, goodHash, goodHash),
-    ).toBe(false)
-  })
+      isAcceptableCacheCandidate(
+        'Penztar-Setup-2.28.79-20260812.exe',
+        manifestFile,
+        goodHash,
+        goodHash,
+      ),
+    ).toBe(false);
+  });
 
   it('path-traversal a cache-nevben -> ELUTASITVA (E3)', () => {
     for (const attack of [
@@ -295,70 +302,118 @@ describe('FK-084 cache — ujraindulas utan ne toltsunk le ujra 276 MB-ot', () =
     ]) {
       expect(isAcceptableCacheCandidate(attack, manifestFile, goodHash, goodHash), attack).toBe(
         false,
-      )
+      );
     }
-  })
+  });
 
   it('idegen fajlnev -> ELUTASITVA (E3)', () => {
-    expect(isAcceptableCacheCandidate('cmd.exe', manifestFile, goodHash, goodHash)).toBe(false)
-    expect(isAcceptableCacheCandidate('evil.exe', manifestFile, goodHash, goodHash)).toBe(false)
-  })
+    expect(isAcceptableCacheCandidate('cmd.exe', manifestFile, goodHash, goodHash)).toBe(false);
+    expect(isAcceptableCacheCandidate('evil.exe', manifestFile, goodHash, goodHash)).toBe(false);
+  });
 
   it('a cache-konyvtar a temp alatti dedikalt alkonyvtar', () => {
-    const dir = updateCacheDir('/tmp')
-    expect(dir).toContain('valutavalto-update')
+    const dir = updateCacheDir('/tmp');
+    expect(dir).toContain('valutavalto-update');
     // A `spawn` utvonal-ellenorzese ugyanezt hasznalja -> egy forras.
-    expect(updateCacheDir('/tmp')).toBe(dir)
-  })
-})
+    expect(updateCacheDir('/tmp')).toBe(dir);
+  });
+});
 
 describe('FK-084 takaritas — felbemaradt es elavult letoltesek (E6)', () => {
-  const keep = 'Penztar-Setup-2.28.80-20260813.exe'
+  const keep = 'Penztar-Setup-2.28.80-20260813.exe';
 
   it('az AKTUALIS telepitot NEM torli', () => {
-    expect(selectStaleCacheEntries([keep], keep)).toEqual([])
-  })
+    expect(selectStaleCacheEntries([keep], keep)).toEqual([]);
+  });
 
   it('felbemaradt .part fajlt torol (app-leallas letoltes kozben)', () => {
-    expect(selectStaleCacheEntries([`${keep}.part`], keep)).toEqual([`${keep}.part`])
-  })
+    expect(selectStaleCacheEntries([`${keep}.part`], keep)).toEqual([`${keep}.part`]);
+  });
 
   it('regi verziok telepitoit torli', () => {
     const stale = selectStaleCacheEntries(
       ['Penztar-Setup-2.28.78-20260811.exe', 'Penztar-Setup-2.28.79-20260812.exe', keep],
       keep,
-    )
+    );
     expect(stale).toEqual([
       'Penztar-Setup-2.28.78-20260811.exe',
       'Penztar-Setup-2.28.79-20260812.exe',
-    ])
-  })
+    ]);
+  });
 
   it('nem-telepito fajlokat nem bant (nem a mi dolgunk)', () => {
-    expect(selectStaleCacheEntries(['jegyzet.txt', 'valami.log'], keep)).toEqual([])
-  })
+    expect(selectStaleCacheEntries(['jegyzet.txt', 'valami.log'], keep)).toEqual([]);
+  });
 
   it('vegyes konyvtar: csak a maradvanyokat valasztja ki', () => {
     const stale = selectStaleCacheEntries(
       [keep, `${keep}.part`, 'Penztar-Setup-2.28.79-20260812.exe', 'olvasd.txt'],
       keep,
-    )
-    expect(stale.sort()).toEqual(
-      ['Penztar-Setup-2.28.79-20260812.exe', `${keep}.part`].sort(),
-    )
-  })
-})
+    );
+    expect(stale.sort()).toEqual(['Penztar-Setup-2.28.79-20260812.exe', `${keep}.part`].sort());
+  });
+});
 
-describe('FK-084 watchdog kuszob (E4)', () => {
-  it('15 perc — a valos telepites 2-3 perc, tehat ez mar rendellenes', () => {
-    expect(INSTALL_WATCHDOG_MS).toBe(15 * 60 * 1000)
-  })
+describe('FK-084 telepites-kimenet felismerese (E4-E5)', () => {
+  // MIERT NEM in-process watchdog (PR #1620 review, P1): a suite-telepito leallitja a
+  // Penztar.exe-t, ezert a main process 1 masodperccel a spawn utan kilep. Egy 15 perces
+  // timer vagy egy `child.on('exit')` listener SOSEM futna le — a telepites kimenete a
+  // processzunk halala UTAN dol el. A felismeres ezert markerfajl + a KOVETKEZO indulas
+  // futo verzioja alapjan tortenik. Ezek a tesztek EZT a logikat merik, nem egy konstanst.
+  const marker = {
+    version: '2.28.80',
+    startedAt: '2026-08-13T04:00:00Z',
+    installerFile: 'Penztar-Setup-2.28.80-20260813.exe',
+  };
 
-  it('a kuszob erdemben nagyobb a vart telepitesi idonel (nincs false-positive 3 percnel)', () => {
-    const tipikusTelepitesMs = 3 * 60 * 1000
-    expect(INSTALL_WATCHDOG_MS).toBeGreaterThan(tipikusTelepitesMs * 4)
-  })
-})
+  it('nincs marker -> NONE (nem volt telepitesi kiserlet)', () => {
+    expect(evaluateInstallAttempt(null, '2.28.79')).toBe('NONE');
+  });
+
+  it('a CEL verzio fut -> SUCCESS (a telepito lefutott)', () => {
+    expect(evaluateInstallAttempt(marker, '2.28.80')).toBe('SUCCESS');
+  });
+
+  it('MEG UJABB verzio fut -> SUCCESS (kozben tovabbi telepites is volt)', () => {
+    expect(evaluateInstallAttempt(marker, '2.28.81')).toBe('SUCCESS');
+  });
+
+  it('a REGI verzio fut -> FAILED (elakadt vagy hibara futott a csendes telepito)', () => {
+    // Ez a riasztas EGYETLEN forrasa: enelkul egy "fagyott telepito" nyom nelkul marad.
+    expect(evaluateInstallAttempt(marker, '2.28.79')).toBe('FAILED');
+  });
+
+  it('ures verzio a markerben -> NONE (nem riasztunk talalgatasbol)', () => {
+    expect(evaluateInstallAttempt({ ...marker, version: '' }, '2.28.79')).toBe('NONE');
+  });
+
+  it('a marker parse-olasa: ervenyes bemenet elfogadva', () => {
+    expect(parseInstallMarker(marker)).not.toBeNull();
+  });
+
+  it('a marker parse-olasa: hibas verzio-formatum ELUTASITVA', () => {
+    expect(parseInstallMarker({ ...marker, version: 'v2.28.80' })).toBeNull();
+    expect(parseInstallMarker({ ...marker, version: '2.28' })).toBeNull();
+  });
+
+  it('a marker parse-olasa: path-traversal a fajlnevben ELUTASITVA', () => {
+    // A markerbol torles-utvonal szarmazik, tehat itt is kell a nev-ellenorzes.
+    expect(parseInstallMarker({ ...marker, installerFile: '../../evil.exe' })).toBeNull();
+    expect(parseInstallMarker({ ...marker, installerFile: 'C:\\Windows\\cmd.exe' })).toBeNull();
+  });
+
+  it('a marker parse-olasa: szemet bemenet ELUTASITVA', () => {
+    expect(parseInstallMarker(null)).toBeNull();
+    expect(parseInstallMarker('nem objektum')).toBeNull();
+    expect(parseInstallMarker({})).toBeNull();
+  });
+
+  it('a takaritas a MARKERT nem torli (a kovetkezo indulas ertekeli ki)', () => {
+    expect(
+      selectStaleCacheEntries([INSTALL_MARKER_FILE], 'Penztar-Setup-2.28.80-20260813.exe'),
+    ).toEqual([]);
+  });
+});
 
 describe('sha256File — streamelt hash', () => {
   it('a tenyleges fajltartalom hash-et adja', async () => {
