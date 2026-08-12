@@ -29,35 +29,73 @@
 -- egy ceg katalogusa soha nem legitimal masik ceg sorat (spec 6.b, dedikalt cross-tenant
 -- teszt bizonyitja).
 --
--- MINDKET AKTIV-OSZLOP (ticket C3): a `denomination` tablan a V3 DDL `active`, a V3_7/V109
--- pedig `is_active` oszlopot hozott letre, es egy `trg_sync_active_columns` trigger tartja
--- oket szinkronban. Az UPDATE MINDKETTOT explicit false-ra allitja, igy az eredmeny nem
--- fugg a trigger tuzelesetol.
+-- MINDKET AKTIV-OSZLOP (ticket C3) — OSZLOP-AGNOSZTIKUS (2026-08-12 eles hotfix):
+-- a `denomination` tablan a V3 DDL `active` oszlopot hozott letre, a V3_7/V109 guard
+-- pedig `is_active`-ot ad hozza ott, ahol csak `active` van. A ket oszlop MEGLETE
+-- KORNYEZETFUGGO: az eles Hetzner DB-n (2026-08-12) a `denomination` tablan CSAK
+-- `is_active` van, a friss Testcontainers-sema viszont mindkettot tartalmazza.
 --
--- NFR-1 (idempotencia): a masodik futas 0 sort erint, mert a mar inaktivalt sorokra az
--- `active = true` feltetel nem all fenn.
+-- Az eredeti, statikus `SET active = false, is_active = false ... WHERE d.active = true`
+-- ezert elesben `ERROR: column d.active does not exist` (SQLSTATE 42703) hibaval elbukott
+-- es a backend nem indult el (502). A javitas dinamikus SQL-t hasznal: futasidoben nezi
+-- meg az information_schema-bol, melyik aktiv-oszlop letezik, es CSAK azokat irja.
+-- Igy ugyanaz a fajl helyes a teljes (dev/teszt) es a csonka (eles) semaval is.
+--
+-- NFR-1 (idempotencia): a masodik futas 0 sort erint, mert a mar inaktivalt sorokra a
+-- letezo aktiv-oszlop `= true` feltetele nem all fenn.
 -- NFR-3 (nincs allasido): egyetlen, indexelt UPDATE egyetlen tranzakcioban; a varhato
 -- eles hatokor ~90 fiok x nehany tucat sor — futasideje jol egy masodperc alatt,
 -- karbantartasi ablak nem szukseges.
 
 DO $$
-DECLARE affected integer;
+DECLARE
+    affected     integer;
+    has_active   boolean;
+    has_isactive boolean;
+    set_clause   text;
+    where_clause text;
 BEGIN
-    UPDATE denomination d
-       SET active = false,
-           is_active = false,
-           updated_at = NOW()
-     WHERE d.active = true
-       AND d.denomination_type = 'COIN'
-       AND NOT EXISTS (
-           SELECT 1
-             FROM denomination_allowed da
-            WHERE da.company_id = d.company_id
-              AND da.currency_id = d.currency_id
-              AND da.face_value = d.face_value
-              AND da.denomination_type = 'COIN'
-              AND da.is_active = true
-       );
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'denomination'
+                      AND column_name = 'active')
+      INTO has_active;
+    SELECT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'denomination'
+                      AND column_name = 'is_active')
+      INTO has_isactive;
+
+    IF NOT has_active AND NOT has_isactive THEN
+        RAISE EXCEPTION 'FK-080 V380: a denomination tablan sem `active`, sem `is_active` oszlop nincs';
+    END IF;
+
+    -- MINDEN letezo aktiv-oszlopot explicit false-ra allitunk, igy az eredmeny nem fugg
+    -- a trg_sync_active_columns trigger tuzelesetol.
+    set_clause := concat_ws(', ',
+        CASE WHEN has_active   THEN 'active = false'    END,
+        CASE WHEN has_isactive THEN 'is_active = false' END,
+        'updated_at = NOW()');
+
+    -- A szurest a lehetoleg ELSODLEGES (`active`) oszlopra tesszuk, ha van; kulonben
+    -- az `is_active`-ra. A ketto a trigger miatt szinkronban van, ahol mindketto letezik.
+    where_clause := CASE WHEN has_active THEN 'd.active = true' ELSE 'd.is_active = true' END;
+
+    EXECUTE format($fmt$
+        UPDATE denomination d
+           SET %s
+         WHERE %s
+           AND d.denomination_type = 'COIN'
+           AND NOT EXISTS (
+               SELECT 1
+                 FROM denomination_allowed da
+                WHERE da.company_id = d.company_id
+                  AND da.currency_id = d.currency_id
+                  AND da.face_value = d.face_value
+                  AND da.denomination_type = 'COIN'
+                  AND da.is_active = true
+           )
+    $fmt$, set_clause, where_clause);
+
     GET DIAGNOSTICS affected = ROW_COUNT;
-    RAISE NOTICE 'FK-080 V380: % tiltott COIN denomination sor inaktivalva', affected;
+    RAISE NOTICE 'FK-080 V380: % tiltott COIN denomination sor inaktivalva (active=%, is_active=%)',
+                 affected, has_active, has_isactive;
 END $$;

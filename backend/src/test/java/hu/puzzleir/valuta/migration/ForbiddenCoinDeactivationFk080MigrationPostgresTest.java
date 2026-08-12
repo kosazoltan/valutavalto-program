@@ -268,19 +268,49 @@ class ForbiddenCoinDeactivationFk080MigrationPostgresTest {
     }
 
     /**
-     * A V380 UPDATE-jenek nyers ujrafuttatasa (az UPDATE utasitas az elso
-     * pontosvesszoig — a GET DIAGNOSTICS/RAISE NOTICE reszek nelkul). A masodik
+     * A V380 TELJES `DO $$ ... END $$;` blokkjanak nyers ujrafuttatasa. A masodik
      * futasnak 0 sort kell modositania (idempotencia).
+     *
+     * <p>2026-08-12: korabban ez a helper az UPDATE-et az ELSO pontosvesszoig vagta ki.
+     * Amikor a V380 oszlop-agnosztikussa valt (eles hotfix — a `denomination` tablan
+     * elesben csak `is_active` van), a dinamikus `format(...)` blokk belsejeben mar
+     * vannak pontosvesszok, ezert a kivagas fel utasitast adott vissza
+     * ("Unterminated dollar quote"). A helper most a teljes DO-blokkot futtatja, ami
+     * egyben hubb is: pontosan azt hajtja vegre ujra, amit a Flyway futtatott.
+     *
+     * <p>A visszaadott ertek a blokk altal MODOSITOTT sorok szama: mivel a DO-blokk
+     * nem ad vissza row countot, a hatast a hivo oldalon mert
+     * "aktiv tiltott COIN sorok szama" kulonbsege bizonyitja — a helper 0-t ad vissza,
+     * ha a blokk lefutott, es a hivo assert ellenorzi, hogy semmi nem valtozott.
      */
     private static int runV380UpdateRaw() throws Exception {
         String sql = Files.readString(resolveMigrationFile(), StandardCharsets.UTF_8);
-        int start = sql.indexOf("UPDATE denomination d");
-        assertThat(start).as("Az UPDATE megtalalhato a migracios fajlban").isNotNegative();
-        int end = sql.indexOf(';', start);
-        assertThat(end).as("Az UPDATE lezaro pontosvesszoje").isGreaterThan(start);
-        String updateStatement = sql.substring(start, end);
+        int start = sql.indexOf("DO $$");
+        assertThat(start).as("A DO-blokk megtalalhato a migracios fajlban").isNotNegative();
+        int end = sql.indexOf("END $$;", start);
+        assertThat(end).as("A DO-blokk lezarasa").isGreaterThan(start);
+        String doBlock = sql.substring(start, end + "END $$;".length());
+
+        int activeForbiddenBefore = countActiveForbiddenCoinRows();
         try (Connection connection = openConnection(); Statement st = connection.createStatement()) {
-            return st.executeUpdate(updateStatement);
+            st.execute(doBlock);
+        }
+        return activeForbiddenBefore - countActiveForbiddenCoinRows();
+    }
+
+    /** Az aktiv, de a katalogus szerint tiltott COIN sorok szama (oszlop-agnosztikus). */
+    private static int countActiveForbiddenCoinRows() throws Exception {
+        try (Connection connection = openConnection();
+             Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery(
+                     "SELECT count(*) FROM denomination d "
+                             + "WHERE d.is_active = true AND d.denomination_type = 'COIN' "
+                             + "AND NOT EXISTS (SELECT 1 FROM denomination_allowed da "
+                             + "WHERE da.company_id = d.company_id AND da.currency_id = d.currency_id "
+                             + "AND da.face_value = d.face_value AND da.denomination_type = 'COIN' "
+                             + "AND da.is_active = true)")) {
+            rs.next();
+            return rs.getInt(1);
         }
     }
 
