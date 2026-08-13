@@ -24,6 +24,8 @@ import json
 import os
 import re
 import sys
+import time
+import urllib.error
 import urllib.request
 
 DEFAULT_MANIFEST_URL = (
@@ -36,12 +38,68 @@ SEMVER = re.compile(r'^(\d+)\.(\d+)\.(\d+)$')
 # `fetch` mindig kuld UA-t, ezert a proba is kuld — kulonben olyan hibat jelentenenk,
 # ami a valos kliensnel nem letezik.
 USER_AGENT = 'valutavalto-update-chain-probe/1.0'
+# A CDN idonkent valasz nelkul bontja a kapcsolatot -> korlatozott ismetles.
+HTTP_RETRIES = 3
+HTTP_RETRY_DELAY_S = 3
+# Tranziens HTTP-statuszok: ezekre ERDEMES ujraprobalni (a CDN/rate-limit atmeneti
+# allapotai). A 404/403 NEM ilyen — az valos hiba, azonnal buknia kell.
+TRANSIENT_HTTP_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
+
+
+def _request(url: str, headers: dict[str, str] | None = None) -> urllib.request.Request:
+    """Kereses osszeallitasa — a User-Agent MINDIG a mienk (nem irhato felul)."""
+    merged = dict(headers or {})
+    merged['User-Agent'] = USER_AGENT
+    return urllib.request.Request(url, headers=merged)
+
+
+def _http_with_retry(url: str, timeout: int, headers: dict[str, str] | None, reader):
+    """Kozos ismetles-logika: tranziens halozati hiba ES tranziens HTTP-statusz eseten.
+
+    MIERT AZ ISMETLES: a GitHub release-CDN idonkent valasz nelkul bontja a kapcsolatot
+    ("Remote end closed connection without response"), illetve atmeneti 429/5xx-et adhat
+    — ugyanaz a keres masodpercekkel kesobb 200-at ad. Ez tranziens, NEM a lanc hibaja;
+    egy verifikalo scriptnek pedig nem szabad emiatt hamis FAIL-t jelentenie.
+    A VALOS hibat (404 hianyzo asset, 403) az ismetles nem fedi el: azok NEM tranziens
+    statuszok, ezert azonnal felszallnak.
+    """
+    last: Exception | None = None
+    for attempt in range(1, HTTP_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(_request(url, headers), timeout=timeout) as resp:
+                return reader(resp)
+        except urllib.error.HTTPError as exc:
+            if exc.code not in TRANSIENT_HTTP_STATUS:
+                raise
+            last = exc
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+        if attempt < HTTP_RETRIES:
+            print(
+                f'[INFO] tranziens hiba ({type(last).__name__}: {last}), '
+                f'ujraprobalkozas {attempt}/{HTTP_RETRIES - 1}...'
+            )
+            time.sleep(HTTP_RETRY_DELAY_S * attempt)
+    raise last if last else RuntimeError('http: ismeretlen hiba')
 
 
 def http_get(url: str, timeout: int = 60, headers: dict[str, str] | None = None) -> bytes:
-    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, **(headers or {})})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+    """HTTP GET korlatozott ujraprobalkozassal."""
+    return _http_with_retry(url, timeout, headers, lambda resp: resp.read())
+
+
+def http_get_range(url: str, timeout: int = 60) -> tuple[int, int]:
+    """GET `Range: bytes=0-0` fejleccel — (status, kapott bajtok).
+
+    NEM HTTP HEAD (a nev korabban ezt sugallta): a keres GET, csak az elso bajtot kerjuk,
+    igy a link elerhetosege 276 MB letoltese nelkul igazolhato.
+    """
+    return _http_with_retry(
+        url,
+        timeout,
+        {'Range': 'bytes=0-0'},
+        lambda resp: (resp.status, len(resp.read(1))),
+    )
 
 
 failed = 0
@@ -274,16 +332,11 @@ def main() -> int:
         # A publikalt URL TENYLEGES elerhetosege: 1 bajtos range-keres, hogy ne toltsunk
         # le 276 MB-ot csak azert, mert a link letezeset akarjuk igazolni.
         try:
-            req = urllib.request.Request(
-                str(url), headers={'Range': 'bytes=0-0', 'User-Agent': USER_AGENT}
-            )
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                status = resp.status
-                head = resp.read(1)
+            status, got = http_get_range(str(url))
             check(
                 'a publikalt telepito-URL elerheto (range-keres)',
-                status in (200, 206) and len(head) == 1,
-                f'HTTP {status}, {len(head)} bajt',
+                status in (200, 206) and got == 1,
+                f'HTTP {status}, {got} bajt',
             )
         except Exception as exc:  # noqa: BLE001
             check('a publikalt telepito-URL elerheto (range-keres)', False, str(exc))
