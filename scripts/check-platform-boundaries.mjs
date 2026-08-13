@@ -458,6 +458,53 @@ for (const client of CLIENTS) {
       src.includes('BIZTONSAGI ELUTASITAS') && src.includes('expectedDir'),
       'csak a magunk altal letoltott es ellenorzott fajl indithato (defense in depth)',
     )
+    // FK-084 (v2.28.80): a flotta elso oneros frissitese elotti megerositesek.
+    check(
+      'penztar suite-updater: a cache-elfogadas hash-kaput hasznal (nem "lemezen van, tehat jo")',
+      src.includes('isAcceptableCacheCandidate(') && src.includes('resolveVerifiedCache'),
+      'ujraindulas utan a mar letoltott telepito ujrahasznalhato, DE csak SHA-256 + Authenticode utan (FK-084/E1-E2)',
+    )
+    check(
+      'penztar suite-updater: a cache Authenticode-ellenorzest is kap',
+      // A `resolveVerifiedCache` fuggveny-torzsere kotott minta (nem karakter-limit):
+      // a kovetkezo `async function`/`function` deklaracioig vizsgalunk, igy a kapu a
+      // fuggveny bovulesekor sem valik fals negativva (PR #1620 review).
+      (() => {
+        const start = src.indexOf('async function resolveVerifiedCache')
+        if (start === -1) return false
+        const rest = src.slice(start + 1)
+        const nextFn = rest.search(/\n {2}(?:async )?function /)
+        const body = nextFn === -1 ? rest : rest.slice(0, nextFn)
+        return body.includes('verifyAuthenticode(')
+      })(),
+      'a cache-bol indulo telepites ugyanazt a ket kaput kapja, mint a friss letoltes',
+    )
+    check(
+      'penztar suite-updater: a telepites kimenetet a KOVETKEZO indulas ertekeli ki',
+      src.includes('evaluateInstallAttempt(') && src.includes('reviewPreviousInstallAttempt('),
+      'in-process watchdog nem mukodhet: a telepito leallitja a Penztar.exe-t, az app 1 mp mulva kilep, igy sem a timer, sem a child exit-listener nem fut le (PR #1620 review, P1)',
+    )
+    check(
+      'penztar suite-updater: a telepitesi kiserlet markert ir a spawn ELOTT',
+      /writeInstallMarker\(manifest\);[\s\S]{0,400}?spawn\(/.test(src),
+      'marker nelkul egy elakadt csendes telepites nyom nelkul maradna',
+    )
+    check(
+      'penztar suite-updater: bukott telepites eseten RIASZTAS a logban',
+      src.includes('RIASZTAS') && src.includes("=== 'FAILED'"),
+      'a "fagyott telepito" (a v2.28.79-ben javitott IfSilent-hiba mintaja) felismerheto kell legyen',
+    )
+    check(
+      'penztar suite-updater: a letoltes-maradvanyok takaritasa megvan',
+      src.includes('selectStaleCacheEntries(') && src.includes('cleanupStaleCache('),
+      'a felbemaradt .part es a regi verziok kulonben 276 MB-os egysegekben halmozodnak',
+    )
+    check(
+      'penztar suite-updater: a cache-konyvtar EGY forrasbol jon (updateCacheDir)',
+      src.includes('export function updateCacheDir') &&
+        !/path\.join\(app\.getPath\('temp'\), 'valutavalto-update'\)/.test(src),
+      'a letoltes, a cache-feloldas es a spawn utvonal-ellenorzese nem csuszhat szet',
+    )
   }
 
   // A regi, electron-updater alapu penztar-modul nem eleszthető ujra.

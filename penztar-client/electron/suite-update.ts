@@ -111,6 +111,118 @@ export function isInstallWindow(state: ShiftState): boolean {
 }
 
 /**
+ * A letoltesi/cache konyvtar. Egy helyen definialva, mert HAROM dolog kotodik hozza:
+ * a letoltes celutvonala, a cache-feloldas es a `spawn` utvonal-ellenorzese.
+ */
+export function updateCacheDir(tempDir: string): string {
+  return path.join(tempDir, 'valutavalto-update');
+}
+
+/**
+ * Eldonti, hogy egy MAR A LEMEZEN levo fajl elfogadhato-e cache-kent.
+ *
+ * FK-084/E2 + E3: a "lemezen van, tehat jo" gondolat itt tilos. A cache pontosan
+ * ugyanazt a ket kaput kapja, mint a friss letoltes:
+ *   (a) a fajlnev a manifest szerinti, szigoru mintat kovetve (path-traversal ki),
+ *   (b) a tartalom SHA-256-ja egyezik a manifesttel.
+ * Az Authenticode-ellenorzest a hivo vegzi (I/O), de a hash-kapu itt bukik el, igy
+ * egy manipulalt cache-fajl sosem jut el a telepitesig.
+ *
+ * @returns `true`, ha a fajl elfogadhato es tovabbadhato az alairas-ellenorzesnek.
+ */
+export function isAcceptableCacheCandidate(
+  fileName: string,
+  manifestFileName: string,
+  actualSha256: string,
+  expectedSha256: string,
+): boolean {
+  if (!isSafeInstallerFileName(fileName)) return false;
+  if (fileName !== manifestFileName) return false;
+  if (!/^[0-9a-f]{64}$/i.test(actualSha256)) return false;
+  return actualSha256.toLowerCase() === expectedSha256.toLowerCase();
+}
+
+/** A telepitesi kiserlet markerfajlja a cache-konyvtarban. */
+export const INSTALL_MARKER_FILE = 'install-attempt.json';
+
+/**
+ * Kivalasztja a cache-konyvtarbol torlendo maradvanyokat.
+ *
+ * FK-084/E6: a felbemaradt `.part` fajlok (app-leallas letoltes kozben) es a regi
+ * verziok telepitoi kulonben 276 MB-os egysegekben halmozodnak a temp konyvtarban.
+ * A jelenleg aktualis (manifest szerinti) fajlt SOHA nem torli.
+ */
+export function selectStaleCacheEntries(entries: string[], keepFileName: string): string[] {
+  return entries.filter((name) => {
+    if (name === keepFileName) return false;
+    // A telepitesi marker NEM maradvany: a kovetkezo indulas ertekeli ki.
+    if (name === INSTALL_MARKER_FILE) return false;
+    return name.endsWith('.part') || name.toLowerCase().endsWith('.exe');
+  });
+}
+
+/** A telepito-watchdog kuszobe: ennyi ido utan mar rendellenes, hogy meg fut. */
+export const INSTALL_WATCHDOG_MS = 15 * 60 * 1000;
+
+export interface InstallAttemptMarker {
+  version: string;
+  startedAt: string;
+  installerFile: string;
+}
+
+/**
+ * Egy korabbi telepitesi kiserlet kimenete, a KOVETKEZO app-indulaskor ertekelve.
+ *
+ * MIERT IGY (PR #1620 review, P1): a telepitest NEM lehet a futo processzbol
+ * felugyelni. A suite-telepito eppen a Penztar.exe-t allitja le, hogy felulirhassa
+ * a fajlokat, ezert a main process 1 masodperccel a `spawn` utan kilep (`app.quit()`).
+ * Egy in-process watchdog vagy `exit` listener SOHA nem futna le — se a 15 perces
+ * elakadas-riasztas, se a nem-nulla exit-kod naplozasa. (Ez a hiba a PR elso
+ * valtozataban benne volt: a tesztek a konstanst es a kodszerkezetet mertek, nem a
+ * valos viselkedest.)
+ *
+ * Helyette: a telepites INDITASA elott markert irunk, es a kovetkezo indulaskor a
+ * FUTO VERZIOBOL derul ki, mi tortent:
+ *   - a verzio a markerben szereplo cel-verzio  -> SUCCESS (a telepites lefutott)
+ *   - a verzio valtozatlanul a regi             -> FAILED (elakadt vagy hibara futott)
+ */
+export type InstallAttemptOutcome = 'NONE' | 'SUCCESS' | 'FAILED';
+
+/**
+ * Kiertekeli az elozo telepitesi kiserletet a MOST futo verzio alapjan.
+ *
+ * @param marker a beolvasott markerfajl tartalma (`null`, ha nincs)
+ * @param runningVersion az eppen futo app verzioja (`app.getVersion()`)
+ */
+export function evaluateInstallAttempt(
+  marker: InstallAttemptMarker | null,
+  runningVersion: string,
+): InstallAttemptOutcome {
+  if (!marker || typeof marker.version !== 'string' || marker.version === '') return 'NONE';
+  // A cel-verzio fut -> a telepito vegzett. (Egyenloseg ES a nagyobb verzio is siker:
+  // ha kozben egy ujabb telepites is lefutott, a kiserlet biztosan nem akadt el.)
+  if (runningVersion === marker.version || isNewerVersion(runningVersion, marker.version)) {
+    return 'SUCCESS';
+  }
+  return 'FAILED';
+}
+
+/** A marker tartalmanak biztonsagos ertelmezese (serult JSON eseten `null`). */
+export function parseInstallMarker(raw: unknown): InstallAttemptMarker | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj.version !== 'string' || !/^\d+\.\d+\.\d+$/.test(obj.version)) return null;
+  if (typeof obj.installerFile !== 'string' || !isSafeInstallerFileName(obj.installerFile)) {
+    return null;
+  }
+  return {
+    version: obj.version,
+    startedAt: typeof obj.startedAt === 'string' ? obj.startedAt : '',
+    installerFile: obj.installerFile,
+  };
+}
+
+/**
  * Szigoru semver-osszehasonlitas: `a > b`?
  *
  * Downgrade tilos (3.3/3. pont), ezert egyenloseg es kisebb verzio egyaránt false.
@@ -195,7 +307,9 @@ export function sha256File(filePath: string): Promise<string> {
 export async function verifyAuthenticode(
   exePath: string,
   expectedSubjectFragment: string,
-  runner: (exePath: string) => Promise<{ status: string; subject: string }> = defaultSignatureReader,
+  runner: (
+    exePath: string,
+  ) => Promise<{ status: string; subject: string }> = defaultSignatureReader,
 ): Promise<{ ok: boolean; status: string; subject: string }> {
   const result = await runner(exePath);
   const ok =
@@ -286,12 +400,21 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
   ipcMain.handle('suiteUpdate:status', () => ({
     state: runtime.state,
     shiftState: runtime.shiftState,
-    readyVersion: runtime.state === 'READY' ? runtime.manifest?.version ?? null : null,
+    readyVersion: runtime.state === 'READY' ? (runtime.manifest?.version ?? null) : null,
     mandatory: runtime.manifest?.mandatory === true,
   }));
 
   const initialTimer = setTimeout(() => void check(), INITIAL_DELAY_MS);
   const intervalTimer = setInterval(() => void check(), POLL_INTERVAL_MS);
+
+  // FK-084/E4-E5: az ELOZO telepitesi kiserlet kiertekelese — ez az egyetlen hely,
+  // ahol egy elakadt csendes telepites felismerheto (a kimenet a mi processzunk
+  // halala UTAN dol el). Azonnal fut, nem varunk vele a poll-ciklusra.
+  try {
+    reviewPreviousInstallAttempt();
+  } catch (err) {
+    log.warn('[suiteUpdate] az elozo telepites kiertekelese sikertelen:', err);
+  }
 
   return {
     getState: () => runtime.state,
@@ -304,7 +427,11 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
   };
 
   async function check(): Promise<void> {
-    if (runtime.state === 'DOWNLOADING' || runtime.state === 'VERIFYING' || runtime.state === 'INSTALLING') {
+    if (
+      runtime.state === 'DOWNLOADING' ||
+      runtime.state === 'VERIFYING' ||
+      runtime.state === 'INSTALLING'
+    ) {
       return;
     }
     // Mar van ellenorzott, keszen allo telepito: ne toltsuk le ujra (280 MB).
@@ -324,16 +451,38 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
       }
       const currentVersion = app.getVersion();
       if (!isNewerVersion(manifest.version, currentVersion)) {
-        log.info(`[suiteUpdate] nincs ujabb verzio (manifest ${manifest.version} <= ${currentVersion}).`);
+        log.info(
+          `[suiteUpdate] nincs ujabb verzio (manifest ${manifest.version} <= ${currentVersion}).`,
+        );
         runtime.state = 'IDLE';
         return;
       }
-      if (!isInRollout(manifest.version, manifest.rolloutPercent ?? 100, process.env.COMPUTERNAME ?? '')) {
+      if (
+        !isInRollout(
+          manifest.version,
+          manifest.rolloutPercent ?? 100,
+          process.env.COMPUTERNAME ?? '',
+        )
+      ) {
         log.info(`[suiteUpdate] rollout (${manifest.rolloutPercent}%) kizarta ezt a gepet.`);
         runtime.state = 'IDLE';
         return;
       }
       runtime.manifest = manifest;
+      // CACHE (FK-084/E1): ha ezt a verziot mar letoltottuk es ellenoriztuk, ne
+      // toltsuk le ujra 276 MB-ot. A penztargepet naponta ujrainditjak, es a
+      // `verifiedExePath` csak memoriaban elt -> minden reggel ujra letoltott
+      // volna, amig a kollega nem telepit (nyitott muszak alatt nem telepitunk).
+      // A cache elfogadasa UGYANAZON a ket kapun megy at, mint a friss letoltes
+      // (SHA-256 + Authenticode) — nincs "megbizom benne, mert a lemezen van".
+      const cached = await resolveVerifiedCache(manifest);
+      if (cached) {
+        log.info(`[suiteUpdate] mar letoltott es ellenorzott telepito hasznalata: ${cached}`);
+        runtime.verifiedExePath = cached;
+        runtime.state = 'READY';
+        await maybeOfferInstall();
+        return;
+      }
       await downloadAndVerify(manifest);
     } catch (err) {
       log.error('[suiteUpdate] check hiba:', err);
@@ -342,15 +491,20 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
   }
 
   async function downloadAndVerify(manifest: SuiteUpdateManifest): Promise<void> {
-    const targetDir = path.join(app.getPath('temp'), 'valutavalto-update');
+    const targetDir = updateCacheDir(app.getPath('temp'));
     fs.mkdirSync(targetDir, { recursive: true });
+    // FK-084/E6: a regi verziok telepitoi es a felbemaradt `.part` fajlok torlese,
+    // MIELOTT ujabb 276 MB-ot irunk a lemezre.
+    cleanupStaleCache(targetDir, manifest.penztar.file);
     // MASODIK VEDELMI VONAL (defense in depth): a `parseManifest` mar szurte a nevet,
     // de itt is bizonyitjuk, hogy a celutvonal a sajat konyvtarunkon BELUL van —
     // igy egy jovobeli validalas-lazitas sem vezethet konyvtaron kivuli irashoz vagy
     // idegen utvonalon levo exe inditasahoz.
     const finalPath = path.resolve(targetDir, path.basename(manifest.penztar.file));
     if (path.dirname(finalPath) !== path.resolve(targetDir)) {
-      log.error(`[suiteUpdate] utvonal-ellenorzes bukott, letoltes megszakitva: ${manifest.penztar.file}`);
+      log.error(
+        `[suiteUpdate] utvonal-ellenorzes bukott, letoltes megszakitva: ${manifest.penztar.file}`,
+      );
       runtime.state = 'IDLE';
       return;
     }
@@ -361,7 +515,9 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
     try {
       const response = await fetch(manifest.penztar.url, { redirect: 'follow' });
       if (!response.ok || !response.body) throw new Error(`letoltes HTTP ${response.status}`);
-      const total = Number(response.headers.get('content-length') ?? manifest.penztar.sizeBytes ?? 0);
+      const total = Number(
+        response.headers.get('content-length') ?? manifest.penztar.sizeBytes ?? 0,
+      );
       let received = 0;
       const out = fs.createWriteStream(tempPath);
       // A letoltott bajtok TARTALMA itt meg nem megbizhato (CodeQL js/http-to-file-access):
@@ -466,7 +622,9 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
     runtime.promptedForVersion = `asked:${manifest.version}`;
 
     const windowLabel =
-      runtime.shiftState === 'CLOSED_AFTER_DAY_END' ? 'a napzárás lezárult' : 'a nap még nem indult el';
+      runtime.shiftState === 'CLOSED_AFTER_DAY_END'
+        ? 'a napzárás lezárult'
+        : 'a nap még nem indult el';
     const choice = await dialog.showMessageBox(
       mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined!,
       {
@@ -492,15 +650,87 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
     startSilentInstall(exePath, manifest);
   }
 
+  /**
+   * FK-084/E1-E3: feloldja a lemezen mar meglevo, ELLENORZOTT telepitot.
+   *
+   * Az app ujraindulasa utan a `verifiedExePath` (memoria) elveszik, a 276 MB-os fajl
+   * viszont ott van. Enelkul a gep MINDEN reggel ujra letoltene, amig a kollega nem
+   * telepit (nyitott muszak alatt nem telepitunk) — 72 gepes flottan uzleti
+   * savszelesseget eget.
+   *
+   * A cache elfogadasa NEM bizalmi kerdes: ugyanaz a ket kapu fut le, mint friss
+   * letoltesnel (SHA-256 a manifesthez, majd Authenticode + subject). Barmelyik bukik
+   * -> a fajl torlodik es null-t adunk vissza (ujra letoltunk).
+   */
+  async function resolveVerifiedCache(manifest: SuiteUpdateManifest): Promise<string | null> {
+    const dir = updateCacheDir(app.getPath('temp'));
+    if (!fs.existsSync(dir)) return null;
+    cleanupStaleCache(dir, manifest.penztar.file);
+
+    const candidate = path.resolve(dir, path.basename(manifest.penztar.file));
+    if (path.dirname(candidate) !== path.resolve(dir)) return null;
+    if (!fs.existsSync(candidate)) return null;
+
+    try {
+      const actualHash = await sha256File(candidate);
+      if (
+        !isAcceptableCacheCandidate(
+          path.basename(candidate),
+          manifest.penztar.file,
+          actualHash,
+          manifest.penztar.sha256,
+        )
+      ) {
+        log.warn('[suiteUpdate] a cache-elt telepito hash-e NEM egyezik — torles, ujratoltes.');
+        safeUnlink(candidate);
+        return null;
+      }
+      const signature = await verifyAuthenticode(candidate, EXPECTED_SUBJECT);
+      if (!signature.ok) {
+        log.error(
+          `[suiteUpdate] a cache-elt telepito alairasa ELUTASITVA — status=${signature.status} subject=${signature.subject}`,
+        );
+        safeUnlink(candidate);
+        return null;
+      }
+      return candidate;
+    } catch (err) {
+      log.warn('[suiteUpdate] a cache ellenorzese sikertelen — ujratoltes:', err);
+      safeUnlink(candidate);
+      return null;
+    }
+  }
+
+  /** FK-084/E6: regi verziok + felbemaradt `.part` fajlok torlese. */
+  function cleanupStaleCache(dir: string, keepFileName: string): void {
+    // A FUTO telepito fajljat nem bantjuk.
+    if (runtime.state === 'INSTALLING') return;
+    try {
+      const stale = selectStaleCacheEntries(fs.readdirSync(dir), keepFileName);
+      for (const name of stale) {
+        safeUnlink(path.join(dir, name));
+        log.info(`[suiteUpdate] elavult letoltes-maradvany torolve: ${name}`);
+      }
+    } catch (err) {
+      // A takaritas hibaja soha ne allitsa meg a frissitest.
+      log.warn('[suiteUpdate] cache-takaritas sikertelen:', err);
+    }
+  }
+
   function startSilentInstall(exePath: string, manifest: SuiteUpdateManifest): void {
     // HARMADIK VEDELMI VONAL: csak a MAGUNK altal letoltott, ellenorzott es a sajat
     // temp-alkonyvtarunkban levo fajl indithato. A `spawn` argumentumai fix konstansok
     // (`/S`) — a manifest `silentArgs`-ebol csak engedelyezett zaszlot fogadunk el, hogy
     // szerverrol jott ertek ne kerulhessen a parancssorba.
-    const expectedDir = path.resolve(path.join(app.getPath('temp'), 'valutavalto-update'));
+    const expectedDir = path.resolve(updateCacheDir(app.getPath('temp')));
     const resolved = path.resolve(exePath);
-    if (path.dirname(resolved) !== expectedDir || !isSafeInstallerFileName(path.basename(resolved))) {
-      log.error(`[suiteUpdate] BIZTONSAGI ELUTASITAS — nem sajat, ellenorzott telepito: ${exePath}`);
+    if (
+      path.dirname(resolved) !== expectedDir ||
+      !isSafeInstallerFileName(path.basename(resolved))
+    ) {
+      log.error(
+        `[suiteUpdate] BIZTONSAGI ELUTASITAS — nem sajat, ellenorzott telepito: ${exePath}`,
+      );
       runtime.state = 'IDLE';
       return;
     }
@@ -520,6 +750,16 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
 
     runtime.state = 'INSTALLING';
     log.info(`[suiteUpdate] csendes telepites indul: ${resolved} ${args.join(' ')}`);
+
+    // FK-084/E4-E5 — a telepites kimenetet a KOVETKEZO indulaskor ertekeljuk.
+    //
+    // In-process watchdog itt NEM mukodhet (PR #1620 review, P1): a suite-telepito
+    // leallitja a Penztar.exe-t, ezert 1 masodperc mulva `app.quit()` kovetkezik —
+    // egy 15 perces timer vagy egy `child.on('exit')` listener sosem futna le.
+    // Ezert a telepites INDITASA elott markert irunk; a kovetkezo indulaskor a futo
+    // verziobol derul ki, lefutott-e (lasd `evaluateInstallAttempt`).
+    writeInstallMarker(manifest);
+
     try {
       const child = spawn(resolved, args, {
         detached: true,
@@ -527,13 +767,86 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
         windowsHide: true,
         shell: false,
       });
+
+      // Az `error` event AZONNALI (a spawn maga bukik: hianyzo fajl, EACCES), tehat
+      // ez a listener meg a kilepes elott lefut — ellentetben az `exit`-tel.
+      child.on('error', (err) => {
+        log.error('[suiteUpdate] a telepito-folyamat NEM indult el:', err);
+        clearInstallMarker();
+        runtime.state = 'READY';
+        runtime.promptedForVersion = null;
+      });
+
       child.unref();
       // A telepito allitja le/inditja a service-eket es a vegen a Penztar.exe-t.
       setTimeout(() => app.quit(), 1_000);
     } catch (err) {
       log.error('[suiteUpdate] a telepito nem indult el:', err);
+      clearInstallMarker();
       runtime.state = 'READY';
       runtime.promptedForVersion = null;
+    }
+  }
+
+  /** A telepitesi kiserlet markerjenek kiirasa (a kimenet utolagos felismereséhez). */
+  function writeInstallMarker(manifest: SuiteUpdateManifest): void {
+    try {
+      const dir = updateCacheDir(app.getPath('temp'));
+      fs.mkdirSync(dir, { recursive: true });
+      const marker: InstallAttemptMarker = {
+        version: manifest.version,
+        startedAt: new Date().toISOString(),
+        installerFile: manifest.penztar.file,
+      };
+      fs.writeFileSync(path.join(dir, INSTALL_MARKER_FILE), JSON.stringify(marker), 'utf8');
+    } catch (err) {
+      // A marker hibaja ne akadalyozza meg a telepitest — csak a kesobbi felismerest.
+      log.warn('[suiteUpdate] a telepitesi marker kiirasa sikertelen:', err);
+    }
+  }
+
+  function clearInstallMarker(): void {
+    try {
+      safeUnlink(path.join(updateCacheDir(app.getPath('temp')), INSTALL_MARKER_FILE));
+    } catch {
+      // szandekosan elnyomva — takaritas
+    }
+  }
+
+  /**
+   * FK-084/E4-E5: az ELOZO telepitesi kiserlet kiertekelese indulaskor.
+   *
+   * Ez az egyetlen pont, ahol egy elakadt vagy bukott csendes telepites egyaltalan
+   * felismerheto — a telepites ugyanis a mi processzunk halala UTAN dol el.
+   */
+  function reviewPreviousInstallAttempt(): void {
+    const markerPath = path.join(updateCacheDir(app.getPath('temp')), INSTALL_MARKER_FILE);
+    if (!fs.existsSync(markerPath)) return;
+    let marker: InstallAttemptMarker | null;
+    try {
+      marker = parseInstallMarker(JSON.parse(fs.readFileSync(markerPath, 'utf8')));
+    } catch (err) {
+      log.warn('[suiteUpdate] a telepitesi marker ertelmezhetetlen — torles:', err);
+      safeUnlink(markerPath);
+      return;
+    }
+    const outcome = evaluateInstallAttempt(marker, app.getVersion());
+    if (outcome === 'SUCCESS') {
+      log.info(`[suiteUpdate] az elozo frissites SIKERES volt (v${marker?.version} fut).`);
+      safeUnlink(markerPath);
+      // A telepito mar nem kell.
+      if (marker) safeUnlink(path.join(updateCacheDir(app.getPath('temp')), marker.installerFile));
+      return;
+    }
+    if (outcome === 'FAILED') {
+      log.error(
+        `[suiteUpdate] RIASZTAS: az elozo frissitesi kiserlet (v${marker?.version}, inditva: ` +
+          `${marker?.startedAt || 'ismeretlen'}) NEM fejezodott be — a gep tovabbra is ` +
+          `v${app.getVersion()}-en fut. Valoszinu ok: a csendes telepito elakadt (pl. rejtett ` +
+          'dialogus) vagy hibara futott. A gepen kezi ellenorzes indokolt.',
+      );
+      // A markert toroljuk, hogy ne riasszon vegtelenul; a frissites ujra felajanlhato.
+      safeUnlink(markerPath);
     }
   }
 
