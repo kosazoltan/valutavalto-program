@@ -24,6 +24,8 @@ import json
 import os
 import re
 import sys
+import time
+import urllib.error
 import urllib.request
 
 DEFAULT_MANIFEST_URL = (
@@ -36,12 +38,58 @@ SEMVER = re.compile(r'^(\d+)\.(\d+)\.(\d+)$')
 # `fetch` mindig kuld UA-t, ezert a proba is kuld — kulonben olyan hibat jelentenenk,
 # ami a valos kliensnel nem letezik.
 USER_AGENT = 'valutavalto-update-chain-probe/1.0'
+# A CDN idonkent valasz nelkul bontja a kapcsolatot -> korlatozott ismetles.
+HTTP_RETRIES = 3
+HTTP_RETRY_DELAY_S = 3
 
 
 def http_get(url: str, timeout: int = 60, headers: dict[str, str] | None = None) -> bytes:
-    req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, **(headers or {})})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+    """HTTP GET korlatozott ujraprobalkozassal.
+
+    MIERT AZ ISMETLES: a GitHub release-CDN idonkent valasz nelkul bontja a kapcsolatot
+    ("Remote end closed connection without response") — ugyanaz a keres masodpercekkel
+    kesobb 200-at ad. Ez tranziens halozati jelenseg, NEM a lanc hibaja; egy verifikalo
+    scriptnek pedig nem szabad emiatt hamis FAIL-t jelentenie. Az igazi hibat (404,
+    lejart asset, elerhetetlen host) az ismetles nem fedi el, mert azok determinisztikusan
+    ismetlodnek es a vegen felszallnak.
+    """
+    last: Exception | None = None
+    for attempt in range(1, HTTP_RETRIES + 1):
+        try:
+            req = urllib.request.Request(
+                url, headers={'User-Agent': USER_AGENT, **(headers or {})}
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read()
+        except urllib.error.HTTPError:
+            # A HTTP-statusz hiba (404, 403) NEM tranziens — azonnal tovabbadjuk.
+            raise
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if attempt < HTTP_RETRIES:
+                print(f'[INFO] halozati hiba ({type(exc).__name__}), ujraprobalkozas {attempt}/{HTTP_RETRIES - 1}...')
+                time.sleep(HTTP_RETRY_DELAY_S * attempt)
+    raise last if last else RuntimeError('http_get: ismeretlen hiba')
+
+
+def http_head_range(url: str, timeout: int = 60) -> tuple[int, int]:
+    """1 bajtos range-keres: (status, kapott bajtok). Ugyanaz az ismetles-logika."""
+    last: Exception | None = None
+    for attempt in range(1, HTTP_RETRIES + 1):
+        try:
+            req = urllib.request.Request(
+                url, headers={'Range': 'bytes=0-0', 'User-Agent': USER_AGENT}
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.status, len(resp.read(1))
+        except urllib.error.HTTPError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if attempt < HTTP_RETRIES:
+                print(f'[INFO] halozati hiba ({type(exc).__name__}), ujraprobalkozas {attempt}/{HTTP_RETRIES - 1}...')
+                time.sleep(HTTP_RETRY_DELAY_S * attempt)
+    raise last if last else RuntimeError('http_head_range: ismeretlen hiba')
 
 
 failed = 0
@@ -274,16 +322,11 @@ def main() -> int:
         # A publikalt URL TENYLEGES elerhetosege: 1 bajtos range-keres, hogy ne toltsunk
         # le 276 MB-ot csak azert, mert a link letezeset akarjuk igazolni.
         try:
-            req = urllib.request.Request(
-                str(url), headers={'Range': 'bytes=0-0', 'User-Agent': USER_AGENT}
-            )
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                status = resp.status
-                head = resp.read(1)
+            status, got = http_head_range(str(url))
             check(
                 'a publikalt telepito-URL elerheto (range-keres)',
-                status in (200, 206) and len(head) == 1,
-                f'HTTP {status}, {len(head)} bajt',
+                status in (200, 206) and got == 1,
+                f'HTTP {status}, {got} bajt',
             )
         except Exception as exc:  # noqa: BLE001
             check('a publikalt telepito-URL elerheto (range-keres)', False, str(exc))
