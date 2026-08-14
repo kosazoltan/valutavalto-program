@@ -134,12 +134,10 @@ export default function CentralVaultDashboard() {
       let devicesFailed = false
       const [branchesRes, devicesRes, stocksRes] = await Promise.all([
         api.get<Branch[]>('/branches'),
-        api
-          .get<CashRegisterDevice[]>('/cash-register/devices')
-          .catch(() => {
-            devicesFailed = true
-            return { data: [] as CashRegisterDevice[] }
-          }),
+        api.get<CashRegisterDevice[]>('/cash-register/devices').catch(() => {
+          devicesFailed = true
+          return { data: [] as CashRegisterDevice[] }
+        }),
         // Fix 2026-04-24: /stock-snapshot (nem /current) + hierarchikus response flatten
         api.get<StockSnapshotResponse>('/stock-snapshot').catch(() => {
           stockFailed = true

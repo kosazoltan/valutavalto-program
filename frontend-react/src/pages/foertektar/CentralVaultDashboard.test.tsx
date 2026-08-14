@@ -250,8 +250,6 @@ describe('CentralVaultDashboard — FK-085 GBP/CHF készlet + devices-hibakezel�
     setupApi({ branches: [BRANCH_A], devices: [] })
     render(<CentralVaultDashboard />)
     await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
-    expect(
-      screen.queryByText(/A pénztárgép-állapot betöltése sikertelen/),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/A pénztárgép-állapot betöltése sikertelen/)).not.toBeInTheDocument()
   })
 })
