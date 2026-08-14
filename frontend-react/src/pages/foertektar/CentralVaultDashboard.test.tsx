@@ -139,3 +139,117 @@ describe('CentralVaultDashboard — FK-048 készlet-riasztás', () => {
     expect(await screen.findByText('foertektar.sosem')).toBeInTheDocument()
   })
 })
+
+// FK-085 — KÉSZLET oszlop: GBP/CHF cellák + 5-devizás fejléc (FR-1/FR-2).
+const FIVE_CCY_SNAPSHOT = {
+  regions: [
+    {
+      regionCode: 'SZEGED',
+      branches: [
+        {
+          branchId: 'a1',
+          currencies: [
+            { currencyCode: 'EUR', stock: 1000 },
+            { currencyCode: 'USD', stock: 1000 },
+            { currencyCode: 'GBP', stock: 1000 },
+            { currencyCode: 'CHF', stock: 1000 },
+            { currencyCode: 'HUF', stock: 1_000_000 },
+          ],
+        },
+      ],
+    },
+  ],
+}
+
+describe('CentralVaultDashboard — FK-085 GBP/CHF készlet + devices-hibakezelés', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+  })
+
+  it('FK-085 FR-1: a KÉSZLET oszlop mind az 5 devizát rendereli (EUR, USD, GBP, CHF, HUF)', async () => {
+    setupApi({ branches: [BRANCH_A], stock: FIVE_CCY_SNAPSHOT })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.getByText('EUR')).toBeInTheDocument()
+    expect(screen.getByText('USD')).toBeInTheDocument()
+    expect(screen.getByText('GBP')).toBeInTheDocument()
+    expect(screen.getByText('CHF')).toBeInTheDocument()
+    expect(screen.getByText('HUF')).toBeInTheDocument()
+  })
+
+  it('FK-085 FR-1: GBP és CHF küszöb alatti riasztása megjelenik', async () => {
+    setupApi({
+      branches: [BRANCH_A],
+      stock: {
+        regions: [
+          {
+            regionCode: 'SZEGED',
+            branches: [
+              {
+                branchId: 'a1',
+                currencies: [
+                  { currencyCode: 'EUR', stock: 1000 },
+                  { currencyCode: 'USD', stock: 1000 },
+                  { currencyCode: 'GBP', stock: 100 },
+                  { currencyCode: 'CHF', stock: 100 },
+                  { currencyCode: 'HUF', stock: 1_000_000 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.getByText(/GBP <\s?300/)).toBeInTheDocument()
+    expect(screen.getByText(/CHF <\s?300/)).toBeInTheDocument()
+  })
+
+  it('FK-085 FR-2: a fejléc az új 5-devizás i18n kulcsot használja', async () => {
+    setupApi({ branches: [BRANCH_A], stock: FIVE_CCY_SNAPSHOT })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.getByText('foertektar.keszletOtDeviza')).toBeInTheDocument()
+  })
+
+  it('FK-085 FR-4: devices-hiba esetén figyelmeztető banner jelenik meg', async () => {
+    setupApi({ branches: [BRANCH_A], devicesFail: true })
+    render(<CentralVaultDashboard />)
+    await waitFor(() =>
+      expect(screen.getByText(/A pénztárgép-állapot betöltése sikertelen/)).toBeInTheDocument(),
+    )
+  })
+
+  it('FK-085 FR-4: devices-hiba esetén NINCS hamis Soha/Offline státusz, az Offline kártya és a státusz-cella „—”', async () => {
+    setupApi({ branches: [BRANCH_A], devicesFail: true })
+    render(<CentralVaultDashboard />)
+    await waitFor(() =>
+      expect(screen.getByText(/A pénztárgép-állapot betöltése sikertelen/)).toBeInTheDocument(),
+    )
+    // Nincs hamis „Soha”/„Offline” státusz
+    expect(screen.queryByText('foertektar.sosem')).not.toBeInTheDocument()
+    expect(screen.queryByText('foertektar.offline')).not.toBeInTheDocument()
+    // A Státusz oszlop cellája „—” (a span-szelektor a státusz-cellára szűkít;
+    // a heartbeat-oszlop „—”-je span nélküli td-szöveg)
+    expect(screen.getByText('—', { selector: 'span' })).toBeInTheDocument()
+    // Az Offline összesítő kártya értéke „—”, nem magabiztosan hibás szám
+    expect(screen.getByTestId('offline-count').textContent).toBe('—')
+  })
+
+  it('FK-085 FR-4: devices + snapshot egyszerre hibázik → mindkét banner látszik', async () => {
+    setupApi({ branches: [BRANCH_A], devicesFail: true, stockFail: true })
+    render(<CentralVaultDashboard />)
+    await waitFor(() =>
+      expect(screen.getByText(/A pénztárgép-állapot betöltése sikertelen/)).toBeInTheDocument(),
+    )
+    expect(screen.getByText(/A készletadatok betöltése sikertelen/)).toBeInTheDocument()
+  })
+
+  it('FK-085 FR-4: sikeres devices-hívás esetén NINCS devices-banner', async () => {
+    setupApi({ branches: [BRANCH_A], devices: [] })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.queryByText(/A pénztárgép-állapot betöltése sikertelen/)).not.toBeInTheDocument()
+  })
+})

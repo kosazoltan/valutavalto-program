@@ -113,4 +113,9 @@ describe('i18n setup', () => {
   it('interpolation works (stockSnapshot.regionBranchCount)', () => {
     expect(i18n.t('stockSnapshot.regionBranchCount', { count: 5 })).toBe('5 pénztár')
   })
+
+  // FK-085 FR-2: az 5-devizás KÉSZLET fejléc i18n kulcsa betöltődik
+  it('loads foertektar.keszletOtDeviza (5 currencies)', () => {
+    expect(i18n.t('foertektar.keszletOtDeviza')).toBe('Készlet (EUR / USD / GBP / CHF / HUF)')
+  })
 })
