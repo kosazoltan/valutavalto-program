@@ -212,4 +212,46 @@ describe('CentralVaultDashboard — FK-085 GBP/CHF készlet + devices-hibakezel�
     await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
     expect(screen.getByText('foertektar.keszletOtDeviza')).toBeInTheDocument()
   })
+
+  it('FK-085 FR-4: devices-hiba esetén figyelmeztető banner jelenik meg', async () => {
+    setupApi({ branches: [BRANCH_A], devicesFail: true })
+    render(<CentralVaultDashboard />)
+    await waitFor(() =>
+      expect(screen.getByText(/A pénztárgép-állapot betöltése sikertelen/)).toBeInTheDocument(),
+    )
+  })
+
+  it('FK-085 FR-4: devices-hiba esetén NINCS hamis Soha/Offline státusz, az Offline kártya és a státusz-cella „—”', async () => {
+    setupApi({ branches: [BRANCH_A], devicesFail: true })
+    render(<CentralVaultDashboard />)
+    await waitFor(() =>
+      expect(screen.getByText(/A pénztárgép-állapot betöltése sikertelen/)).toBeInTheDocument(),
+    )
+    // Nincs hamis „Soha”/„Offline” státusz
+    expect(screen.queryByText('foertektar.sosem')).not.toBeInTheDocument()
+    expect(screen.queryByText('foertektar.offline')).not.toBeInTheDocument()
+    // A Státusz oszlop cellája „—” (a span-szelektor a státusz-cellára szűkít;
+    // a heartbeat-oszlop „—”-je span nélküli td-szöveg)
+    expect(screen.getByText('—', { selector: 'span' })).toBeInTheDocument()
+    // Az Offline összesítő kártya értéke „—”, nem magabiztosan hibás szám
+    expect(screen.getByTestId('offline-count').textContent).toBe('—')
+  })
+
+  it('FK-085 FR-4: devices + snapshot egyszerre hibázik → mindkét banner látszik', async () => {
+    setupApi({ branches: [BRANCH_A], devicesFail: true, stockFail: true })
+    render(<CentralVaultDashboard />)
+    await waitFor(() =>
+      expect(screen.getByText(/A pénztárgép-állapot betöltése sikertelen/)).toBeInTheDocument(),
+    )
+    expect(screen.getByText(/A készletadatok betöltése sikertelen/)).toBeInTheDocument()
+  })
+
+  it('FK-085 FR-4: sikeres devices-hívás esetén NINCS devices-banner', async () => {
+    setupApi({ branches: [BRANCH_A], devices: [] })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(
+      screen.queryByText(/A pénztárgép-állapot betöltése sikertelen/),
+    ).not.toBeInTheDocument()
+  })
 })

@@ -117,6 +117,7 @@ export default function CentralVaultDashboard() {
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
   const [stockUnavailable, setStockUnavailable] = useState(false) // FK-048 FR-4: a /stock-snapshot hívás hibája
+  const [devicesUnavailable, setDevicesUnavailable] = useState(false) // FK-085 FR-4: a /cash-register/devices hívás hibája
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
   const loadData = async () => {
@@ -126,13 +127,19 @@ export default function CentralVaultDashboard() {
       // FK-048 FR-4: a /stock-snapshot hibáját NEM nyeljük el csendben "nincs adat"-ként —
       // külön stockFailed flaggel jelöljük, hogy a felhasználó látható hibaüzenetet kapjon,
       // megkülönböztethetően a "egyes fiókoknak nincs adata" (STOCK UNKNOWN) esettől.
-      // Az OFFLINE/devices ág (cash-register/devices) VÁLTOZATLAN marad (Scope OUT).
+      // FK-085 FR-4: a /cash-register/devices hibáját sem nyeljük el — devicesFailed flag
+      // jelöli, és a sor-építés üres device-listával fut tovább (hamis Soha/Offline helyett
+      // „—" státusz + figyelmeztető banner).
       let stockFailed = false
+      let devicesFailed = false
       const [branchesRes, devicesRes, stocksRes] = await Promise.all([
         api.get<Branch[]>('/branches'),
         api
           .get<CashRegisterDevice[]>('/cash-register/devices')
-          .catch(() => ({ data: [] as CashRegisterDevice[] })),
+          .catch(() => {
+            devicesFailed = true
+            return { data: [] as CashRegisterDevice[] }
+          }),
         // Fix 2026-04-24: /stock-snapshot (nem /current) + hierarchikus response flatten
         api.get<StockSnapshotResponse>('/stock-snapshot').catch(() => {
           stockFailed = true
@@ -140,6 +147,7 @@ export default function CentralVaultDashboard() {
         }),
       ])
       setStockUnavailable(stockFailed)
+      setDevicesUnavailable(devicesFailed)
       const branches = branchesRes.data || []
       const devices = devicesRes.data || []
       const stocks = flattenStockSnapshot(stocksRes.data ?? null)
@@ -262,6 +270,18 @@ export default function CentralVaultDashboard() {
         </div>
       )}
 
+      {/* FK-085 FR-4: a /cash-register/devices lekérdezés hibája — látható figyelmeztetés,
+                hamis Soha/Offline státusz és Offline-összesítő helyett. */}
+      {devicesUnavailable && (
+        <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
+          <p className="text-orange-800 font-medium flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />A pénztárgép-állapot betöltése sikertelen — a
+            Státusz és az Utolsó heartbeat oszlop, valamint az Offline összesítő értékei most nem
+            megbízhatóak. Próbáld újra a „Frissítés most” gombbal.
+          </p>
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         <SummaryCard
@@ -273,8 +293,9 @@ export default function CentralVaultDashboard() {
         <SummaryCard
           icon={<XCircle className="w-8 h-8" />}
           label="Offline (>10 perc)"
-          value={offlineCount}
-          color={offlineCount > 0 ? 'red' : 'green'}
+          value={devicesUnavailable ? '—' : offlineCount}
+          color={devicesUnavailable ? 'slate' : offlineCount > 0 ? 'red' : 'green'}
+          testId="offline-count"
         />
         <SummaryCard
           icon={<AlertTriangle className="w-8 h-8" />}
@@ -314,12 +335,14 @@ export default function CentralVaultDashboard() {
               {brs.map((r) => (
                 <tr
                   key={r.branch.id}
-                  className={`border-t border-slate-100 ${r.stockAlert.length > 0 || !r.online ? 'bg-red-50' : ''}`}
+                  className={`border-t border-slate-100 ${r.stockAlert.length > 0 || (!r.online && !devicesUnavailable) ? 'bg-red-50' : ''}`}
                 >
                   <td className="px-4 py-2 font-mono font-bold">{r.branch.code}</td>
                   <td className="px-4 py-2">{r.branch.city || r.branch.name}</td>
                   <td className="px-4 py-2">
-                    {r.online ? (
+                    {devicesUnavailable ? (
+                      <span className="inline-flex items-center gap-1 text-slate-500">—</span>
+                    ) : r.online ? (
                       <span className="inline-flex items-center gap-1 text-green-700">
                         <CheckCircle2 className="w-4 h-4" />
                         {t('common.online')}
