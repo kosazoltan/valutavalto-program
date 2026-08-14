@@ -138,7 +138,7 @@ public class CashRegisterController {
      * A bejelentkezett ceg osszes aktiv penztar-eszkozenek listaja.
      */
     @GetMapping("/devices")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<CashRegisterDeviceDto>> listCashRegisterDevices() {
         return ResponseEntity.ok(cashRegisterDeviceService.listForCurrentCompany());
     }
