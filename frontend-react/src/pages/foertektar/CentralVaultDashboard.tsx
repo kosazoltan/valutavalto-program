@@ -306,7 +306,7 @@ export default function CentralVaultDashboard() {
                 <th className="px-4 py-2">{t('common.city')}</th>
                 <th className="px-4 py-2">{t('common.status2')}</th>
                 <th className="px-4 py-2">{t('foertektar.utolsoHeartbeat')}</th>
-                <th className="px-4 py-2">{t('foertektar.keszletEurUsdHuf')}</th>
+                <th className="px-4 py-2">{t('foertektar.keszletOtDeviza')}</th>
                 <th className="px-4 py-2">{t('foertektar.riasztas')}</th>
               </tr>
             </thead>
@@ -356,6 +356,16 @@ export default function CentralVaultDashboard() {
                           ccy="USD"
                           amount={r.stocks['USD'] ?? 0}
                           threshold={CRITICAL_THRESHOLDS['USD'] ?? 500}
+                        />
+                        <Stock
+                          ccy="GBP"
+                          amount={r.stocks['GBP'] ?? 0}
+                          threshold={CRITICAL_THRESHOLDS['GBP'] ?? 300}
+                        />
+                        <Stock
+                          ccy="CHF"
+                          amount={r.stocks['CHF'] ?? 0}
+                          threshold={CRITICAL_THRESHOLDS['CHF'] ?? 300}
                         />
                         <Stock
                           ccy="HUF"

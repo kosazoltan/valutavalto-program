@@ -139,3 +139,77 @@ describe('CentralVaultDashboard — FK-048 készlet-riasztás', () => {
     expect(await screen.findByText('foertektar.sosem')).toBeInTheDocument()
   })
 })
+
+// FK-085 — KÉSZLET oszlop: GBP/CHF cellák + 5-devizás fejléc (FR-1/FR-2).
+const FIVE_CCY_SNAPSHOT = {
+  regions: [
+    {
+      regionCode: 'SZEGED',
+      branches: [
+        {
+          branchId: 'a1',
+          currencies: [
+            { currencyCode: 'EUR', stock: 1000 },
+            { currencyCode: 'USD', stock: 1000 },
+            { currencyCode: 'GBP', stock: 1000 },
+            { currencyCode: 'CHF', stock: 1000 },
+            { currencyCode: 'HUF', stock: 1_000_000 },
+          ],
+        },
+      ],
+    },
+  ],
+}
+
+describe('CentralVaultDashboard — FK-085 GBP/CHF készlet + devices-hibakezelés', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+  })
+
+  it('FK-085 FR-1: a KÉSZLET oszlop mind az 5 devizát rendereli (EUR, USD, GBP, CHF, HUF)', async () => {
+    setupApi({ branches: [BRANCH_A], stock: FIVE_CCY_SNAPSHOT })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.getByText('EUR')).toBeInTheDocument()
+    expect(screen.getByText('USD')).toBeInTheDocument()
+    expect(screen.getByText('GBP')).toBeInTheDocument()
+    expect(screen.getByText('CHF')).toBeInTheDocument()
+    expect(screen.getByText('HUF')).toBeInTheDocument()
+  })
+
+  it('FK-085 FR-1: GBP és CHF küszöb alatti riasztása megjelenik', async () => {
+    setupApi({
+      branches: [BRANCH_A],
+      stock: {
+        regions: [
+          {
+            regionCode: 'SZEGED',
+            branches: [
+              {
+                branchId: 'a1',
+                currencies: [
+                  { currencyCode: 'EUR', stock: 1000 },
+                  { currencyCode: 'USD', stock: 1000 },
+                  { currencyCode: 'GBP', stock: 100 },
+                  { currencyCode: 'CHF', stock: 100 },
+                  { currencyCode: 'HUF', stock: 1_000_000 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.getByText(/GBP <\s?300/)).toBeInTheDocument()
+    expect(screen.getByText(/CHF <\s?300/)).toBeInTheDocument()
+  })
+
+  it('FK-085 FR-2: a fejléc az új 5-devizás i18n kulcsot használja', async () => {
+    setupApi({ branches: [BRANCH_A], stock: FIVE_CCY_SNAPSHOT })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.getByText('foertektar.keszletOtDeviza')).toBeInTheDocument()
+  })
+})

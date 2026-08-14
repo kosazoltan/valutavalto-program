@@ -1004,7 +1004,7 @@
   "foertektar": {
     "foertektariDashboard": "Főértéktári dashboard",
     "hiba": "Hiba:",
-    "keszletEurUsdHuf": "Készlet (EUR / USD / HUF)",
+    "keszletOtDeviza": "Készlet (EUR / USD / GBP / CHF / HUF)",
     "offline": "Offline",
     "orszagosPenztarAllapotEsKeszletAutoRefresh1Percenkent": "Országos pénztár-állapot és készlet — auto-refresh 1 percenként",
     "riasztas": "Riasztás",
