@@ -112,4 +112,59 @@ describe('ReceivedDataOverviewPage (FK-003 egyeztetés)', () => {
     expect(screen.queryByText('EGYEZIK')).not.toBeInTheDocument()
     expect(screen.getByText('ELTÉRÉS')).toBeInTheDocument()
   })
+
+  // FK-087 FR-2: a két forrás független betöltése (Promise.allSettled)
+  it('FR-2: status-hiba esetén az alsó sáv inline hibát mutat, az egyeztetési adatok megmaradnak', async () => {
+    mockRun.mockResolvedValue(result)
+    mockStatus.mockRejectedValue(new Error('status 403'))
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('received-data-status-error')).toBeInTheDocument(),
+    )
+    // Fix i18n kulcs szövege (hu.json centralReceivedData.statusError)
+    expect(screen.getByText('A beérkezett adatok betöltése sikertelen.')).toBeInTheDocument()
+    // A felső egyeztetési metrikák ÉPEK maradtak (nem nullázódtak)
+    expect(screen.getByText('Összes mozgás')).toBeInTheDocument()
+    expect(screen.getByText('EGYEZIK')).toBeInTheDocument()
+    // Egyetlen forrás hibájánál NINCS globális banner
+    expect(screen.queryByTestId('received-data-global-error')).not.toBeInTheDocument()
+  })
+
+  it('FR-2: egyeztetési hiba esetén a felső sáv inline hibát mutat, az alsó állapot-sáv ép marad', async () => {
+    mockRun.mockRejectedValue(new Error('recon 500'))
+    mockStatus.mockResolvedValue(receivedDataStatus)
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() => expect(screen.getByTestId('received-data-recon-error')).toBeInTheDocument())
+    expect(
+      screen.getByText('A pénztárközi egyeztetés adatainak betöltése sikertelen.'),
+    ).toBeInTheDocument()
+    // Az alsó sáv adatai megmaradtak (label + totalBranches érték)
+    expect(screen.getByText('Beérkezett jelentés')).toBeInTheDocument()
+    expect(screen.getByText('Hiányzó jelentés')).toBeInTheDocument()
+    // Egyetlen forrás hibájánál NINCS globális banner
+    expect(screen.queryByTestId('received-data-global-error')).not.toBeInTheDocument()
+  })
+
+  it('FR-2: kettős hiba esetén MINDKÉT inline hiba ÉS a globális banner is megjelenik, a lap interaktív marad', async () => {
+    mockRun.mockRejectedValue(new Error('recon down'))
+    mockStatus.mockRejectedValue(new Error('status down'))
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() => expect(screen.getByTestId('received-data-recon-error')).toBeInTheDocument())
+    expect(screen.getByTestId('received-data-status-error')).toBeInTheDocument()
+    // Globális banner CSAK kettős hibánál (a egyeztetés hibaüzenetével)
+    expect(screen.getByTestId('received-data-global-error')).toBeInTheDocument()
+    // A lap interaktív marad: a Frissítés gomb a settled után újra elérhető
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Frissítés/i })).not.toBeDisabled(),
+    )
+  })
 })

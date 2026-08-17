@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   AlertTriangle,
   ArrowRight,
@@ -39,6 +40,7 @@ function isMatch(status: string) {
 }
 
 export default function ReceivedDataOverviewPage() {
+  const { t } = useTranslation()
   const yesterday = previousDayIso()
   const [startDate, setStartDate] = useState(yesterday)
   const [endDate, setEndDate] = useState(yesterday)
@@ -49,28 +51,47 @@ export default function ReceivedDataOverviewPage() {
     useState<CentralReceivedDataOverview | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reconciliationError, setReconciliationError] = useState(false)
+  const [statusError, setStatusError] = useState(false)
   const [hasRun, setHasRun] = useState(false)
 
   // FK-003: az ellenőrzés NEM fut automatikusan — Kasza Helga manuálisan indítja.
+  // FK-087 FR-2: a két forrás FÜGGETLENÜL töltődik (Promise.allSettled) — egyetlen forrás
+  // hibája NEM nullázza ki a másik sávot; a globális banner csak kettős hibánál jelenik meg.
   const runCheck = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const [reconciliation, receivedData] = await Promise.all([
-        transferReconciliationApi.run(startDate, endDate),
-        centralReceivedDataApi.status(startDate),
-      ])
-      setResult(reconciliation)
-      setReceivedDataOverview(receivedData)
-      setHasRun(true)
-    } catch (err) {
-      logger.error('ReceivedDataOverviewPage', 'Egyeztetés futtatási hiba:', err)
-      setError(getErrorMessage(err))
+    setLoading(true)
+    setError(null)
+    setReconciliationError(false)
+    setStatusError(false)
+    const [reconOutcome, statusOutcome] = await Promise.allSettled([
+      transferReconciliationApi.run(startDate, endDate),
+      centralReceivedDataApi.status(startDate), // WU-C: ez az argumentum endDate-re vált
+    ])
+    if (reconOutcome.status === 'fulfilled') {
+      setResult(reconOutcome.value)
+    } else {
+      logger.error('ReceivedDataOverviewPage', 'Egyeztetés futtatási hiba:', reconOutcome.reason)
       setResult(null)
-      setReceivedDataOverview(null)
-    } finally {
-      setLoading(false)
+      setReconciliationError(true)
     }
+    if (statusOutcome.status === 'fulfilled') {
+      setReceivedDataOverview(statusOutcome.value)
+    } else {
+      logger.error(
+        'ReceivedDataOverviewPage',
+        'Beérkezett adatok betöltési hiba:',
+        statusOutcome.reason,
+      )
+      setReceivedDataOverview(null)
+      setStatusError(true)
+    }
+    if (reconOutcome.status === 'rejected' && statusOutcome.status === 'rejected') {
+      // Globális banner CSAK akkor, ha MINDKÉT forrás elesett (régi szemantika: az
+      // egyeztetés hibaüzenete jelenik meg).
+      setError(getErrorMessage(reconOutcome.reason))
+    }
+    setHasRun(true)
+    setLoading(false)
   }
 
   const filteredRows = useMemo(() => {
@@ -174,6 +195,15 @@ export default function ReceivedDataOverviewPage() {
           <Metric label="Értesített értéktár" value={result?.notifiedBranches ?? 0} tone="amber" />
         </div>
 
+        {reconciliationError && (
+          <div
+            data-testid="received-data-recon-error"
+            className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {t('centralReceivedData.reconciliationError')}
+          </div>
+        )}
+
         <div
           className="grid grid-cols-2 gap-2 md:grid-cols-4"
           data-testid="central-received-data-status"
@@ -195,6 +225,15 @@ export default function ReceivedDataOverviewPage() {
             tone="amber"
           />
         </div>
+
+        {statusError && (
+          <div
+            data-testid="received-data-status-error"
+            className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {t('centralReceivedData.statusError')}
+          </div>
+        )}
 
         <div className="rounded-md border border-slate-200 bg-white p-3">
           <div className="flex flex-wrap items-end gap-3">
@@ -259,7 +298,10 @@ export default function ReceivedDataOverviewPage() {
         </div>
 
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div
+            data-testid="received-data-global-error"
+            className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
             {error}
           </div>
         )}

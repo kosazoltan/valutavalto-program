@@ -348,6 +348,10 @@
     "verzio": "Verzió",
     "visszaigazolas": "Visszaigazolás"
   },
+  "centralReceivedData": {
+    "reconciliationError": "A pénztárközi egyeztetés adatainak betöltése sikertelen.",
+    "statusError": "A beérkezett adatok betöltése sikertelen."
+  },
   "closing": {
     "cashierheader": "CashierHeader: () =>",
     "cel": "Cél",
