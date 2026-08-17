@@ -155,6 +155,140 @@ class CentralReceivedDataServiceTest {
         org.junit.jupiter.api.Assertions.assertNull(overview.getLastSyncedAt());
     }
 
+    @Test
+    @DisplayName("overview dailyClosingDone alone is COMPLETE (FK-062 pattern — evening/nav flags vault branches-nál nem íródnak)")
+    void overview_dailyDoneOnly_isNotCriticalClosing() {
+        LocalDate date = LocalDate.now().minusDays(1);
+        Branch b1 = branch(UUID.randomUUID(), "BP01", "Budapest 01");
+
+        ClosingControl closing = ClosingControl.builder()
+                .companyId(companyId)
+                .branchId(b1.getId())
+                .controlDate(date)
+                .dailyClosingDone(true)
+                .eveningClosingDone(false)
+                .navClosingDone(false)
+                .alertLevel(null)
+                .build();
+
+        when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, date)).thenReturn(List.of());
+        when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of(closing));
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(b1));
+
+        CentralReceivedDataOverviewDto overview = service.getOverview(date);
+
+        assertEquals("NONE", overview.getRows().get(0).getClosingAlertLevel(),
+                "csak a napi zárás számít teljesnek (FK-062: evening/nav nem íródik értéktári fiókoknál)");
+        assertEquals(0, overview.getCriticalClosings());
+    }
+
+    @Test
+    @DisplayName("overview control==null múlt dátumon → CRITICAL zárás-jelzés")
+    void overview_controlNull_pastDate_isCritical() {
+        LocalDate date = LocalDate.now().minusDays(1);
+        Branch b1 = branch(UUID.randomUUID(), "BP01", "Budapest 01");
+
+        when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, date)).thenReturn(List.of());
+        when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(b1));
+
+        CentralReceivedDataOverviewDto overview = service.getOverview(date);
+
+        assertEquals("CRITICAL", overview.getRows().get(0).getClosingAlertLevel());
+    }
+
+    @Test
+    @DisplayName("overview control==null mai napon → WARNING zárás-jelzés")
+    void overview_controlNull_today_isWarning() {
+        LocalDate date = LocalDate.now();
+        Branch b1 = branch(UUID.randomUUID(), "BP01", "Budapest 01");
+
+        when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, date)).thenReturn(List.of());
+        when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of());
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(b1));
+
+        CentralReceivedDataOverviewDto overview = service.getOverview(date);
+
+        assertEquals("WARNING", overview.getRows().get(0).getClosingAlertLevel());
+    }
+
+    @Test
+    @DisplayName("overview napi zárás nélkül múlt dátumon → marad CRITICAL")
+    void overview_dailyNotDone_pastDate_staysCritical() {
+        LocalDate date = LocalDate.now().minusDays(1);
+        Branch b1 = branch(UUID.randomUUID(), "BP01", "Budapest 01");
+
+        ClosingControl closing = ClosingControl.builder()
+                .companyId(companyId)
+                .branchId(b1.getId())
+                .controlDate(date)
+                .dailyClosingDone(false)
+                .eveningClosingDone(true)
+                .navClosingDone(true)
+                .alertLevel(null)
+                .build();
+
+        when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, date)).thenReturn(List.of());
+        when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of(closing));
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(b1));
+
+        CentralReceivedDataOverviewDto overview = service.getOverview(date);
+
+        assertEquals("CRITICAL", overview.getRows().get(0).getClosingAlertLevel());
+    }
+
+    @Test
+    @DisplayName("overview napi zárás nélkül mai napon → marad WARNING")
+    void overview_dailyNotDone_today_staysWarning() {
+        LocalDate date = LocalDate.now();
+        Branch b1 = branch(UUID.randomUUID(), "BP01", "Budapest 01");
+
+        ClosingControl closing = ClosingControl.builder()
+                .companyId(companyId)
+                .branchId(b1.getId())
+                .controlDate(date)
+                .dailyClosingDone(false)
+                .eveningClosingDone(false)
+                .navClosingDone(false)
+                .alertLevel(null)
+                .build();
+
+        when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, date)).thenReturn(List.of());
+        when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of(closing));
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(b1));
+
+        CentralReceivedDataOverviewDto overview = service.getOverview(date);
+
+        assertEquals("WARNING", overview.getRows().get(0).getClosingAlertLevel());
+    }
+
+    @Test
+    @DisplayName("overview tárolt alertLevel elsőbbséget élvez a jelzőkkel szemben")
+    void overview_storedAlertLevel_winsOverFlags() {
+        LocalDate date = LocalDate.now().minusDays(1);
+        Branch b1 = branch(UUID.randomUUID(), "BP01", "Budapest 01");
+
+        ClosingControl closing = ClosingControl.builder()
+                .companyId(companyId)
+                .branchId(b1.getId())
+                .controlDate(date)
+                .dailyClosingDone(true)
+                .eveningClosingDone(true)
+                .navClosingDone(true)
+                .alertLevel("WARNING")
+                .build();
+
+        when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, date)).thenReturn(List.of());
+        when(closingControlRepository.findByCompanyIdAndControlDate(companyId, date)).thenReturn(List.of(closing));
+        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(b1));
+
+        CentralReceivedDataOverviewDto overview = service.getOverview(date);
+
+        assertEquals("WARNING", overview.getRows().get(0).getClosingAlertLevel(),
+                "a tárolt alertLevel ág előbb értékelődik ki, mint a teljesség-vizsgálat");
+        assertEquals(0, overview.getCriticalClosings());
+    }
+
     private Branch branch(UUID id, String code, String name) {
         return Branch.builder()
                 .id(id)

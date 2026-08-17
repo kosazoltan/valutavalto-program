@@ -144,9 +144,10 @@ public class CentralReceivedDataService {
         if (control == null) {
             return reportDate.isBefore(LocalDate.now()) ? "CRITICAL" : "WARNING";
         }
-        boolean complete = Boolean.TRUE.equals(control.getDailyClosingDone())
-                && Boolean.TRUE.equals(control.getEveningClosingDone())
-                && Boolean.TRUE.equals(control.getNavClosingDone());
+        // FK-087 FR-1 (FK-062 minta): a zárási varázsló az értéktári fiókoknál az evening/nav
+        // jelzőket nem írja, ezért CSAK a napi zárás számít teljesnek — lásd
+        // ClosingControlService.isRequiredClosingDone (FK-062), ami szintén dailyDone-only.
+        boolean complete = Boolean.TRUE.equals(control.getDailyClosingDone());
         if (complete) {
             return "NONE";
         }
