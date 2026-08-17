@@ -69,4 +69,47 @@ public interface ShipmentHandlingFeeRepository extends JpaRepository<ShipmentHan
                 date.plusDays(1).atStartOfDay(),
                 KPI_COUNTED_STATUSES);
     }
+
+    /**
+     * FKH-036 FR-6: volt-e aznap KK kezelési díj mozgás a KÜLDŐ (source) branchről.
+     *
+     * <p>B2 FIX (terv 10. döntése): az ÜZLETI DÁTUM a szülő {@code ShipmentRequest.requestDate},
+     * NEM az {@code f.createdAt} audit-időbélyeg. A {@code ShipmentHandlingFee}-nek nincs saját
+     * üzleti dátum oszlopa; a díjsor a {@code ShipmentHandlingFeeService.create}-ben, a frissen
+     * mentett kéréshez keletkezik, tehát a kéréshez tartozó üzleti nap az irányadó. Így a
+     * kötelező valuta-halmaz és a {@code handlingFeeRequired} UGYANARRA a napra dönt — éjfél
+     * körül sem csúszhatnak szét.</p>
+     *
+     * <p>TENANT (invariáns #1): az autoritatív kulcs az {@code f.companyId}. A join-olt
+     * ShipmentRequest companyId-ja NULLABLE (ld. a {@link #sumReceivedFeesForBranchAndPeriod}
+     * javadocját), ezért az {@code r} SOHA nem lehet a tenant-predikátum — kizárólag a
+     * requestDate/serialPrefix forrása.</p>
+     *
+     * <p>A KK-prefix szűrés explicit: a díj-vertikum saját bizonylattípusa
+     * ({@code ShipmentHandlingFeeService.SERIAL_PREFIX_HANDLING_FEE}).</p>
+     *
+     * <p>MEGJEGYZÉS: a fenti KPI-lekérdezés ({@code sumReceivedFeesForBranchAndPeriod}) a saját,
+     * dokumentált TBD-1 döntésével ({@code createdAt} félig nyílt időablak) VÁLTOZATLAN marad —
+     * ez a metódus additív, és kizárólag az FKH-036 záró-kapu használja.</p>
+     */
+    @Query("""
+            SELECT COUNT(f) > 0
+            FROM ShipmentHandlingFee f, ShipmentRequest r
+            WHERE r.id = f.shipmentRequestId
+              AND f.companyId = :companyId
+              AND f.sourceBranchId = :branchId
+              AND r.serialPrefix = 'KK'
+              AND r.requestDate = :date
+              AND f.status IN :statuses
+            """)
+    boolean existsMovementForBranchAndDate(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("date") LocalDate date,
+            @Param("statuses") Collection<ShipmentRequestStatus> statuses);
+
+    /** FKH-036 FR-6: a fail-closed státusz-whitelist egyetlen közös forrása. */
+    default boolean existsDailyMovementForSourceBranch(UUID companyId, UUID branchId, LocalDate date) {
+        return existsMovementForBranchAndDate(companyId, branchId, date, KPI_COUNTED_STATUSES);
+    }
 }

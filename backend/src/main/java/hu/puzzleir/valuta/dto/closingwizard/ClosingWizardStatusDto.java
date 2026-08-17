@@ -29,4 +29,12 @@ public class ClosingWizardStatusDto {
      */
     private String activeWizardId;
     private String activeWizardStatus;
+
+    /**
+     * FKH-036 FR-5: vault-kontextusban a BLOKKOLÓ (kötelező) valutakódok — HUF mindig,
+     * plusz az aznapi FF/UF shipment-mozgás valutái. Pénztári ágon {@code null}.
+     */
+    private List<String> requiredCurrencies;
+    /** FKH-036 FR-6: vault-kontextusban true, ha aznap volt KK kezelési díj mozgás. */
+    private boolean handlingFeeRequired;
 }

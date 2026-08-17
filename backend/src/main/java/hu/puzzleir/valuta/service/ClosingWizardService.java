@@ -21,6 +21,8 @@ import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
+import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
+import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -67,6 +69,9 @@ public class ClosingWizardService {
     // FK-076 (FR-3): a nem-HUF auto-create ágat a denomination_allowed törzsadat ellen
     // validáljuk — nem engedélyezett kombinációra elutasítás, nem csendes auto-create.
     private final DenominationAllowedRepository denominationAllowedRepository;
+    // FKH-036 FR-5/FR-6: a mozgás-alapú kötelező valuta-halmaz forrásai.
+    private final ShipmentRequestRepository shipmentRequestRepository;
+    private final ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
 
     /** G3: a zárás-eltérés magyarázat-kötelezettség feature-flag SystemParameter kulcsa. */
     static final String CLOSING_DISCREPANCY_PARAM = "CLOSING_DISCREPANCY_EXPLANATION_REQUIRED";
@@ -1108,8 +1113,28 @@ public class ClosingWizardService {
         boolean denominationRecorded = denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
                 branchId, date, DenominationCategory.EVENING);
         List<Map<String, Object>> differences = calculateDifferences(branchId, loadPhysicalCounts(branchId, date));
-        boolean exactMatch = denominationRecorded && differences.stream()
-                .allMatch(item -> "OK".equals(String.valueOf(item.get("status"))));
+
+        // FKH-036 FR-5/FR-6: a BLOKKOLÓ halmaz csak vault-kontextusban töltődik.
+        List<String> requiredCurrencies = null;
+        boolean handlingFeeRequired = false;
+        boolean exactMatch;
+        if (isVaultContext(branch)) {
+            // Mozgás-alapú kötelező halmaz ELŐBB, majd az exactMatch-predikátum arra szűr.
+            // A differences-lista a kliensnek TELJES marad (FK-073 szerződés) — csak a
+            // blokkoló részhalmaz szűkül (terv 11./16. döntés).
+            UUID companyId = SecurityUtils.getCurrentCompanyId();
+            requiredCurrencies = resolveRequiredCurrencies(companyId, branchId, date);
+            handlingFeeRequired = shipmentHandlingFeeRepository
+                    .existsDailyMovementForSourceBranch(companyId, branchId, date);
+            Set<String> blocking = new HashSet<>(requiredCurrencies);
+            exactMatch = denominationRecorded && differences.stream()
+                    .filter(item -> blocking.contains(String.valueOf(item.get("currencyCode"))))
+                    .allMatch(item -> "OK".equals(String.valueOf(item.get("status"))));
+        } else {
+            // PÉNZTÁRI ÁG — VÁLTOZATLAN SZEMANTIKA (FKH-036 FR-10): a teljes lista számít.
+            exactMatch = denominationRecorded && differences.stream()
+                    .allMatch(item -> "OK".equals(String.valueOf(item.get("status"))));
+        }
 
         String message;
         if (!denominationRecorded) {
@@ -1151,7 +1176,24 @@ public class ClosingWizardService {
                 .differences(differences)
                 .activeWizardId(activeWizardId)
                 .activeWizardStatus(activeWizardStatus)
+                .requiredCurrencies(requiredCurrencies)
+                .handlingFeeRequired(handlingFeeRequired)
                 .build();
+    }
+
+    /**
+     * FKH-036 FR-5: a BLOKKOLÓ valutakódok halmaza vault-kontextusban — HUF mindig,
+     * plusz az aznapi FF/UF shipment-tételek valutái (fail-closed státusz-whitelist,
+     * companyId-szűrve, invariáns #1).
+     */
+    private List<String> resolveRequiredCurrencies(UUID companyId, UUID branchId, LocalDate date) {
+        LinkedHashSet<String> required = new LinkedHashSet<>();
+        required.add("HUF");
+        if (companyId != null) {
+            required.addAll(shipmentRequestRepository.findMovedCurrencyCodesForDate(
+                    companyId, branchId, date, ShipmentHandlingFeeRepository.KPI_COUNTED_STATUSES));
+        }
+        return List.copyOf(required);
     }
 
     public void ensureClosingCanBeSent(UUID branchId, LocalDate date) {

@@ -270,4 +270,37 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
             @Param("branchId") UUID branchId,
             @Param("date") LocalDate date,
             @Param("statuses") Collection<ShipmentRequestStatus> statuses);
+
+    /**
+     * FKH-036 FR-5: az aznapi FF/UF shipment-MOZGÁS valutakódjai (mintája:
+     * {@link #findHufDaybookShipmentsForDate}).
+     *
+     * <p>Irány-szabály (terv 11. döntése): MINDKÉT irány (FF kimenő + UF bejövő) —
+     * bármelyik irányú mozgás megváltoztatja a fizikai készletet, tehát becímletezési
+     * kötelezettséget teremt (szemben a csak-FF előnézeti csomaglistával).</p>
+     *
+     * <p>Üzleti dátum: {@code sr.requestDate} (terv 10. döntése — a kezelési díj
+     * lekérdezés UGYANEZT használja, így a kötelező halmaz és a handlingFeeRequired
+     * mindig ugyanarra a napra dönt). Státusz-whitelist: fail-closed, a pénztár
+     * {@code KPI_COUNTED_STATUSES} konstansát paraméterként kapja (terv 13. döntése:
+     * a DRAFT/CANCELLED/REJECTED soha nem mozgatott pénzt, ezért nem teremthet
+     * kötelezettséget).</p>
+     */
+    @Query("""
+            SELECT DISTINCT c.code
+            FROM ShipmentRequest sr
+              JOIN sr.items i
+              JOIN Currency c ON c.id = i.currencyId
+            WHERE sr.companyId = :companyId
+              AND sr.serialPrefix IN ('FF', 'UF')
+              AND sr.requestDate = :date
+              AND sr.status IN :statuses
+              AND ((sr.serialPrefix = 'FF' AND sr.fromBranchId = :branchId)
+                OR (sr.serialPrefix = 'UF' AND sr.toBranchId  = :branchId))
+            """)
+    List<String> findMovedCurrencyCodesForDate(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("date") LocalDate date,
+            @Param("statuses") Collection<ShipmentRequestStatus> statuses);
 }

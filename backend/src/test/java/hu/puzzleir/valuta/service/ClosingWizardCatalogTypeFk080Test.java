@@ -16,6 +16,8 @@ import hu.puzzleir.valuta.repository.DailySessionRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
+import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
+import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -87,6 +89,9 @@ class ClosingWizardCatalogTypeFk080Test {
     @Mock private ClosingToleranceService closingToleranceService;
     @Mock private AuditLogService auditLogService;
     @Mock private DenominationAllowedRepository denominationAllowedRepository;
+    // FKH-036 WU-5: az új konstruktor-függőségek mockjai (pitfall 1).
+    @Mock private ShipmentRequestRepository shipmentRequestRepository;
+    @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     @InjectMocks private ClosingWizardService service;
 
     private final UUID branchId = UUID.randomUUID();
