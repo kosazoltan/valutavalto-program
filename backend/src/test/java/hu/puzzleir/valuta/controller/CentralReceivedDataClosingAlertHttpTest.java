@@ -154,7 +154,8 @@ class CentralReceivedDataClosingAlertHttpTest {
                 .alertLevel(null)
                 .build();
 
-        when(branchRepository.findByCompanyIdAndIsActiveTrue(companyId)).thenReturn(List.of(vaultBranch));
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId))
+                .thenReturn(List.of(vaultBranch));
         when(dailyReportRepository.findByCompanyIdAndReportDate(companyId, pastDate)).thenReturn(List.of());
         when(closingControlRepository.findByCompanyIdAndControlDate(companyId, pastDate)).thenReturn(List.of(control));
 

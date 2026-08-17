@@ -23,8 +23,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
+import java.time.LocalDate;
+
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -62,6 +67,9 @@ class CentralReceivedDataControllerSecurityTest {
         // Stubolt service: ne dobjon exception-t a felhasznaloi szerepkor-tesztekben.
         when(centralReceivedDataService.getOverview(any()))
                 .thenReturn(CentralReceivedDataOverviewDto.builder().build());
+        // A mock service bean a kontextus-kessel együtt él; a verify-alapú param-tesztek
+        // elszigeteléséhez töröljük a korábbi hívásokat (assert-ok bájt-azonosak maradnak).
+        clearInvocations(centralReceivedDataService);
     }
 
     @Configuration
@@ -198,5 +206,40 @@ class CentralReceivedDataControllerSecurityTest {
         // ne kapjon hamis 403-at. A guard hasAnyRole bármelyik allow-listed-re engedélyez.
         mockMvc.perform(get("/api/v1/central/received-data/status"))
                 .andExpect(status().isOk());
+    }
+
+    // ----- FK-088 FR-3: endDate referencia-dátum paraméter (additív, backward compat) -----
+
+    @Test
+    @WithMockUser(username = "param1", roles = {"ADMIN"})
+    @DisplayName("FR-3: endDate param felülírja a legacy date param-et")
+    void endDateParam_beatsLegacyDate() throws Exception {
+        mockMvc.perform(get("/api/v1/central/received-data/status")
+                        .param("endDate", "2026-05-22")
+                        .param("date", "2026-05-20"))
+                .andExpect(status().isOk());
+
+        verify(centralReceivedDataService).getOverview(LocalDate.of(2026, 5, 22));
+    }
+
+    @Test
+    @WithMockUser(username = "param2", roles = {"ADMIN"})
+    @DisplayName("FR-3 regresszió: legacy date param egyedül is működik (régi kliensek)")
+    void legacyDateParam_stillWorks() throws Exception {
+        mockMvc.perform(get("/api/v1/central/received-data/status")
+                        .param("date", "2026-05-20"))
+                .andExpect(status().isOk());
+
+        verify(centralReceivedDataService).getOverview(LocalDate.of(2026, 5, 20));
+    }
+
+    @Test
+    @WithMockUser(username = "param3", roles = {"ADMIN"})
+    @DisplayName("FR-3: param nélkül a mai nap a referencia")
+    void noParam_defaultsToToday() throws Exception {
+        mockMvc.perform(get("/api/v1/central/received-data/status"))
+                .andExpect(status().isOk());
+
+        verify(centralReceivedDataService).getOverview(eq(LocalDate.now()));
     }
 }

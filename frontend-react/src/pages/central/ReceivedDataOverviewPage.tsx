@@ -18,7 +18,7 @@ import {
 } from '../../services/api'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
-import { localIsoDate } from '../../utils/dateFormat'
+import { localIsoDate, formatHuDate } from '../../utils/dateFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
 
 type ReconFilter = 'all' | 'match' | 'mismatch'
@@ -65,7 +65,8 @@ export default function ReceivedDataOverviewPage() {
     setStatusError(false)
     const [reconOutcome, statusOutcome] = await Promise.allSettled([
       transferReconciliationApi.run(startDate, endDate),
-      centralReceivedDataApi.status(startDate), // WU-C: ez az argumentum endDate-re vált
+      // FK-088 FR-3: a referencia-dátum az intervallum VÉGE (endDate).
+      centralReceivedDataApi.status(endDate),
     ])
     if (reconOutcome.status === 'fulfilled') {
       setResult(reconOutcome.value)
@@ -201,6 +202,13 @@ export default function ReceivedDataOverviewPage() {
             className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           >
             {t('centralReceivedData.reconciliationError')}
+          </div>
+        )}
+
+        {/* FK-088 FR-3: az állapot-sáv referencia-dátumának jelölése (lekérdezett END dátum). */}
+        {receivedDataOverview != null && (
+          <div data-testid="received-data-status-caption" className="text-xs text-slate-500">
+            {t('centralReceivedData.statusOnDate', { date: formatHuDate(endDate) })}
           </div>
         )}
 

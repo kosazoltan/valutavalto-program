@@ -118,4 +118,11 @@ describe('i18n setup', () => {
   it('loads foertektar.keszletOtDeviza (5 currencies)', () => {
     expect(i18n.t('foertektar.keszletOtDeviza')).toBe('Készlet (EUR / USD / GBP / CHF / HUF)')
   })
+
+  // FK-088 FR-3: a beérkezett-adatok referencia-dátum felirat {{date}} interpolációja
+  it('interpolates centralReceivedData.statusOnDate ({{date}})', () => {
+    expect(i18n.t('centralReceivedData.statusOnDate', { date: '2026.05.22.' })).toBe(
+      'Állapot ezen a napon: 2026.05.22.',
+    )
+  })
 })

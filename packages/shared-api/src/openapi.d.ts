@@ -21187,11 +21187,11 @@ export interface components {
       /** Format: int64 */
       offset?: number
       sort?: components['schemas']['SortObject']
-      /** Format: int32 */
-      pageNumber?: number
+      paged?: boolean
       /** Format: int32 */
       pageSize?: number
-      paged?: boolean
+      /** Format: int32 */
+      pageNumber?: number
       unpaged?: boolean
     }
     SortObject: {
@@ -21807,8 +21807,8 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string
       dailyChange?: number
-      lowBalance?: boolean
       highBalance?: boolean
+      lowBalance?: boolean
     }
     DailyClosingReport: {
       /** Format: date */
@@ -22297,9 +22297,9 @@ export interface components {
        */
       lastUpdated?: string
       /** @deprecated */
-      bankBuyRate?: number
-      /** @deprecated */
       bankSellRate?: number
+      /** @deprecated */
+      bankBuyRate?: number
     }
     CompetitorRateDTO: {
       /** Format: uuid */
@@ -23640,8 +23640,8 @@ export interface components {
       maxBalance?: number
       /** Format: date-time */
       lastTransactionAt?: string
-      lowBalance?: boolean
       highBalance?: boolean
+      lowBalance?: boolean
     }
     DetailedCashPosition: {
       /** Format: uuid */
@@ -47120,6 +47120,7 @@ export interface operations {
   getStatus_8: {
     parameters: {
       query?: {
+        endDate?: string
         date?: string
       }
       header?: never

@@ -72,7 +72,8 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          reportDate: url.searchParams.get('date') ?? '2026-06-18',
+          reportDate:
+            url.searchParams.get('endDate') ?? url.searchParams.get('date') ?? '2026-06-18',
           totalBranches: 3,
           receivedReports: 2,
           submittedReports: 2,

@@ -1,7 +1,12 @@
 import { api } from './client'
 
 export type CentralReceivedDataStatus =
-  'SUBMITTED' | 'RECEIVED' | 'MISSING' | 'WAITING' | 'CRITICAL' | string
+  | 'SUBMITTED'
+  | 'RECEIVED'
+  | 'MISSING'
+  | 'WAITING'
+  | 'CRITICAL'
+  | string
 
 export interface CentralReceivedDataRow {
   branchId: string
@@ -52,8 +57,10 @@ export interface CentralReceivedDataOverview {
 }
 
 export const centralReceivedDataApi = {
-  status: async (date?: string): Promise<CentralReceivedDataOverview> => {
-    const params = date ? { date } : undefined
+  status: async (endDate?: string): Promise<CentralReceivedDataOverview> => {
+    // FK-088 FR-3: a referencia-dátum az intervallum VÉGE. A backend az additív
+    // `endDate` paramétert fogadja (a legacy `date`-et is megtartja).
+    const params = endDate ? { endDate } : undefined
     const response = await api.get<CentralReceivedDataOverview>('/central/received-data/status', {
       params,
     })

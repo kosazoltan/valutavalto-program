@@ -350,7 +350,8 @@
   },
   "centralReceivedData": {
     "reconciliationError": "A pénztárközi egyeztetés adatainak betöltése sikertelen.",
-    "statusError": "A beérkezett adatok betöltése sikertelen."
+    "statusError": "A beérkezett adatok betöltése sikertelen.",
+    "statusOnDate": "Állapot ezen a napon: {{date}}"
   },
   "closing": {
     "cashierheader": "CashierHeader: () =>",
