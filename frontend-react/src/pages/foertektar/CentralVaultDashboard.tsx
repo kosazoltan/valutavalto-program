@@ -214,6 +214,10 @@ export default function CentralVaultDashboard() {
   const alertCount = rows.filter((r) => r.stockAlert.length > 0).length
 
   // Group by region for display
+  // FK-085 TBD-1 ellenőrzés (2026-08-17): a tábla sorai a /branches válaszából épülnek
+  // (minden aktív fiók), a stock-snapshot CSAK készlet-összegeket ad hozzá; ezért egy
+  // nem leképezhető régiójú fiók NEM tűnhet el a dashboardról — legfeljebb „nincs adat"
+  // készlettel jelenik meg ebben a 'Régió nincs beállítva' fallback csoportban.
   const byRegion = rows.reduce<Record<string, BranchSummary[]>>((acc, r) => {
     const reg = r.branch.region || 'Régió nincs beállítva'
     if (!acc[reg]) acc[reg] = []
