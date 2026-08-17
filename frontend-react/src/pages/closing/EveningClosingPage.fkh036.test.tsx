@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import EveningClosingPage from './EveningClosingPage'
@@ -151,8 +152,10 @@ beforeEach(() => {
 
 describe('EveningClosingPage — FKH-036', () => {
   it('FR-1: valós DailyDataPackage-alakú válaszon nem omlik össze', async () => {
+    const user = userEvent.setup()
     render(<EveningClosingPage />)
 
+    await user.click(screen.getByRole('button', { name: 'Előnézet' }))
     await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(1))
 
     // Az összefoglaló mezők renderelődnek (2 tranzakció; 150 000 Ft hu-HU formátumban).
@@ -164,9 +167,11 @@ describe('EveningClosingPage — FKH-036', () => {
 
   it('FR-1 védőháló: legacy (mezők nélküli) válaszon sem omlik össze', async () => {
     mocks.preview.mockResolvedValue(LEGACY_SHAPE_PREVIEW)
+    const user = userEvent.setup()
 
     render(<EveningClosingPage />)
 
+    await user.click(screen.getByRole('button', { name: 'Előnézet' }))
     await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(1))
 
     // A preview-ág renderelődik (a status-jelvény megjelenik), de egyetlen undefined-olvasás

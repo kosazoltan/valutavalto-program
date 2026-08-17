@@ -21,23 +21,29 @@ import { useTranslation } from 'react-i18next'
 import VaultClosingChecklistPanel from '../../components/closing/VaultClosingChecklistPanel'
 import type { ClosingWizardStatus } from '../../services/api/transactions'
 
+/**
+ * FKH-036 FR-1: a backend DailyDataPackage kibővített alakja. A JsonInclude.NON_NULL
+ * miatt MINDEN új mező OPCIONÁLIS — a backend null mezőket egyáltalán nem küldi, és a
+ * WU-1 előtti (legacy) válaszban ezek a mezők eleve hiányoznak. Az oldal ezért minden
+ * olvasást null-biztosan végez.
+ */
 interface EveningClosingPreview {
   branchId: string
-  branchName: string
-  date: string
-  status: 'NOT_STARTED' | 'PREVIEW' | 'SENT' | 'CONFIRMED'
-  balances: Array<{
+  branchName?: string
+  date?: string
+  status?: 'NOT_STARTED' | 'PREVIEW' | 'SENT' | 'CONFIRMED'
+  balances?: Array<{
     currency: string
     amount: number
     denominationBreakdown?: Array<{ denomination: number; count: number }>
   }>
-  transactionCount: number
-  totalBuyHuf: number
-  totalSellHuf: number
-  pendingSyncs: number
-  openReservations: number
-  warnings: string[]
-  packages: Array<{
+  transactionCount?: number
+  totalBuyHuf?: number
+  totalSellHuf?: number
+  pendingSyncs?: number
+  openReservations?: number
+  warnings?: string[]
+  packages?: Array<{
     packageId: string
     currency: string
     amount: number
@@ -123,9 +129,11 @@ export default function EveningClosingPage() {
       toast.warning('Címletezés szükséges', closingStatus.message)
       return
     }
+    // FKH-036 FR-1: a warnings opcionális (JsonInclude.NON_NULL) — null-biztos olvasás.
+    const warnings = preview.warnings ?? []
     if (
-      preview.warnings.length > 0 &&
-      !confirm(`${preview.warnings.length} figyelmeztetés van. Biztosan elküldi az esti zárást?`)
+      warnings.length > 0 &&
+      !confirm(`${warnings.length} figyelmeztetés van. Biztosan elküldi az esti zárást?`)
     )
       return
     try {
@@ -298,13 +306,13 @@ export default function EveningClosingPage() {
           </div>
 
           {/* Figyelmeztetések */}
-          {preview.warnings.length > 0 && (
+          {(preview.warnings ?? []).length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3 space-y-1">
               <div className="font-semibold flex items-center gap-1 text-yellow-700">
                 <AlertTriangle size={16} />
                 {t('closing.figyelmeztetesek')}
               </div>
-              {preview.warnings.map((w) => (
+              {(preview.warnings ?? []).map((w) => (
                 <div key={w} className="text-sm text-yellow-600">
                   • {w}
                 </div>
@@ -315,19 +323,23 @@ export default function EveningClosingPage() {
           {/* Összefoglaló */}
           <div className="grid grid-cols-4 gap-3">
             <div className="form-panel text-center">
-              <div className="text-lg font-bold">{preview.transactionCount}</div>
+              <div className="text-lg font-bold">{preview.transactionCount ?? 0}</div>
               <div className="text-sm text-gray-500">{t('closing.tranzakcio')}</div>
             </div>
             <div className="form-panel text-center bg-green-50">
-              <div className="text-lg font-bold text-green-700">{fmtHuf(preview.totalBuyHuf)}</div>
+              <div className="text-lg font-bold text-green-700">
+                {fmtHuf(preview.totalBuyHuf ?? 0)}
+              </div>
               <div className="text-sm text-gray-500">{t('misc.vetelHuf')}</div>
             </div>
             <div className="form-panel text-center bg-blue-50">
-              <div className="text-lg font-bold text-blue-700">{fmtHuf(preview.totalSellHuf)}</div>
+              <div className="text-lg font-bold text-blue-700">
+                {fmtHuf(preview.totalSellHuf ?? 0)}
+              </div>
               <div className="text-sm text-gray-500">{t('misc.eladasHuf')}</div>
             </div>
             <div className="form-panel text-center">
-              <div className="text-lg font-bold text-orange-600">{preview.pendingSyncs}</div>
+              <div className="text-lg font-bold text-orange-600">{preview.pendingSyncs ?? 0}</div>
               <div className="text-sm text-gray-500">{t('closing.szinkronVaro')}</div>
             </div>
           </div>
@@ -365,7 +377,7 @@ export default function EveningClosingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.packages.map((p) => (
+                  {(preview.packages ?? []).map((p) => (
                     <tr key={p.packageId}>
                       <td className="font-mono text-sm">{p.packageId}</td>
                       <td className="font-mono">{p.currency}</td>

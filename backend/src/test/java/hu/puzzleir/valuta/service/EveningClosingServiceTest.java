@@ -51,6 +51,9 @@ class EveningClosingServiceTest {
     @Mock private SystemParameterService systemParameterService;
     @Mock private IntegrationTransportProperties integrationTransportProperties;
     @Mock private FileTransportService fileTransportService;
+    // FKH-036 FR-1: a két új összefoglaló-függőség (WU-1).
+    @Mock private BranchRepository branchRepository;
+    @Mock private ShipmentRequestRepository shipmentRequestRepository;
 
     private static final UUID BRANCH_UUID = UUID.randomUUID();
     private static final UUID COMPANY_UUID = UUID.randomUUID();
@@ -275,6 +278,99 @@ class EveningClosingServiceTest {
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getChecksum()).isEqualTo("checksum-123");
         verify(fileTransportService).writeJson(anyString(), eq("evening_daily_report"), any());
+    }
+
+    // ============ FKH-036 FR-1: összefoglaló mezők ============
+
+    @Test
+    @DisplayName("FKH-036: üres napon az összefoglaló lista-mezők soha nem nullák, status=NOT_STARTED")
+    void prepareDailyPackage_summaryFieldsNeverNull_onEmptyDay() {
+        DailyDataPackage pkg = service.prepareDailyPackage(BRANCH_UUID, DATE);
+
+        assertThat(pkg.getWarnings()).isNotNull();
+        assertThat(pkg.getBalances()).isNotNull();
+        assertThat(pkg.getPackages()).isNotNull();
+        assertThat(pkg.getWarnings()).isEmpty();
+        assertThat(pkg.getBalances()).isEmpty();
+        assertThat(pkg.getPackages()).isEmpty();
+        assertThat(pkg.getStatus()).isEqualTo("NOT_STARTED");
+        assertThat(pkg.getTransactionCount()).isZero();
+        assertThat(pkg.getPendingSyncs()).isZero();
+        assertThat(pkg.getOpenReservations()).isZero();
+        assertThat(pkg.getTotalBuyHuf()).isEqualByComparingTo("0");
+        assertThat(pkg.getTotalSellHuf()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("FKH-036 B1: a PENDING-figyelmeztetés DÁTUM-SZKÓPOLT — nem a branch-szintű existsBy-ből jön")
+    void prepareDailyPackage_pendingWarning_isDateScoped() {
+        // Beragadt, MÁS napi PENDING sor szimulálása: a branch-szintű (dátum nélküli)
+        // metódus true-t adna — ha az implementáció ezt használná, a figyelmeztetés
+        // akkor is megjelenne, ha az adott napon nincs PENDING tranzakció.
+        Transaction completedTx = buildTransaction("C001", "Kiss József", "DOC111");
+        when(transactionRepository.findByBranchAndDate(eq(BRANCH_UUID), eq(DATE)))
+                .thenReturn(List.of(completedTx));
+        when(transactionRepository.existsByBranchIdAndStatus(any(), any())).thenReturn(true);
+
+        DailyDataPackage pkg = service.prepareDailyPackage(BRANCH_UUID, DATE);
+
+        assertThat(pkg.getWarnings()).noneMatch(w -> w.contains("PENDING"));
+        verify(transactionRepository, never()).existsByBranchIdAndStatus(any(), any());
+
+        // Aznapi PENDING tranzakció → pontosan egy, a számot is tartalmazó figyelmeztetés.
+        Transaction pendingTx = buildTransaction("C002", "Nagy Mária", "DOC222");
+        pendingTx.setStatus(TransactionStatus.PENDING);
+        when(transactionRepository.findByBranchAndDate(eq(BRANCH_UUID), eq(DATE)))
+                .thenReturn(List.of(completedTx, pendingTx));
+
+        DailyDataPackage pkg2 = service.prepareDailyPackage(BRANCH_UUID, DATE);
+
+        assertThat(pkg2.getWarnings())
+                .filteredOn(w -> w.matches("1 aznapi, folyamatban lévő \\(PENDING\\) tranzakció van.*"))
+                .hasSize(1);
+        verify(transactionRepository, never()).existsByBranchIdAndStatus(any(), any());
+    }
+
+    @Test
+    @DisplayName("FKH-036: a checksumot az új összefoglaló mezők NEM változtatják (pénzügyi integritás)")
+    void prepareDailyPackage_checksumUnchangedByNewSummaryFields() throws Exception {
+        DailyDataPackage pkg = service.prepareDailyPackage(BRANCH_UUID, DATE);
+        assertThat(pkg.getChecksum()).matches("[0-9a-f]{64}");
+
+        // A várt hash a változás ELŐTTI kódot leíró 9-bemenetű formátumból számítva
+        // (nem hardkódolt literál): branchId|date|txCount|totalHuf|denomCount|rateCount|
+        // customerCount|reservationCount|totalFees.
+        String data = String.format("%d|%s|%d|%s|%d|%d|%d|%d|%s",
+                BRANCH_UUID.getLeastSignificantBits(), DATE, 0, "0", 0, 0, 0, 0, "0");
+        byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        StringBuilder expected = new StringBuilder();
+        for (byte b : hash) {
+            expected.append(String.format("%02x", b));
+        }
+        assertThat(pkg.getChecksum()).isEqualTo(expected.toString());
+
+        // Két csomag, amely CSAK az új összefoglaló mezőkben tér el → azonos checksum.
+        DailyDataPackage plain = DailyDataPackage.builder()
+                .branchId(pkg.getBranchId()).date(DATE)
+                .transactions(List.of()).denominations(List.of()).rates(List.of())
+                .customers(List.of()).reservations(List.of()).handlingFees(null)
+                .warnings(List.of()).balances(List.of()).packages(List.of())
+                .status("NOT_STARTED").transactionCount(0).build();
+        DailyDataPackage enriched = DailyDataPackage.builder()
+                .branchId(pkg.getBranchId()).date(DATE)
+                .transactions(List.of()).denominations(List.of()).rates(List.of())
+                .customers(List.of()).reservations(List.of()).handlingFees(null)
+                .warnings(List.of("Van függőben lévő esti szinkron erre a napra."))
+                .balances(List.of(BalanceView.builder().currency("EUR").amount(new BigDecimal("50")).build()))
+                .packages(List.of(PackageView.builder().packageId("FF-20260316-0001").build()))
+                .status("SENT").branchName("Más iroda").transactionCount(99)
+                .totalBuyHuf(new BigDecimal("12345")).totalSellHuf(new BigDecimal("678"))
+                .pendingSyncs(1).openReservations(3).build();
+
+        String checksumPlain = ReflectionTestUtils.invokeMethod(service, "calculateChecksum", plain);
+        String checksumEnriched = ReflectionTestUtils.invokeMethod(service, "calculateChecksum", enriched);
+        assertThat(checksumPlain).isEqualTo(checksumEnriched);
     }
 
     // ============ HELPER METÓDUSOK ============

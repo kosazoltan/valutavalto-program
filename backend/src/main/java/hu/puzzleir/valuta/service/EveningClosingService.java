@@ -59,6 +59,9 @@ public class EveningClosingService {
     private final SystemParameterService systemParameterService;
     private final IntegrationTransportProperties integrationTransportProperties;
     private final FileTransportService fileTransportService;
+    // FKH-036 FR-1: az előnézeti összefoglaló forrásai (branchName, készített csomagok).
+    private final BranchRepository branchRepository;
+    private final ShipmentRequestRepository shipmentRequestRepository;
 
     @Value("${evening.closing.artifact-success-enabled:false}")
     private boolean artifactSuccessEnabled;
@@ -115,6 +118,12 @@ public class EveningClosingService {
 
         // Checksum számítása
         pkg.setChecksum(calculateChecksum(pkg));
+
+        // FKH-036 FR-1: előnézeti összefoglaló — a checksum UTÁN (terv pitfall 2: a
+        // calculateChecksum csak a 9 eredeti bemenetet hasheli; ha egy jövőbeli edit
+        // az enrich-mezőket is hashelné, ez a sorrend akkor sem változtatná meg a
+        // már kiszámított értéket, és a WU-1 checksum-teszt ezt őrzi).
+        enrichSummary(pkg, branchUuid, date, transactions, reservations);
 
         log.info("Napi adatcsomag kész: branchId={}, datum={}, tranzakciók={}, checksum={}",
                 branchIdLong, date, transactions.size(), pkg.getChecksum());
@@ -493,6 +502,108 @@ public class EveningClosingService {
                 .maxFee(maxFee)
                 .minFee(minFee)
                 .build();
+    }
+
+    // ============ FKH-036 FR-1: ELŐNÉZETI ÖSSZEFOGLALÓ ============
+
+    /**
+     * FKH-036 FR-1: a UI-előnézet összefoglaló mezőinek feltöltése a már felépített,
+     * DÁTUM-SZKÓPOLT bemenetekből.
+     *
+     * <p>B1 (dátum-invariáns): minden mező EGY napra válaszol. A PENDING-tranzakció
+     * figyelmeztetés a már felépített, dátum-szkópolt {@code transactions} listából
+     * származik — NEM a {@code transactionRepository.existsByBranchIdAndStatus(...)}
+     * branch-szintű (dátum nélküli) metódusból, ami egy korábbi napi beragadt sortól
+     * véglegesen bekapcsolná a figyelmeztetést.</p>
+     *
+     * <p>Minden lista-mező soha nem null. Ha a tenant-kontextus hiányzik
+     * (companyId == null), a csomaglista fail-closed üres.</p>
+     */
+    private void enrichSummary(DailyDataPackage pkg, UUID branchUuid, LocalDate date,
+                               List<TransactionSummary> transactions,
+                               List<ReservationData> reservations) {
+        UUID companyId = SecurityUtils.getCurrentCompanyIdOrNull();
+
+        // branchName — tenant-szkópolt, ha van cég-kontextus.
+        pkg.setBranchName(companyId != null
+                ? branchRepository.findByIdAndCompanyId(branchUuid, companyId)
+                        .map(Branch::getName).orElse(null)
+                : branchRepository.findById(branchUuid).map(Branch::getName).orElse(null));
+
+        // Forgalmi összesítők — a dátum-szkópolt tranzakciólistából.
+        pkg.setTransactionCount(transactions != null ? transactions.size() : 0);
+        BigDecimal totalBuyHuf = BigDecimal.ZERO;
+        BigDecimal totalSellHuf = BigDecimal.ZERO;
+        long pendingTransactionCount = 0L;
+        if (transactions != null) {
+            for (TransactionSummary tx : transactions) {
+                if ("BUY".equals(tx.getTransactionType()) && tx.getHufAmount() != null) {
+                    totalBuyHuf = totalBuyHuf.add(tx.getHufAmount());
+                } else if ("SELL".equals(tx.getTransactionType()) && tx.getHufAmount() != null) {
+                    totalSellHuf = totalSellHuf.add(tx.getHufAmount());
+                }
+                if ("PENDING".equals(tx.getStatus())) {
+                    pendingTransactionCount++;
+                }
+            }
+        }
+        pkg.setTotalBuyHuf(totalBuyHuf);
+        pkg.setTotalSellHuf(totalSellHuf);
+
+        // Szinkron-státusz — EveningSyncLog (legfeljebb egy sor branch+dátumonként).
+        Optional<EveningSyncLog> syncLog = eveningSyncLogRepository
+                .findByBranchIdAndSyncDate(branchUuid, date);
+        pkg.setStatus(syncLog.filter(l -> "EVENING_SYNC_DONE".equals(l.getStatus())).isPresent()
+                ? "SENT"
+                : syncLog.isPresent() ? "PREVIEW" : "NOT_STARTED");
+        int pendingSyncs = syncLog.filter(l -> !"EVENING_SYNC_DONE".equals(l.getStatus()))
+                .isPresent() ? 1 : 0;
+        pkg.setPendingSyncs(pendingSyncs);
+
+        // Aznapi ACTIVE foglalók (dátum-szkópolt, nem teljes backlog — terv 7. döntés).
+        int openReservations = reservations == null ? 0 : reservations.size();
+        pkg.setOpenReservations(openReservations);
+
+        // Záró egyenlegek — ugyanaz a forrás, amit a ClosingWizardService.loadPhysicalCounts
+        // használ (egyetlen igazság-forrás, terv 8. döntés).
+        List<BalanceView> balances = new ArrayList<>();
+        for (Object[] row : denominationBalanceRepository.sumActualStockByCurrency(
+                branchUuid, date, DenominationCategory.EVENING)) {
+            if (row.length >= 2 && row[0] instanceof String code && row[1] instanceof BigDecimal total) {
+                balances.add(BalanceView.builder().currency(code).amount(total).build());
+            }
+        }
+        pkg.setBalances(balances);
+
+        // Készített csomagok — KIZÁRÓLAG FF (kimenő), fail-closed: companyId nélkül üres.
+        List<PackageView> packages = new ArrayList<>();
+        if (companyId != null) {
+            for (Object[] row : shipmentRequestRepository.findOutgoingPackageRowsForDate(
+                    companyId, branchUuid, date, ShipmentHandlingFeeRepository.KPI_COUNTED_STATUSES)) {
+                packages.add(PackageView.builder()
+                        .packageId(row[0] != null ? row[0].toString() : null)
+                        .currency(row[1] != null ? row[1].toString() : null)
+                        .amount(row[2] instanceof BigDecimal amount ? amount : null)
+                        .sealNumber(row[3] != null ? row[3].toString() : null)
+                        .destination(row[4] != null ? row[4].toString() : null)
+                        .build());
+            }
+        }
+        pkg.setPackages(packages);
+
+        // Figyelmeztetések — fix sorrend, soha nem null (terv 21. döntés).
+        List<String> warnings = new ArrayList<>();
+        if (pendingTransactionCount > 0) {
+            warnings.add(pendingTransactionCount
+                    + " aznapi, folyamatban lévő (PENDING) tranzakció van — a zárás előtt le kell zárni.");
+        }
+        if (openReservations > 0) {
+            warnings.add(openReservations + " aznapi nyitott foglaló van.");
+        }
+        if (pendingSyncs > 0) {
+            warnings.add("Van függőben lévő esti szinkron erre a napra.");
+        }
+        pkg.setWarnings(warnings);
     }
 
     // ============ UTILITY ============
