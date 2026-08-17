@@ -231,9 +231,10 @@ export const menuGroups: MenuGroup[] = [
       // de tartományra és a teljes körzetre, nem egy napra és egy fiókra.
       { path: '/reports/cash-flow', label: 'Pénzforgalom riport', icon: FileText },
       { path: '/evening-closing', label: 'Napi zárás', icon: FileText },
-      // FK-061 FR-1: a zárási varázsló ("Napzárás") értéktári módban is elérhető a menüből.
-      // A /closing/wizard route gate nélkül, mindkét módban kiszolgál (App.tsx változatlan).
-      { path: '/closing/wizard', label: 'Napzárás', icon: FileText },
+      // FKH-036 FR-9: a Pénztári zárás-varázsló Értéktár-módban használhatatlan (az 1. lépés
+      // pénztári napi munkamenetet követel), ezért az értéktáros elől rejtett. A route és a
+      // ClosingWizardPage VÁLTOZATLAN (FR-10); a felügyeleti bypass továbbra is látja.
+      { path: '/closing/wizard', label: 'Napzárás', icon: FileText, hidden: true },
       { path: '/closing/monthly', label: 'Havi zárás', icon: FileText },
       { path: '/customers', label: 'Ügyfelek', icon: Users },
       { path: '/rates', label: 'Árfolyamok (nézet)', icon: TrendingUp },
