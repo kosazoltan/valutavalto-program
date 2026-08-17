@@ -1,6 +1,6 @@
-generated_at: 2026-08-17T14:20:41.432Z
+generated_at: 2026-08-17T20:37:34.122Z
 schema_version: 1
-source_count: 1065
+source_count: 1066
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,14 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 2366a36a97d532a2
-    title: "2026-04-29 — Pénztár app TELJES KÖRŰ menü-audit (v2.3.8) — VÉGLEGES"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-full-program-audit.md
-    sha256: f097a70f33128cafd63c54847aa02f70499b5621f244ed9583a11972b0d6e37a
-    summary: "--- date: 2026-04-29 session_type: end-to-end-program-audit context: v2.3.8 Setup OK, KOSA bejelentkezve (pénztáros, MANAGER role per V121) priority: P0 — éles teszt-elv elválasztó + v2.3.9 kódfix-blueprint --- # 2026-04-29 — Pénztár app TELJES KÖRŰ menü-audit (v2.3.8) — VÉGLEGES ## Setup - App version: Penztar.exe v2.3.8 (FileVersion 2.3.8.0) - Worker: KOSA (Kosa Zoltan), V121 promote_kosa_to_manager → MANAGER role"
-    areas: [aml, arfolyam, cimletezes, database, ertektar, frontend, installer, napzaras, penztar, riport, security, sync, tenant]
-    keywords: [2026, penztar, app, teljes, koru, menu, audit, vegleges, date, session_type, end, program]
   - id: 92c914e41a93eff8
     title: "2026-04-29 Handoff — REBOOT pending"
     type: medium-term-episodic
@@ -1702,6 +1694,14 @@ medium_term:
     summary: "# Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`."
     areas: [arfolyam, deploy, legacy, napzaras, penztar]
     keywords: [handoff, 2026, teljes, ciklus, lezaras, merge, lanc, inditas, statusz, kesz, release, workflow]
+  - id: 32a736fb32f958c3
+    title: "Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md
+    sha256: a770b80b026c3c5c7342e4c0a2834bd34bb44cd14453e36324ca516d4e4b5094
+    summary: "# Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (7 egység, b0d4feee-re építve). Terv: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/10-plan.md ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE"
+    areas: [cimletezes, ertektar, frontend, napzaras, penztar]
+    keywords: [handoff, fkh, 036, ertektari, napi, zaras, egyesitett, blokkolo, 2026, branch, pipeline, 20260817]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

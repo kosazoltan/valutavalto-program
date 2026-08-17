@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-17T14:20:41.432Z",
-  "source_count": 1065,
+  "generated_at": "2026-08-17T20:37:34.122Z",
+  "source_count": 1066,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12481,6 +12481,18 @@
         "arfolyam",
         "deploy",
         "legacy",
+        "napzaras",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md",
+      "sha256": "a770b80b026c3c5c7342e4c0a2834bd34bb44cd14453e36324ca516d4e4b5094",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "ertektar",
+        "frontend",
         "napzaras",
         "penztar"
       ]

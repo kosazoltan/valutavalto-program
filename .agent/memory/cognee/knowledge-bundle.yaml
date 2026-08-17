@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-17T14:20:41.432Z
+generated_at: 2026-08-17T20:37:34.122Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7443,6 +7443,13 @@ nodes:
     summary: "# Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`."
     tags: [handoff, 2026, teljes, ciklus, lezaras, merge, lanc, inditas, statusz, kesz]
     areas: [arfolyam, deploy, legacy, napzaras, penztar]
+  - id: 32a736fb32f958c3
+    type: medium-term-episodic
+    title: "Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17)"
+    source_path: vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md
+    summary: "# Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (7 egység, b0d4feee-re építve). Terv: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/10-plan.md ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE"
+    tags: [handoff, fkh, 036, ertektari, napi, zaras, egyesitett, blokkolo, 2026, branch]
+    areas: [cimletezes, ertektar, frontend, napzaras, penztar]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22644,6 +22651,21 @@ edges:
   - from: afd81b9e0bc11daa
     to: area_penztar
     relation: belongs_to_area
+  - from: 32a736fb32f958c3
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 32a736fb32f958c3
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 32a736fb32f958c3
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 32a736fb32f958c3
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 32a736fb32f958c3
+    to: area_penztar
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22701,9 +22723,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: b15eb48097d8ab6e
-    to: repo_project_state
-    relation: informs
   - from: 0ca04e601787c4e5
     to: repo_project_state
     relation: informs
@@ -22933,6 +22952,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: afd81b9e0bc11daa
+    to: repo_project_state
+    relation: informs
+  - from: 32a736fb32f958c3
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

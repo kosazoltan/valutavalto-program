@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-17T14:20:41.432Z
+generated: 2026-08-17T20:37:34.122Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — 2026-07-08 — Tech-adósság backlog 9/9 KÉSZ + first-shot kapuk** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-08-techdebt-9of9.md`
-  - summary: # Handoff — 2026-07-08 — Tech-adósság backlog 9/9 KÉSZ + first-shot kapuk ## Mi készült el ma (mind merged a mainre, végig zöld CI) | TD | Téma | PR | Squash-commit | |---|---|---|---| | TD1 | security-logger (token/PIN redakció a logból) | #1362 | 4859cf49 | | TD2 | LOG-CUSTOMERID-HYGIENE | #1363 | ea0eb03c | | TD3 | SECRETS-HOOK-CASEINSENSITIVE (hook `(?-i)` fix) | #1364 | 50593492 | | TD4 | repo-wide prettier norm
 
 - **Handoff — 2026-07-09 backlog-grind: LOWER-BYTEA-CLASS + FE blob/log hygiene** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-09-backlog-grind.md`
@@ -243,6 +239,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md`
   - summary: # Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`.
+
+- **Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md`
+  - summary: # Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (7 egység, b0d4feee-re építve). Terv: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/10-plan.md ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
