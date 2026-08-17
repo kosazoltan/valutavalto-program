@@ -239,4 +239,68 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
             @Param("companyId") UUID companyId,
             @Param("branchId") UUID branchId,
             @Param("before") LocalDateTime before);
+
+    /**
+     * FKH-036 FR-1: az aznapi ELKÉSZÍTETT CSOMAGOK előnézeti vetülete (a "Készített
+     * csomagok" táblázat forrása).
+     *
+     * <p>Irány-szabály (terv 9. döntése): KIZÁRÓLAG FF (kimenő) — az UF sor bejövő
+     * szállítmány, nem "készített csomag". Tenant: {@code sr.companyId} (invariáns #1).</p>
+     *
+     * <p>ORDER BY: a {@code serialNumber} NULLABLE (régi/importált sorok), ezért a
+     * {@code createdAt} az elsődleges kulcs és a {@code requestNumber} a végső, MINDIG
+     * kitöltött tie-breaker — így a lista sorrendje determinisztikus akkor is, ha a
+     * {@code serialNumber} null (Postgres default: NULLS LAST ASC).</p>
+     */
+    @Query("""
+            SELECT sr.requestNumber, c.code, i.requestedAmount, sr.sealNumber, b.name
+            FROM ShipmentRequest sr
+              JOIN sr.items i
+              JOIN Currency c ON c.id = i.currencyId
+              LEFT JOIN Branch b ON b.id = sr.toBranchId
+            WHERE sr.companyId = :companyId
+              AND sr.serialPrefix = 'FF'
+              AND sr.fromBranchId = :branchId
+              AND sr.requestDate = :date
+              AND sr.status IN :statuses
+            ORDER BY sr.createdAt ASC, sr.serialNumber ASC, sr.requestNumber ASC
+            """)
+    List<Object[]> findOutgoingPackageRowsForDate(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("date") LocalDate date,
+            @Param("statuses") Collection<ShipmentRequestStatus> statuses);
+
+    /**
+     * FKH-036 FR-5: az aznapi FF/UF shipment-MOZGÁS valutakódjai (mintája:
+     * {@link #findHufDaybookShipmentsForDate}).
+     *
+     * <p>Irány-szabály (terv 11. döntése): MINDKÉT irány (FF kimenő + UF bejövő) —
+     * bármelyik irányú mozgás megváltoztatja a fizikai készletet, tehát becímletezési
+     * kötelezettséget teremt (szemben a csak-FF előnézeti csomaglistával).</p>
+     *
+     * <p>Üzleti dátum: {@code sr.requestDate} (terv 10. döntése — a kezelési díj
+     * lekérdezés UGYANEZT használja, így a kötelező halmaz és a handlingFeeRequired
+     * mindig ugyanarra a napra dönt). Státusz-whitelist: fail-closed, a pénztár
+     * {@code KPI_COUNTED_STATUSES} konstansát paraméterként kapja (terv 13. döntése:
+     * a DRAFT/CANCELLED/REJECTED soha nem mozgatott pénzt, ezért nem teremthet
+     * kötelezettséget).</p>
+     */
+    @Query("""
+            SELECT DISTINCT c.code
+            FROM ShipmentRequest sr
+              JOIN sr.items i
+              JOIN Currency c ON c.id = i.currencyId
+            WHERE sr.companyId = :companyId
+              AND sr.serialPrefix IN ('FF', 'UF')
+              AND sr.requestDate = :date
+              AND sr.status IN :statuses
+              AND ((sr.serialPrefix = 'FF' AND sr.fromBranchId = :branchId)
+                OR (sr.serialPrefix = 'UF' AND sr.toBranchId  = :branchId))
+            """)
+    List<String> findMovedCurrencyCodesForDate(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("date") LocalDate date,
+            @Param("statuses") Collection<ShipmentRequestStatus> statuses);
 }

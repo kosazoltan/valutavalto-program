@@ -38,6 +38,9 @@ class ClosingWizardServiceTest {
     @Mock private CurrencyRepository currencyRepository;
     @Mock private CurrencyStockRepository currencyStockRepository;
     @Mock private DenominationAllowedRepository denominationAllowedRepository;
+    // FKH-036 WU-5: az új konstruktor-függőségek mockjai (pitfall 1).
+    @Mock private ShipmentRequestRepository shipmentRequestRepository;
+    @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     @InjectMocks private ClosingWizardService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();

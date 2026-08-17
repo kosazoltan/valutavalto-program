@@ -48,7 +48,12 @@ public class CentralReceivedDataService {
                 .stream()
                 .collect(Collectors.toMap(ClosingControl::getBranchId, control -> control, (left, right) -> left));
 
-        List<CentralReceivedDataRowDto> rows = branchRepository.findByCompanyIdAndIsActiveTrue(companyId)
+        // FK-088 FR-4 (FK-014 paritás): a VAULT_COUNTERPARTY banki/speciális partnerek NEM
+        // napi zárásra kötelezett irodák, ezért NEM számolhatók a beérkezett-adatok
+        // fiókszámába. A "Zárás beérkezés" képernyővel azonos tenant-szűrt, counterparty-t
+        // kizáró repository-lekérdezést használjuk (BranchRepository FK-014).
+        List<CentralReceivedDataRowDto> rows = branchRepository
+                .findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId)
                 .stream()
                 .sorted(Comparator.comparing(Branch::getCode, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .map(branch -> toRow(branch, reportsByBranch.get(branch.getId()), controlsByBranch.get(branch.getId()), reportDate))
@@ -144,9 +149,10 @@ public class CentralReceivedDataService {
         if (control == null) {
             return reportDate.isBefore(LocalDate.now()) ? "CRITICAL" : "WARNING";
         }
-        boolean complete = Boolean.TRUE.equals(control.getDailyClosingDone())
-                && Boolean.TRUE.equals(control.getEveningClosingDone())
-                && Boolean.TRUE.equals(control.getNavClosingDone());
+        // FK-087 FR-1 (FK-062 minta): a zárási varázsló az értéktári fiókoknál az evening/nav
+        // jelzőket nem írja, ezért CSAK a napi zárás számít teljesnek — lásd
+        // ClosingControlService.isRequiredClosingDone (FK-062), ami szintén dailyDone-only.
+        boolean complete = Boolean.TRUE.equals(control.getDailyClosingDone());
         if (complete) {
             return "NONE";
         }

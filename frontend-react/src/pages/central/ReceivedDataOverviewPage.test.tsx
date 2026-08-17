@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, beforeEach, it, expect } from 'vitest'
 import ReceivedDataOverviewPage from './ReceivedDataOverviewPage'
+import { formatHuDate, localIsoDate } from '../../utils/dateFormat'
 
 const mockRun = vi.fn()
 const mockStatus = vi.fn()
@@ -111,5 +112,102 @@ describe('ReceivedDataOverviewPage (FK-003 egyeztetés)', () => {
 
     expect(screen.queryByText('EGYEZIK')).not.toBeInTheDocument()
     expect(screen.getByText('ELTÉRÉS')).toBeInTheDocument()
+  })
+
+  // FK-087 FR-2: a két forrás független betöltése (Promise.allSettled)
+  it('FR-2: status-hiba esetén az alsó sáv inline hibát mutat, az egyeztetési adatok megmaradnak', async () => {
+    mockRun.mockResolvedValue(result)
+    mockStatus.mockRejectedValue(new Error('status 403'))
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('received-data-status-error')).toBeInTheDocument(),
+    )
+    // Fix i18n kulcs szövege (hu.json centralReceivedData.statusError)
+    expect(screen.getByText('A beérkezett adatok betöltése sikertelen.')).toBeInTheDocument()
+    // A felső egyeztetési metrikák ÉPEK maradtak (nem nullázódtak)
+    expect(screen.getByText('Összes mozgás')).toBeInTheDocument()
+    expect(screen.getByText('EGYEZIK')).toBeInTheDocument()
+    // Egyetlen forrás hibájánál NINCS globális banner
+    expect(screen.queryByTestId('received-data-global-error')).not.toBeInTheDocument()
+  })
+
+  it('FR-2: egyeztetési hiba esetén a felső sáv inline hibát mutat, az alsó állapot-sáv ép marad', async () => {
+    mockRun.mockRejectedValue(new Error('recon 500'))
+    mockStatus.mockResolvedValue(receivedDataStatus)
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() => expect(screen.getByTestId('received-data-recon-error')).toBeInTheDocument())
+    expect(
+      screen.getByText('A pénztárközi egyeztetés adatainak betöltése sikertelen.'),
+    ).toBeInTheDocument()
+    // Az alsó sáv adatai megmaradtak (label + totalBranches érték)
+    expect(screen.getByText('Beérkezett jelentés')).toBeInTheDocument()
+    expect(screen.getByText('Hiányzó jelentés')).toBeInTheDocument()
+    // Egyetlen forrás hibájánál NINCS globális banner
+    expect(screen.queryByTestId('received-data-global-error')).not.toBeInTheDocument()
+  })
+
+  it('FR-2: kettős hiba esetén MINDKÉT inline hiba ÉS a globális banner is megjelenik, a lap interaktív marad', async () => {
+    mockRun.mockRejectedValue(new Error('recon down'))
+    mockStatus.mockRejectedValue(new Error('status down'))
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() => expect(screen.getByTestId('received-data-recon-error')).toBeInTheDocument())
+    expect(screen.getByTestId('received-data-status-error')).toBeInTheDocument()
+    // Globális banner CSAK kettős hibánál (a egyeztetés hibaüzenetével)
+    expect(screen.getByTestId('received-data-global-error')).toBeInTheDocument()
+    // A lap interaktív marad: a Frissítés gomb a settled után újra elérhető
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Frissítés/i })).not.toBeDisabled(),
+    )
+  })
+
+  // FK-088 FR-3: endDate referencia-dátum + pontozott hu-HU felirat
+  it('FR-3: sikeres futás után a felirat a lekérdezett END dátumot mutatja pontozott formában', async () => {
+    mockRun.mockResolvedValue(result)
+    render(<ReceivedDataOverviewPage />)
+
+    // Default intervallum: start==end==tegnap
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const yesterdayIso = localIsoDate(d)
+    // formatHuDate önmagában: ISO → pontozott hu-HU (időzóna-biztos string-művelet)
+    expect(formatHuDate(yesterdayIso)).toBe(`${yesterdayIso.replaceAll('-', '.')}.`)
+    expect(formatHuDate('2026-05-22')).toBe('2026.05.22.')
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() => expect(mockStatus).toHaveBeenCalledWith(yesterdayIso))
+    const caption = screen.getByTestId('received-data-status-caption')
+    expect(caption.textContent).toContain(formatHuDate(yesterdayIso))
+    // ISO forma NEM jelenhet meg a feliratban (pontozott hu-HU a követelmény)
+    expect(caption.textContent).not.toContain(yesterdayIso)
+  })
+
+  it('FR-3: többnapos intervallumnál az END dátum megy a status-hívásba ÉS a feliratba', async () => {
+    mockRun.mockResolvedValue(result)
+    render(<ReceivedDataOverviewPage />)
+
+    // Default: mindkét dátum-input tegnapot mutat
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const yesterdayIso = localIsoDate(d)
+    const inputs = screen.getAllByDisplayValue(yesterdayIso)
+    fireEvent.change(inputs[0]!, { target: { value: '2026-05-20' } })
+    fireEvent.change(inputs[1]!, { target: { value: '2026-05-22' } })
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() => expect(mockStatus).toHaveBeenCalledWith('2026-05-22'))
+    // Bizonyítja, hogy endDate (NEM startDate) ment a status-hívásba
+    expect(mockStatus).not.toHaveBeenCalledWith('2026-05-20')
+    expect(screen.getByTestId('received-data-status-caption').textContent).toContain('2026.05.22.')
   })
 })

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { getDefaultRouteForRoles, menuGroups } from './menuGroups'
-import { isMenuGroupVisible, isMenuItemVisible } from './menuVisibility'
+import {
+  effectiveCanonicalRolesForPath,
+  isMenuGroupVisible,
+  isMenuItemVisible,
+} from './menuVisibility'
 import type { MenuVisibilityContext } from './menuVisibility'
 import type { AppMode } from '../types/appMode'
 
@@ -225,7 +229,9 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       // FKH-030 FR-1: uj menupont a Naplokonyv mellett (Penzforgalom riport).
       'Pénzforgalom riport',
       'Napi zárás',
-      'Napzárás',
+      // FKH-036 FR-9: a „Napzárás” bejegyzés rejtett lett az értéktáros elől
+      // (hidden: true) — ezért a látható listából kikerül; a foertektar-bypass
+      // lista (lent) VÁLTOZATLANUL tartalmazza.
       'Havi zárás',
       'Ügyfelek',
       'Árfolyamok (nézet)',
@@ -309,5 +315,31 @@ describe('FKH-030 FR-1 — Pénzforgalom riport a Riportok menücsoportban', () 
 
   it('jogosulatlan szerepkör (penztaros) továbbra sem látja', () => {
     expect(fkh026VisibleItemLabels('full', ['penztaros'])).not.toContain('Pénzforgalom riport')
+  })
+})
+
+describe('FKH-036 FR-9/FR-10 — „Napzárás” rejtése az Értéktár-csoportban', () => {
+  it('FR-9: ertektar módban az értéktáros NEM látja a "Napzárás" bejegyzést', () => {
+    expect(fkh026VisibleItemLabels('ertektar', ['ertektar'])).not.toContain('Napzárás')
+  })
+
+  it('FR-9 őr: a foertektar bypass VÁLTOZATLANUL látja', () => {
+    expect(fkh026VisibleItemLabels('ertektar', ['foertektar'])).toContain('Napzárás')
+  })
+
+  it('FR-10 őr: penztar módban a "Napzárás" VÁLTOZATLANUL látszik', () => {
+    expect(fkh026VisibleItemLabels('penztar', ['penztar'])).toContain('Napzárás')
+  })
+
+  it('FR-10 őr: a /closing/wizard route-gate szerepkör-uniója változatlan', () => {
+    // A bejegyzés MINDKÉT csoportban korlátlan item-szinten, de a csoportszintű
+    // canonicalRoles (PENZTAR_ROLES / ERTEKTAR_ROLES) érvényesül — az unió
+    // változatlansága bizonyítja, hogy a route-hozzáférés nem módosult.
+    // (PLAN GAP: a terv undefined-et várt "korlátlan bejegyzések" indokkal; a
+    // valós csoportszintű szerepkörök miatt a függvény az uniót adja — a lényeg
+    // a változatlanság, amit ez a pin rögzít.)
+    expect([...(effectiveCanonicalRolesForPath(menuGroups, '/closing/wizard') ?? [])].sort()).toEqual(
+      ['ertektar', 'penztar'],
+    )
   })
 })

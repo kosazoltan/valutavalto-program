@@ -482,6 +482,9 @@ class ClosingTolerancePerCurrencyFk066Test {
         @Mock private AuditLogService auditLogService;
         /** FK-066: közös tolerancia-forrás — az implementációs fázis veszi fel a konstruktorba. */
         @Mock private ClosingToleranceService closingToleranceService;
+        // FKH-036 WU-5: az új konstruktor-függőségek mockjai (pitfall 1).
+        @Mock private ShipmentRequestRepository shipmentRequestRepository;
+        @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
 
         private ClosingWizard wizard;
 

@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Moon,
   Calendar,
@@ -21,23 +22,29 @@ import { useTranslation } from 'react-i18next'
 import VaultClosingChecklistPanel from '../../components/closing/VaultClosingChecklistPanel'
 import type { ClosingWizardStatus } from '../../services/api/transactions'
 
+/**
+ * FKH-036 FR-1: a backend DailyDataPackage kibővített alakja. A JsonInclude.NON_NULL
+ * miatt MINDEN új mező OPCIONÁLIS — a backend null mezőket egyáltalán nem küldi, és a
+ * WU-1 előtti (legacy) válaszban ezek a mezők eleve hiányoznak. Az oldal ezért minden
+ * olvasást null-biztosan végez.
+ */
 interface EveningClosingPreview {
   branchId: string
-  branchName: string
-  date: string
-  status: 'NOT_STARTED' | 'PREVIEW' | 'SENT' | 'CONFIRMED'
-  balances: Array<{
+  branchName?: string
+  date?: string
+  status?: 'NOT_STARTED' | 'PREVIEW' | 'SENT' | 'CONFIRMED'
+  balances?: Array<{
     currency: string
     amount: number
     denominationBreakdown?: Array<{ denomination: number; count: number }>
   }>
-  transactionCount: number
-  totalBuyHuf: number
-  totalSellHuf: number
-  pendingSyncs: number
-  openReservations: number
-  warnings: string[]
-  packages: Array<{
+  transactionCount?: number
+  totalBuyHuf?: number
+  totalSellHuf?: number
+  pendingSyncs?: number
+  openReservations?: number
+  warnings?: string[]
+  packages?: Array<{
     packageId: string
     currency: string
     amount: number
@@ -98,6 +105,13 @@ export default function EveningClosingPage() {
     }
   }, [branchId, date])
 
+  // FKH-036 FR-2: automatikus betöltés mountkor és dátumváltáskor (a loadPreview
+  // useCallback [branchId, date] függőségei miatt). A StrictMode dupla-effekt a dev
+  // buildben két idempotens, írás-mentes GET-et jelent — elfogadott (terv 13. pitfall).
+  useEffect(() => {
+    void loadPreview()
+  }, [loadPreview])
+
   const loadReport = useCallback(async () => {
     if (!branchId) {
       toast.warning('Fiók szükséges')
@@ -123,9 +137,11 @@ export default function EveningClosingPage() {
       toast.warning('Címletezés szükséges', closingStatus.message)
       return
     }
+    // FKH-036 FR-1: a warnings opcionális (JsonInclude.NON_NULL) — null-biztos olvasás.
+    const warnings = preview.warnings ?? []
     if (
-      preview.warnings.length > 0 &&
-      !confirm(`${preview.warnings.length} figyelmeztetés van. Biztosan elküldi az esti zárást?`)
+      warnings.length > 0 &&
+      !confirm(`${warnings.length} figyelmeztetés van. Biztosan elküldi az esti zárást?`)
     )
       return
     try {
@@ -198,6 +214,41 @@ export default function EveningClosingPage() {
           <BarChart3 size={16} /> {reportLoading ? 'Betöltés...' : 'Napi jelentés'}
         </button>
       </div>
+
+      {/* FKH-036 FR-3/FR-8: becímletező CTA-szekció — a checklist ELŐTT, nem blokkoló. */}
+      {closingStatus?.vaultContext && (
+        <div data-testid="fkh036-denomination-cta" className="form-panel space-y-2">
+          <h2 className="font-semibold">Becímletezés</h2>
+          <div className="text-sm">
+            {closingStatus.denominationRecorded
+              ? closingStatus.exactMatch
+                ? 'A becímletezés egyezik a nyilvántartással.'
+                : closingStatus.message
+              : 'Erre a napra még nincs rögzített esti címletezés.'}
+          </div>
+          {(closingStatus.requiredCurrencies?.length ?? 0) > 0 && (
+            <div className="text-sm" data-testid="fkh036-required-currencies">
+              Kötelezően becímletezendő: {closingStatus.requiredCurrencies!.join(', ')}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Link
+              to={`/closing/denomination-entry/EVENING?returnTo=${encodeURIComponent('/evening-closing')}`}
+              className="form-button-primary"
+            >
+              Esti zárás címletezése
+            </Link>
+            {closingStatus.handlingFeeRequired && (
+              <Link
+                to={`/closing/denomination-entry/HANDLING_FEE?returnTo=${encodeURIComponent('/evening-closing')}`}
+                className="form-button"
+              >
+                Kezelési díj címletezése
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* FR-ZARUI-16..26: Értéktári zárás-előtti ellenőrzőlista — kísérő kontroll, nem blokkoló gate */}
       <VaultClosingChecklistPanel date={date} />
@@ -298,13 +349,13 @@ export default function EveningClosingPage() {
           </div>
 
           {/* Figyelmeztetések */}
-          {preview.warnings.length > 0 && (
+          {(preview.warnings ?? []).length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3 space-y-1">
               <div className="font-semibold flex items-center gap-1 text-yellow-700">
                 <AlertTriangle size={16} />
                 {t('closing.figyelmeztetesek')}
               </div>
-              {preview.warnings.map((w) => (
+              {(preview.warnings ?? []).map((w) => (
                 <div key={w} className="text-sm text-yellow-600">
                   • {w}
                 </div>
@@ -315,19 +366,23 @@ export default function EveningClosingPage() {
           {/* Összefoglaló */}
           <div className="grid grid-cols-4 gap-3">
             <div className="form-panel text-center">
-              <div className="text-lg font-bold">{preview.transactionCount}</div>
+              <div className="text-lg font-bold">{preview.transactionCount ?? 0}</div>
               <div className="text-sm text-gray-500">{t('closing.tranzakcio')}</div>
             </div>
             <div className="form-panel text-center bg-green-50">
-              <div className="text-lg font-bold text-green-700">{fmtHuf(preview.totalBuyHuf)}</div>
+              <div className="text-lg font-bold text-green-700">
+                {fmtHuf(preview.totalBuyHuf ?? 0)}
+              </div>
               <div className="text-sm text-gray-500">{t('misc.vetelHuf')}</div>
             </div>
             <div className="form-panel text-center bg-blue-50">
-              <div className="text-lg font-bold text-blue-700">{fmtHuf(preview.totalSellHuf)}</div>
+              <div className="text-lg font-bold text-blue-700">
+                {fmtHuf(preview.totalSellHuf ?? 0)}
+              </div>
               <div className="text-sm text-gray-500">{t('misc.eladasHuf')}</div>
             </div>
             <div className="form-panel text-center">
-              <div className="text-lg font-bold text-orange-600">{preview.pendingSyncs}</div>
+              <div className="text-lg font-bold text-orange-600">{preview.pendingSyncs ?? 0}</div>
               <div className="text-sm text-gray-500">{t('closing.szinkronVaro')}</div>
             </div>
           </div>
@@ -365,8 +420,12 @@ export default function EveningClosingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.packages.map((p) => (
-                    <tr key={p.packageId}>
+                  {(preview.packages ?? []).map((p, index) => (
+                    // Round-2 judge fix: a backend soronként VETÍT KI (ShipmentRequestItem-enként) —
+                    // egy több tételes FF shipment több azonos packageId-jú sort ad, ezért a kulcsnak
+                    // soronként egyedinek kell lennie (packageId+currency+index; a backend ORDER BY
+                    // determinisztikus, így a kulcs stabil).
+                    <tr key={`${p.packageId}|${p.currency}|${index}`}>
                       <td className="font-mono text-sm">{p.packageId}</td>
                       <td className="font-mono">{p.currency}</td>
                       <td className="text-right font-mono">{fmtNum(p.amount)}</td>

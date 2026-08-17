@@ -39,9 +39,14 @@ public class CentralReceivedDataController {
 
     @GetMapping("/status")
     public ResponseEntity<CentralReceivedDataOverviewDto> getStatus(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        LocalDate reportDate = date != null ? date : LocalDate.now();
-        log.info("GET /api/v1/central/received-data/status date={}", reportDate);
+        // FK-088 FR-3: a képernyő referencia-dátuma az intervallum VÉGE (endDate). Az új
+        // paraméter ADDITÍV: a régi kliensek `date` paraméterét továbbra is elfogadjuk
+        // (prioritás: endDate > date > ma). A service-aláírás nem változik.
+        LocalDate reportDate = endDate != null ? endDate : (date != null ? date : LocalDate.now());
+        log.info("GET /api/v1/central/received-data/status endDate={}, date={}, resolved={}",
+                endDate, date, reportDate);
         return ResponseEntity.ok(centralReceivedDataService.getOverview(reportDate));
     }
 }

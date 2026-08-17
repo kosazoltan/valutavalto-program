@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Coins, Save, AlertCircle, CheckCircle2, XCircle, PlayCircle } from 'lucide-react'
 import {
   denominationBalanceApi,
@@ -55,6 +55,20 @@ export default function DenominationEntryPage() {
   const category = parseCategory(categoryParam)
   // FR-4 / Scope OUT: egyezes-jelzes KIZAROLAG az esti zarasnal.
   const selfCheckEnabled = category === 'EVENING'
+
+  // FKH-036 FR-4: a hivo adja meg a visszateresi cimet (returnTo query-param).
+  const [searchParams] = useSearchParams()
+  /**
+   * FKH-036 FR-4: a hívó adja meg a visszatérési címet. Csak azonos-origójú, relatív
+   * útvonal fogadható el (open-redirect védelem: a '//' protokol-relatív prefix és a
+   * nem-'/' kezdet elutasítva); minden más esetben a pénztári alapértelmezés
+   * (CLOSING_DENOMINATION_EXIT_ROUTE) marad.
+   */
+  const exitRoute = useMemo(() => {
+    const raw = searchParams.get('returnTo')
+    if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw
+    return CLOSING_DENOMINATION_EXIT_ROUTE
+  }, [searchParams])
 
   const worker = useAuthStore(
     (s: { worker: { id?: string | number; branchId: string; role?: string } | null }) => s.worker,
@@ -427,7 +441,7 @@ export default function DenominationEntryPage() {
         </button>
         <button
           type="button"
-          onClick={() => navigate(CLOSING_DENOMINATION_EXIT_ROUTE)}
+          onClick={() => navigate(exitRoute)}
           data-testid="denomination-entry-exit"
           className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-bold rounded-lg shadow transition-colors"
         >

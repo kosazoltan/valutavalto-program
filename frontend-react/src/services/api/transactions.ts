@@ -1176,6 +1176,10 @@ export interface ClosingWizardStatus {
    */
   activeWizardId?: string | null
   activeWizardStatus?: string | null
+  /** FKH-036 FR-5: vault-kontextusban a blokkoló (kötelező) valutakódok; pénztár ágon hiányzik. */
+  requiredCurrencies?: string[] | null
+  /** FKH-036 FR-6: vault-kontextusban true, ha aznap volt KK kezelési díj mozgás. */
+  handlingFeeRequired?: boolean
 }
 
 export const closingWizardApi = {

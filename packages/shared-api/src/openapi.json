@@ -7,7 +7,7 @@
       "name": "PuzzleIR",
       "email": "info@puzzleir.hu"
     },
-    "version": "2.28.77"
+    "version": "2.28.81"
   },
   "servers": [
     {
@@ -31705,6 +31705,15 @@
         "operationId": "getStatus_8",
         "parameters": [
           {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
             "name": "date",
             "in": "query",
             "required": false,
@@ -49684,16 +49693,16 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
           },
           "pageSize": {
             "type": "integer",
             "format": "int32"
           },
-          "paged": {
-            "type": "boolean"
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
           },
           "unpaged": {
             "type": "boolean"
@@ -51280,10 +51289,10 @@
           "dailyChange": {
             "type": "number"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           }
         }
@@ -52590,11 +52599,11 @@
             "format": "date-time",
             "deprecated": true
           },
-          "bankBuyRate": {
+          "bankSellRate": {
             "type": "number",
             "deprecated": true
           },
-          "bankSellRate": {
+          "bankBuyRate": {
             "type": "number",
             "deprecated": true
           }
@@ -56088,10 +56097,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "lowBalance": {
+          "highBalance": {
             "type": "boolean"
           },
-          "highBalance": {
+          "lowBalance": {
             "type": "boolean"
           }
         }

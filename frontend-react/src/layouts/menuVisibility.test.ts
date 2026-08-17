@@ -35,13 +35,19 @@ function ctxFor(roles: string[], appMode: MenuVisibilityContext['appMode']): Men
 }
 
 describe('menuVisibility — konzisztens szigorítás (full mód)', () => {
-  it('FK-061: ertektar (ertektar mód) látja a "Napzárás" (/closing/wizard) menüpontot az Értéktár csoportban', () => {
+  it('FK-061 → FKH-036 FR-9: a "Napzárás" (/closing/wizard) bejegyzés MEGMARAD az Értéktár csoportban, de az értéktáros elől rejtett', () => {
+    // FKH-036 FR-9 felülírja az FK-061 "látható" kikötését: a bejegyzés törlés
+    // HELYETT hidden: true lett (FKH-026 v3 precedens) — a route-gate uniója és a
+    // felügyeleti bypass változatlan. A jelenlét- és címke-assertok változatlanok;
+    // a láthatóság-assert az új szerződés szerint fordított.
     const ctx = ctxFor(['ertektar'], 'ertektar')
     const group = groupByLabel('Értéktár (lokál)')
     const item = itemByPath(group, '/closing/wizard')
     expect(item).toBeDefined()
     expect(item.label).toBe('Napzárás')
-    expect(isMenuItemVisible(item, group, ctx)).toBe(true)
+    expect(isMenuItemVisible(item, group, ctx)).toBe(false)
+    // Őr: a felügyeleti bypass (SZERVER_ROLES) továbbra is látja (menuVisibility.ts:50).
+    expect(isMenuItemVisible(item, group, ctxFor(['foertektar'], 'ertektar'))).toBe(true)
   })
 
   it('FK-061 paritás: a "Napzárás" (/closing/wizard) a Pénztár és az Értéktár csoportban is szerepel', () => {
@@ -185,7 +191,9 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
   // csoportonként PONTOSAN pineljük, hogy a kivétel ne tágulhasson csendben.
   const FKH026_HIDDEN_PATHS: Record<string, string[]> = {
     'Pénztár (Valutaváltó)': ['/transit', '/transfers/new'],
-    'Értéktár (lokál)': ['/trades', '/transfers/new', '/transfer-documents', '/transit'],
+    // FKH-036 FR-9: a /closing/wizard az Értéktár-csoportban is rejtett lett —
+    // az item-sorrend szerinti utolsó rejtett bejegyzés.
+    'Értéktár (lokál)': ['/trades', '/transfers/new', '/transfer-documents', '/transit', '/closing/wizard'],
     Árfolyamkészítés: [],
   }
 

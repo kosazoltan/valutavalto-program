@@ -150,13 +150,18 @@ test.describe('FKH-026 — Értéktáros oldalsáv (FR-1, FR-3, FR-5, FR-6 + NFR
       'Új munkatárs felvétele',
       'Naplókönyv',
       'Napi zárás',
-      'Napzárás',
+      // FKH-036 FR-9: 'Napzárás' a Pénztári zárás-varázsló Értéktár-módban rejtett
+      // (hidden: true); láthatósági assert alább, a rejtett halmazban.
       'Havi zárás',
       'Ügyfelek',
       'Árfolyamok (nézet)',
     ]) {
       await expect(nav.getByRole('link', { name: label, exact: true })).toBeVisible()
     }
+
+    // FKH-036 FR-9: a pénztári Napzárás-varázsló menüpontja Értéktár-módban NEM látszik
+    // (a route /closing/wizard és a ClosingWizardPage változatlan — FR-10).
+    await expect(nav.getByRole('link', { name: 'Napzárás', exact: true })).toHaveCount(0)
   })
 })
 

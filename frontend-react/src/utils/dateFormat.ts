@@ -15,3 +15,18 @@ export function localIsoDate(d: Date = new Date()): string {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
+
+/**
+ * ISO dátum (YYYY-MM-DD) → magyar pontozott forma (YYYY.MM.DD.) — időzóna-biztos.
+ *
+ * Az érték mindig `<input type="date">`-ből / állapothoz kötött ISO stringből jön,
+ * ezért NEM Date-objektum round-trippel, hanem egyszerű `-` mentén darabolással
+ * alakítjuk (így nem csúszhat el időzóna szerint). Pl. "2026-05-22" → "2026.05.22.".
+ *
+ * @param isoDate YYYY-MM-DD formátumú dátum
+ * @returns YYYY.MM.DD. pontozott magyar dátum
+ */
+export function formatHuDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-')
+  return `${y}.${m}.${d}.`
+}

@@ -1,12 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 import EveningClosingPage from './EveningClosingPage'
 
 const mocks = vi.hoisted(() => ({
   preview: vi.fn(),
   send: vi.fn(),
   report: vi.fn(),
+  getStatus: vi.fn(),
+  navigate: vi.fn(),
   toastWarning: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -42,12 +45,19 @@ vi.mock('../../stores/authStore', () => ({
   useAuthStore: (selector: (state: unknown) => unknown) => selector(authState),
 }))
 
+vi.mock('react-router-dom', () => ({
+  Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
+  useNavigate: () => mocks.navigate,
+}))
+
 vi.mock('../../services/api/index', () => ({
   eveningClosingApi: {
     preview: mocks.preview,
     send: mocks.send,
     report: mocks.report,
   },
+  // FKH-036 WU-3: az oldal mountkor (auto-load) a closing-státuszt is lekéri.
+  closingWizardApi: { getStatus: mocks.getStatus },
 }))
 
 vi.mock('../../components/closing/VaultClosingChecklistPanel', () => ({
