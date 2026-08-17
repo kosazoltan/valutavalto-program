@@ -220,4 +220,48 @@ describe('EveningClosingPage — FKH-036', () => {
       '/closing/denomination-entry/EVENING?returnTo=%2Fevening-closing',
     )
   })
+
+  it('Round-2 rework: több tételes shipmentnél nincs React duplicate-key diagnózis és minden sor renderelődik', async () => {
+    // A backend ShipmentRequestItem-enként vetít ki csomag-sort — egy több tételes FF
+    // shipment több AZONOS packageId-jú sort ad. A kulcsnak soronként egyedinek kell
+    // lennie, különben React "Encountered two children with the same key" figyelmeztetést
+    // ad, és a sorok renderelése nem determinisztikus.
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.preview.mockResolvedValue({
+      ...FULL_SHAPE_PREVIEW,
+      packages: [
+        {
+          packageId: 'FF-20260618-0001',
+          currency: 'EUR',
+          amount: 5000,
+          sealNumber: 'PL-001',
+          destination: 'Budapest 02',
+        },
+        {
+          packageId: 'FF-20260618-0001',
+          currency: 'USD',
+          amount: 3000,
+          sealNumber: 'PL-001',
+          destination: 'Budapest 02',
+        },
+      ],
+    })
+
+    render(<EveningClosingPage />)
+
+    await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(1))
+
+    // Mindkét tétel-sor renderelődik (a két valuta-cellával és a közös csomagid kétszer).
+    expect(await screen.findByText('EUR')).toBeInTheDocument()
+    expect(await screen.findByText('USD')).toBeInTheDocument()
+    expect(screen.getAllByText('FF-20260618-0001')).toHaveLength(2)
+
+    // Nem érkezett React duplicate-key diagnózis a konzolra.
+    const duplicateKeyCalls = consoleErrorSpy.mock.calls.filter((args) =>
+      args.some((arg) => typeof arg === 'string' && arg.includes('children with the same key')),
+    )
+    expect(duplicateKeyCalls).toHaveLength(0)
+
+    consoleErrorSpy.mockRestore()
+  })
 })

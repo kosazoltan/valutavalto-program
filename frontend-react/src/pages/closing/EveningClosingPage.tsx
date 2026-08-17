@@ -420,8 +420,12 @@ export default function EveningClosingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(preview.packages ?? []).map((p) => (
-                    <tr key={p.packageId}>
+                  {(preview.packages ?? []).map((p, index) => (
+                    // Round-2 judge fix: a backend soronként VETÍT KI (ShipmentRequestItem-enként) —
+                    // egy több tételes FF shipment több azonos packageId-jú sort ad, ezért a kulcsnak
+                    // soronként egyedinek kell lennie (packageId+currency+index; a backend ORDER BY
+                    // determinisztikus, így a kulcs stabil).
+                    <tr key={`${p.packageId}|${p.currency}|${index}`}>
                       <td className="font-mono text-sm">{p.packageId}</td>
                       <td className="font-mono">{p.currency}</td>
                       <td className="text-right font-mono">{fmtNum(p.amount)}</td>
