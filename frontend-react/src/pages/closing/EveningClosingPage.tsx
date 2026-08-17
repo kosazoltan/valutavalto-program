@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Moon,
   Calendar,
@@ -213,6 +214,41 @@ export default function EveningClosingPage() {
           <BarChart3 size={16} /> {reportLoading ? 'Betöltés...' : 'Napi jelentés'}
         </button>
       </div>
+
+      {/* FKH-036 FR-3/FR-8: becímletező CTA-szekció — a checklist ELŐTT, nem blokkoló. */}
+      {closingStatus?.vaultContext && (
+        <div data-testid="fkh036-denomination-cta" className="form-panel space-y-2">
+          <h2 className="font-semibold">Becímletezés</h2>
+          <div className="text-sm">
+            {closingStatus.denominationRecorded
+              ? closingStatus.exactMatch
+                ? 'A becímletezés egyezik a nyilvántartással.'
+                : closingStatus.message
+              : 'Erre a napra még nincs rögzített esti címletezés.'}
+          </div>
+          {(closingStatus.requiredCurrencies?.length ?? 0) > 0 && (
+            <div className="text-sm" data-testid="fkh036-required-currencies">
+              Kötelezően becímletezendő: {closingStatus.requiredCurrencies!.join(', ')}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Link
+              to={`/closing/denomination-entry/EVENING?returnTo=${encodeURIComponent('/evening-closing')}`}
+              className="form-button-primary"
+            >
+              Esti zárás címletezése
+            </Link>
+            {closingStatus.handlingFeeRequired && (
+              <Link
+                to={`/closing/denomination-entry/HANDLING_FEE?returnTo=${encodeURIComponent('/evening-closing')}`}
+                className="form-button"
+              >
+                Kezelési díj címletezése
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* FR-ZARUI-16..26: Értéktári zárás-előtti ellenőrzőlista — kísérő kontroll, nem blokkoló gate */}
       <VaultClosingChecklistPanel date={date} />
