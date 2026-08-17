@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   Moon,
   Calendar,
@@ -103,6 +103,13 @@ export default function EveningClosingPage() {
       setLoading(false)
     }
   }, [branchId, date])
+
+  // FKH-036 FR-2: automatikus betöltés mountkor és dátumváltáskor (a loadPreview
+  // useCallback [branchId, date] függőségei miatt). A StrictMode dupla-effekt a dev
+  // buildben két idempotens, írás-mentes GET-et jelent — elfogadott (terv 13. pitfall).
+  useEffect(() => {
+    void loadPreview()
+  }, [loadPreview])
 
   const loadReport = useCallback(async () => {
     if (!branchId) {
