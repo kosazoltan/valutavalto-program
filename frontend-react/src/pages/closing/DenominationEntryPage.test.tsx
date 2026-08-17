@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DenominationEntryPage from './DenominationEntryPage'
@@ -31,9 +31,13 @@ const mocks = vi.hoisted(() => ({
 
 let categoryParam = 'EVENING'
 
+// FKH-036 FR-4: a useSearchParams mockja — a returnTo query-paraméter vezérli a Kilépés célját.
+let searchParamsValue = new URLSearchParams()
+
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mocks.navigate,
   useParams: () => ({ category: categoryParam }),
+  useSearchParams: () => [searchParamsValue, vi.fn()],
 }))
 
 vi.mock('../../stores/authStore', () => ({
@@ -118,6 +122,7 @@ function renderPage() {
 beforeEach(() => {
   vi.clearAllMocks()
   categoryParam = 'EVENING'
+  searchParamsValue = new URLSearchParams()
   mocks.currencyGetActive.mockResolvedValue([{ id: 1, code: 'EUR', name: 'Euró' }])
   mocks.denominationGetByCurrencyId.mockResolvedValue(EUR_DENOMINATIONS)
   mocks.balancesGetByCurrency.mockResolvedValue([])
@@ -315,5 +320,41 @@ describe('DenominationEntryPage — FK-078', () => {
     expect(alert).toHaveTextContent('nem tölthető be')
     // A sikeres részeredmény (a címlettörzs) ettől még megjelenik.
     expect(screen.getByTestId('denomination-entry-qty-10')).toBeInTheDocument()
+  })
+
+  // ——— FKH-036 FR-4: kontextus-érzékeny Kilépés útvonal ———
+
+  it('FKH-036 FR-4: returnTo paraméterrel a Kilépés az Értéktár Napi zárás oldalra visz', async () => {
+    searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/evening-closing')
+  })
+
+  it('FKH-036 FR-4: returnTo nélkül a Kilépés változatlanul a /cashier-re visz', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
+  })
+
+  it('FKH-036 FR-4 biztonság: abszolút/protokoll-relatív returnTo elutasítva', async () => {
+    const user = userEvent.setup()
+
+    searchParamsValue = new URLSearchParams('returnTo=https://evil.example')
+    renderPage()
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+    expect(mocks.navigate).toHaveBeenLastCalledWith('/cashier')
+
+    cleanup()
+    searchParamsValue = new URLSearchParams('returnTo=//evil.example')
+    renderPage()
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+    expect(mocks.navigate).toHaveBeenLastCalledWith('/cashier')
   })
 })
