@@ -221,6 +221,39 @@ describe('EveningClosingPage — FKH-036', () => {
     )
   })
 
+  // ——— FKH-036 kieg. #2 FR-14: valuta-CTA → checklist → kezelési díj CTA sorrend ———
+
+  it('FKH-036 kieg. #2 FR-14: handlingFeeRequired esetén a kezelési díj CTA a checklist UTÁN van', async () => {
+    mocks.getStatus.mockResolvedValue({ ...VAULT_STATUS, handlingFeeRequired: true })
+    render(<EveningClosingPage />)
+
+    const cta = await screen.findByTestId('fkh036-denomination-cta')
+    const checklist = screen.getByTestId('vault-closing-checklist')
+    const fee = await screen.findByTestId('fkh036-handling-fee-cta')
+
+    // DOM-sorrend: valuta-CTA < checklist < kezelési díj CTA.
+    expect(cta.compareDocumentPosition(checklist) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(checklist.compareDocumentPosition(fee) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    const feeLink = within(fee).getByText('Kezelési díj címletezése')
+    expect(feeLink.getAttribute('href')).toBe(
+      '/closing/denomination-entry/HANDLING_FEE?returnTo=%2Fevening-closing',
+    )
+    // A kezelési díj CTA már NEM lehet a valuta-CTA panelen belül.
+    expect(within(cta).queryByText('Kezelési díj címletezése')).toBeNull()
+  })
+
+  it('FKH-036 kieg. #2 FR-14: handlingFeeRequired nélkül nincs kezelési díj CTA, a sorrend valuta-CTA → checklist', async () => {
+    // Default VAULT_STATUS (handlingFeeRequired: false).
+    render(<EveningClosingPage />)
+
+    const cta = await screen.findByTestId('fkh036-denomination-cta')
+    const checklist = screen.getByTestId('vault-closing-checklist')
+
+    expect(screen.queryByTestId('fkh036-handling-fee-cta')).toBeNull()
+    expect(cta.compareDocumentPosition(checklist) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('Round-2 rework: több tételes shipmentnél nincs React duplicate-key diagnózis és minden sor renderelődik', async () => {
     // A backend ShipmentRequestItem-enként vetít ki csomag-sort — egy több tételes FF
     // shipment több AZONOS packageId-jú sort ad. A kulcsnak soronként egyedinek kell
