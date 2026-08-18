@@ -14,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -50,9 +49,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  * Shipment-oldal (D2): a CANCELLED (sztornózott) szállítmány kizárva, a DELIVERED és a
  * REJECTED változatlanul benne marad (FR-2/FR-4).</p>
+ *
+ * <p>SZÁNDEKOSAN NINCS {@code @EnableJpaAuditing}: a Surefire suite egy JVM-en fut
+ * ({@code forkCount=1, reuseForks=true}). Az annotáció JVM-szinten aktiválja az
+ * auditingot, és felülírja a későbbi TestApplication-tesztek kézzel seedelt
+ * {@code createdAt} értékeit. CI-bizonyíték (PR #1635, 2026-08-18):
+ * {@code HufDaybookAnnualSequenceBackfillFrK2PostgresTest.stornoRowsGetOwnSequenceInBothTables}
+ * expected 1 but was 3 — az eredeti shipment {@code created_at}-je „most”-ra íródott,
+ * a {@code cancelled_at} július 1-jén maradt, ezért a sztornó-események kapták az 1–2.
+ * sorszámot. Precedens: {@code TransferPendingStornoPostgresTest},
+ * {@code DailyClosingNineStepsFk068PostgresTest},
+ * {@code EntityCreatedAtAuditingRegressionPostgresIT}. A Transfer
+ * {@code applyCreatedAtFallback()} védőhálója auditing nélkül is kitölti a NOT NULL
+ * {@code created_at}-et, ha a hívó nem ad értéket; ez a teszt explicit seedel.</p>
  */
 @Testcontainers
-@EnableJpaAuditing
 @SpringBootTest(
         classes = TestApplication.class,
         properties = {
