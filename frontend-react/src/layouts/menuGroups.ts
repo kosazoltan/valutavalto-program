@@ -86,6 +86,14 @@ export const menuGroups: MenuGroup[] = [
       { path: '/mobile', label: 'Mobil felügyelet', icon: Smartphone },
       { path: '/central/closing-control', label: 'Zárás beérkezés', icon: ClipboardCheck },
       { path: '/central/received-data', label: 'Beérkezett adatok', icon: FileText },
+      // FK-086 FR-5/FR-6: a napi ellenőrző lista a Riportok csoportból a Központba került;
+      // item-szintű canonicalRoles felülírja a csoport SZERVER_ROLES-át (teruleti_vezeto kizárva).
+      {
+        path: '/daily-check',
+        label: 'Napi ellenőrző lista',
+        icon: ClipboardCheck,
+        canonicalRoles: ['foertektar', 'ugyvezeto', 'belso_ellenor'],
+      },
     ],
   },
   {
@@ -326,12 +334,7 @@ export const menuGroups: MenuGroup[] = [
       { path: '/reports/central', label: 'Központi riportok (CSV)', icon: Building2 },
       { path: '/reports/nav', label: 'NAV adatszolgáltatás', icon: ShieldAlert },
       { path: '/daily-turnover', label: 'Napi forgalom', icon: TrendingUp },
-      {
-        path: '/daily-check',
-        label: 'Napi ellenőrző lista',
-        icon: ClipboardCheck,
-        canonicalRoles: ['foertektar', 'ugyvezeto', 'belso_ellenor'],
-      },
+      // FK-086 FR-5: a /daily-check bejegyzés a Központ csoportba került (fentebb).
       { path: '/profit', label: 'Nyereség (haszon)', icon: TrendingUp },
       { path: '/stock-snapshot', label: 'Készlet pillanatképek', icon: FileText },
       { path: '/booking-export', label: 'Könyvelés export', icon: Download },
