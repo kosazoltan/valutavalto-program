@@ -210,4 +210,25 @@ describe('ReceivedDataOverviewPage (FK-003 egyeztetés)', () => {
     expect(mockStatus).not.toHaveBeenCalledWith('2026-05-20')
     expect(screen.getByTestId('received-data-status-caption').textContent).toContain('2026.05.22.')
   })
+
+  // A-6 (pótlás d5753273): üres endDate mellett nincs undefined-es felirat
+  it('A-6: üres endDate mellett nincs undefined-es felirat', async () => {
+    mockRun.mockResolvedValue(result)
+    render(<ReceivedDataOverviewPage />)
+
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const yesterdayIso = localIsoDate(d)
+    const inputs = screen.getAllByDisplayValue(yesterdayIso)
+    // Az intervallum-választó második inputja a Dátum -ig (endDate)
+    fireEvent.change(inputs[1]!, { target: { value: '' } })
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() => expect(mockStatus).toHaveBeenCalledWith(''))
+    // A ticket elfogadja: a felirat hiányzik VAGY nem tartalmaz undefined-et.
+    // Az A-opció (caption-guard) hiányzó elemet eredményez.
+    const caption = screen.queryByTestId('received-data-status-caption')
+    expect(caption === null || !caption.textContent?.includes('undefined')).toBe(true)
+  })
 })

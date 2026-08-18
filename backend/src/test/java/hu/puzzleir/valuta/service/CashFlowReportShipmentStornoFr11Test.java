@@ -48,6 +48,14 @@ import static org.mockito.Mockito.when;
  * így a pénzforgalmi összesítő felfelé torzult. A transfer-ág (FR-11) már helyesen képezte
  * az előjeles {@code -SZ} párt; ezek a tesztek a shipment-ág azonos viselkedését rögzítik.</p>
  *
+ * <p><b>FELÜLÍRÁS (FKH-030 kieg.):</b> az FR-11 két-soros sztornó-megjelenítését a megrendelői
+ * döntés felülírta ({@code fejlesztesi-keres-ertektar-fkh030-kiegeszites-sztorno-kizaras.md}
+ * §1): a sztornózott tétel egyáltalán nem szerepelhet a riportban. A lekérdezés-szintű
+ * kizárás mérvadó bizonyítéka a {@code CashFlowReportStornoExclusionFkh030KiegPostgresTest}
+ * (Testcontainers, valós JPQL) — a repository-k itt mockoltak, ezért a kizárás ezen a
+ * szinten nem bizonyítható. A régi két-soros esetek helyett ezért az ÚJ szerződést rögzítő
+ * esetek szerepelnek; a REJECTED (FR-4) és multi-tenant esetek változatlanok.</p>
+ *
  * <p>Docker NÉLKÜL fut: a sorképzés a repository-k mockolásával teljesen kiváltható.</p>
  */
 @ExtendWith(MockitoExtension.class)
@@ -97,57 +105,50 @@ class CashFlowReportShipmentStornoFr11Test {
         SecurityContextHolder.clearContext();
     }
 
+    /**
+     * FKH-030 kieg. FR-2 — ÚJ szerződés: a lekérdezés a CANCELLED szállítmányt már egyáltalán
+     * nem adja vissza (query-szintű kizárás), ezért a service elé üres lista érkezik: a
+     * riportban sem eredeti, sem {@code -SZ} sor nem keletkezhet. (A tényleges kizárás
+     * bizonyítéka a CashFlowReportStornoExclusionFkh030KiegPostgresTest — itt a repository
+     * mockolt, ezért a fix-utáni kontraktust rögzítjük.)
+     */
     @Test
-    @DisplayName("FR-11: a sztornózott FF szállítmány EREDETI és NEGÁLT '-SZ' sort is kap")
-    void cancelledShipmentProducesNegatedStornoRow() {
+    @DisplayName("FKH-030 kieg. FR-2: a lekerdezes mar nem ad vissza CANCELLED szallitmanyt — a riportban semmilyen sora nincs")
+    void cancelledShipmentNeverReachesTheReport() {
         when(shipmentRequestRepository.findCashFlowReportShipments(any(), any(), any(), any()))
-                .thenReturn(List.of(shipment(ShipmentRequestStatus.CANCELLED,
+                .thenReturn(List.of());
+
+        CashFlowReportDto report = service.getReport(FROM, TO);
+
+        assertThat(report.getRows())
+                .as("A sztornózott szállítmány a lekérdezésből kizárva — sem eredeti, sem -SZ sor")
+                .isEmpty();
+        assertThat(report.getRows().stream()
+                .map(CashFlowReportRowDto::getReceiptNumber)
+                .filter(r -> r != null && r.endsWith("-SZ")))
+                .isEmpty();
+    }
+
+    /**
+     * FKH-030 kieg. — a shipment-ág sztornó-feltétele {@code cancelledAt != null ÉS
+     * status = CANCELLED} (CashFlowReportService). Ha egy DELIVERED szállítmányon beragadt
+     * {@code cancelledAt} van, de a státusza nem CANCELLED, az NEM sztornó: pontosan egy
+     * sor keletkezik, ellensor nélkül. Ez a service-ág védelme a query-kizárás mellett.
+     */
+    @Test
+    @DisplayName("FKH-030 kieg.: beragadt cancelledAt sem kepez -SZ sort nem-CANCELLED statuszon")
+    void staleCancelledAtOnDeliveredShipmentProducesSingleRow() {
+        when(shipmentRequestRepository.findCashFlowReportShipments(any(), any(), any(), any()))
+                .thenReturn(List.of(shipment(ShipmentRequestStatus.DELIVERED,
                         LocalDateTime.of(2026, 8, 6, 10, 0))));
 
         CashFlowReportDto report = service.getReport(FROM, TO);
 
         assertThat(report.getRows())
-                .as("Egy tételes sztornózott szállítmány két sort ad: eredeti + sztornó")
-                .hasSize(2);
-
-        CashFlowReportRowDto original = rowByReceipt(report, "FF-2026-0001");
-        CashFlowReportRowDto storno = rowByReceipt(report, "FF-2026-0001-SZ");
-
-        assertThat(original.getHandedOverAmount())
-                .as("Az eredeti sor a leszállított összeget mutatja")
-                .isEqualByComparingTo("1000.00");
-        assertThat(original.isStorno()).isFalse();
-
-        assertThat(storno.getHandedOverAmount())
-                .as("FR-11: a sztornó-sor ELŐJELES ellensor — enélkül a riport felfelé torzul")
-                .isEqualByComparingTo("-1000.00");
-        assertThat(storno.isStorno()).isTrue();
-        assertThat(storno.getCurrency())
-                .as("A sztornó-sor ugyanazt a valutát viszi, mint az eredeti")
-                .isEqualTo("EUR");
-    }
-
-    /**
-     * A javítás lényege számokban: a két sor összege NULLA. Ez az az invariáns, amit a
-     * hiányzó sztornó-ág megsértett (1000 maradt a pénzforgalmi összesítőben).
-     */
-    @Test
-    @DisplayName("FR-11: a sztornózott szállítmány NETTÓ hatása nulla a pénzforgalomra")
-    void cancelledShipmentNetsToZero() {
-        when(shipmentRequestRepository.findCashFlowReportShipments(any(), any(), any(), any()))
-                .thenReturn(List.of(shipment(ShipmentRequestStatus.CANCELLED,
-                        LocalDateTime.of(2026, 8, 6, 10, 0))));
-
-        CashFlowReportDto report = service.getReport(FROM, TO);
-
-        BigDecimal net = report.getRows().stream()
-                .map(CashFlowReportRowDto::getHandedOverAmount)
-                .filter(v -> v != null)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        assertThat(net)
-                .as("Az eredeti és a sztornó-sor kioltja egymást")
-                .isEqualByComparingTo("0.00");
+                .as("Nem-CANCELLED státuszon a beragadt cancelledAt nem sztornó-jel")
+                .hasSize(1);
+        assertThat(report.getRows().get(0).isStorno()).isFalse();
+        assertThat(report.getRows().get(0).getReceiptNumber()).isEqualTo("FF-2026-0001");
     }
 
     /**
@@ -184,32 +185,6 @@ class CashFlowReportShipmentStornoFr11Test {
                 .as("Az elutasítás nem pénzmozgás-visszafordítás, ezért nincs ellensora")
                 .hasSize(1);
         assertThat(report.getRows().get(0).isStorno()).isFalse();
-    }
-
-    @Test
-    @DisplayName("FR-11: több valutás sztornózott szállítmány TÉTELENKÉNT kap ellensort")
-    void multiCurrencyCancelledShipmentNegatesEachItem() {
-        when(currencyRepository.findAllById(any()))
-                .thenReturn(List.of(currency(1L, "EUR"), currency(2L, "USD")));
-        ShipmentRequest shipment = shipment(ShipmentRequestStatus.CANCELLED,
-                LocalDateTime.of(2026, 8, 6, 10, 0));
-        shipment.setItems(List.of(
-                item(1L, new BigDecimal("1000.00")),
-                item(2L, new BigDecimal("250.00"))));
-        when(shipmentRequestRepository.findCashFlowReportShipments(any(), any(), any(), any()))
-                .thenReturn(List.of(shipment));
-
-        CashFlowReportDto report = service.getReport(FROM, TO);
-
-        assertThat(report.getRows()).hasSize(4);
-        assertThat(report.getRows().stream().filter(CashFlowReportRowDto::isStorno).count())
-                .as("Mindkét valuta-tétel külön ellensort kap")
-                .isEqualTo(2);
-        BigDecimal net = report.getRows().stream()
-                .map(CashFlowReportRowDto::getHandedOverAmount)
-                .filter(v -> v != null)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        assertThat(net).isEqualByComparingTo("0.00");
     }
 
     // ============================ MULTI-TENANT ============================
@@ -258,13 +233,6 @@ class CashFlowReportShipmentStornoFr11Test {
     }
 
     // ============================ FIXTURE ============================
-
-    private static CashFlowReportRowDto rowByReceipt(CashFlowReportDto report, String receiptNumber) {
-        return report.getRows().stream()
-                .filter(r -> receiptNumber.equals(r.getReceiptNumber()))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Nincs ilyen bizonylatszámú sor: " + receiptNumber));
-    }
 
     private static ShipmentRequest shipment(ShipmentRequestStatus status, LocalDateTime cancelledAt) {
         ShipmentRequest shipment = ShipmentRequest.builder()

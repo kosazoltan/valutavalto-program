@@ -135,3 +135,20 @@ export function currencyColorClass(code: string): string {
   }
   return map[code] ?? 'text-secondary-700'
 }
+
+/**
+ * FKH-037 FR-5: a Mozgások előzmény TYPE cellája a bejelentkezett értéktár szemszögéből
+ * mutat irányt. Ha egyik vég sem a saját fiók, a technikai típuscímke marad (TBD-2).
+ *
+ * Önátadás-él (fromBranchId === toBranchId === workerBranchId): a szabályok sorrendje
+ * szerint 'Átadás' nyer — ez szándékos, nem hiba.
+ */
+export function movementDirectionLabel(
+  movement: { fromBranchId?: string | null; toBranchId?: string | null },
+  workerBranchId?: string | null,
+): 'Átadás' | 'Átvétel' | null {
+  if (!workerBranchId) return null
+  if (movement.fromBranchId === workerBranchId) return 'Átadás'
+  if (movement.toBranchId === workerBranchId) return 'Átvétel'
+  return null
+}

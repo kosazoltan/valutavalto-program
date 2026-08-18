@@ -305,6 +305,44 @@ class ClosingWizardMandatoryCurrenciesFkh036Test {
     }
 
     // =====================================================================
+    // FKH-036 kieg. #2 FR-13: a blokkoló gate-üzenetek ékezetes alakja
+    // =====================================================================
+
+    @Test
+    @DisplayName("FKH-036 kieg. #2 FR-13: a blokkolo vault gate-uzenet ekezetes")
+    void vaultGateMessageIsAccented() {
+        // Kötelező valuta (HUF) eltérése → exactMatch=false → vault-ág gate-üzenete.
+        stubVaultClosing(List.of("HUF"), List.of(new BigDecimal("100")), List.of(new BigDecimal("90")));
+        when(shipmentRequestRepository.findMovedCurrencyCodesForDate(
+                eq(COMPANY_ID), eq(BRANCH_ID), eq(CLOSING_DATE), any())).thenReturn(List.of());
+        when(shipmentHandlingFeeRepository.existsDailyMovementForSourceBranch(
+                COMPANY_ID, BRANCH_ID, CLOSING_DATE)).thenReturn(false);
+
+        ClosingWizardStatusDto dto = vaultStatus();
+
+        assertThat(dto.isExactMatch()).isFalse();
+        assertThat(dto.getMessage()).isEqualTo(
+                "Az esti zárás csak a valutánkénti címletezés és a currency_stock teljes egyezése után küldhető.");
+    }
+
+    @Test
+    @DisplayName("FKH-036 kieg. #2 FR-13: a hianyzo cimletezes uzenete is ekezetes")
+    void missingDenominationMessageIsAccented() {
+        stubVaultClosing(List.of("HUF"), List.of(new BigDecimal("100")), List.of(new BigDecimal("100")));
+        // Felülírás: nincs rögzített esti címletezés erre a napra.
+        when(denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
+                BRANCH_ID, CLOSING_DATE, DenominationCategory.EVENING)).thenReturn(false);
+        when(shipmentRequestRepository.findMovedCurrencyCodesForDate(
+                eq(COMPANY_ID), eq(BRANCH_ID), eq(CLOSING_DATE), any())).thenReturn(List.of());
+        when(shipmentHandlingFeeRepository.existsDailyMovementForSourceBranch(
+                COMPANY_ID, BRANCH_ID, CLOSING_DATE)).thenReturn(false);
+
+        ClosingWizardStatusDto dto = vaultStatus();
+
+        assertThat(dto.getMessage()).isEqualTo("Nincs rögzített esti címletezés erre a napra.");
+    }
+
+    // =====================================================================
     // (h): B2 regresszió — egyetlen üzleti dátum-dimenzió (requestDate)
     // =====================================================================
 

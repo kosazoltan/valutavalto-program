@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { localIsoDate } from './dateFormat'
+import { localIsoDate, formatHuDate } from './dateFormat'
 
 describe('localIsoDate', () => {
   it('formats a local date as YYYY-MM-DD', () => {
@@ -31,4 +31,27 @@ describe('localIsoDate', () => {
 
 afterEach(() => {
   vi.useRealTimers()
+})
+
+describe('formatHuDate', () => {
+  it('ISO dátumot pontozott magyar formába alakít', () => {
+    expect(formatHuDate('2026-05-22')).toBe('2026.05.22.')
+  })
+
+  // A-6 (pótlás d5753273): üres/rossz bemenet → '' (sosem undefined-es szöveg)
+  it('üres stringre üres stringet ad', () => {
+    expect(formatHuDate('')).toBe('')
+  })
+
+  it('csak whitespace-re üres stringet ad', () => {
+    expect(formatHuDate('   ')).toBe('')
+  })
+
+  it('nem-ISO bemenetre üres stringet ad', () => {
+    expect(formatHuDate('nem-datum')).toBe('')
+  })
+
+  it('nem nulla-padded rövid formát nem fogad el', () => {
+    expect(formatHuDate('2026-5-2')).toBe('')
+  })
 })

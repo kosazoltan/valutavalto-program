@@ -80,11 +80,16 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'daily-checklist',
         title: 'Napi ellenőrző lista',
-        description: 'Napi ellenőrzési feladatok és jelentések',
-        route: '/daily-checklist',
+        // FK-086 FR-2: jóváhagyott leírás (szándékosan literál, nem i18n kulcs — NFR-2).
+        description:
+          'Valutánkénti napi mérleg — nyitó- és zárókészlet, forgalom, bank- és pénztármozgások',
+        // FK-086 FR-1: a valódi riport útvonala a /daily-check (DailyCheckPage).
+        route: '/daily-check',
         status: 'ready',
         icon: ClipboardCheck,
-        roles: ['foertektar', 'ugyvezeto', 'belso_ellenor', 'teruleti_vezeto'],
+        // FK-086 FR-3: a fallback roles-ból kiesik a teruleti_vezeto (a szerver-oldali
+        // manifest az elsődleges kapu — ld. CentralModuleManifest, FK-086 FR-4).
+        roles: ['foertektar', 'ugyvezeto', 'belso_ellenor'],
       },
       {
         id: 'received-data',

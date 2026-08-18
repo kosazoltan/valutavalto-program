@@ -353,11 +353,14 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
      *       automatikusan teljesul.</li>
      * </ul>
      *
-     * <p>VALTOZATLANUL atvett a naplokonyv-mintabol (FR-11, TBD-3): a {@code -SZ} sorok
-     * kizarasa (azok kulon, szamitott sorkent jelennek meg) es az ervenytelenitett
-     * bizonylatok kezelese — a CANCELLED/REJECTED tetel csak akkor latszik, ha valodi
-     * storno-uton szunt meg ({@code isCancelled AND cancellationReason IS NOT NULL}),
-     * mert olyankor ket valos kassza-mozgas tortent.</p>
+     * <p>FKH-030 kieg. FR-1/FR-4 (a regi, ket-soros FR-11 megjelenitest feluliro megrendeloi
+     * dontes): a SZTORNOZOTT bizonylat TELJESEN kizarva — sem eredeti, sem szamitott
+     * {@code -SZ} sorkent nem szerepel. Ket klauzula egyutt: (1) minden CANCELLED statuszu
+     * tetel kizarva (a stornoPending-elt ES a legacy cancel()-maradvany is); (2) az
+     * {@code isCancelled = true AND cancellationReason IS NOT NULL} storno-jelu tetel is
+     * kizarva, KIVEVE a REJECTED statuszuakat — a {@code TransferService.reject()} ugyanis
+     * a stornoval KOZOS adatmodellen allitja be ugyanazt a ket mezot (ticket C1), igy a ket
+     * ut csak status alapjan valik el. A REJECTED viselkedese valtozatlan (FR-4).</p>
      *
      * <p>Az irany (atadas/atvetel) meghatarozasa a SZOLGALTATAS dolga: ugyanaz a bizonylat
      * a kuldo fioknal atadas, a fogadonal atvetel — ezert itt MINDKET oldalt visszaadjuk,
@@ -373,9 +376,11 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
               AND (t.transferNumber LIKE 'AT-%' OR t.transferNumber LIKE 'AV-%'
                 OR t.transferNumber LIKE 'FF-%' OR t.transferNumber LIKE 'UF-%')
               AND t.transferNumber NOT LIKE '%-SZ'
-              AND (t.status NOT IN (hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED,
-                                    hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED)
-                OR (t.isCancelled = true AND t.cancellationReason IS NOT NULL))
+              AND t.status <> hu.puzzleir.valuta.entity.Transfer$TransferStatus.CANCELLED
+              AND (t.status = hu.puzzleir.valuta.entity.Transfer$TransferStatus.REJECTED
+                OR t.isCancelled IS NULL
+                OR t.isCancelled = false
+                OR t.cancellationReason IS NULL)
             ORDER BY t.transferDate ASC, t.createdAt ASC, t.transferNumber ASC
             """)
     List<Transfer> findCashFlowReportTransfers(@Param("companyId") UUID companyId,

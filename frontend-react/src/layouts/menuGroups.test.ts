@@ -338,8 +338,37 @@ describe('FKH-036 FR-9/FR-10 — „Napzárás” rejtése az Értéktár-csopor
     // (PLAN GAP: a terv undefined-et várt "korlátlan bejegyzések" indokkal; a
     // valós csoportszintű szerepkörök miatt a függvény az uniót adja — a lényeg
     // a változatlanság, amit ez a pin rögzít.)
-    expect([...(effectiveCanonicalRolesForPath(menuGroups, '/closing/wizard') ?? [])].sort()).toEqual(
-      ['ertektar', 'penztar'],
-    )
+    expect(
+      [...(effectiveCanonicalRolesForPath(menuGroups, '/closing/wizard') ?? [])].sort(),
+    ).toEqual(['ertektar', 'penztar'])
+  })
+})
+
+describe('FK-086 — Napi ellenőrző lista a Központ csoportban', () => {
+  it('FR-5: a Riportok csoport NEM tartalmazza a /daily-check bejegyzést', () => {
+    expect(
+      menuGroups.find((g) => g.label === 'Riportok')!.items.some((i) => i.path === '/daily-check'),
+    ).toBe(false)
+  })
+
+  it('FR-6: a Központ csoport a /central/received-data UTÁN közvetlenül tartalmazza', () => {
+    const kozpont = menuGroups.find((g) => g.label === 'Központ')!
+    const paths = kozpont.items.map((i) => i.path)
+    expect(paths.indexOf('/daily-check')).toBe(paths.indexOf('/central/received-data') + 1)
+    const item = kozpont.items.find((i) => i.path === '/daily-check')!
+    expect(item.label).toBe('Napi ellenőrző lista')
+    expect([...(item.canonicalRoles ?? [])].sort()).toEqual([
+      'belso_ellenor',
+      'foertektar',
+      'ugyvezeto',
+    ])
+  })
+
+  it('a /daily-check route-gate szerepkör-uniója változatlan (App.tsx MenuRoleGate)', () => {
+    expect([...(effectiveCanonicalRolesForPath(menuGroups, '/daily-check') ?? [])].sort()).toEqual([
+      'belso_ellenor',
+      'foertektar',
+      'ugyvezeto',
+    ])
   })
 })

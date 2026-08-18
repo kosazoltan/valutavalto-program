@@ -18,7 +18,7 @@ import {
 } from '../../services/api'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
-import { localIsoDate, formatHuDate } from '../../utils/dateFormat'
+import { localIsoDate, formatHuDate, isIsoDate } from '../../utils/dateFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
 
 type ReconFilter = 'all' | 'match' | 'mismatch'
@@ -206,7 +206,9 @@ export default function ReceivedDataOverviewPage() {
         )}
 
         {/* FK-088 FR-3: az állapot-sáv referencia-dátumának jelölése (lekérdezett END dátum). */}
-        {receivedDataOverview != null && (
+        {/* A-6 (option A): üres endDate → nincs felirat (a backend „ma" fallbackja
+            változatlan, de nem hazudunk dátumot). */}
+        {receivedDataOverview != null && isIsoDate(endDate) && (
           <div data-testid="received-data-status-caption" className="text-xs text-slate-500">
             {t('centralReceivedData.statusOnDate', { date: formatHuDate(endDate) })}
           </div>

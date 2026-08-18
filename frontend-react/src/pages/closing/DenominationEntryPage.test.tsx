@@ -253,7 +253,9 @@ describe('DenominationEntryPage — FK-078', () => {
     expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
-  it('FR-5: a „Napi zárás végrehajtása” gomb a zárás-varázslóra visz', async () => {
+  // FR-12 (FKH-036 kieg. #2): returnTo NÉLKÜL a viselkedés VÁLTOZATLAN — a beforeEach
+  // üres URLSearchParams-e garantálja a pénztári kontextust (ticket C8).
+  it('FR-5 / FR-12 (FKH-036 kieg. #2): a „Napi zárás végrehajtása” gomb returnTo nélkül a zárás-varázslóra visz', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -262,6 +264,45 @@ describe('DenominationEntryPage — FK-078', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/closing/wizard')
     // FR-2/FR-5 elhatárolás: a zárás indítása nem mentés.
     expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
+  })
+
+  // ——— FKH-036 kieg. #2 FR-11: vault-kontextusú „Napi zárás végrehajtása” ———
+  // A „küldés nélkül" assert strukturális: az oldal soha nem importál eveningClosingApi-t —
+  // a vi.mock-blokk (:59-67) a három ismert API-n kívül mást nem mockol, és a navigate-mock
+  // hívásain kívül semmilyen zárás-küldés nem figyelhető.
+
+  it('FKH-036 kieg. #2 FR-11: vault returnTo esetén a „Napi zárás végrehajtása” a Napi zárás oldalra visz, küldés nélkül', async () => {
+    searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-start-closing'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/evening-closing')
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/closing/wizard')
+    expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
+  })
+
+  it('FKH-036 kieg. #2 FR-11: vault kontextusban a két gomb ugyanoda visz (Kilépés === Napi zárás végrehajtása)', async () => {
+    searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-start-closing'))
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+
+    expect(mocks.navigate).toHaveBeenNthCalledWith(1, '/evening-closing')
+    expect(mocks.navigate).toHaveBeenNthCalledWith(2, '/evening-closing')
+  })
+
+  it('FKH-036 kieg. #2 FR-11 biztonság: protokoll-relatív returnTo esetén a gomb a pénztári varázslóra esik vissza', async () => {
+    searchParamsValue = new URLSearchParams('returnTo=//evil.example')
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-start-closing'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/closing/wizard')
   })
 
   // ——— Átvett lefedettség a törölt DenominationPage.fk072 / fk077-fk079 tesztekből ———

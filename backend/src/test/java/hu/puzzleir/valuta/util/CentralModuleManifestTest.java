@@ -64,4 +64,18 @@ class CentralModuleManifestTest {
         assertThat(modules)
                 .containsExactlyElementsOf(CentralModuleManifest.allModuleIds());
     }
+
+    // FK-086 FR-4: a daily-checklist modul a teruleti_vezeto elől elzárt; a három
+    // jóváhagyott szerepkör (foertektar, ugyvezeto, belso_ellenor) továbbra is látja.
+    @Test
+    void dailyChecklistExcludesTeruletiVezetoButKeepsTheThreeApprovedRoles() {
+        assertThat(CentralModuleManifest.allowedModules(
+                List.of("teruleti_vezeto"), "teruleti_vezeto", null))
+                .doesNotContain("daily-checklist");
+        for (String role : List.of("foertektar", "ugyvezeto", "belso_ellenor")) {
+            assertThat(CentralModuleManifest.allowedModules(List.of(role), role, null))
+                    .as("daily-checklist for %s", role)
+                    .contains("daily-checklist");
+        }
+    }
 }

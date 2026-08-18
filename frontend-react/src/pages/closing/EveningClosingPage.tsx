@@ -180,7 +180,9 @@ export default function EveningClosingPage() {
           {preview && preview.status !== 'SENT' && preview.status !== 'CONFIRMED' && (
             <button
               onClick={handleSend}
-              disabled={sending || Boolean(closingStatus?.vaultContext && !closingStatus.exactMatch)}
+              disabled={
+                sending || Boolean(closingStatus?.vaultContext && !closingStatus.exactMatch)
+              }
               className="form-button-primary"
             >
               <Send size={16} /> {sending ? 'Küldés...' : 'Esti zárás küldése'}
@@ -215,7 +217,8 @@ export default function EveningClosingPage() {
         </button>
       </div>
 
-      {/* FKH-036 FR-3/FR-8: becímletező CTA-szekció — a checklist ELŐTT, nem blokkoló. */}
+      {/* FKH-036 FR-3/FR-8 + kieg. #2 FR-14: VALUTA becímletező CTA-szekció — a checklist
+          ELŐTT, nem blokkoló. A kezelési díj CTA a checklist UTÁN van (FR-14). */}
       {closingStatus?.vaultContext && (
         <div data-testid="fkh036-denomination-cta" className="form-panel space-y-2">
           <h2 className="font-semibold">Becímletezés</h2>
@@ -238,20 +241,27 @@ export default function EveningClosingPage() {
             >
               Esti zárás címletezése
             </Link>
-            {closingStatus.handlingFeeRequired && (
-              <Link
-                to={`/closing/denomination-entry/HANDLING_FEE?returnTo=${encodeURIComponent('/evening-closing')}`}
-                className="form-button"
-              >
-                Kezelési díj címletezése
-              </Link>
-            )}
           </div>
         </div>
       )}
 
       {/* FR-ZARUI-16..26: Értéktári zárás-előtti ellenőrzőlista — kísérő kontroll, nem blokkoló gate */}
       <VaultClosingChecklistPanel date={date} />
+
+      {/* FKH-036 kieg. #2 FR-14: kezelesi dij CTA a checklist UTAN, csak aznapi KK mozgas eseten. */}
+      {closingStatus?.vaultContext && closingStatus.handlingFeeRequired && (
+        <div data-testid="fkh036-handling-fee-cta" className="form-panel space-y-2">
+          <h2 className="font-semibold">Kezelési díj becímletezése</h2>
+          <div className="flex gap-2">
+            <Link
+              to={`/closing/denomination-entry/HANDLING_FEE?returnTo=${encodeURIComponent('/evening-closing')}`}
+              className="form-button"
+            >
+              Kezelési díj címletezése
+            </Link>
+          </div>
+        </div>
+      )}
 
       {closingStatus?.vaultContext && !closingStatus.exactMatch && (
         <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded">

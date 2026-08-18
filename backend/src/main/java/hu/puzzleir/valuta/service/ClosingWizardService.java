@@ -1138,10 +1138,10 @@ public class ClosingWizardService {
 
         String message;
         if (!denominationRecorded) {
-            message = "Nincs rogzitett esti cimletezes erre a napra.";
+            message = "Nincs rögzített esti címletezés erre a napra.";
         } else if (!exactMatch) {
             message = isVaultContext(branch)
-                    ? "Az esti zaras csak a valutankenti cimletezes es a currency_stock teljes egyezese utan kuldheto."
+                    ? "Az esti zárás csak a valutánkénti címletezés és a currency_stock teljes egyezése után küldhető."
                     : "Eltérés van a címletezés és a nyilvántartás között.";
         } else {
             message = "A zárási címletezés pontosan egyezik a nyilvántartással.";

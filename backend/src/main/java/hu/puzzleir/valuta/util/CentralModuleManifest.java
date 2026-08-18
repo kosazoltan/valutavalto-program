@@ -30,8 +30,10 @@ public final class CentralModuleManifest {
             new ModuleRule("vault-stocktake", List.of("foertektar", "ugyvezeto")),
             new ModuleRule("closing-control", List.of(
                     "foertektar", "ugyvezeto", "belso_ellenor", "teruleti_vezeto")),
+            // FK-086 FR-4: a napi ellenőrző lista a teruleti_vezeto elől elzárt
+            // (a modul id SZÁNDÉKOSAN marad daily-checklist — rename out of scope).
             new ModuleRule("daily-checklist", List.of(
-                    "foertektar", "ugyvezeto", "belso_ellenor", "teruleti_vezeto")),
+                    "foertektar", "ugyvezeto", "belso_ellenor")),
             new ModuleRule("received-data", List.of(
                     "foertektar", "ugyvezeto", "belso_ellenor", "teruleti_vezeto")),
             new ModuleRule("daily-turnover", List.of(

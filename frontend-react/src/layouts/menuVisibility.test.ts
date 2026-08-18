@@ -193,7 +193,13 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
     'Pénztár (Valutaváltó)': ['/transit', '/transfers/new'],
     // FKH-036 FR-9: a /closing/wizard az Értéktár-csoportban is rejtett lett —
     // az item-sorrend szerinti utolsó rejtett bejegyzés.
-    'Értéktár (lokál)': ['/trades', '/transfers/new', '/transfer-documents', '/transit', '/closing/wizard'],
+    'Értéktár (lokál)': [
+      '/trades',
+      '/transfers/new',
+      '/transfer-documents',
+      '/transit',
+      '/closing/wizard',
+    ],
     Árfolyamkészítés: [],
   }
 
@@ -412,5 +418,26 @@ describe('MENU-LEGACY-ROLE-INVISIBLE: legacy-orphan MANAGER a VALODI authStore-o
     expect(isMenuGroupVisible(aml, storeCtx('full'))).toBe(false)
     expect(isMenuGroupVisible(groupByLabel('Központ'), storeCtx('full'))).toBe(true)
     useAuthStore.getState().logout()
+  })
+})
+
+describe('FK-086 — teruleti_vezeto nem látja a /daily-check menüpontot', () => {
+  // Fontos: full mód — nem-full módban a felügyeleti bypass (SZERVER_ROLES)
+  // láthatóvá tenné az itemet, ami hamis pozitív lenne (menuVisibility.ts:31-33).
+  it('teruleti_vezeto (full): SEMELYIK csoportban nem látja a /daily-check itemet', () => {
+    const ctx = ctxFor(['teruleti_vezeto'], 'full')
+    const visible = menuGroups.flatMap((g) =>
+      g.items.filter((i) => i.path === '/daily-check' && isMenuItemVisible(i, g, ctx)),
+    )
+    expect(visible).toEqual([])
+  })
+
+  it('foertektar / ugyvezeto / belso_ellenor (full): látja a /daily-check itemet a Központ csoportban', () => {
+    for (const role of ['foertektar', 'ugyvezeto', 'belso_ellenor']) {
+      const kozpont = groupByLabel('Központ')
+      expect(
+        isMenuItemVisible(itemByPath(kozpont, '/daily-check'), kozpont, ctxFor([role], 'full')),
+      ).toBe(true)
+    }
   })
 })

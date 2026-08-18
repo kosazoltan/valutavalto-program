@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -119,6 +121,9 @@ public class TransferController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) Transfer.TransferStatus status,
             @RequestParam(required = false) Transfer.TransferType type,
+            // FKH-037 FR-1 (TBD-3): bizonylat dátum+idő szerinti legfrissebb-elől alapértelmezés;
+            // JPQL ORDER BY szándékosan NINCS (Pageable-lel ütközne).
+            @PageableDefault(sort = {"transferDate", "transferTime", "createdAt"}, direction = Sort.Direction.DESC)
             Pageable pageable) {
         return ResponseEntity.ok(transferService.search(branchId, startDate, endDate, status, type, pageable));
     }
