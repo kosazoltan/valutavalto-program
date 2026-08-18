@@ -162,10 +162,13 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
      *
      * <p>A {@code serialPrefix IN ('FF','UF')} szures VALTOZATLANUL atveve a naplokonyvbol,
      * es ez teljesiti az FR-7-et: a KK (kezelesi dij) prefixu shipment-tetelek IGY NEM
-     * kerulnek be a riportba (kulon tema: FKH-025). A TBD-1-ben nyitva hagyott
+     * kerulnak be a riportba (kulon tema: FKH-025). A TBD-1-ben nyitva hagyott
      * {@code SHR}/{@code AV} shipment-prefixek SZANDEKOSAN kimaradnak — a felterkepezes nem
      * tudta megerositeni a jelentesuket, es a fail-closed valasztas az, hogy csak a
      * bizonyitottan penzmozgas jellegu prefixek szerepeljenek.</p>
+     *
+     * <p>FKH-030 kieg. FR-2: a CANCELLED (sztornozott) szallitmany kizarva; a REJECTED
+     * valtozatlanul benne marad (FR-4).</p>
      */
     @Query("""
             SELECT DISTINCT sr FROM ShipmentRequest sr
@@ -174,6 +177,7 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
               AND sr.serialPrefix IN ('FF', 'UF')
               AND sr.requestDate BETWEEN :from AND :to
               AND (sr.fromBranchId IN :branchIds OR sr.toBranchId IN :branchIds)
+              AND sr.status <> hu.puzzleir.valuta.entity.ShipmentRequestStatus.CANCELLED
             ORDER BY sr.requestDate ASC, sr.createdAt ASC, sr.serialNumber ASC
             """)
     List<ShipmentRequest> findCashFlowReportShipments(
