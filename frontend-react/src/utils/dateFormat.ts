@@ -17,16 +17,28 @@ export function localIsoDate(d: Date = new Date()): string {
 }
 
 /**
+ * ISO naptári nap (YYYY-MM-DD) formai ellenőrzése — üres/rossz bemenet kiszűrésére.
+ * Rögzített szélességű minták (a '2026-5-2' NEM ISO). Whitespace-t trimmel.
+ */
+export function isIsoDate(value: string | null | undefined): boolean {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())
+}
+
+/**
  * ISO dátum (YYYY-MM-DD) → magyar pontozott forma (YYYY.MM.DD.) — időzóna-biztos.
  *
  * Az érték mindig `<input type="date">`-ből / állapothoz kötött ISO stringből jön,
  * ezért NEM Date-objektum round-trippel, hanem egyszerű `-` mentén darabolással
  * alakítjuk (így nem csúszhat el időzóna szerint). Pl. "2026-05-22" → "2026.05.22.".
  *
+ * A-6 (pótlás d5753273): üres/rossz bemenetnél `''` — sosem `undefined`-es szöveg.
+ * „Ma"-fallback SZÁNDÉKOSAN nincs (az B-opció lenne).
+ *
  * @param isoDate YYYY-MM-DD formátumú dátum
- * @returns YYYY.MM.DD. pontozott magyar dátum
+ * @returns YYYY.MM.DD. pontozott magyar dátum, rossz bemenetnél ''
  */
 export function formatHuDate(isoDate: string): string {
-  const [y, m, d] = isoDate.split('-')
+  if (!isIsoDate(isoDate)) return ''
+  const [y, m, d] = isoDate.trim().split('-')
   return `${y}.${m}.${d}.`
 }
