@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-18T16:53:09.404Z",
-  "source_count": 1066,
+  "generated_at": "2026-08-18T20:06:54.291Z",
+  "source_count": 1067,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12495,6 +12495,18 @@
         "frontend",
         "napzaras",
         "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md",
+      "sha256": "a837485c034d39cb92e6cddb13785e06e01014f8360d243f1a0cc054265dd86b",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "installer",
+        "napzaras",
+        "penztar",
+        "specifikacio"
       ]
     },
     {

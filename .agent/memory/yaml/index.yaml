@@ -1,6 +1,6 @@
-generated_at: 2026-08-18T16:53:09.404Z
+generated_at: 2026-08-18T20:06:54.291Z
 schema_version: 1
-source_count: 1066
+source_count: 1067
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,14 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 92c914e41a93eff8
-    title: "2026-04-29 Handoff — REBOOT pending"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-handoff-reboot-pending.md
-    sha256: 4ff3a7dc9d24df41ccf73c6766a047417b176c59deb74de757c11e6e04955909
-    summary: "--- date: 2026-04-29 time: 23:00 CEST session_type: handoff-reboot-pending context: v2.3.7 reinstall fail (DLL memory-lock), REBOOT scheduled priority: P0 — éles pénztár tesztelése --- # 2026-04-29 Handoff — REBOOT pending ## Mi történt eddig A user a 17 PR mergelése + v2.3.7 installer build után indítani akarta a v2.3.7 reinstall + tesztelési flow-t: 1. ✅ Penztar-Eltavolito-2.3.7-20260429.exe (admin) — install dir c"
-    areas: [database, deploy, installer, penztar, security, sync]
-    keywords: [2026, handoff, reboot, pending, date, time, cest, session_type, context, reinstall, fail, dll]
   - id: d2d7f52099a46706
     title: "2026-04-29 19:45 CEST — Handoff REBOOT előtt"
     type: medium-term-episodic
@@ -1702,6 +1694,15 @@ medium_term:
     summary: "# Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (8 egység, b0d4feee-re építve). Terv + riport: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/. ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE"
     areas: [cimletezes, ertektar, frontend, napzaras, penztar]
     keywords: [handoff, fkh, 036, ertektari, napi, zaras, egyesitett, blokkolo, 2026, branch, pipeline, 20260817]
+  - id: f55fd3c1b3236ff5
+    title: "FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md
+    status: complete
+    sha256: a837485c034d39cb92e6cddb13785e06e01014f8360d243f1a0cc054265dd86b
+    summary: "--- date: 2026-08-18 title: FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 type: session status: complete tags: [fkh037, fk086, fkh030, fkh036, specifikacio, frontend, deploy, installer, napzaras, penztar, release] --- # Handoff — FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 (2026-08-18) Status: **KIADVA**. Prod `2.28.83`, tag `v2.28.83` = `c51a7434`. Letöltött másolat: `C:\\zk\\Downloads\\valutavalto-v2.28.83`."
+    areas: [deploy, installer, napzaras, penztar, specifikacio]
+    keywords: [fkh, 037, 086, stacked, 030, 036, date, 2026, title, type, session, status]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

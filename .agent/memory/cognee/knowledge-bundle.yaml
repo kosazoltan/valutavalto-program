@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-18T16:53:09.404Z
+generated_at: 2026-08-18T20:06:54.291Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7450,6 +7450,13 @@ nodes:
     summary: "# Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (8 egység, b0d4feee-re építve). Terv + riport: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/. ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE"
     tags: [handoff, fkh, 036, ertektari, napi, zaras, egyesitett, blokkolo, 2026, branch]
     areas: [cimletezes, ertektar, frontend, napzaras, penztar]
+  - id: f55fd3c1b3236ff5
+    type: medium-term-episodic
+    title: "FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83"
+    source_path: vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md
+    summary: "--- date: 2026-08-18 title: FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 type: session status: complete tags: [fkh037, fk086, fkh030, fkh036, specifikacio, frontend, deploy, installer, napzaras, penztar, release] --- # Handoff — FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 (2026-08-18) Status: **KIADVA**. Prod `2.28.83`, tag `v2.28.83` = `c51a7434`. Letöltött másolat: `C:\\zk\\Downloads\\valutavalto-v2.28.83`."
+    tags: [fkh, 037, 086, stacked, 030, 036, date, 2026, title, type]
+    areas: [deploy, installer, napzaras, penztar, specifikacio]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22666,6 +22673,21 @@ edges:
   - from: 32a736fb32f958c3
     to: area_penztar
     relation: belongs_to_area
+  - from: f55fd3c1b3236ff5
+    to: area_deploy
+    relation: belongs_to_area
+  - from: f55fd3c1b3236ff5
+    to: area_installer
+    relation: belongs_to_area
+  - from: f55fd3c1b3236ff5
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: f55fd3c1b3236ff5
+    to: area_penztar
+    relation: belongs_to_area
+  - from: f55fd3c1b3236ff5
+    to: area_specifikacio
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22723,9 +22745,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 0ca04e601787c4e5
-    to: repo_project_state
-    relation: informs
   - from: 819e4c78c01e00ab
     to: repo_project_state
     relation: informs
@@ -22955,6 +22974,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 32a736fb32f958c3
+    to: repo_project_state
+    relation: informs
+  - from: f55fd3c1b3236ff5
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

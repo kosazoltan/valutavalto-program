@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-18T16:53:09.404Z
+generated: 2026-08-18T20:06:54.291Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — 2026-07-09 backlog-grind: LOWER-BYTEA-CLASS + FE blob/log hygiene** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-09-backlog-grind.md`
-  - summary: # Handoff — 2026-07-09 backlog-grind: LOWER-BYTEA-CLASS + FE blob/log hygiene ## Merged ma (ez a session) - **#1377** `a95b76fa` — LOWER-BYTEA-CLASS lezárás: az osztály-lelet NEM reprodukál (RED 12/12 zöld fix nélkül, valós PG; trigger a `(:p IS NULL OR ...)` kettős param-használat volt a #1376-ban, a 9 repóban hiányzik). Szállítás: pinelő `LowerByteaNullBindRegressionIT` (9 null-bind + 3 happy/tenant). Coder korrekt
 
 - **Handoff — 2026-07-09 — FS-11 backend KÉSZ (S1+S2a+S2b), S3 frontend folyamatban** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-09-fs11-backend-complete.md`
@@ -243,6 +239,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md`
   - summary: # Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (8 egység, b0d4feee-re építve). Terv + riport: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/. ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE
+
+- **FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md`
+  - summary: --- date: 2026-08-18 title: FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 type: session status: complete tags: [fkh037, fk086, fkh030, fkh036, specifikacio, frontend, deploy, installer, napzaras, penztar, release] --- # Handoff — FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 (2026-08-18) Status: **KIADVA**. Prod `2.28.83`, tag `v2.28.83` = `c51a7434`. Letöltött másolat: `C:\zk\Downloads\valutavalto-v2.28.83`.
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
