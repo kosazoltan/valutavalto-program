@@ -237,7 +237,10 @@ class DailyClosingNineStepsFk068PostgresTest {
                 // Az értéktár-specifikus egyezés-vizsgálat üzenete — NEM a
                 // lépés-teljesség hibája. (A mostani kódon az üzenet:
                 // "Nem minden lépés lett végrehajtva: Lépés 10" → RED.)
-                .hasMessageContaining("currency_stock teljes egyezese")
+                // FKH-036 kieg. #2 FR-13: az üzenet ékezetesített (a korábbi ékezet
+                // nélküli "egyezese" helyett) — az elvárás a viselkedésváltozással
+                // együtt frissítve, nem gyengítve.
+                .hasMessageContaining("currency_stock teljes egyezése")
                 .satisfies(ex -> assertThat(ex.getMessage())
                         .doesNotContain("Nem minden lépés lett végrehajtva"));
     }
