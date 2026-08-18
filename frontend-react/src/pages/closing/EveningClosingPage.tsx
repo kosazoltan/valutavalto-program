@@ -180,7 +180,9 @@ export default function EveningClosingPage() {
           {preview && preview.status !== 'SENT' && preview.status !== 'CONFIRMED' && (
             <button
               onClick={handleSend}
-              disabled={sending || Boolean(closingStatus?.vaultContext && !closingStatus.exactMatch)}
+              disabled={
+                sending || Boolean(closingStatus?.vaultContext && !closingStatus.exactMatch)
+              }
               className="form-button-primary"
             >
               <Send size={16} /> {sending ? 'Küldés...' : 'Esti zárás küldése'}
