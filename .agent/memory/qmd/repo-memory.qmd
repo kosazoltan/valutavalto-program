@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-17T20:37:34.122Z
+generated: 2026-08-18T01:25:47.789Z
 format: gfm
 ---
 
@@ -242,7 +242,7 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 - **Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md`
-  - summary: # Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (7 egység, b0d4feee-re építve). Terv: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/10-plan.md ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE
+  - summary: # Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (8 egység, b0d4feee-re építve). Terv + riport: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/. ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`

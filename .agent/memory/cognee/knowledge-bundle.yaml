@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-17T20:37:34.122Z
+generated_at: 2026-08-18T01:25:47.789Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7447,7 +7447,7 @@ nodes:
     type: medium-term-episodic
     title: "Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17)"
     source_path: vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md
-    summary: "# Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (7 egység, b0d4feee-re építve). Terv: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/10-plan.md ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE"
+    summary: "# Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (8 egység, b0d4feee-re építve). Terv + riport: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/. ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE"
     tags: [handoff, fkh, 036, ertektari, napi, zaras, egyesitett, blokkolo, 2026, branch]
     areas: [cimletezes, ertektar, frontend, napzaras, penztar]
   - id: 8e689c47bb831e58

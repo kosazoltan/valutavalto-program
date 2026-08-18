@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-17T20:37:34.122Z",
+  "generated_at": "2026-08-18T01:25:47.789Z",
   "source_count": 1066,
   "sources": [
     {
@@ -12487,7 +12487,7 @@
     },
     {
       "path": "vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md",
-      "sha256": "a770b80b026c3c5c7342e4c0a2834bd34bb44cd14453e36324ca516d4e4b5094",
+      "sha256": "5aa31829db359a16b0cf5032f5d66320fd47f814e0ac50e2d4d06ce64d8687b6",
       "type": "medium-term-episodic",
       "areas": [
         "cimletezes",
