@@ -501,7 +501,8 @@ export default function MovementManager() {
                   {/* FKH-037 FR-5: irány a bejelentkezett értéktár szemszögéből; ha egyik vég
                       sem a saját fiók (vagy a worker még nem hydrált), marad a technikai címke. */}
                   {movementDirectionLabel(mov, worker?.branchId) ??
-                    (MOVEMENT_TYPE_LABELS[mov.transferType] ?? mov.transferTypeDisplay)}
+                    MOVEMENT_TYPE_LABELS[mov.transferType] ??
+                    mov.transferTypeDisplay}
                 </td>
                 <td className="text-xs">
                   {mov.fromBranchName}

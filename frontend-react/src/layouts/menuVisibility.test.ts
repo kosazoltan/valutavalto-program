@@ -193,7 +193,13 @@ describe('ELLENŐRZÉS — pénztár/értéktár (lokál) modul menüi megfelel�
     'Pénztár (Valutaváltó)': ['/transit', '/transfers/new'],
     // FKH-036 FR-9: a /closing/wizard az Értéktár-csoportban is rejtett lett —
     // az item-sorrend szerinti utolsó rejtett bejegyzés.
-    'Értéktár (lokál)': ['/trades', '/transfers/new', '/transfer-documents', '/transit', '/closing/wizard'],
+    'Értéktár (lokál)': [
+      '/trades',
+      '/transfers/new',
+      '/transfer-documents',
+      '/transit',
+      '/closing/wizard',
+    ],
     Árfolyamkészítés: [],
   }
 

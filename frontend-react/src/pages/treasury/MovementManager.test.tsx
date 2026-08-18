@@ -159,9 +159,7 @@ describe('MovementManager', () => {
 
   it('FR-5: fromBranchId === worker.branchId → Átadás', async () => {
     mocks.transferSearch.mockResolvedValue({
-      content: [
-        transferRow({ id: 1, fromBranchId: 'branch-1', toBranchId: 'branch-9' }),
-      ],
+      content: [transferRow({ id: 1, fromBranchId: 'branch-1', toBranchId: 'branch-9' })],
       totalElements: 1,
       totalPages: 1,
       size: 50,
@@ -173,9 +171,7 @@ describe('MovementManager', () => {
 
   it('FR-5: toBranchId === worker.branchId → Átvétel', async () => {
     mocks.transferSearch.mockResolvedValue({
-      content: [
-        transferRow({ id: 2, fromBranchId: 'branch-9', toBranchId: 'branch-1' }),
-      ],
+      content: [transferRow({ id: 2, fromBranchId: 'branch-9', toBranchId: 'branch-1' })],
       totalElements: 1,
       totalPages: 1,
       size: 50,

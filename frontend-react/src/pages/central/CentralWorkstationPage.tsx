@@ -81,7 +81,8 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
         id: 'daily-checklist',
         title: 'Napi ellenőrző lista',
         // FK-086 FR-2: jóváhagyott leírás (szándékosan literál, nem i18n kulcs — NFR-2).
-        description: 'Valutánkénti napi mérleg — nyitó- és zárókészlet, forgalom, bank- és pénztármozgások',
+        description:
+          'Valutánkénti napi mérleg — nyitó- és zárókészlet, forgalom, bank- és pénztármozgások',
         // FK-086 FR-1: a valódi riport útvonala a /daily-check (DailyCheckPage).
         route: '/daily-check',
         status: 'ready',
