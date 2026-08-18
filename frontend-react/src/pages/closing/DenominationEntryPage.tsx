@@ -59,16 +59,21 @@ export default function DenominationEntryPage() {
   // FKH-036 FR-4: a hivo adja meg a visszateresi cimet (returnTo query-param).
   const [searchParams] = useSearchParams()
   /**
-   * FKH-036 FR-4: a hívó adja meg a visszatérési címet. Csak azonos-origójú, relatív
-   * útvonal fogadható el (open-redirect védelem: a '//' protokol-relatív prefix és a
-   * nem-'/' kezdet elutasítva); minden más esetben a pénztári alapértelmezés
-   * (CLOSING_DENOMINATION_EXIT_ROUTE) marad.
+   * FKH-036 FR-4 + kieg. #2 FR-11: a hívó adja meg a visszatérési címet. Csak azonos-origójú,
+   * relatív útvonal fogadható el (open-redirect védelem: a '//' protokol-relatív prefix és a
+   * nem-'/' kezdet elutasítva); minden más esetben null (penztári kontextus).
+   *
+   * FR-11: a validált returnTo maga a vault-kontextus jelzése — ugyanaz a felismerés, amit a
+   * Kilépés gomb használ; a „Napi zárás végrehajtása" gomb vault-kontextusban a Kilépéssel
+   * AZONOS célpontot ad (soha nem hardkódolt '/evening-closing' — a routing-tudás egy helyen).
    */
-  const exitRoute = useMemo(() => {
+  const returnToRoute = useMemo(() => {
     const raw = searchParams.get('returnTo')
     if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw
-    return CLOSING_DENOMINATION_EXIT_ROUTE
+    return null
   }, [searchParams])
+
+  const exitRoute = returnToRoute ?? CLOSING_DENOMINATION_EXIT_ROUTE
 
   const worker = useAuthStore(
     (s: { worker: { id?: string | number; branchId: string; role?: string } | null }) => s.worker,
@@ -241,8 +246,16 @@ export default function DenominationEntryPage() {
    * FR-5: "Napi zárás végrehajtása" — ez, es csak ez inditja a tenyleges zaras-varazslot.
    * A varazslo belso logikaja valtozatlan (NFR-3): a /closing/wizard oldal sajat
    * "runClosing" folyamata fut le, ugyanugy, mint ma.
+   *
+   * FKH-036 kieg. #2 FR-11: vault-kontextusban (van valid returnTo) ez a gomb a Kilepes
+   * gombbal AZONOS — csak visszanavigal a hivo oldalra, zaras-kuldes nelkul (nincs
+   * eveningClosingApi.send hivás). FR-12: returnTo nelkul valtozatlanul a varazslo.
    */
   const handleStartClosing = () => {
+    if (returnToRoute) {
+      navigate(returnToRoute)
+      return
+    }
     setStartingWizard(true)
     navigate('/closing/wizard')
   }
