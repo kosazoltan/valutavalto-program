@@ -24,10 +24,10 @@ import type {
 import {
   formatInteger,
   formatDateTime,
-  formatTime,
   currencyColorClass,
   MOVEMENT_TYPE_LABELS,
   MOVEMENT_STATUS_LABELS,
+  movementDirectionLabel,
 } from './treasuryUtils'
 import { TableSkeleton } from './LoadingSkeleton'
 import {
@@ -41,6 +41,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { getErrorMessage } from '../../utils/errorHandling'
+import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 
 const MOVEMENT_TYPES = [
@@ -82,6 +83,10 @@ export default function MovementManager() {
   const [showDetailModal, setShowDetailModal] = useState<Transfer | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  // FKH-037 FR-2: az előzmény dátumszűrője — alapértelmezés a MAI lokális nap (localIsoDate,
+  // NEM a UTC-alapú todayISO). Lazy initializer: mountonként egyszer számolódik.
+  const [historyStartDate, setHistoryStartDate] = useState(() => localIsoDate())
+  const [historyEndDate, setHistoryEndDate] = useState(() => localIsoDate())
 
   // New movement form state
   const [movementType, setMovementType] =
@@ -110,7 +115,8 @@ export default function MovementManager() {
       const [pendingRaw, allRaw, currDataRaw, localPending] = await Promise.all([
         transferApi.getPending().catch(() => []),
         transferApi
-          .search({ page: 0, size: 50 })
+          // FKH-037 FR-3/FR-4: az előzmény-keresés a kiválasztott dátumtartományra szűkül.
+          .search({ page: 0, size: 50, startDate: historyStartDate, endDate: historyEndDate })
           .catch(() => ({ content: [], totalElements: 0, totalPages: 0, size: 50, number: 0 })),
         currencyApi.list().catch(() => []),
         electronQueueAvailable
@@ -128,7 +134,9 @@ export default function MovementManager() {
     } finally {
       setLoading(false)
     }
-  }, [electronQueueAvailable, worker])
+    // FKH-037 FR-4: a dátumok a dependency-listában — a 15s poll useEffect a fetchData
+    // identitás-változásán keresztül IRATKOZIK ÚJRA, tehát dátumváltásnál frissül a lista.
+  }, [electronQueueAvailable, worker, historyStartDate, historyEndDate])
 
   useEffect(() => {
     void fetchData()
@@ -423,6 +431,23 @@ export default function MovementManager() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-secondary-900">{t('treasury.mozgasTortenet')}</h2>
           <div className="flex items-center gap-2">
+            {/* FKH-037 FR-2: dátumszűrő — két date-input, alapértelmezés a mai nap. */}
+            <input
+              type="date"
+              data-testid="movement-history-start-date"
+              aria-label="Dátum -tól"
+              className="form-input w-36 h-8 text-xs"
+              value={historyStartDate}
+              onChange={(e) => setHistoryStartDate(e.target.value)}
+            />
+            <input
+              type="date"
+              data-testid="movement-history-end-date"
+              aria-label="Dátum -ig"
+              className="form-input w-36 h-8 text-xs"
+              value={historyEndDate}
+              onChange={(e) => setHistoryEndDate(e.target.value)}
+            />
             <select
               className="form-input w-40 h-8 text-xs"
               value={typeFilter}
@@ -470,9 +495,13 @@ export default function MovementManager() {
             {filteredTransfers.map((mov) => (
               <tr key={mov.id}>
                 <td className="font-mono text-xs">#{mov.transferNumber}</td>
-                <td className="text-xs">{formatTime(mov.createdAt)}</td>
+                {/* FKH-037 FR-6: teljes dátum-idő (nem csak óra:perc). */}
+                <td className="text-xs">{formatDateTime(mov.createdAt)}</td>
                 <td className="text-xs">
-                  {MOVEMENT_TYPE_LABELS[mov.transferType] ?? mov.transferTypeDisplay}
+                  {/* FKH-037 FR-5: irány a bejelentkezett értéktár szemszögéből; ha egyik vég
+                      sem a saját fiók (vagy a worker még nem hydrált), marad a technikai címke. */}
+                  {movementDirectionLabel(mov, worker?.branchId) ??
+                    (MOVEMENT_TYPE_LABELS[mov.transferType] ?? mov.transferTypeDisplay)}
                 </td>
                 <td className="text-xs">
                   {mov.fromBranchName}
