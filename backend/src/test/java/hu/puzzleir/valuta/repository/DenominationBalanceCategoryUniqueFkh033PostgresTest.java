@@ -102,6 +102,38 @@ class DenominationBalanceCategoryUniqueFkh033PostgresTest {
     }
 
     /**
+     * FKH-038 FR-1: a currency-scope READ kategóriára szűr. Ugyanarra a
+     * (cashDeskId, denominationId) párra EVENING és HANDLING_FEE sor is létezik;
+     * a lekérdezés kategóriánként csak a saját sort adja vissza.
+     */
+    @Test
+    @DisplayName("FKH-038 FR-1: findByCashDeskIdAndCurrencyIdAndCategory nem keveri az EVENING "
+            + "es HANDLING_FEE sorokat")
+    void currencyScopedLoadFiltersByCategory() {
+        Fixture fixture = seed();
+        saveBalance(fixture, DenominationCategory.EVENING, 10, new BigDecimal("100000.00"));
+        saveBalance(fixture, DenominationCategory.HANDLING_FEE, 3, new BigDecimal("30000.00"));
+
+        Long currencyId = jdbcTemplate.queryForObject(
+                "SELECT currency_id FROM denomination WHERE id = ?",
+                Long.class, fixture.denominationId());
+
+        var evening = balanceRepository.findByCashDeskIdAndCurrencyIdAndCategory(
+                fixture.branchId(), currencyId, DenominationCategory.EVENING);
+        var handlingFee = balanceRepository.findByCashDeskIdAndCurrencyIdAndCategory(
+                fixture.branchId(), currencyId, DenominationCategory.HANDLING_FEE);
+
+        assertThat(evening).hasSize(1);
+        assertThat(evening.get(0).getQuantity()).isEqualTo(10);
+        assertThat(evening.get(0).getDenominationCategory()).isEqualTo(DenominationCategory.EVENING);
+
+        assertThat(handlingFee).hasSize(1);
+        assertThat(handlingFee.get(0).getQuantity()).isEqualTo(3);
+        assertThat(handlingFee.get(0).getDenominationCategory())
+                .isEqualTo(DenominationCategory.HANDLING_FEE);
+    }
+
+    /**
      * A kategorian BELULI vedelem nem gyengulhet: ugyanaz a kategoria tovabbra is
      * UPDATE-et jelent, nem masodik sort.
      */

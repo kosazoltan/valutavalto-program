@@ -25,14 +25,21 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     List<DenominationBalance> findByCashDeskId(UUID cashDeskId);
 
     /**
-     * Pénztárgép adott valutájú címletei
+     * Pénztárgép adott valutájú címletei egy kategóriában.
+     *
+     * <p>FKH-038: a korábbi, kategória-vak {@code findByCashDeskIdAndCurrencyId} az EVENING
+     * és HANDLING_FEE sorokat összemosta ugyanarra a (pénztár, valuta) párra, ezért a
+     * Kezelési díj becímletező oldal az esti HUF-készletet töltötte be. A vak metódus
+     * SZÁNDÉKOSAN nem létezik (FKH-033 mintája: ne lehessen visszacsúszni).</p>
      */
     @Query("SELECT db FROM DenominationBalance db " +
            "WHERE db.cashDeskId = :cashDeskId " +
-           "AND db.denomination.currency.id = :currencyId")
-    List<DenominationBalance> findByCashDeskIdAndCurrencyId(
+           "AND db.denomination.currency.id = :currencyId " +
+           "AND db.denominationCategory = :category")
+    List<DenominationBalance> findByCashDeskIdAndCurrencyIdAndCategory(
         @Param("cashDeskId") UUID cashDeskId,
-        @Param("currencyId") Long currencyId
+        @Param("currencyId") Long currencyId,
+        @Param("category") DenominationCategory category
     );
 
     /**

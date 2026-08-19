@@ -139,6 +139,7 @@ export default function DenominationEntryPage() {
       denominationBalanceApi.getCashDeskDenominationsByCurrency(
         selectedCashDeskId,
         String(selectedCurrencyId),
+        category,
       ),
     ])
 
@@ -169,7 +170,7 @@ export default function DenominationEntryPage() {
       )
     }
     setLoading(false)
-  }, [selectedCashDeskId, selectedCurrencyId])
+  }, [selectedCashDeskId, selectedCurrencyId, category])
 
   useEffect(() => {
     void loadCurrencies()

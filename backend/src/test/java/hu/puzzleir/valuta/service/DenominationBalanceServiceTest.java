@@ -314,6 +314,141 @@ class DenominationBalanceServiceTest {
         verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
     }
 
+    // =====================================================================
+    // FKH-038 — currency-scope READ kategória-szűrése
+    // =====================================================================
+
+    /**
+     * FKH-038 FR-2: a HANDLING_FEE betöltés a repository-t a kért kategóriával hívja,
+     * és az EVENING sort nem keveri bele.
+     */
+    @Test
+    void getByCurrencyReturnsOnlyRequestedHandlingFeeRows() {
+        UUID companyId = UUID.randomUUID();
+        UUID cashDeskId = UUID.randomUUID();
+        Currency huf = Currency.builder().id(1L).code("HUF").build();
+        Denomination denomination = Denomination.builder()
+                .id(2L)
+                .currency(huf)
+                .faceValue(new BigDecimal("10000"))
+                .denominationType(DenominationType.BANKNOTE)
+                .build();
+        DenominationBalance handlingFee = DenominationBalance.builder()
+                .id(UUID.randomUUID())
+                .cashDeskId(cashDeskId)
+                .denomination(denomination)
+                .quantity(3)
+                .totalValue(new BigDecimal("30000"))
+                .denominationCategory(DenominationCategory.HANDLING_FEE)
+                .build();
+        when(branchRepository.existsByIdAndCompanyId(cashDeskId, companyId)).thenReturn(true);
+        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategory(
+                cashDeskId, 1L, DenominationCategory.HANDLING_FEE))
+                .thenReturn(List.of(handlingFee));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            var result = service().getCashDeskDenominationsByCurrency(
+                    cashDeskId, 1L, DenominationCategory.HANDLING_FEE);
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getQuantity()).isEqualTo(3);
+            assertThat(result.get(0).getTotalValue()).isEqualByComparingTo("30000");
+        }
+
+        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategory(
+                cashDeskId, 1L, DenominationCategory.HANDLING_FEE);
+        verify(balanceRepository, never()).findByCashDeskIdAndCurrencyIdAndCategory(
+                cashDeskId, 1L, DenominationCategory.EVENING);
+    }
+
+    /**
+     * FKH-038 FR-4: az Esti zárás betöltése EVENING kategóriát kér, HANDLING_FEE sort nem.
+     */
+    @Test
+    void getByCurrencyReturnsOnlyRequestedEveningRows() {
+        UUID companyId = UUID.randomUUID();
+        UUID cashDeskId = UUID.randomUUID();
+        Currency huf = Currency.builder().id(1L).code("HUF").build();
+        Denomination denomination = Denomination.builder()
+                .id(2L)
+                .currency(huf)
+                .faceValue(new BigDecimal("10000"))
+                .denominationType(DenominationType.BANKNOTE)
+                .build();
+        DenominationBalance evening = DenominationBalance.builder()
+                .id(UUID.randomUUID())
+                .cashDeskId(cashDeskId)
+                .denomination(denomination)
+                .quantity(10)
+                .totalValue(new BigDecimal("100000"))
+                .denominationCategory(DenominationCategory.EVENING)
+                .build();
+        when(branchRepository.existsByIdAndCompanyId(cashDeskId, companyId)).thenReturn(true);
+        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategory(
+                cashDeskId, 1L, DenominationCategory.EVENING))
+                .thenReturn(List.of(evening));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            var result = service().getCashDeskDenominationsByCurrency(
+                    cashDeskId, 1L, DenominationCategory.EVENING);
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getQuantity()).isEqualTo(10);
+        }
+
+        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategory(
+                cashDeskId, 1L, DenominationCategory.EVENING);
+        verify(balanceRepository, never()).findByCashDeskIdAndCurrencyIdAndCategory(
+                cashDeskId, 1L, DenominationCategory.HANDLING_FEE);
+    }
+
+    /**
+     * FKH-038: hiányzó kategória → EVENING (WRITE/selfCheck default), nem kevert lista.
+     */
+    @Test
+    void getByCurrencyNullCategoryDefaultsToEvening() {
+        UUID companyId = UUID.randomUUID();
+        UUID cashDeskId = UUID.randomUUID();
+        when(branchRepository.existsByIdAndCompanyId(cashDeskId, companyId)).thenReturn(true);
+        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategory(
+                cashDeskId, 1L, DenominationCategory.EVENING))
+                .thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            assertThat(service().getCashDeskDenominationsByCurrency(cashDeskId, 1L, null)).isEmpty();
+        }
+
+        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategory(
+                cashDeskId, 1L, DenominationCategory.EVENING);
+    }
+
+    /**
+     * FKH-038 regresszió: az önellenőrzés továbbra is a kért kategóriát adja a
+     * {@code sumActualStockByCurrency} hívásnak — a READ-javítás nem nyúl hozzá.
+     */
+    @Test
+    void selfCheckStillForwardsHandlingFeeCategory() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
+        when(balanceRepository.sumActualStockByCurrency(
+                branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE))
+                .thenReturn(List.of());
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId))
+                .thenReturn(List.of());
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            assertThat(service().selfCheck(branchId, DenominationCategory.HANDLING_FEE)).isEmpty();
+        }
+
+        verify(balanceRepository).sumActualStockByCurrency(
+                branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE);
+        verify(balanceRepository, never()).sumActualStockByCurrency(
+                eq(branchId), any(), eq(DenominationCategory.EVENING));
+    }
+
     private static CashBalance cashBalance(Long currencyId, String code, BigDecimal balance) {
         return CashBalance.builder()
                 .currency(Currency.builder().id(currencyId).code(code).build())
