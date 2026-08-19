@@ -85,13 +85,13 @@ describe('ReceivedDataOverviewPage (FK-003 / FK-090 / FK-089)', () => {
     await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
 
     await waitFor(() => expect(mockRun).toHaveBeenCalledTimes(1))
-    expect(screen.getByTestId('recon-status-match')).toHaveTextContent(
+    expect(screen.getByTestId('recon-status-match-AT0001')).toHaveTextContent(
       hu.centralReceivedData.statusMatch,
     )
-    expect(screen.getByTestId('recon-status-mismatch')).toHaveTextContent(
+    expect(screen.getByTestId('recon-status-mismatch-AT0002')).toHaveTextContent(
       hu.centralReceivedData.statusMismatch,
     )
-    expect(screen.getByTestId('recon-status-pending')).toHaveTextContent(
+    expect(screen.getByTestId('recon-status-pending-AT0003')).toHaveTextContent(
       hu.centralReceivedData.statusInProgress,
     )
     expect(screen.getByText(/Eltérő összeg: küldött 3000, fogadott 2900/)).toBeInTheDocument()
@@ -103,26 +103,50 @@ describe('ReceivedDataOverviewPage (FK-003 / FK-090 / FK-089)', () => {
     mockRun.mockResolvedValue(result)
     render(<ReceivedDataOverviewPage />)
     await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
-    await waitFor(() => expect(screen.getByTestId('recon-status-match')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('recon-status-match-AT0001')).toBeInTheDocument())
 
     await userEvent.selectOptions(screen.getByRole('combobox'), 'mismatch')
 
-    expect(screen.queryByTestId('recon-status-match')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('recon-status-pending')).not.toBeInTheDocument()
-    expect(screen.getByTestId('recon-status-mismatch')).toBeInTheDocument()
+    expect(screen.queryByTestId('recon-status-match-AT0001')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('recon-status-pending-AT0003')).not.toBeInTheDocument()
+    expect(screen.getByTestId('recon-status-mismatch-AT0002')).toBeInTheDocument()
   })
 
   it('FK-090 FR-6: a Folyamatban szűrő csak a semleges sorokat listázza', async () => {
     mockRun.mockResolvedValue(result)
     render(<ReceivedDataOverviewPage />)
     await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
-    await waitFor(() => expect(screen.getByTestId('recon-status-pending')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByTestId('recon-status-pending-AT0003')).toBeInTheDocument(),
+    )
 
     await userEvent.selectOptions(screen.getByRole('combobox'), 'pending')
 
-    expect(screen.getByTestId('recon-status-pending')).toBeInTheDocument()
-    expect(screen.queryByTestId('recon-status-match')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('recon-status-mismatch')).not.toBeInTheDocument()
+    expect(screen.getByTestId('recon-status-pending-AT0003')).toBeInTheDocument()
+    expect(screen.queryByTestId('recon-status-match-AT0001')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('recon-status-mismatch-AT0002')).not.toBeInTheDocument()
+  })
+
+  it('ismeretlen státusz semleges (pending), nem ELTÉRÉS', async () => {
+    mockRun.mockResolvedValue({
+      ...result,
+      rows: [
+        {
+          ...result.rows[0],
+          transferId: 99,
+          transferNumber: 'AT0099',
+          status: 'ISMERETLEN',
+          discrepancyNote: null,
+        },
+      ],
+    })
+    render(<ReceivedDataOverviewPage />)
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    const unknownRow = await screen.findByTestId('recon-row-AT0099')
+    expect(unknownRow.className).not.toContain('bg-red-50')
+    expect(screen.getByTestId('recon-status-pending-AT0099')).toBeInTheDocument()
+    expect(screen.queryByTestId('recon-status-mismatch-AT0099')).not.toBeInTheDocument()
   })
 
   it('FK-090 FR-5: a folyamatban lévő sor NEM piros hátterű', async () => {

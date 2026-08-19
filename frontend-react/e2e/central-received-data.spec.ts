@@ -74,7 +74,7 @@ async function mockApis(page: Page) {
         body: JSON.stringify({
           startDate: url.searchParams.get('startDate') ?? '2026-06-18',
           endDate: url.searchParams.get('endDate') ?? '2026-06-18',
-          totalRows: 2,
+          totalRows: 3,
           matchedRows: 1,
           discrepancyRows: 1,
           notifiedBranches: 1,
@@ -107,6 +107,20 @@ async function mockApis(page: Page) {
               receivedAmount: 2900,
               status: 'ELTERES',
               discrepancyNote: 'Eltérő összeg: küldött 3000, fogadott 2900',
+            },
+            {
+              transferId: 3,
+              transferNumber: 'AT0003',
+              date: '2026-06-18',
+              fromBranchCode: 'BR011',
+              fromBranchName: 'Pécs',
+              toBranchCode: 'BR020',
+              toBranchName: 'Szeged Értéktár',
+              currencyCode: 'HUF',
+              sentAmount: 10000,
+              receivedAmount: null,
+              status: 'FOLYAMATBAN',
+              discrepancyNote: 'Fogadó megerősítésére vár',
             },
           ],
         }),
@@ -153,6 +167,13 @@ test('beérkezett adatok oldal valós renderben hívja a reconciliation backend 
   const resultTable = page.locator('tbody')
   await expect(resultTable.getByText('EGYEZIK')).toBeVisible()
   await expect(resultTable.getByText('ELTÉRÉS')).toBeVisible()
+  await expect(resultTable.getByText('FOLYAMATBAN')).toBeVisible()
+  await expect(page.getByTestId('recon-row-AT0003')).not.toHaveClass(/bg-red-50/)
+
+  await page.getByRole('combobox').selectOption('pending')
+  await expect(page.getByTestId('recon-status-pending-AT0003')).toBeVisible()
+  await expect(page.getByTestId('recon-status-match-AT0001')).toHaveCount(0)
+  await expect(page.getByTestId('recon-status-mismatch-AT0002')).toHaveCount(0)
 
   const horizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,

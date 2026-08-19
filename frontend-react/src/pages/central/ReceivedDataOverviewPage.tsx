@@ -39,8 +39,9 @@ type ReconPresentation = 'match' | 'mismatch' | 'pending'
 
 function presentationOf(status: string): ReconPresentation {
   if (status === 'EGYEZIK') return 'match'
-  if (status === 'FOLYAMATBAN') return 'pending'
-  return 'mismatch'
+  if (status === 'ELTERES') return 'mismatch'
+  // FOLYAMATBAN és ismeretlen státusz: soha ne essen ELTÉRÉS-nek (hamis piros).
+  return 'pending'
 }
 
 export default function ReceivedDataOverviewPage() {
@@ -301,7 +302,7 @@ export default function ReceivedDataOverviewPage() {
                       <td className="px-3 py-2">
                         {presentation === 'match' && (
                           <span
-                            data-testid="recon-status-match"
+                            data-testid={`recon-status-match-${row.transferNumber}`}
                             className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700"
                           >
                             <CheckCircle2 size={13} />
@@ -311,7 +312,7 @@ export default function ReceivedDataOverviewPage() {
                         {presentation === 'pending' && (
                           <div>
                             <span
-                              data-testid="recon-status-pending"
+                              data-testid={`recon-status-pending-${row.transferNumber}`}
                               className="inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700"
                             >
                               <Clock size={13} />
@@ -327,7 +328,7 @@ export default function ReceivedDataOverviewPage() {
                         {presentation === 'mismatch' && (
                           <div>
                             <span
-                              data-testid="recon-status-mismatch"
+                              data-testid={`recon-status-mismatch-${row.transferNumber}`}
                               className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-100 px-2 py-1 text-xs font-semibold text-red-700"
                             >
                               <AlertTriangle size={13} />
