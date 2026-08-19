@@ -48,6 +48,7 @@ const {
   isNewerVersion,
   parseManifest,
   isInstallWindow,
+  shouldAutoStartInstall,
   isSafeInstallerFileName,
   isAcceptableCacheCandidate,
   selectStaleCacheEntries,
@@ -90,6 +91,26 @@ describe('isInstallWindow — a telepitesi ablak kapuja (3.6 szakasz)', () => {
 
   it('napzaras UTAN telepitheto', () => {
     expect(isInstallWindow('CLOSED_AFTER_DAY_END')).toBe(true);
+  });
+});
+
+describe('shouldAutoStartInstall — belépés nélküli automatikus telepítés', () => {
+  it('READY + napnyitás előtt: automatikusan indul (nincs kattintás)', () => {
+    expect(shouldAutoStartInstall('READY', 'IDLE_BEFORE_OPEN')).toBe(true);
+  });
+
+  it('READY + napzárás után: automatikusan indul', () => {
+    expect(shouldAutoStartInstall('READY', 'CLOSED_AFTER_DAY_END')).toBe(true);
+  });
+
+  it('READY + nyitott műszak: NEM indul (pénzügyi folyamat védelem)', () => {
+    expect(shouldAutoStartInstall('READY', 'SHIFT_OPEN')).toBe(false);
+  });
+
+  it('még nincs kész telepítő: NEM indul', () => {
+    expect(shouldAutoStartInstall('DOWNLOADING', 'IDLE_BEFORE_OPEN')).toBe(false);
+    expect(shouldAutoStartInstall('VERIFYING', 'IDLE_BEFORE_OPEN')).toBe(false);
+    expect(shouldAutoStartInstall('IDLE', 'IDLE_BEFORE_OPEN')).toBe(false);
   });
 });
 

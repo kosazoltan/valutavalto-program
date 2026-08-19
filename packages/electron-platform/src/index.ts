@@ -76,6 +76,7 @@ export {
 export {
   initElectronUpdater,
   isInRollout,
+  shouldQuitAndInstallNow,
   type ElectronUpdaterHandle,
   type ElectronUpdaterOptions,
   type UpdateInstallMode,

@@ -29,9 +29,8 @@ vi.mock('electron', () => ({
   },
 }));
 
-const { initElectronUpdater, isInRollout } = await import(
-  '../../../packages/electron-platform/src/auto-update'
-);
+const { initElectronUpdater, isInRollout, shouldQuitAndInstallNow } =
+  await import('../../../packages/electron-platform/src/auto-update');
 
 type Listener = (...args: unknown[]) => void;
 
@@ -89,6 +88,27 @@ function init(overrides: Record<string, unknown> = {}) {
   } as never);
   return { updater, logger, handle };
 }
+
+describe('shouldQuitAndInstallNow — auto grace ablak', () => {
+  it('csak auto módban igaz', () => {
+    expect(shouldQuitAndInstallNow('on-quit', 0, 120_000)).toBe(false);
+    expect(shouldQuitAndInstallNow('prompt', 0, 120_000)).toBe(false);
+    expect(shouldQuitAndInstallNow('auto', 0, 120_000)).toBe(true);
+  });
+
+  it('0 ms = mindig azonnal (auto)', () => {
+    expect(shouldQuitAndInstallNow('auto', 999_999, 0)).toBe(true);
+  });
+
+  it('grace lejárta után false', () => {
+    expect(shouldQuitAndInstallNow('auto', 120_001, 120_000)).toBe(false);
+  });
+
+  it('negatív / NaN = soha', () => {
+    expect(shouldQuitAndInstallNow('auto', 0, -1)).toBe(false);
+    expect(shouldQuitAndInstallNow('auto', 0, Number.NaN)).toBe(false);
+  });
+});
 
 describe('isInRollout — staged rollout kapu', () => {
   it('0% = kill-switch: soha nem frissit', () => {
@@ -271,6 +291,25 @@ describe('initElectronUpdater — telepitesi mod (munkamegszakitas tilalma)', ()
     await Promise.resolve();
     await Promise.resolve();
     expect(updater.quitAndInstallCalls).toBe(0);
+  });
+
+  it('auto mod: dialog nelkul azonnal quitAndInstall (belépés nem kell)', async () => {
+    const { updater } = init({ installMode: 'auto' });
+    updater.emit('update-downloaded', { version: '2.28.84' });
+    await Promise.resolve();
+    expect(showMessageBoxMock).not.toHaveBeenCalled();
+    expect(updater.quitAndInstallCalls).toBe(1);
+    expect(notificationShowMock).toHaveBeenCalled();
+  });
+
+  it('auto mod a grace utan: NEM rántja le a munkat (on-quit)', async () => {
+    const { updater } = init({ installMode: 'auto', autoInstallGraceMs: 1_000 });
+    await vi.advanceTimersByTimeAsync(2_000);
+    updater.emit('update-downloaded', { version: '2.28.84' });
+    await Promise.resolve();
+    expect(updater.quitAndInstallCalls).toBe(0);
+    expect(showMessageBoxMock).not.toHaveBeenCalled();
+    expect(notificationShowMock).toHaveBeenCalled();
   });
 
   it('hianyzo verzio-info nem dobja el a folyamatot', async () => {

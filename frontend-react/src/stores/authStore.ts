@@ -3,6 +3,7 @@ import { persistToken, clearPersistedToken } from '../services/api/index'
 import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
 import { legacyOrphanFallbackMatches } from '../utils/legacyRoleFallback'
 import { clearSessionAppMode } from '../utils/sessionAppMode'
+import { markAuthenticatedSession } from '../hooks/reportLoginScreenIdleForUpdate'
 
 export interface Worker {
   id: number
@@ -101,6 +102,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     })
     // Electron: token mentése SQLite-ba (offline login restore-hoz)
     void persistToken(token)
+    markAuthenticatedSession()
   },
 
   selectRole: (

@@ -93,8 +93,9 @@ function extractImportPaths(source) {
 
 function isAllowed(file, importPath) {
   return ALLOWED.some(
-    (a) => file.split(sep).join('/').endsWith(a.from.split(sep).join('/')) &&
-           importPath.includes(a.contains),
+    (a) =>
+      file.split(sep).join('/').endsWith(a.from.split(sep).join('/')) &&
+      importPath.includes(a.contains),
   )
 }
 
@@ -183,8 +184,9 @@ if (existsSync(storePath)) {
   }
 
   // Modul-szintu utvonal-konstans tilos (ez lenne a cache-hiba).
-  const moduleLevelPathConst =
-    /^\s*const\s+\w*(PATH|Path)\w*\s*=\s*[^\n]*app\.getPath\(/m.test(storeSrc)
+  const moduleLevelPathConst = /^\s*const\s+\w*(PATH|Path)\w*\s*=\s*[^\n]*app\.getPath\(/m.test(
+    storeSrc,
+  )
   check(
     '#ERR-INST-01: nincs modul-szintu userData-cache a config-store-ban',
     !moduleLevelPathConst,
@@ -347,6 +349,12 @@ for (const client of CLIENTS) {
       'a telepitett verziora hashelo, bekotes-idoben donto kapu tartosan kizarta volna a flotta egy fix reszet minden kovetkezo release-bol (PR #1618 review, P2)',
     )
     check(
+      'a platform updater auto grace ablakot hasznal (shouldQuitAndInstallNow)',
+      src.includes('export function shouldQuitAndInstallNow') &&
+        src.includes('shouldQuitAndInstallNow(installMode, elapsedMs, autoInstallGraceMs)'),
+      'korlátlan auto quitAndInstall folyo árfolyam-munkát szakítana meg',
+    )
+    check(
       'a platform updater NEM ter vissza korai kizarassal (mindig ellenoriz)',
       !src.includes('Staged rollout excluded this install'),
       'kizarasnal is futnia kell az ellenorzesnek, kulonben a gep sosem tudja meg, milyen verzio van kinalva',
@@ -362,14 +370,19 @@ for (const client of CLIENTS) {
       'nincs inline updater-masolat a kliensben',
     )
     check(
-      "kozponti-client: explicit clientLabel-t ad at (nincs rejtett default)",
+      'kozponti-client: explicit clientLabel-t ad at (nincs rejtett default)',
       /clientLabel:\s*'kozponti'/.test(src),
       'a ket kliens naploja szetvalaszthato kell legyen',
     )
     check(
-      "kozponti-client: on-quit telepitesi mod (nincs munkat megszakito restart)",
-      /installMode:\s*'on-quit'/.test(src),
-      'a 2. dontes szerint a telepites app-kilepesnel tortenik',
+      'kozponti-client: auto telepitesi mod (belépés nélkül is frissül)',
+      /installMode:\s*'auto'/.test(src),
+      '2026-08-19: az on-quit a belépés nélküli gépeken nem telepített',
+    )
+    check(
+      'kozponti-client: autoInstallGraceMs be van kötve (munka közben nem ránt le)',
+      /autoInstallGraceMs:\s*120_000/.test(src),
+      'a grace után on-quit — ne szakítson folyo árfolyam/értéktári munkát',
     )
   }
 
@@ -408,9 +421,16 @@ for (const client of CLIENTS) {
       'a READY -> INSTALLING atmenet csak IDLE_BEFORE_OPEN / CLOSED_AFTER_DAY_END allapotban engedett (3.6)',
     )
     check(
+      'penztar suite-updater: READY ablakban automatikus telepites (shouldAutoStartInstall)',
+      src.includes('export function shouldAutoStartInstall') &&
+        src.includes('shouldAutoStartInstall(runtime.state, runtime.shiftState)'),
+      'a belépés / Frissítés-most kattintás nélküli gépek is frissüljenek (2026-08-19)',
+    )
+    check(
       'penztar suite-updater: nyitott muszak NEM telepitheto allapot',
-      /INSTALLABLE_STATES[^=]*=\s*\[[^\]]*'IDLE_BEFORE_OPEN'[^\]]*'CLOSED_AFTER_DAY_END'[^\]]*\]/s.test(src) &&
-        !/INSTALLABLE_STATES[^=]*=\s*\[[^\]]*'SHIFT_OPEN'/s.test(src),
+      /INSTALLABLE_STATES[^=]*=\s*\[[^\]]*'IDLE_BEFORE_OPEN'[^\]]*'CLOSED_AFTER_DAY_END'[^\]]*\]/s.test(
+        src,
+      ) && !/INSTALLABLE_STATES[^=]*=\s*\[[^\]]*'SHIFT_OPEN'/s.test(src),
       'SHIFT_OPEN alatt csak jelzes mehet, telepito nem indulhat',
     )
     check(
@@ -457,6 +477,13 @@ for (const client of CLIENTS) {
       'penztar suite-updater: a spawn utvonala a sajat temp-konyvtarra van kotve',
       src.includes('BIZTONSAGI ELUTASITAS') && src.includes('expectedDir'),
       'csak a magunk altal letoltott es ellenorzott fajl indithato (defense in depth)',
+    )
+    check(
+      'penztar suite-updater: started: flag csak a spawn elott (retry korai return utan)',
+      /function startSilentInstall[\s\S]*?BIZTONSAGI ELUTASITAS[\s\S]*?promptedForVersion = `started:/.test(
+        src,
+      ),
+      'ha a flag a guardok ELOTT allitodik, a hianyzo/elutasitott exe soha nem retrylodik',
     )
     // FK-084 (v2.28.80): a flotta elso oneros frissitese elotti megerositesek.
     check(
@@ -575,6 +602,37 @@ for (const client of CLIENTS) {
       'frontend: a MainLayout bekoti a suite-update hookot es a jelolot',
       src.includes('useSuiteUpdate()') && src.includes('<SuiteUpdateBadge'),
       'a kollega csak igy latja, hogy van keszen allo frissites',
+    )
+  }
+
+  const authStore = join('frontend-react', 'src', 'stores', 'authStore.ts')
+  if (existsSync(authStore)) {
+    const src = readFileSync(authStore, 'utf8')
+    check(
+      'frontend: sikeres login megjelöli a sessiont a suite-update fail-safe-hez',
+      src.includes('markAuthenticatedSession()'),
+      'logout után a LoginPage csak így tud SHIFT_OPEN-t jelenteni',
+    )
+  }
+
+  const loginIdleHook = join('frontend-react', 'src', 'hooks', 'reportLoginScreenIdleForUpdate.ts')
+  if (existsSync(loginIdleHook)) {
+    const src = readFileSync(loginIdleHook, 'utf8')
+    check(
+      'frontend: a LoginPage jelentés hideg indításon IDLE, logout után SHIFT_OPEN',
+      src.includes('HAD_AUTH_SESSION_KEY') &&
+        src.includes("hadAuth ? 'SHIFT_OPEN' : 'IDLE_BEFORE_OPEN'"),
+      'mindig-IDLE a nyitott műszak alatti logoutnál csendes telepítést okozna',
+    )
+  }
+
+  const loginPage = join('frontend-react', 'src', 'pages', 'auth', 'LoginPage.tsx')
+  if (existsSync(loginPage)) {
+    const src = readFileSync(loginPage, 'utf8')
+    check(
+      'frontend: a LoginPage suite-update állapotot jelent (belépés nélkül is telepíthető)',
+      src.includes('reportLoginScreenIdleForUpdate'),
+      'ha csak a MainLayout jelentene, a belépni nem tudó gép SHIFT_OPEN-on ragadna',
     )
   }
 }

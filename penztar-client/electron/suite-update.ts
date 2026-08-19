@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, Notification, ipcMain } from 'electron';
 import log from 'electron-log';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -29,7 +29,8 @@ import { isInRollout } from '../../packages/electron-platform/src/auto-update';
  *   - nyitott muszak alatt (SHIFT_OPEN): CSAK JELZES (ertesites + renderer-jelolo),
  *     a letoltes es az ellenorzes a hatterben lefut, telepito NEM indul;
  *   - napzaras UTAN (CLOSED_AFTER_DAY_END) vagy napnyitas ELOTT (IDLE_BEFORE_OPEN):
- *     a telepites felajanlasa dialogussal, felhasznaloi megerositessel.
+ *     a telepites AUTOMATIKUSAN indul (nincs „Frissítés most” kattintás —
+ *     a belépés nélküli gépek is frissüljenek).
  *
  * Az allapotot a renderer jelenti (`suiteUpdate:setShiftState`). Ha az allapot NEM
  * megallapithato, konzervativan `SHIFT_OPEN`-nek tekintjuk -> nem telepitunk.
@@ -80,6 +81,20 @@ export interface SuiteUpdateManifest {
 
 /** Csak allapotvezerelt ablakokban telepitunk. */
 const INSTALLABLE_STATES: readonly ShiftState[] = ['IDLE_BEFORE_OPEN', 'CLOSED_AFTER_DAY_END'];
+
+/**
+ * 2026-08-19: a telepítés NE a belépett dolgozó / „Frissítés most”
+ * kattintás függvénye legyen. Hideg belépőképernyőn és napzárás
+ * után a kész, ellenőrzött telepítő MAGÁTÓL indul — a belépés nélkül
+ * maradó munkaállomás ne ragadjon régi verzión.
+ * Nyitott műszak alatt továbbra is TILOS telepíteni.
+ */
+export function shouldAutoStartInstall(
+  suiteState: SuiteUpdateState,
+  shiftState: ShiftState,
+): boolean {
+  return suiteState === 'READY' && isInstallWindow(shiftState);
+}
 
 /**
  * A telepito-fajlnev SZIGORU mintaja.
@@ -587,8 +602,9 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
   }
 
   /**
-   * A READY -> INSTALLING atmenet KAPUJA: csak telepitesi ablakban, felhasznaloi
-   * megerositessel. Nyitott muszak alatt csak jelez.
+   * A READY -> INSTALLING atmenet KAPUJA: csak telepitesi ablakban.
+   * Nyitott muszak alatt csak jelez; egyebkent AUTOMATIKUS csendes telepites
+   * (nincs felhasznaloi megerosito dialogus).
    */
   async function maybeOfferInstall(): Promise<void> {
     const manifest = runtime.manifest;
@@ -605,48 +621,30 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
       });
     }
 
-    if (!isInstallWindow(runtime.shiftState)) {
+    if (!shouldAutoStartInstall(runtime.state, runtime.shiftState)) {
       // Egy verziora egyszer ertesitunk, hogy ne legyen zavaro.
       if (runtime.promptedForVersion !== `notified:${manifest.version}`) {
         runtime.promptedForVersion = `notified:${manifest.version}`;
         notify(
           'Frissítés készen áll',
-          `A v${manifest.version} letöltve. A telepítés a következő napnyitás előtt vagy napzárás után indítható.`,
+          `A v${manifest.version} letöltve. A telepítés a következő napnyitás előtt vagy napzárás után indul.`,
         );
         log.info('[suiteUpdate] nyitott muszak — csak jelzes, telepito NEM indul.');
       }
       return;
     }
 
-    if (runtime.promptedForVersion === `asked:${manifest.version}`) return;
-    runtime.promptedForVersion = `asked:${manifest.version}`;
+    if (runtime.promptedForVersion === `started:${manifest.version}`) return;
 
     const windowLabel =
       runtime.shiftState === 'CLOSED_AFTER_DAY_END'
         ? 'a napzárás lezárult'
         : 'a nap még nem indult el';
-    const choice = await dialog.showMessageBox(
-      mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined!,
-      {
-        type: 'info',
-        buttons: ['Frissítés most', 'Később'],
-        defaultId: manifest.mandatory ? 0 : 1,
-        cancelId: 1,
-        title: 'Frissítés telepítése',
-        message: `Új verzió érhető el: v${manifest.version}`,
-        detail:
-          `Most biztonságos telepíteni, mert ${windowLabel}. ` +
-          'A program bezár, a frissítés kb. 2-3 percig tart, utána automatikusan elindul. ' +
-          'Az adatbázis és a beállítások megmaradnak.' +
-          (manifest.notes ? `\n\nÚjdonságok: ${manifest.notes}` : ''),
-      },
+    notify(
+      'Frissítés telepítése',
+      `A v${manifest.version} telepítése elindul, mert ${windowLabel}. A program bezár, kb. 2-3 perc, az adatok megmaradnak.`,
     );
-    if (choice.response !== 0) {
-      log.info('[suiteUpdate] felhasznalo elhalasztotta — a kovetkezo ablakban ujra kerdezunk.');
-      // A kovetkezo allapotatmenetnel megint felajanljuk.
-      runtime.promptedForVersion = null;
-      return;
-    }
+    log.info(`[suiteUpdate] automatikus csendes telepites (ablak: ${runtime.shiftState}).`);
     startSilentInstall(exePath, manifest);
   }
 
@@ -749,6 +747,7 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
     if (args.length === 0) args.push('/S');
 
     runtime.state = 'INSTALLING';
+    runtime.promptedForVersion = `started:${manifest.version}`;
     log.info(`[suiteUpdate] csendes telepites indul: ${resolved} ${args.join(' ')}`);
 
     // FK-084/E4-E5 — a telepites kimenetet a KOVETKEZO indulaskor ertekeljuk.
