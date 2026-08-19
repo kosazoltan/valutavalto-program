@@ -51,7 +51,7 @@ function readSetupConfig(): { companyCode?: string; workerCode?: string; workerN
 export default function LoginPage() {
   const { t } = useTranslation()
 
-  // Belépés előtt is telepíthető ablak: a suite-updater ne várjon Kasza Helgára.
+  // Hideg indítás: IDLE (telepíthető). Logout után: SHIFT_OPEN (ne szakítson műszakot).
   useEffect(() => {
     void reportLoginScreenIdleForUpdate()
   }, [])

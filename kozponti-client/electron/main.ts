@@ -598,11 +598,8 @@ app
 
     createWindow()
 
-    // Onfrissites: 2026-08-19 — `auto` mód. A korábbi `on-quit` csak akkor
-    // telepített, ha a kolléga bezárta a programot; Bali Henriett gépe (szeged
-    // értéktár / pénztár) így soha nem frissült, mert belépés sem sikerült.
-    // Letöltés után azonnal telepít + újraindít; belépett dolgozótól független.
-    // A pénztár-kliens NEM ezt használja (suite-telepítő, állapotablak).
+    // Onfrissites: `auto` a hideg indítás grace ablakában (belépőképernyő),
+    // utána on-quit — ne szakítson folyo értéktári/árfolyam-munkát.
     initElectronUpdater({
       updater: autoUpdater as never,
       logger: log,
@@ -611,6 +608,7 @@ app
       clientLabel: 'kozponti',
       mainWindow,
       rolloutPercent: Number.parseInt(process.env.UPDATE_ROLLOUT_PERCENT || '100', 10),
+      autoInstallGraceMs: 120_000,
     })
   })
   .catch((err) => {

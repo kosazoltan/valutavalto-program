@@ -83,10 +83,10 @@ export interface SuiteUpdateManifest {
 const INSTALLABLE_STATES: readonly ShiftState[] = ['IDLE_BEFORE_OPEN', 'CLOSED_AFTER_DAY_END'];
 
 /**
- * 2026-08-19 (Kósa): a telepítés NE a belépett dolgozó / „Frissítés most”
- * kattintás függvénye legyen. Belépőképernyőn (még nincs műszak) és napzárás
- * után a kész, ellenőrzött telepítő MAGÁTÓL indul — különben Bali Henriett
- * gépe (aki nem tud belépni / nem kattint) örökre a régi verzión marad.
+ * 2026-08-19: a telepítés NE a belépett dolgozó / „Frissítés most”
+ * kattintás függvénye legyen. Hideg belépőképernyőn és napzárás
+ * után a kész, ellenőrzött telepítő MAGÁTÓL indul — a belépés nélkül
+ * maradó munkaállomás ne ragadjon régi verzión.
  * Nyitott műszak alatt továbbra is TILOS telepíteni.
  */
 export function shouldAutoStartInstall(
@@ -635,7 +635,6 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
     }
 
     if (runtime.promptedForVersion === `started:${manifest.version}`) return;
-    runtime.promptedForVersion = `started:${manifest.version}`;
 
     const windowLabel =
       runtime.shiftState === 'CLOSED_AFTER_DAY_END'
@@ -748,6 +747,7 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
     if (args.length === 0) args.push('/S');
 
     runtime.state = 'INSTALLING';
+    runtime.promptedForVersion = `started:${manifest.version}`;
     log.info(`[suiteUpdate] csendes telepites indul: ${resolved} ${args.join(' ')}`);
 
     // FK-084/E4-E5 — a telepites kimenetet a KOVETKEZO indulaskor ertekeljuk.

@@ -59,8 +59,9 @@ export interface UpdateLogger {
  *  - `on-quit`: letoltes utan NEM kerdez es NEM inditja ujra az appot; a telepites
  *    a kovetkezo kilepesnel tortenik (`autoInstallOnAppQuit`). Ertesites tajekoztat.
  *  - `prompt`: letoltes utan modal dialog, elfogadas eseten azonnali ujraindit+telepit.
- *  - `auto`: letoltes utan azonnali `quitAndInstall()` — a belépéshez / kattintáshoz
- *    nem kötött (2026-08-19: értéktári/központi gépek, pl. Bali Henriett).
+ *  - `auto`: letoltes utan `quitAndInstall()`, de csak az `autoInstallGraceMs`
+ *    ablakban (hideg inditas / belépőképernyő). Utána on-quit, hogy ne szakítson
+ *    folyo árfolyam/értéktári munkát.
  */
 export type UpdateInstallMode = 'on-quit' | 'prompt' | 'auto'
 
@@ -95,6 +96,11 @@ export interface ElectronUpdaterOptions {
   initialDelayMs?: number
   /** Ellenorzesi periodus ms-ban (default 4 ora). */
   intervalMs?: number
+  /**
+   * `auto` mód: ennyi ms-ig a letöltés után azonnal telepít (belépőképernyő).
+   * 0 = mindig azonnal. Default 120_000. A grace után on-quit viselkedés.
+   */
+  autoInstallGraceMs?: number
 }
 
 /** Az `initElectronUpdater` visszateresi erteke — a timerek leallithatosaga miatt. */
@@ -112,6 +118,22 @@ export interface ElectronUpdaterHandle {
 const DEFAULT_INITIAL_DELAY_MS = 10_000
 const DEFAULT_INTERVAL_MS = 4 * 60 * 60 * 1000
 const DEFAULT_ROLLOUT_PERCENT = 100
+const DEFAULT_AUTO_INSTALL_GRACE_MS = 120_000
+
+/**
+ * `auto` módban csak a hideg-indítás grace ablakában telepít azonnal.
+ * 0 = mindig azonnal; negatív / NaN = soha (on-quit-re esik).
+ */
+export function shouldQuitAndInstallNow(
+  installMode: UpdateInstallMode,
+  elapsedMs: number,
+  autoInstallGraceMs: number,
+): boolean {
+  if (installMode !== 'auto') return false
+  if (!Number.isFinite(autoInstallGraceMs) || autoInstallGraceMs < 0) return false
+  if (autoInstallGraceMs === 0) return true
+  return elapsedMs <= autoInstallGraceMs
+}
 
 /**
  * Determinisztikus staged-rollout kapu.
@@ -152,7 +174,10 @@ export function initElectronUpdater(options: ElectronUpdaterOptions): ElectronUp
     machineId = process.env.COMPUTERNAME ?? '',
     initialDelayMs = DEFAULT_INITIAL_DELAY_MS,
     intervalMs = DEFAULT_INTERVAL_MS,
+    autoInstallGraceMs = DEFAULT_AUTO_INSTALL_GRACE_MS,
   } = options
+
+  const startedAt = Date.now()
 
   const tag = `[autoUpdate:${clientLabel}]`
   logger.info(`${tag} Current version: ${currentVersion}`)
@@ -245,17 +270,18 @@ export function initElectronUpdater(options: ElectronUpdaterOptions): ElectronUp
   }
 
   async function handleDownloaded(version: string): Promise<void> {
-    if (installMode === 'auto') {
+    const elapsedMs = Date.now() - startedAt
+    if (shouldQuitAndInstallNow(installMode, elapsedMs, autoInstallGraceMs)) {
       notify(
         'Frissítés telepítése',
         `A v${version} letöltve. A program most újraindul és telepít — belépés nem szükséges.`,
       )
-      logger.info(`${tag} auto mode: quitAndInstall() belépés nélkül.`)
+      logger.info(`${tag} auto mode (grace): quitAndInstall() belépés nélkül.`)
       updater.quitAndInstall()
       return
     }
 
-    if (installMode === 'on-quit') {
+    if (installMode === 'on-quit' || installMode === 'auto') {
       // A 2. dontes: a kozponti gepen nincs penztari munkafolyamat, ezert nem
       // szakitjuk meg a munkat — a telepites a kovetkezo kilepesnel fut le.
       notify(
