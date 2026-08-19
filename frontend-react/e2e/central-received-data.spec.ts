@@ -67,30 +67,6 @@ async function mockApis(page: Page) {
       })
     }
 
-    if (path.endsWith('/central/received-data/status') && method === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          reportDate:
-            url.searchParams.get('endDate') ?? url.searchParams.get('date') ?? '2026-06-18',
-          totalBranches: 3,
-          receivedReports: 2,
-          submittedReports: 2,
-          missingReports: 1,
-          warningClosings: 1,
-          criticalClosings: 1,
-          totalTransactions: 12,
-          totalBuyHuf: 1000000,
-          totalSellHuf: 800000,
-          totalFeeHuf: 12000,
-          totalProfit: 22000,
-          generatedAt: '2026-06-18T10:00:00',
-          rows: [],
-        }),
-      })
-    }
-
     if (path.endsWith('/central/transfer-reconciliation/run') && method === 'POST') {
       return route.fulfill({
         status: 200,
@@ -155,7 +131,7 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('beérkezett adatok oldal valós renderben hívja a status és reconciliation backend szerződést', async ({
+test('beérkezett adatok oldal valós renderben hívja a reconciliation backend szerződést', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -166,22 +142,14 @@ test('beérkezett adatok oldal valós renderben hívja a status és reconciliati
   await expect(page.getByRole('heading', { name: 'Beérkezett adatok áttekintése' })).toBeVisible()
   await expect(page.getByText('Válasszon intervallumot')).toBeVisible()
 
-  const receivedDataRequest = page.waitForRequest(
-    (request) =>
-      request.method() === 'GET' && request.url().includes('/central/received-data/status'),
-  )
   const reconciliationRequest = page.waitForRequest(
     (request) =>
       request.method() === 'POST' && request.url().includes('/central/transfer-reconciliation/run'),
   )
   await page.getByRole('button', { name: /Ellenőrzés/i }).click()
-  await receivedDataRequest
   await reconciliationRequest
 
-  const statusPanel = page.getByTestId('central-received-data-status')
-  await expect(statusPanel.getByText('Beérkezett jelentés')).toBeVisible()
-  await expect(statusPanel.getByText('Hiányzó jelentés')).toBeVisible()
-  await expect(statusPanel.getByText('Kritikus zárás')).toBeVisible()
+  await expect(page.getByTestId('central-received-data-status')).toHaveCount(0)
   const resultTable = page.locator('tbody')
   await expect(resultTable.getByText('EGYEZIK')).toBeVisible()
   await expect(resultTable.getByText('ELTÉRÉS')).toBeVisible()

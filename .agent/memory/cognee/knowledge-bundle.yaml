@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-18T20:06:54.291Z
+generated_at: 2026-08-19T10:09:30.784Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7457,6 +7457,20 @@ nodes:
     summary: "--- date: 2026-08-18 title: FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 type: session status: complete tags: [fkh037, fk086, fkh030, fkh036, specifikacio, frontend, deploy, installer, napzaras, penztar, release] --- # Handoff — FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 (2026-08-18) Status: **KIADVA**. Prod `2.28.83`, tag `v2.28.83` = `c51a7434`. Letöltött másolat: `C:\\zk\\Downloads\\valutavalto-v2.28.83`."
     tags: [fkh, 037, 086, stacked, 030, 036, date, 2026, title, type]
     areas: [deploy, installer, napzaras, penztar, specifikacio]
+  - id: 30dff79de919b0f7
+    type: medium-term-episodic
+    title: "Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19)"
+    source_path: vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md
+    summary: "# Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19) Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` ## Hiba A `GET /cash-desks/{id}/denominations/currency/{currencyId}` READ-út nem szűrt `denomination_category`-ra. Az Esti zárás (EVENING) HUF-készlet előtöltődött a Kezelési díj (HANDLING_FEE) oldalon. A WRITE-út (`POST .../batch?category=`) már helyes volt (FK-078 / FKH-0"
+    tags: [handoff, fkh, 038, becimletezo, kategoria, vak, betoltes, 2026, branch, feature]
+    areas: [cimletezes, ertektar, frontend, legacy, napzaras]
+  - id: 182029da334faa90
+    type: medium-term-episodic
+    title: "Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089"
+    source_path: vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md
+    summary: "# Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089 Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` HEAD at start: `bbf0a8aa` (a FK-090 jegy `55c8e9cc`-t várt — a main azóta release-elt). ## FKH-038 Becímletező READ kategória-szűrt (`findByCashDeskIdAndCurrencyIdAndCategory`). WRITE változatlan. EVENING/HANDLING_FEE nem keveredik. ## FK-090 Transfer-egyeztetés: - RECEIVED kikerült a megerős"
+    tags: [handoff, 2026, fkh, 038, 090, 089, branch, feature, ertektar, fkh038]
+    areas: [cimletezes, deploy, ertektar]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22688,6 +22702,30 @@ edges:
   - from: f55fd3c1b3236ff5
     to: area_specifikacio
     relation: belongs_to_area
+  - from: 30dff79de919b0f7
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 30dff79de919b0f7
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 30dff79de919b0f7
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 30dff79de919b0f7
+    to: area_legacy
+    relation: belongs_to_area
+  - from: 30dff79de919b0f7
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 182029da334faa90
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 182029da334faa90
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 182029da334faa90
+    to: area_ertektar
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22745,12 +22783,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 819e4c78c01e00ab
-    to: repo_project_state
-    relation: informs
-  - from: de2b442d593fa931
-    to: repo_project_state
-    relation: informs
   - from: ae3cbba0a3313652
     to: repo_project_state
     relation: informs
@@ -22977,6 +23009,12 @@ edges:
     to: repo_project_state
     relation: informs
   - from: f55fd3c1b3236ff5
+    to: repo_project_state
+    relation: informs
+  - from: 30dff79de919b0f7
+    to: repo_project_state
+    relation: informs
+  - from: 182029da334faa90
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

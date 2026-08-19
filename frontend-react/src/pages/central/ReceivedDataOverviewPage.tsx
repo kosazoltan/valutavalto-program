@@ -6,22 +6,22 @@ import {
   Calendar,
   CheckCircle2,
   ClipboardList,
+  Clock,
   RefreshCw,
   Search,
   ShieldCheck,
 } from 'lucide-react'
-import {
-  centralReceivedDataApi,
-  transferReconciliationApi,
-  type CentralReceivedDataOverview,
-  type TransferReconciliationResult,
-} from '../../services/api'
+import { transferReconciliationApi, type TransferReconciliationResult } from '../../services/api'
 import { logger } from '../../utils/logger'
-import { getErrorMessage } from '../../utils/errorHandling'
-import { localIsoDate, formatHuDate, isIsoDate } from '../../utils/dateFormat'
+import { localIsoDate } from '../../utils/dateFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
 
-type ReconFilter = 'all' | 'match' | 'mismatch'
+const RECON_FILTERS = ['all', 'match', 'mismatch', 'pending'] as const
+type ReconFilter = (typeof RECON_FILTERS)[number]
+
+function isReconFilter(value: string): value is ReconFilter {
+  return (RECON_FILTERS as readonly string[]).includes(value)
+}
 
 /** Előző nap LOKÁLIS dátumként (a másnap reggeli ellenőrzés alapértelmezett intervalluma). */
 function previousDayIso() {
@@ -35,8 +35,12 @@ function formatAmount(value?: number | null) {
   return value.toLocaleString('hu-HU')
 }
 
-function isMatch(status: string) {
-  return status === 'EGYEZIK'
+type ReconPresentation = 'match' | 'mismatch' | 'pending'
+
+function presentationOf(status: string): ReconPresentation {
+  if (status === 'EGYEZIK') return 'match'
+  if (status === 'FOLYAMATBAN') return 'pending'
+  return 'mismatch'
 }
 
 export default function ReceivedDataOverviewPage() {
@@ -47,49 +51,22 @@ export default function ReceivedDataOverviewPage() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<ReconFilter>('all')
   const [result, setResult] = useState<TransferReconciliationResult | null>(null)
-  const [receivedDataOverview, setReceivedDataOverview] =
-    useState<CentralReceivedDataOverview | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [reconciliationError, setReconciliationError] = useState(false)
-  const [statusError, setStatusError] = useState(false)
   const [hasRun, setHasRun] = useState(false)
 
   // FK-003: az ellenőrzés NEM fut automatikusan — Kasza Helga manuálisan indítja.
-  // FK-087 FR-2: a két forrás FÜGGETLENÜL töltődik (Promise.allSettled) — egyetlen forrás
-  // hibája NEM nullázza ki a másik sávot; a globális banner csak kettős hibánál jelenik meg.
+  // FK-089: a daily_report alsó panel megszűnt, csak az egyeztetés marad.
   const runCheck = async () => {
     setLoading(true)
-    setError(null)
     setReconciliationError(false)
-    setStatusError(false)
-    const [reconOutcome, statusOutcome] = await Promise.allSettled([
-      transferReconciliationApi.run(startDate, endDate),
-      // FK-088 FR-3: a referencia-dátum az intervallum VÉGE (endDate).
-      centralReceivedDataApi.status(endDate),
-    ])
-    if (reconOutcome.status === 'fulfilled') {
-      setResult(reconOutcome.value)
-    } else {
-      logger.error('ReceivedDataOverviewPage', 'Egyeztetés futtatási hiba:', reconOutcome.reason)
+    try {
+      const value = await transferReconciliationApi.run(startDate, endDate)
+      setResult(value)
+    } catch (reason) {
+      logger.error('ReceivedDataOverviewPage', 'Egyeztetés futtatási hiba:', reason)
       setResult(null)
       setReconciliationError(true)
-    }
-    if (statusOutcome.status === 'fulfilled') {
-      setReceivedDataOverview(statusOutcome.value)
-    } else {
-      logger.error(
-        'ReceivedDataOverviewPage',
-        'Beérkezett adatok betöltési hiba:',
-        statusOutcome.reason,
-      )
-      setReceivedDataOverview(null)
-      setStatusError(true)
-    }
-    if (reconOutcome.status === 'rejected' && statusOutcome.status === 'rejected') {
-      // Globális banner CSAK akkor, ha MINDKÉT forrás elesett (régi szemantika: az
-      // egyeztetés hibaüzenete jelenik meg).
-      setError(getErrorMessage(reconOutcome.reason))
     }
     setHasRun(true)
     setLoading(false)
@@ -111,8 +88,10 @@ export default function ReceivedDataOverviewPage() {
           row.discrepancyNote,
         ].some((value) => value?.toLowerCase().includes(q))
       if (!matchesQuery) return false
-      if (filter === 'match') return isMatch(row.status)
-      if (filter === 'mismatch') return !isMatch(row.status)
+      const presentation = presentationOf(row.status)
+      if (filter === 'match') return presentation === 'match'
+      if (filter === 'mismatch') return presentation === 'mismatch'
+      if (filter === 'pending') return presentation === 'pending'
       return true
     })
   }, [filter, query, result])
@@ -205,46 +184,6 @@ export default function ReceivedDataOverviewPage() {
           </div>
         )}
 
-        {/* FK-088 FR-3: az állapot-sáv referencia-dátumának jelölése (lekérdezett END dátum). */}
-        {/* A-6 (option A): üres endDate → nincs felirat (a backend „ma" fallbackja
-            változatlan, de nem hazudunk dátumot). */}
-        {receivedDataOverview != null && isIsoDate(endDate) && (
-          <div data-testid="received-data-status-caption" className="text-xs text-slate-500">
-            {t('centralReceivedData.statusOnDate', { date: formatHuDate(endDate) })}
-          </div>
-        )}
-
-        <div
-          className="grid grid-cols-2 gap-2 md:grid-cols-4"
-          data-testid="central-received-data-status"
-        >
-          <Metric label="Irodák" value={receivedDataOverview?.totalBranches ?? 0} />
-          <Metric
-            label="Beérkezett jelentés"
-            value={receivedDataOverview?.receivedReports ?? 0}
-            tone="green"
-          />
-          <Metric
-            label="Hiányzó jelentés"
-            value={receivedDataOverview?.missingReports ?? 0}
-            tone="red"
-          />
-          <Metric
-            label="Kritikus zárás"
-            value={receivedDataOverview?.criticalClosings ?? 0}
-            tone="amber"
-          />
-        </div>
-
-        {statusError && (
-          <div
-            data-testid="received-data-status-error"
-            className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            {t('centralReceivedData.statusError')}
-          </div>
-        )}
-
         <div className="rounded-md border border-slate-200 bg-white p-3">
           <div className="flex flex-wrap items-end gap-3">
             <div>
@@ -287,12 +226,15 @@ export default function ReceivedDataOverviewPage() {
               <label className="mb-1 block text-xs font-medium text-slate-600">Szűrő</label>
               <select
                 value={filter}
-                onChange={(event) => setFilter(event.target.value as ReconFilter)}
+                onChange={(event) => {
+                  if (isReconFilter(event.target.value)) setFilter(event.target.value)
+                }}
                 className="rounded border border-slate-300 bg-white px-2 py-2 text-sm"
               >
-                <option value="all">Összes</option>
-                <option value="match">Egyezik</option>
-                <option value="mismatch">Eltérés</option>
+                <option value="all">{t('centralReceivedData.filterAll')}</option>
+                <option value="match">{t('centralReceivedData.statusMatch')}</option>
+                <option value="mismatch">{t('centralReceivedData.statusMismatch')}</option>
+                <option value="pending">{t('centralReceivedData.statusInProgress')}</option>
               </select>
             </div>
             <button
@@ -306,15 +248,6 @@ export default function ReceivedDataOverviewPage() {
             </button>
           </div>
         </div>
-
-        {error && (
-          <div
-            data-testid="received-data-global-error"
-            className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            {error}
-          </div>
-        )}
 
         <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
           <div className="overflow-x-auto">
@@ -331,49 +264,84 @@ export default function ReceivedDataOverviewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredRows.map((row, index) => (
-                  <tr
-                    key={`${row.transferId}-${row.currencyCode}-${index}`}
-                    className={isMatch(row.status) ? undefined : 'bg-red-50'}
-                  >
-                    <td className="px-3 py-2 text-slate-700">{row.date}</td>
-                    <td className="px-3 py-2">
-                      <div className="font-semibold text-slate-900">
-                        {row.fromBranchCode ?? '-'}
-                      </div>
-                      <div className="text-xs text-slate-500">{row.fromBranchName ?? ''}</div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="font-semibold text-slate-900">{row.toBranchCode ?? '-'}</div>
-                      <div className="text-xs text-slate-500">{row.toBranchName ?? ''}</div>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-slate-700">{row.currencyCode}</td>
-                    <td className="px-3 py-2 text-right font-mono text-slate-700">
-                      {formatAmount(row.sentAmount)}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-slate-700">
-                      {formatAmount(row.receivedAmount)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {isMatch(row.status) ? (
-                        <span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
-                          <CheckCircle2 size={13} />
-                          EGYEZIK
-                        </span>
-                      ) : (
-                        <div>
-                          <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
-                            <AlertTriangle size={13} />
-                            ELTÉRÉS
-                          </span>
-                          {row.discrepancyNote && (
-                            <div className="mt-1 text-xs text-red-600">{row.discrepancyNote}</div>
-                          )}
+                {filteredRows.map((row, index) => {
+                  const presentation = presentationOf(row.status)
+                  const rowClass =
+                    presentation === 'mismatch'
+                      ? 'bg-red-50'
+                      : presentation === 'pending'
+                        ? 'bg-slate-50'
+                        : undefined
+                  return (
+                    <tr
+                      key={`${row.transferId}-${row.currencyCode}-${index}`}
+                      className={rowClass}
+                      data-testid={`recon-row-${row.transferNumber}`}
+                    >
+                      <td className="px-3 py-2 text-slate-700">{row.date}</td>
+                      <td className="px-3 py-2">
+                        <div className="font-semibold text-slate-900">
+                          {row.fromBranchCode ?? '-'}
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        <div className="text-xs text-slate-500">{row.fromBranchName ?? ''}</div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-semibold text-slate-900">
+                          {row.toBranchCode ?? '-'}
+                        </div>
+                        <div className="text-xs text-slate-500">{row.toBranchName ?? ''}</div>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-slate-700">{row.currencyCode}</td>
+                      <td className="px-3 py-2 text-right font-mono text-slate-700">
+                        {formatAmount(row.sentAmount)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-slate-700">
+                        {formatAmount(row.receivedAmount)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {presentation === 'match' && (
+                          <span
+                            data-testid="recon-status-match"
+                            className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700"
+                          >
+                            <CheckCircle2 size={13} />
+                            {t('centralReceivedData.statusMatch')}
+                          </span>
+                        )}
+                        {presentation === 'pending' && (
+                          <div>
+                            <span
+                              data-testid="recon-status-pending"
+                              className="inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700"
+                            >
+                              <Clock size={13} />
+                              {t('centralReceivedData.statusInProgress')}
+                            </span>
+                            {row.discrepancyNote && (
+                              <div className="mt-1 text-xs text-slate-600">
+                                {row.discrepancyNote}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {presentation === 'mismatch' && (
+                          <div>
+                            <span
+                              data-testid="recon-status-mismatch"
+                              className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-100 px-2 py-1 text-xs font-semibold text-red-700"
+                            >
+                              <AlertTriangle size={13} />
+                              {t('centralReceivedData.statusMismatch')}
+                            </span>
+                            {row.discrepancyNote && (
+                              <div className="mt-1 text-xs text-red-600">{row.discrepancyNote}</div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
                 {!loading && hasRun && filteredRows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-3 py-8 text-center text-sm text-slate-500">

@@ -38,8 +38,11 @@ public class TransferReconciliationService {
 
     public static final String STATUS_MATCH = "EGYEZIK";
     public static final String STATUS_MISMATCH = "ELTERES";
+    /** FK-090 FR-2: Feladó-irányú, még nem lezárt átadólap — se egyezés, se eltérés. */
+    public static final String STATUS_IN_PROGRESS = "FOLYAMATBAN";
 
     private static final String NOTE_MISSING_RECEIVER = "Hiányzó bejegyzés a fogadó oldalon";
+    private static final String NOTE_AWAITING_RECEIVER = "Fogadó megerősítésére vár";
     private static final String NOTIF_ENTITY_TYPE = "TransferReconciliation";
     private static final String NOTIF_TYPE = "TRANSFER_DISCREPANCY";
 
@@ -64,18 +67,21 @@ public class TransferReconciliationService {
         int notified = 0;
 
         for (Transfer t : transfers) {
-            boolean receiverConfirmed = t.getStatus() == Transfer.TransferStatus.RECEIVED
-                    || t.getStatus() == Transfer.TransferStatus.COMPLETED;
+            // FK-090 FR-1: a RECEIVED státusz soha nem íródik (TransferService csak
+            // PENDING / IN_TRANSIT / COMPLETED / REJECTED / CANCELLED). Csak COMPLETED
+            // számít fogadó-megerősítésnek.
+            boolean receiverConfirmed = t.getStatus() == Transfer.TransferStatus.COMPLETED;
 
             List<TransferReconciliationRowDto> transferRows = buildRows(t, receiverConfirmed);
             boolean hasDiscrepancy = false;
             for (TransferReconciliationRowDto row : transferRows) {
                 if (STATUS_MATCH.equals(row.getStatus())) {
                     matched++;
-                } else {
+                } else if (STATUS_MISMATCH.equals(row.getStatus())) {
                     discrepancy++;
                     hasDiscrepancy = true;
                 }
+                // FOLYAMATBAN: sem matched, sem discrepancy, nincs értesítés.
             }
             rows.addAll(transferRows);
 
@@ -114,10 +120,23 @@ public class TransferReconciliationService {
 
     private TransferReconciliationRowDto buildRow(Transfer t, String currencyCode,
                                                   BigDecimal sent, BigDecimal received, boolean receiverConfirmed) {
+        Transfer.TransferDirection direction =
+                t.getDirection() != null ? t.getDirection() : Transfer.TransferDirection.UF;
         String status;
         String note = null;
+        BigDecimal displayReceived = received;
 
-        if (received == null || !receiverConfirmed) {
+        if (isCreateSettled(direction)) {
+            // FK-090 FR-3: Vevő (U) / Korrekció (FF) — a pénzmozgás create-kor teljes.
+            // Az egyeztetés OLVASÁSI logikája a rögzített összeget használja mindkét oldalon;
+            // a transfer_lines.received_amount-ot nem írjuk.
+            status = STATUS_MATCH;
+            displayReceived = sent;
+        } else if (direction == Transfer.TransferDirection.F && !receiverConfirmed) {
+            // FK-090 FR-2: Feladó-irány, fogadó még nem erősített — semleges.
+            status = STATUS_IN_PROGRESS;
+            note = NOTE_AWAITING_RECEIVER;
+        } else if (received == null || !receiverConfirmed) {
             status = STATUS_MISMATCH;
             note = NOTE_MISSING_RECEIVER;
         } else if (sent == null || received.compareTo(sent) != 0) {
@@ -140,10 +159,19 @@ public class TransferReconciliationService {
                 .toBranchName(to != null ? to.getName() : null)
                 .currencyCode(currencyCode)
                 .sentAmount(sent)
-                .receivedAmount(received)
+                .receivedAmount(displayReceived)
                 .status(status)
                 .discrepancyNote(note)
                 .build();
+    }
+
+    /**
+     * U (Vevő) és FF (Korrekció): create-kor, egyetlen fél összegével elszámolt irány.
+     * UF (Teljes körforgás) NEM ide tartozik — ott a meglévő összeg-összehasonlítás marad (FR-4).
+     */
+    private static boolean isCreateSettled(Transfer.TransferDirection direction) {
+        return direction == Transfer.TransferDirection.U
+                || direction == Transfer.TransferDirection.FF;
     }
 
     /**

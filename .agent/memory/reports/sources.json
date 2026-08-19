@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-18T20:06:54.291Z",
-  "source_count": 1067,
+  "generated_at": "2026-08-19T10:09:30.784Z",
+  "source_count": 1069,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12507,6 +12507,28 @@
         "napzaras",
         "penztar",
         "specifikacio"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md",
+      "sha256": "6b6ac387d2b945c6a53c65ba3612c598d8a010f9df16b294431ada2d64a66af1",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "ertektar",
+        "frontend",
+        "legacy",
+        "napzaras"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md",
+      "sha256": "bab9d375d3b00b522d710818680d700718b12c8fbbeca66b83853e2e62ff634f",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "ertektar"
       ]
     },
     {
