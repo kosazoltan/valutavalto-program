@@ -27,6 +27,7 @@ import {
 } from '../../utils/clientEnv'
 import type { AppMode } from '../../types/appMode'
 import { useTranslation } from 'react-i18next'
+import { reportLoginScreenIdleForUpdate } from '../../hooks/reportLoginScreenIdleForUpdate'
 
 /**
  * Setup wizard altal elmentett config (localStorage / Electron config).
@@ -49,6 +50,12 @@ function readSetupConfig(): { companyCode?: string; workerCode?: string; workerN
 
 export default function LoginPage() {
   const { t } = useTranslation()
+
+  // Belépés előtt is telepíthető ablak: a suite-updater ne várjon Kasza Helgára.
+  useEffect(() => {
+    void reportLoginScreenIdleForUpdate()
+  }, [])
+
   // v2.3.0: pre-fill a setup wizard altal beallitott kivalasztott dolgozoval
   const setupConfig = readSetupConfig()
   const [companyCode, setCompanyCode] = useState(setupConfig.companyCode || 'EBC')

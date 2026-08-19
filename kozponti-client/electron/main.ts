@@ -598,17 +598,16 @@ app
 
     createWindow()
 
-    // Onfrissites (docs/auto-update-terv-es-vegrehajtas.md 8. szakasz, 2. dontes):
-    // a kozponti gepen nincs penztari munkafolyamat, ezert `on-quit` mod — a
-    // frissites a hatterben letolt, es a kovetkezo app-kilepesnel telepul,
-    // munkamegszakitas nelkul. A dontesi logika (rollout, event-wiring, dialogok)
-    // a platform-retegben van; az `electron-updater` peldanyt itt adjuk at.
-    // A penztar-kliens NEM ezt hasznalja (suite-telepito -> 3.2/3.6 szakasz).
+    // Onfrissites: 2026-08-19 — `auto` mód. A korábbi `on-quit` csak akkor
+    // telepített, ha a kolléga bezárta a programot; Bali Henriett gépe (szeged
+    // értéktár / pénztár) így soha nem frissült, mert belépés sem sikerült.
+    // Letöltés után azonnal telepít + újraindít; belépett dolgozótól független.
+    // A pénztár-kliens NEM ezt használja (suite-telepítő, állapotablak).
     initElectronUpdater({
       updater: autoUpdater as never,
       logger: log,
       currentVersion: app.getVersion(),
-      installMode: 'on-quit',
+      installMode: 'auto',
       clientLabel: 'kozponti',
       mainWindow,
       rolloutPercent: Number.parseInt(process.env.UPDATE_ROLLOUT_PERCENT || '100', 10),

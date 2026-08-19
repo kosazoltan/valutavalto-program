@@ -273,6 +273,15 @@ describe('initElectronUpdater — telepitesi mod (munkamegszakitas tilalma)', ()
     expect(updater.quitAndInstallCalls).toBe(0);
   });
 
+  it('auto mod: dialog nelkul azonnal quitAndInstall (belépés nem kell)', async () => {
+    const { updater } = init({ installMode: 'auto' });
+    updater.emit('update-downloaded', { version: '2.28.84' });
+    await Promise.resolve();
+    expect(showMessageBoxMock).not.toHaveBeenCalled();
+    expect(updater.quitAndInstallCalls).toBe(1);
+    expect(notificationShowMock).toHaveBeenCalled();
+  });
+
   it('hianyzo verzio-info nem dobja el a folyamatot', async () => {
     const { updater } = init({ installMode: 'on-quit' });
     updater.emit('update-downloaded', undefined);

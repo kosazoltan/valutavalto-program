@@ -59,8 +59,10 @@ export interface UpdateLogger {
  *  - `on-quit`: letoltes utan NEM kerdez es NEM inditja ujra az appot; a telepites
  *    a kovetkezo kilepesnel tortenik (`autoInstallOnAppQuit`). Ertesites tajekoztat.
  *  - `prompt`: letoltes utan modal dialog, elfogadas eseten azonnali ujraindit+telepit.
+ *  - `auto`: letoltes utan azonnali `quitAndInstall()` — a belépéshez / kattintáshoz
+ *    nem kötött (2026-08-19: értéktári/központi gépek, pl. Bali Henriett).
  */
-export type UpdateInstallMode = 'on-quit' | 'prompt'
+export type UpdateInstallMode = 'on-quit' | 'prompt' | 'auto'
 
 export interface ElectronUpdaterOptions {
   /** Az `electron-updater` `autoUpdater` peldanya (a kliens adja at). */
@@ -243,6 +245,16 @@ export function initElectronUpdater(options: ElectronUpdaterOptions): ElectronUp
   }
 
   async function handleDownloaded(version: string): Promise<void> {
+    if (installMode === 'auto') {
+      notify(
+        'Frissítés telepítése',
+        `A v${version} letöltve. A program most újraindul és telepít — belépés nem szükséges.`,
+      )
+      logger.info(`${tag} auto mode: quitAndInstall() belépés nélkül.`)
+      updater.quitAndInstall()
+      return
+    }
+
     if (installMode === 'on-quit') {
       // A 2. dontes: a kozponti gepen nincs penztari munkafolyamat, ezert nem
       // szakitjuk meg a munkat — a telepites a kovetkezo kilepesnel fut le.

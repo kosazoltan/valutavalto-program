@@ -367,9 +367,9 @@ for (const client of CLIENTS) {
       'a ket kliens naploja szetvalaszthato kell legyen',
     )
     check(
-      "kozponti-client: on-quit telepitesi mod (nincs munkat megszakito restart)",
-      /installMode:\s*'on-quit'/.test(src),
-      'a 2. dontes szerint a telepites app-kilepesnel tortenik',
+      "kozponti-client: auto telepitesi mod (belépés nélkül is frissül)",
+      /installMode:\s*'auto'/.test(src),
+      '2026-08-19: az on-quit a soha-be-nem-lepő gépeken (Bali) nem telepített',
     )
   }
 
@@ -406,6 +406,12 @@ for (const client of CLIENTS) {
       'penztar suite-updater: a telepitesi ablak kapuja letezik (isInstallWindow)',
       src.includes('export function isInstallWindow'),
       'a READY -> INSTALLING atmenet csak IDLE_BEFORE_OPEN / CLOSED_AFTER_DAY_END allapotban engedett (3.6)',
+    )
+    check(
+      'penztar suite-updater: READY ablakban automatikus telepites (shouldAutoStartInstall)',
+      src.includes('export function shouldAutoStartInstall') &&
+        src.includes('shouldAutoStartInstall(runtime.state, runtime.shiftState)'),
+      'a belépés / Frissítés-most kattintás nélküli gépek is frissüljenek (2026-08-19)',
     )
     check(
       'penztar suite-updater: nyitott muszak NEM telepitheto allapot',
@@ -575,6 +581,16 @@ for (const client of CLIENTS) {
       'frontend: a MainLayout bekoti a suite-update hookot es a jelolot',
       src.includes('useSuiteUpdate()') && src.includes('<SuiteUpdateBadge'),
       'a kollega csak igy latja, hogy van keszen allo frissites',
+    )
+  }
+
+  const loginPage = join('frontend-react', 'src', 'pages', 'auth', 'LoginPage.tsx')
+  if (existsSync(loginPage)) {
+    const src = readFileSync(loginPage, 'utf8')
+    check(
+      'frontend: a LoginPage IDLE_BEFORE_OPEN-t jelent (belépés nélkül is telepíthető)',
+      src.includes('reportLoginScreenIdleForUpdate'),
+      'ha csak a MainLayout jelentene, a belépni nem tudó gép SHIFT_OPEN-on ragadna',
     )
   }
 }
