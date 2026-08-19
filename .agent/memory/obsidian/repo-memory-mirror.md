@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-18T20:06:54.291Z
+generated: 2026-08-19T10:09:30.784Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-18T20:06:54.291Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1067
-- generated: 2026-08-18T20:06:54.291Z
+- sources: 1069
+- generated: 2026-08-19T10:09:30.784Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1077,5 +1077,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)]] — `vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md` (medium-term-episodic)
 - [[Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17)]] — `vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md` (medium-term-episodic)
 - [[FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83]] — `vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md` (medium-term-episodic)
+- [[Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19)]] — `vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md` (medium-term-episodic)
+- [[Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089]] — `vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)

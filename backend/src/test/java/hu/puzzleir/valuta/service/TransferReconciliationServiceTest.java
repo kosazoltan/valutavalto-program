@@ -113,11 +113,123 @@ class TransferReconciliationServiceTest {
     }
 
     @Test
-    @DisplayName("ELTÉRÉS — a fogadó még nem erősítette meg (PENDING) → 'Hiányzó bejegyzés a fogadó oldalon'")
+    @DisplayName("FK-090 FR-2: Feladó + PENDING → FOLYAMATBAN, nincs eltérés-számlálás, nincs értesítés")
     void testMissingReceiver() {
         Transfer t = baseTransfer("AT0003", Transfer.TransferStatus.PENDING)
+                .direction(Transfer.TransferDirection.F)
                 .amount(new BigDecimal("3000"))
                 .receivedAmount(null)
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+
+            TransferReconciliationResultDto result = service.reconcile(D, D);
+
+            assertThat(result.getDiscrepancyRows()).isZero();
+            assertThat(result.getMatchedRows()).isZero();
+            assertThat(result.getNotifiedBranches()).isZero();
+            assertThat(result.getRows().get(0).getStatus())
+                    .isEqualTo(TransferReconciliationService.STATUS_IN_PROGRESS);
+            assertThat(result.getRows().get(0).getDiscrepancyNote()).contains("Fogadó megerősítésére vár");
+            verifyNoInteractions(notificationService);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-090 FR-2: Feladó + IN_TRANSIT → FOLYAMATBAN, nincs értesítés")
+    void senderInTransitIsNeutral() {
+        Transfer t = baseTransfer("AT0013", Transfer.TransferStatus.IN_TRANSIT)
+                .direction(Transfer.TransferDirection.F)
+                .amount(new BigDecimal("3000"))
+                .receivedAmount(null)
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+
+            TransferReconciliationResultDto result = service.reconcile(D, D);
+
+            assertThat(result.getRows().get(0).getStatus())
+                    .isEqualTo(TransferReconciliationService.STATUS_IN_PROGRESS);
+            assertThat(result.getDiscrepancyRows()).isZero();
+            verifyNoInteractions(notificationService);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-090 FR-3: Vevő (U) üres fogadott összeggel → EGYEZIK a rögzített összeggel")
+    void buyerDirectionMatchesOnSentAmount() {
+        Transfer t = baseTransfer("AT0010", Transfer.TransferStatus.COMPLETED)
+                .direction(Transfer.TransferDirection.U)
+                .amount(new BigDecimal("2500"))
+                .receivedAmount(null)
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+
+            TransferReconciliationResultDto result = service.reconcile(D, D);
+
+            assertThat(result.getMatchedRows()).isEqualTo(1);
+            assertThat(result.getDiscrepancyRows()).isZero();
+            TransferReconciliationRowDto row = result.getRows().get(0);
+            assertThat(row.getStatus()).isEqualTo(TransferReconciliationService.STATUS_MATCH);
+            assertThat(row.getSentAmount()).isEqualByComparingTo("2500");
+            assertThat(row.getReceivedAmount()).isEqualByComparingTo("2500");
+            verifyNoInteractions(notificationService);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-090 FR-3: Korrekció (FF) üres fogadott összeggel → EGYEZIK")
+    void correctionDirectionMatchesOnSentAmount() {
+        Transfer t = baseTransfer("AT0011", Transfer.TransferStatus.COMPLETED)
+                .direction(Transfer.TransferDirection.FF)
+                .amount(new BigDecimal("800"))
+                .receivedAmount(null)
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+
+            TransferReconciliationResultDto result = service.reconcile(D, D);
+
+            assertThat(result.getMatchedRows()).isEqualTo(1);
+            assertThat(result.getRows().get(0).getStatus())
+                    .isEqualTo(TransferReconciliationService.STATUS_MATCH);
+            verifyNoInteractions(notificationService);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-090 FR-4: Teljes körforgás (UF) COMPLETED, egyező összeg → EGYEZIK (regresszió)")
+    void fullCycleDirectionStillMatches() {
+        Transfer t = baseTransfer("AT0012", Transfer.TransferStatus.COMPLETED)
+                .direction(Transfer.TransferDirection.UF)
+                .amount(new BigDecimal("5000"))
+                .receivedAmount(new BigDecimal("5000"))
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+
+            TransferReconciliationResultDto result = service.reconcile(D, D);
+
+            assertThat(result.getMatchedRows()).isEqualTo(1);
+            assertThat(result.getRows().get(0).getStatus())
+                    .isEqualTo(TransferReconciliationService.STATUS_MATCH);
+            verifyNoInteractions(notificationService);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-090 regresszió: Feladó + COMPLETED, valódi összeg-eltérés → ELTÉRÉS + értesítés")
+    void senderCompletedAmountMismatchStillNotifies() {
+        Transfer t = baseTransfer("AT0014", Transfer.TransferStatus.COMPLETED)
+                .direction(Transfer.TransferDirection.F)
+                .amount(new BigDecimal("5000"))
+                .receivedAmount(new BigDecimal("4900"))
                 .build();
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -128,15 +240,45 @@ class TransferReconciliationServiceTest {
             TransferReconciliationResultDto result = service.reconcile(D, D);
 
             assertThat(result.getDiscrepancyRows()).isEqualTo(1);
-            assertThat(result.getRows().get(0).getStatus()).isEqualTo(TransferReconciliationService.STATUS_MISMATCH);
-            assertThat(result.getRows().get(0).getDiscrepancyNote()).contains("Hiányzó bejegyzés");
+            assertThat(result.getRows().get(0).getStatus())
+                    .isEqualTo(TransferReconciliationService.STATUS_MISMATCH);
+            verify(notificationService).notifyBranchOnce(any(), any(), any(), any(), any(), any(), any());
         }
     }
 
     @Test
+    @DisplayName("FK-090 edge: null direction → UF fallback, üres lines → fejléc-alapú egysoros")
+    void nullDirectionFallsBackToUfHeaderRow() {
+        Transfer t = baseTransfer("AT0015", Transfer.TransferStatus.COMPLETED)
+                .direction(null)
+                .amount(new BigDecimal("100"))
+                .receivedAmount(new BigDecimal("100"))
+                .lines(List.of())
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+
+            TransferReconciliationResultDto result = service.reconcile(D, D);
+
+            assertThat(result.getTotalRows()).isEqualTo(1);
+            assertThat(result.getMatchedRows()).isEqualTo(1);
+            assertThat(result.getRows().get(0).getStatus())
+                    .isEqualTo(TransferReconciliationService.STATUS_MATCH);
+        }
+    }
+
+    /**
+     * FK-090 FR-1 (dokumentált spec-döntés): a RECEIVED státusz soha nem íródik a
+     * TransferService-ből, ezért a fixture COMPLETED-re frissül — ez a ténylegesen
+     * lezárt állapot, nem teszt-kozmetika.
+     */
+    @Test
     @DisplayName("Több-valutás átadólap — soronkénti egyeztetés (egy egyezik, egy eltér), 1 értesítés")
     void testMultiCurrencyLines() {
-        Transfer t = baseTransfer("AT0004", Transfer.TransferStatus.RECEIVED).build();
+        Transfer t = baseTransfer("AT0004", Transfer.TransferStatus.COMPLETED)
+                .direction(Transfer.TransferDirection.F)
+                .build();
         TransferLine ok = TransferLine.builder().currency(currency("USD"))
                 .amount(new BigDecimal("1000")).receivedAmount(new BigDecimal("1000")).build();
         TransferLine bad = TransferLine.builder().currency(currency("GBP"))

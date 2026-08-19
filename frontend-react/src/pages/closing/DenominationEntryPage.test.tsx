@@ -398,4 +398,45 @@ describe('DenominationEntryPage — FK-078', () => {
     await user.click(await screen.findByTestId('denomination-entry-exit'))
     expect(mocks.navigate).toHaveBeenLastCalledWith('/cashier')
   })
+
+  // ——— FKH-038: kategória-tudatos betöltés (EVENING / HANDLING_FEE ne mosódjon össze) ———
+
+  it('FKH-038 FR-3: HANDLING_FEE oldal a betöltő hívásban a HANDLING_FEE kategóriát küldi', async () => {
+    categoryParam = 'HANDLING_FEE'
+    renderPage()
+
+    await waitFor(() =>
+      expect(mocks.balancesGetByCurrency).toHaveBeenCalledWith('branch-1', '1', 'HANDLING_FEE'),
+    )
+  })
+
+  it('FKH-038 FR-3: HANDLING_FEE oldalon a mennyiség-mező üres, ha nincs HANDLING_FEE sor', async () => {
+    categoryParam = 'HANDLING_FEE'
+    mocks.balancesGetByCurrency.mockResolvedValue([])
+    renderPage()
+
+    const qty = await screen.findByTestId('denomination-entry-qty-10')
+    expect(qty).toHaveValue('')
+  })
+
+  it('FKH-038 FR-4: EVENING oldal a saját mennyiséget tölti be, HANDLING_FEE kategória nélkül', async () => {
+    mocks.balancesGetByCurrency.mockResolvedValue([{ denominationId: '10', quantity: 4 }])
+    renderPage()
+
+    await waitFor(() =>
+      expect(mocks.balancesGetByCurrency).toHaveBeenCalledWith('branch-1', '1', 'EVENING'),
+    )
+    await waitFor(() => expect(screen.getByTestId('denomination-entry-qty-10')).toHaveValue('4'))
+    expect(mocks.balancesGetByCurrency).not.toHaveBeenCalledWith('branch-1', '1', 'HANDLING_FEE')
+  })
+
+  it('FKH-038 regresszió: EVENING mentés után az önellenőrzés továbbra is EVENING kategóriával fut', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-save'))
+
+    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(1))
+    expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'EVENING')
+  })
 })

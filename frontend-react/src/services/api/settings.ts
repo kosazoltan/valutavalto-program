@@ -448,9 +448,13 @@ export const denominationBalanceApi = {
   getCashDeskDenominationsByCurrency: async (
     cashDeskId: string,
     currencyId: string,
+    category?: DenominationBalanceCategory,
   ): Promise<DenominationBalanceDTO[]> => {
+    // FKH-038: a kategória opcionális query-paraméter — hiányában a backend EVENING-et
+    // alkalmaz (visszamenőleg kompatibilis). A becímletező oldal a route kategóriáját küldi.
     const response = await api.get<DenominationBalanceDTO[]>(
       `/cash-desks/${cashDeskId}/denominations/currency/${currencyId}`,
+      category ? { params: { category } } : undefined,
     )
     return response.data
   },

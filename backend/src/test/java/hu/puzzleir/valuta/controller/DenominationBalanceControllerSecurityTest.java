@@ -99,11 +99,11 @@ class DenominationBalanceControllerSecurityTest {
     @Test
     @WithMockUser(roles = "ERTEKTAR")
     void read_allowsErtektar() {
-        when(service.getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L)).thenReturn(List.of());
+        when(service.getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null)).thenReturn(List.of());
 
-        controller.getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L);
+        controller.getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null);
 
-        verify(service).getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L);
+        verify(service).getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null);
     }
 
     @Test

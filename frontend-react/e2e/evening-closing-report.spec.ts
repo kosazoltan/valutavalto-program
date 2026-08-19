@@ -154,7 +154,7 @@ test('esti zárás mobil nézetben a napi jelentés backend endpointot hívja', 
       url.pathname === '/api/v1/evening-closing/branch-1/2026-06-18/report'
     )
   })
-  await page.getByRole('button', { name: /Napi jelentés/i }).click()
+  await page.getByRole('button', { name: 'Napi jelentés', exact: true }).click()
   await reportRequest
 
   const reportPanel = page.getByTestId('evening-closing-report-panel')

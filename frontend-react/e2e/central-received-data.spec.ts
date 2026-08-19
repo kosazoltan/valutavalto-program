@@ -67,30 +67,6 @@ async function mockApis(page: Page) {
       })
     }
 
-    if (path.endsWith('/central/received-data/status') && method === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          reportDate:
-            url.searchParams.get('endDate') ?? url.searchParams.get('date') ?? '2026-06-18',
-          totalBranches: 3,
-          receivedReports: 2,
-          submittedReports: 2,
-          missingReports: 1,
-          warningClosings: 1,
-          criticalClosings: 1,
-          totalTransactions: 12,
-          totalBuyHuf: 1000000,
-          totalSellHuf: 800000,
-          totalFeeHuf: 12000,
-          totalProfit: 22000,
-          generatedAt: '2026-06-18T10:00:00',
-          rows: [],
-        }),
-      })
-    }
-
     if (path.endsWith('/central/transfer-reconciliation/run') && method === 'POST') {
       return route.fulfill({
         status: 200,
@@ -98,7 +74,7 @@ async function mockApis(page: Page) {
         body: JSON.stringify({
           startDate: url.searchParams.get('startDate') ?? '2026-06-18',
           endDate: url.searchParams.get('endDate') ?? '2026-06-18',
-          totalRows: 2,
+          totalRows: 3,
           matchedRows: 1,
           discrepancyRows: 1,
           notifiedBranches: 1,
@@ -132,6 +108,20 @@ async function mockApis(page: Page) {
               status: 'ELTERES',
               discrepancyNote: 'Eltérő összeg: küldött 3000, fogadott 2900',
             },
+            {
+              transferId: 3,
+              transferNumber: 'AT0003',
+              date: '2026-06-18',
+              fromBranchCode: 'BR011',
+              fromBranchName: 'Pécs',
+              toBranchCode: 'BR020',
+              toBranchName: 'Szeged Értéktár',
+              currencyCode: 'HUF',
+              sentAmount: 10000,
+              receivedAmount: null,
+              status: 'FOLYAMATBAN',
+              discrepancyNote: 'Fogadó megerősítésére vár',
+            },
           ],
         }),
       })
@@ -155,7 +145,7 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('beérkezett adatok oldal valós renderben hívja a status és reconciliation backend szerződést', async ({
+test('beérkezett adatok oldal valós renderben hívja a reconciliation backend szerződést', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -166,25 +156,24 @@ test('beérkezett adatok oldal valós renderben hívja a status és reconciliati
   await expect(page.getByRole('heading', { name: 'Beérkezett adatok áttekintése' })).toBeVisible()
   await expect(page.getByText('Válasszon intervallumot')).toBeVisible()
 
-  const receivedDataRequest = page.waitForRequest(
-    (request) =>
-      request.method() === 'GET' && request.url().includes('/central/received-data/status'),
-  )
   const reconciliationRequest = page.waitForRequest(
     (request) =>
       request.method() === 'POST' && request.url().includes('/central/transfer-reconciliation/run'),
   )
   await page.getByRole('button', { name: /Ellenőrzés/i }).click()
-  await receivedDataRequest
   await reconciliationRequest
 
-  const statusPanel = page.getByTestId('central-received-data-status')
-  await expect(statusPanel.getByText('Beérkezett jelentés')).toBeVisible()
-  await expect(statusPanel.getByText('Hiányzó jelentés')).toBeVisible()
-  await expect(statusPanel.getByText('Kritikus zárás')).toBeVisible()
+  await expect(page.getByTestId('central-received-data-status')).toHaveCount(0)
   const resultTable = page.locator('tbody')
   await expect(resultTable.getByText('EGYEZIK')).toBeVisible()
   await expect(resultTable.getByText('ELTÉRÉS')).toBeVisible()
+  await expect(resultTable.getByText('FOLYAMATBAN')).toBeVisible()
+  await expect(page.getByTestId('recon-row-AT0003')).not.toHaveClass(/bg-red-50/)
+
+  await page.getByRole('combobox').selectOption('pending')
+  await expect(page.getByTestId('recon-status-pending-AT0003')).toBeVisible()
+  await expect(page.getByTestId('recon-status-match-AT0001')).toHaveCount(0)
+  await expect(page.getByTestId('recon-status-mismatch-AT0002')).toHaveCount(0)
 
   const horizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,

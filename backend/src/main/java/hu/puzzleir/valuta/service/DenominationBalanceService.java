@@ -149,12 +149,29 @@ public class DenominationBalanceService {
     }
 
     /**
-     * Pénztárgép adott valutájú címleteinek lekérése
+     * Pénztárgép adott valutájú címleteinek lekérése (kategória nélkül — EVENING).
      */
     @Transactional(readOnly = true)
     public List<DenominationBalanceDto> getCashDeskDenominationsByCurrency(UUID cashDeskId, Long currencyId) {
+        return getCashDeskDenominationsByCurrency(cashDeskId, currencyId, DenominationCategory.EVENING);
+    }
+
+    /**
+     * Pénztárgép adott valutájú címleteinek lekérése, EXPLICIT kategóriával.
+     *
+     * <p>FKH-038: a becímletező oldal READ-útja korábban kategória-vak volt, ezért az
+     * Esti zárás (EVENING) HUF-készlete előtöltődött a Kezelési díj (HANDLING_FEE) oldalon.
+     * A WRITE-út ({@link #batchUpdate}) már kategória-tudatos volt; a betöltés mostantól
+     * ugyanazt a szűrést alkalmazza. Hiányzó kategória → EVENING (WRITE/selfCheck mintája).</p>
+     */
+    @Transactional(readOnly = true)
+    public List<DenominationBalanceDto> getCashDeskDenominationsByCurrency(
+            UUID cashDeskId, Long currencyId, DenominationCategory category) {
         requireOwnCashDesk(cashDeskId);
-        return denominationBalanceRepository.findByCashDeskIdAndCurrencyId(cashDeskId, currencyId)
+        DenominationCategory effectiveCategory =
+                category == null ? DenominationCategory.EVENING : category;
+        return denominationBalanceRepository
+                .findByCashDeskIdAndCurrencyIdAndCategory(cashDeskId, currencyId, effectiveCategory)
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());

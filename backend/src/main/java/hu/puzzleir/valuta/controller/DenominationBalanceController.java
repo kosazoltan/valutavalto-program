@@ -43,14 +43,20 @@ public class DenominationBalanceController {
     /**
      * Pénztárgép adott valutájú címletei
      *
-     * GET /api/v1/cash-desks/{cashDeskId}/denominations/currency/{currencyId}
+     * GET /api/v1/cash-desks/{cashDeskId}/denominations/currency/{currencyId}?category=
+     *
+     * <p>FKH-038: a {@code category} OPCIONÁLIS — hiányában {@code EVENING} (ugyanaz a
+     * default, mint a WRITE/selfCheck úton). A becímletező oldal a route kategóriáját
+     * küldi, hogy az EVENING és HANDLING_FEE készlet ne mosódjon össze.</p>
      */
     @GetMapping("/{cashDeskId}/denominations/currency/{currencyId}")
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<DenominationBalanceDto>> getCashDeskDenominationsByCurrency(
             @PathVariable UUID cashDeskId,
-            @PathVariable Long currencyId) {
-        List<DenominationBalanceDto> result = denominationBalanceService.getCashDeskDenominationsByCurrency(cashDeskId, currencyId);
+            @PathVariable Long currencyId,
+            @RequestParam(required = false) DenominationCategory category) {
+        List<DenominationBalanceDto> result =
+                denominationBalanceService.getCashDeskDenominationsByCurrency(cashDeskId, currencyId, category);
         return ResponseEntity.ok(result);
     }
 

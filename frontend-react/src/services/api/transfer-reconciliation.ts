@@ -1,6 +1,6 @@
 import { api } from './client'
 
-export type ReconciliationStatus = 'EGYEZIK' | 'ELTERES'
+export type ReconciliationStatus = 'EGYEZIK' | 'ELTERES' | 'FOLYAMATBAN'
 
 export interface TransferReconciliationRow {
   transferId: number
