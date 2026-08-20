@@ -47,9 +47,9 @@
         <!-- CVE-2026-42198 + CVE-2026-54291 fix: PostgreSQL JDBC -> 42.7.13 -->
         <postgresql.version>42.7.13</postgresql.version>
         <testcontainers.version>1.21.4</testcontainers.version>
-        <archunit.version>1.4.2</archunit.version>
+        <archunit.version>1.5.0</archunit.version>
         <jacoco.version>0.8.15</jacoco.version>
-        <pitest.version>1.25.8</pitest.version>
+        <pitest.version>1.25.9</pitest.version>
         <pitest.junit5.version>1.2.3</pitest.junit5.version>
         <cyclonedx.version>2.9.3</cyclonedx.version>
         <!-- CVE-2026-41293/43512/43515/41284/43513/42498/43514 + CVE-2026-53404/53434/
@@ -119,7 +119,7 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>13.1.0</version>
+            <version>13.3.0</version>
         </dependency>
         
         <!-- Jsoup HTML Parser (Raiffeisen scraping) -->
