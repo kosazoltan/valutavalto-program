@@ -66,6 +66,12 @@ public class EveningClosingService {
     @Value("${evening.closing.artifact-success-enabled:false}")
     private boolean artifactSuccessEnabled;
 
+    /**
+     * HQ HTTP kliens. Szándékosan nem a projekt timeout-os RestTemplate-je
+     * (FK-091 Scope OUT). Mező, hogy a 2xx ág unit-tesztelhető legyen.
+     */
+    private RestTemplate headquartersRestTemplate = new RestTemplate();
+
     /** Maximum küldési próbálkozás */
     private static final int MAX_SEND_ATTEMPTS = 3;
 
@@ -175,14 +181,14 @@ public class EveningClosingService {
 
             try {
                 if (headquartersUrl == null || headquartersUrl.isBlank()) {
-                        Path artifact = writeEveningPackageArtifact(pkg);
-                        log.info("Esti zárás bridge artifact létrehozva (HQ URL nincs konfigurálva): " +
-                                        "branchId={}, datum={}, tranzakciók={}, checksum={}, artifact={}",
-                                pkg.getBranchId(),
-                                pkg.getDate(),
-                                pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
-                                pkg.getChecksum(),
-                                artifact);
+                    Path artifact = writeEveningPackageArtifact(pkg);
+                    log.info("Esti zárás bridge artifact létrehozva (HQ URL nincs konfigurálva): " +
+                                    "branchId={}, datum={}, tranzakciók={}, checksum={}, artifact={}",
+                            pkg.getBranchId(),
+                            pkg.getDate(),
+                            pkg.getTransactions() != null ? pkg.getTransactions().size() : 0,
+                            pkg.getChecksum(),
+                            artifact);
 
                     if (!artifactSuccessEnabled) {
                         syncLog.setStatus("ARTIFACT_PENDING");
@@ -196,9 +202,10 @@ public class EveningClosingService {
                     }
 
                     syncLog.setStatus("EVENING_SYNC_DONE");
+                    syncLog.setIsBridged(true);
                     syncLog.setPackageChecksum(pkg.getChecksum());
                     syncLog.setCompletedAt(LocalDateTime.now());
-                        syncLog.setErrorMessage("BRIDGED_TO_MANAGED_ARTIFACT");
+                    syncLog.setErrorMessage("BRIDGED_TO_MANAGED_ARTIFACT");
                     eveningSyncLogRepository.save(syncLog);
 
                     return DataSyncResult.success(pkg.getChecksum());
@@ -217,12 +224,12 @@ public class EveningClosingService {
                 HttpEntity<DailyDataPackage> request = new HttpEntity<>(pkg, headers);
 
                 log.info("REST küldés: POST {} (checksum={})", targetUrl, pkg.getChecksum());
-                RestTemplate restTemplate = new RestTemplate();
-                ResponseEntity<String> response = restTemplate.exchange(
+                ResponseEntity<String> response = headquartersRestTemplate.exchange(
                         targetUrl, HttpMethod.POST, request, String.class);
 
                 if (response.getStatusCode().is2xxSuccessful()) {
                     syncLog.setStatus("EVENING_SYNC_DONE");
+                    syncLog.setIsBridged(false);
                     syncLog.setPackageChecksum(pkg.getChecksum());
                     syncLog.setCompletedAt(LocalDateTime.now());
                     eveningSyncLogRepository.save(syncLog);

@@ -1,0 +1,20 @@
+date: 2026-08-20
+type: verified-root-cause
+areas: [napzaras, ertektar, database]
+title: FK-091 HQ bridged is_bridged + FK-092 transfer alert daily idempotency
+
+fact: |
+  FK-091: evening_sync_log.is_bridged (V381, NOT NULL DEFAULT false). Bridged
+  artifact-success ág EVENING_SYNC_DONE + is_bridged=true; HQ HTTP 2xx explicit
+  is_bridged=false. Production default EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true
+  (visszaállítás env=false). Status értékkészlet nem bővül.
+  FK-092: notifyBranchOnce entityId = companyId + ":" + transferNumber + ":" +
+  LocalDate.now(Clock Europe/Budapest). Régi transferNumber-only kulcsok nem
+  egyeznek — másnaptól újra riaszt, ha az eltérés fennáll.
+
+legacy: |
+  memory:query --area legacy: 0 találat HQ veszkijáratra. Delphi ESTIZAR/FTP,
+  nincs evening_sync_log.is_bridged. Szándékos modern eltérés.
+
+tests: |
+  EveningClosingServiceTest 15 + TransferReconciliationServiceTest 16 = 31 PASS.

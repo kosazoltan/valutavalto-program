@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-19T12:43:45.561Z
+generated_at: 2026-08-20T02:46:01.574Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -4461,6 +4461,13 @@ nodes:
     summary: "--- schema_version: 1 session_id: 2026-05-15-codesigning-digicert-ev-pivot date: 2026-05-15 status: in-progress # cert NOT yet issued; HSM Approval submitted, vendor_status=pending operator: kosa.zoltan ai_agent: claude-opus-4.7-1m project: valutavalto-program topic: code-signing-certificate-pivot tags: - code-signing - azure-key-vault - digicert-ev-cs - sectigo-cancelled - signmycode - ci-cd - workflow-windows-signe"
     tags: [2026, codesigning, digicert, pivot, yaml, schema_version, session_id, date, status, progress]
     areas: [aml, deploy, installer, penztar]
+  - id: a6d2f46229d869ac
+    type: long-term-historical
+    title: 2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml
+    source_path: docs/knowledge/memory/2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml
+    summary: "date: 2026-08-20 type: verified-root-cause areas: [napzaras, ertektar, database] title: FK-091 HQ bridged is_bridged + FK-092 transfer alert daily idempotency fact: | FK-091: evening_sync_log.is_bridged (V381, NOT NULL DEFAULT false). Bridged artifact-success ág EVENING_SYNC_DONE + is_bridged=true; HQ HTTP 2xx explicit is_bridged=false. Production default EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true (visszaállítás e"
+    tags: [2026, fk091, fk092, bridged, transfer, idempotencia, yaml, date, type, verified]
+    areas: [aml, ertektar, legacy, napzaras]
   - id: f1d7389cefcfcb25
     type: semantic-reference
     title: "Bence — Modern Szoftver Üzleti Logika Elemzés"
@@ -4811,6 +4818,13 @@ nodes:
     summary: "# FK-059 — POS handling-fee daily report contract Status: APPROVED Scope: backend and central React renderer (`frontend-react`) ## Goal Provide a read-only daily POS handling-fee report for one branch or all eligible branches in the authenticated company. The report includes only completed card sales and exposes JSON, CSV, and the `/reports/pos-handling-fee` page. ## Non-goals - Introducing code-level prohibition of"
     tags: [059, pos, handling, fee, daily, report, contract, status, approved, scope]
     areas: [deploy, ertektar, frontend, legacy, penztar, riport, security, specifikacio]
+  - id: 2a723cf64900ffb7
+    type: semantic-reference
+    title: "Spec: FK-091 HQ vészkijárat + bridged jelzés, FK-092 transzfer-riasztás idempotencia"
+    source_path: docs/specs/fk091-fk092-hq-bridged-transfer-idempotencia.md
+    summary: "# Spec: FK-091 HQ vészkijárat + bridged jelzés, FK-092 transzfer-riasztás idempotencia > Dátum: 2026-08-20 · Forrás: jóváhagyott hibajegyek (Downloads FK-091, FK-092) · Állapot: JÓVÁHAGYVA (a jegyek) ## 1. Cél A napzárás HQ-küldése üres URL mellett ne blokkoljon: a meglévő artifact-vészkijárat élesben bekapcsolva, `evening_sync_log.is_bridged` megkülönbözteti a helyi fájlba írást a valódi HQ 2xx-től. A transzfer-egye"
+    tags: [spec, 091, veszkijarat, bridged, jelzes, 092, transzfer, riasztas, idempotencia, datum]
+    areas: [database, ertektar, installer, legacy, napzaras, penztar, specifikacio]
   - id: 4871f5cc21beda82
     type: semantic-reference
     title: "Spec: FKH-019 / FKH-020 / FKH-021 / FKH-022 Értéktári hiányok lezárása"
@@ -16414,6 +16428,18 @@ edges:
   - from: 1838f60fecfd6da7
     to: area_penztar
     relation: belongs_to_area
+  - from: a6d2f46229d869ac
+    to: area_aml
+    relation: belongs_to_area
+  - from: a6d2f46229d869ac
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: a6d2f46229d869ac
+    to: area_legacy
+    relation: belongs_to_area
+  - from: a6d2f46229d869ac
+    to: area_napzaras
+    relation: belongs_to_area
   - from: f1d7389cefcfcb25
     to: area_arfolyam
     relation: belongs_to_area
@@ -17336,6 +17362,27 @@ edges:
     to: area_security
     relation: belongs_to_area
   - from: c8c8d7ef9e20aee4
+    to: area_specifikacio
+    relation: belongs_to_area
+  - from: 2a723cf64900ffb7
+    to: area_database
+    relation: belongs_to_area
+  - from: 2a723cf64900ffb7
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 2a723cf64900ffb7
+    to: area_installer
+    relation: belongs_to_area
+  - from: 2a723cf64900ffb7
+    to: area_legacy
+    relation: belongs_to_area
+  - from: 2a723cf64900ffb7
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 2a723cf64900ffb7
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 2a723cf64900ffb7
     to: area_specifikacio
     relation: belongs_to_area
   - from: 4871f5cc21beda82

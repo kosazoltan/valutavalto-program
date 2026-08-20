@@ -52,6 +52,14 @@ public class EveningSyncLog {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    /**
+     * FK-091: true, ha a sikeresnek jelölt sor a HQ-küldés vészkijáratán
+     * (helyi artifact) keresztül készült, nem valódi HQ HTTP 2xx válaszból.
+     */
+    @Column(name = "is_bridged", nullable = false)
+    @Builder.Default
+    private Boolean isBridged = Boolean.FALSE;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

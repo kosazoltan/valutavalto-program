@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-19T12:43:45.561Z
+generated: 2026-08-20T02:46:01.574Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-19T12:43:45.561Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1069
-- generated: 2026-08-19T12:43:45.561Z
+- sources: 1071
+- generated: 2026-08-20T02:46:01.574Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -649,6 +649,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[2026-05-14-local-first-architecture-mandate.yaml]] — `docs/knowledge/memory/2026-05-14-local-first-architecture-mandate.yaml` (long-term-historical)
 - [[2026-05-15 Code Signing: Sectigo → DigiCert EV CS Pivot (Azure Key Vault native)]] — `docs/knowledge/memory/2026-05-15-codesigning-digicert-ev-pivot.qmd` (long-term-historical)
 - [[2026-05-15-codesigning-digicert-ev-pivot.yaml]] — `docs/knowledge/memory/2026-05-15-codesigning-digicert-ev-pivot.yaml` (long-term-historical)
+- [[2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml]] — `docs/knowledge/memory/2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml` (long-term-historical)
 - [[Bence — Modern Szoftver Üzleti Logika Elemzés]] — `docs/knowledge/reviews/bence-modern-uzleti-logika-elemzes-2026-04-07.md` (semantic-reference)
 - [[Valutaváltó Delphi — Core-ból Kifelé Elemzés (2026-04-04)]] — `docs/knowledge/reviews/delphi-core-outward-analysis-2026-04-04.md` (analysis)
 - [[Valutavalto Delphi Teljes Forras Elemzes (2026-04-04)]] — `docs/knowledge/reviews/delphi-full-analysis-2026-04-04.md` (analysis)
@@ -699,6 +700,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Modul: Árfolyamkészítő – Hálózat-állapot jelző javítása (frontend-react)]] — `docs/specs/fk014-halozat-allapot-jelzo.md` (semantic-reference)
 - [[Spec: FK-038 — Értéktár (is_vault) szivárgás-gate a pénztári nézetekbe]] — `docs/specs/fk038-ertektar-szivargas-gate.md` (semantic-reference)
 - [[FK-059 — POS handling-fee daily report contract]] — `docs/specs/fk059-pos-handling-fee.md` (semantic-reference)
+- [[Spec: FK-091 HQ vészkijárat + bridged jelzés, FK-092 transzfer-riasztás idempotencia]] — `docs/specs/fk091-fk092-hq-bridged-transfer-idempotencia.md` (semantic-reference)
 - [[Spec: FKH-019 / FKH-020 / FKH-021 / FKH-022 Értéktári hiányok lezárása]] — `docs/specs/fkh019-022-ertektar-gap-fix-2026-07-20.md` (semantic-reference)
 - [[legacy-pos-storno-reversal-wrapper-cleanup-2026-06-20.yaml]] — `docs/specs/legacy-pos-storno-reversal-wrapper-cleanup-2026-06-20.yaml` (semantic-reference)
 - [[monthly-closing-perform-frontend-contract-2026-06-20.yaml]] — `docs/specs/monthly-closing-perform-frontend-contract-2026-06-20.yaml` (semantic-reference)

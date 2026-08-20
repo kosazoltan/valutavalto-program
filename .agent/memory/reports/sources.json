@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-19T12:43:45.561Z",
-  "source_count": 1069,
+  "generated_at": "2026-08-20T02:46:01.574Z",
+  "source_count": 1071,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -7430,6 +7430,17 @@
       ]
     },
     {
+      "path": "docs/knowledge/memory/2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml",
+      "sha256": "fecc65bbc56ce2de5e7ec3cea4b192bf6d47728ef1e5a89e8512571aaa354177",
+      "type": "long-term-historical",
+      "areas": [
+        "aml",
+        "ertektar",
+        "legacy",
+        "napzaras"
+      ]
+    },
+    {
       "path": "docs/knowledge/reviews/bence-modern-uzleti-logika-elemzes-2026-04-07.md",
       "sha256": "4c40f8fbb915d219109c57e94d79108bfaa0e4d5bfafbc82a6d4c4f3ecabfd9e",
       "type": "semantic-reference",
@@ -8080,6 +8091,20 @@
         "penztar",
         "riport",
         "security",
+        "specifikacio"
+      ]
+    },
+    {
+      "path": "docs/specs/fk091-fk092-hq-bridged-transfer-idempotencia.md",
+      "sha256": "a114c43f75a1936f722e451b25aba8e5319e56e0152cab580a51dccc32419761",
+      "type": "semantic-reference",
+      "areas": [
+        "database",
+        "ertektar",
+        "installer",
+        "legacy",
+        "napzaras",
+        "penztar",
         "specifikacio"
       ]
     },
