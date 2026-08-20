@@ -1,0 +1,27 @@
+date: 2026-08-19
+type: verified-root-cause
+areas: [installer, database]
+title: FULL local install abort — WinNAT excludedportrange 54320
+
+fact: |
+  A Penztar FULL (lokalis PostgreSQL) telepito Abortja ezen a Windows gepen
+  nem "foglalt port LISTENING" volt, hanem WinNAT/Hyper-V excludedportrange.
+  netsh ipv4 tcp: 54313-54412 lefoglalja a 54320-at. Bind WSAEACCES
+  (Permission denied) 127.0.0.1-re, noha netstat nem mutat LISTENING-et.
+  PostgreSQL 17 FATAL: could not create any TCP/IP sockets.
+  A telepito a pgsql\log\postgresql.log-ra mutatott; a FATAL a
+  pgsql\data\log\ collector fajlban van.
+  Ezen a gepen 55432 es 8080 kotheto; pg_ctl -p 55432 -h 127.0.0.1 + psql SELECT 1 OK.
+
+fix: |
+  installer/scripts/pick-local-ports.ps1 + Penztar-Setup.nsi $PG_PORT/$HTTP_PORT.
+  Alap 54320/8080; excluded/WSAEACCES eseten fallback (pl. 55432).
+  listen_addresses=127.0.0.1. Registry PgPort/HttpPort.
+
+legacy: |
+  Query --area legacy es specifikacio: nincs Delphi/Firebird 54320 szabaly.
+  A regi program Firebirdot hasznalt. Szandekos elteres: modern FULL bundled PG17,
+  a portnak kotheto loopback portnak kell maradnia.
+
+caveat: |
+  A kiadott 2.28.84 alairt EXE meg a regi, fix port=54320 viselkedest tartalmazza.
