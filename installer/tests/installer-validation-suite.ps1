@@ -70,6 +70,15 @@ $REG_UNINST = Resolve-RegPath @(
     'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar'
 )
 
+# FULL install may use a WinNAT-safe fallback port (registry PgPort/HttpPort).
+if (Test-Path $REG_APP) {
+    $portReg = Get-ItemProperty $REG_APP -ErrorAction SilentlyContinue
+    if ($null -ne $portReg) {
+        if ($portReg.PgPort -match '^\d+$') { $PG_PORT = [int]$portReg.PgPort }
+        if ($portReg.HttpPort -match '^\d+$') { $BE_PORT = [int]$portReg.HttpPort }
+    }
+}
+
 function Get-InstalledMode {
     if (-not (Test-Path $REG_APP)) {
         return $global:InstalledMode
@@ -289,7 +298,7 @@ function Test-FileSystem {
         Test-Assert "Config" "Encryption salt nem ures" ($cfg -match "app\.encryption\.salt=.{10,}") ""
         Test-Assert "Config" "DB jelszo nem ures" ($cfg -match "spring\.datasource\.password=.{10,}") ""
         Test-Assert "Config" "Swagger UI disabled" ($cfg -match "springdoc\.swagger-ui\.enabled=false") "Production: swagger disabled"
-        Test-Assert "Config" "Server port 8080" ($cfg -match "server\.port=8080") ""
+        Test-Assert "Config" "Server port $BE_PORT" ($cfg -match "server\.port=$BE_PORT") ""
     }
 
     # 3.5 pg_hba.conf biztonsági ellenőrzés

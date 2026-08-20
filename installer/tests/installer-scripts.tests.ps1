@@ -51,5 +51,57 @@ Check 'build-final: .env-ben nincs VITE_API_URL' ($envContentMatch.Success -and 
 # --- T-G (X9 guard): .env.production guard jelen van ---
 Check 'build-final: .env.production guard' ($bf -match '\.env\.production')
 
+# --- T-H: WinNAT excludedportrange picker (FULL local install abort fix) ---
+$pickerPath = Join-Path $installerDir 'scripts\pick-local-ports.ps1'
+Check 'pick-local-ports.ps1 letezik' (Test-Path $pickerPath)
+$pickerErrs = $null
+[System.Management.Automation.Language.Parser]::ParseFile($pickerPath, [ref]$null, [ref]$pickerErrs) | Out-Null
+Check 'pick-local-ports.ps1 parse' ($pickerErrs.Count -eq 0) ($pickerErrs | Select-Object -First 1 | Out-String)
+
+. $pickerPath -DefineOnly
+$sampleNetsh = @"
+Protocol tcp Port Exclusion Ranges
+
+Start Port    End Port
+----------    --------
+      5357        5357
+     50000       50059     *
+     54313       54412
+     54566       54665
+"@
+$parsed = Get-TcpExcludedPortRangesFromText -Text $sampleNetsh
+Check 'excluded range parser count' ($parsed.Count -eq 4) ("count=$($parsed.Count)")
+Check '54320 excluded in sample' (Test-PortInExcludedRange -Port 54320 -Ranges $parsed)
+Check '55432 not excluded in sample' (-not (Test-PortInExcludedRange -Port 55432 -Ranges $parsed))
+Check '8080 not excluded in sample' (-not (Test-PortInExcludedRange -Port 8080 -Ranges $parsed))
+
+$bindOk = { param($p) @(55432, 8080, 18080) -contains $p }
+$pickedPg = Select-LocalListenPort -Preferred 54320 -Fallbacks @(55432, 55532) -ExcludedRanges $parsed -BindProbe $bindOk
+Check 'picker skips excluded 54320' ($pickedPg -eq 55432) ("picked=$pickedPg")
+$pickedHttp = Select-LocalListenPort -Preferred 8080 -Fallbacks @(18080) -ExcludedRanges $parsed -BindProbe $bindOk
+Check 'picker keeps free 8080' ($pickedHttp -eq 8080) ("picked=$pickedHttp")
+$none = Select-LocalListenPort -Preferred 54320 -Fallbacks @(54321) -ExcludedRanges $parsed -BindProbe { param($p) $false }
+Check 'picker null if nothing bindable' ($null -eq $none)
+
+$liveLine = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $pickerPath | Select-Object -Last 1
+Check 'live picker format PG,HTTP' ($liveLine -match '^\d+,\d+$') "out=$liveLine"
+if ($liveLine -match '^(\d+),(\d+)$') {
+    $livePg = [int]$Matches[1]
+    $liveRanges = Get-TcpExcludedPortRanges
+    if (Test-PortInExcludedRange -Port 54320 -Ranges $liveRanges) {
+        Check 'live picker avoids excluded 54320' ($livePg -ne 54320) "picked=$livePg"
+    } else {
+        Check 'live picker 54320 allowed here' ($true)
+    }
+}
+
+$nsi = Get-Content (Join-Path $installerDir 'Penztar-Setup.nsi') -Raw
+Check 'NSI: pick-local-ports.ps1' ($nsi -match 'pick-local-ports\.ps1')
+Check 'NSI: $PG_PORT var' ($nsi -match '(?m)^Var PG_PORT')
+Check 'NSI: postgresql.conf uses \$PG_PORT' ($nsi -match 'port = \$PG_PORT')
+Check 'NSI: no hardcoded port = 54320 write' ($nsi -notmatch 'FileWrite \$0 "port = 54320')
+Check 'NSI: jdbc url uses \$PG_PORT' ($nsi -match 'jdbc:postgresql://localhost:\$PG_PORT/valuta')
+Check 'NSI: listen_addresses 127.0.0.1' ($nsi -match "listen_addresses = '127\.0\.0\.1'")
+
 if ($fail -gt 0) { Write-Host "`n$fail teszt FAIL" -ForegroundColor Red; exit 1 }
 Write-Host "`nMinden teszt PASS" -ForegroundColor Green; exit 0

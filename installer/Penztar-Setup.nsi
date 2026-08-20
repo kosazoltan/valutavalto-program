@@ -151,6 +151,10 @@ Var UPGRADE_MODE
 Var INSTALL_MODE
 Var DLG_RB_THIN
 Var DLG_RB_FULL
+; FULL mod: helyi PG/backend port. Alap 54320/8080, de WinNAT excludedportrange
+; (Hyper-V/Docker/WSL) eseten a pick-local-ports.ps1 mas, kotheto portot valaszt.
+Var PG_PORT
+Var HTTP_PORT
 ; FKH-036 (D1 fix): az UNINSTALLER oldali /PRESERVE_DATA= flag.
 ; A telepito upgrade-agban mar ma is atadja (`ExecWait '$R0 /S /PRESERVE_DATA=1'`),
 ; de az uninstaller eddig NEM parsolta -> a userData (`.env`: JWT_SECRET,
@@ -387,27 +391,46 @@ Section "Telepites" SecInstall
     skip_lockedlist:
 
     ; =====================================================================
-    ; FAZIS 1g: Port ellenorzes (G2-01 fix: cleanup UTAN, nem .onInit-ben)
-    ; v2.5.9: CSAK FULL modban relevans (THIN modnak nem kell a 8080/54320 port szabad)
+    ; FAZIS 1g: Port valasztas (G2-01: cleanup UTAN). CSAK FULL mod.
+    ; A netstat LISTENING NEM eleg: Hyper-V/Docker/WSL WinNAT excludedportrange
+    ; WSAEACCES-t ad bindre (Permission denied), noha semmi nem LISTENING.
+    ; Empiria 2026-08-19: 54320 a 54313-54412 blokkban volt -> PG FATAL, telepites Abort.
     ; =====================================================================
     ${If} $INSTALL_MODE == "FULL"
-        DetailPrint "Port ellenorzes (FULL mod, lokalis backend)..."
-        nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":54320 " | findstr "LISTENING"'
-        Pop $0
-        Pop $1  ; stdout
-        ${If} $0 == 0
-            IfSilent +2
-            MessageBox MB_YESNO|MB_ICONQUESTION "A 54320-as port meg foglalt a cleanup utan.$\r$\n$\r$\nLehetseges, hogy egy masik PostgreSQL peldany fut.$\r$\n$\r$\nFolytatja?" IDYES +2
+        DetailPrint "Helyi portok valasztasa (FULL mod, lokalis backend)..."
+        StrCpy $PG_PORT "54320"
+        StrCpy $HTTP_PORT "8080"
+        SetOutPath $DATA_DIR
+        File "scripts\pick-local-ports.ps1"
+        nsExec::ExecToStack 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$DATA_DIR\pick-local-ports.ps1"'
+        Pop $1  ; exit code
+        Pop $2  ; stdout = "PGPORT,HTTPPORT"
+        StrCpy $R0 $2
+        ${WordFind} $R0 "," "+1" $3
+        ${WordFind} $R0 "," "+2" $5
+        ${WordFind} $3 "$\r" "+1" $3
+        ${WordFind} $5 "$\r" "+1" $5
+        ${WordFind} $3 "$\n" "+1" $3
+        ${WordFind} $5 "$\n" "+1" $5
+        FileOpen $0 "$DATA_DIR\pick-local-ports.ps1" w
+        FileWrite $0 "# WIPED"
+        FileClose $0
+        Delete "$DATA_DIR\pick-local-ports.ps1"
+        ${If} $1 != 0
+        ${OrIf} $3 == ""
+        ${OrIf} $5 == ""
+            IfSilent +2 0
+            MessageBox MB_OK|MB_ICONSTOP "HIBA: Nem talalhato szabad helyi port a PostgreSQL / backend szamara.$\r$\nA Windows (Hyper-V vagy Docker) lefoglalta a szokasos portokat.$\r$\nHibakod: $1"
             Abort
         ${EndIf}
-
-        nsExec::ExecToStack 'cmd.exe /C netstat -an | findstr ":8080 " | findstr "LISTENING"'
-        Pop $0
-        Pop $1  ; stdout
-        ${If} $0 == 0
-            IfSilent +2
-            MessageBox MB_YESNO|MB_ICONQUESTION "A 8080-as port meg foglalt a cleanup utan.$\r$\n$\r$\nLehetseges, hogy egy masik alkalmazas hasznalja.$\r$\n$\r$\nFolytatja?" IDYES +2
-            Abort
+        StrCpy $PG_PORT $3
+        StrCpy $HTTP_PORT $5
+        DetailPrint "  PostgreSQL port: $PG_PORT"
+        DetailPrint "  Backend port: $HTTP_PORT"
+        ${If} $PG_PORT != "54320"
+        ${OrIf} $HTTP_PORT != "8080"
+            IfSilent +2 0
+            MessageBox MB_OK|MB_ICONINFORMATION "A helyi telepites a Windows altal foglalt portok miatt mas portokon indul:$\r$\n$\r$\nAdatbazis: $PG_PORT$\r$\nAlkalmazas-szerver: $HTTP_PORT$\r$\n$\r$\nA telepites folytatodik, nincs teendoje."
         ${EndIf}
     ${EndIf}
 
@@ -580,8 +603,8 @@ Section "Telepites" SecInstall
     FileOpen $0 "$DATA_DIR\config\application-local.properties" w
     FileWrite $0 "# Valutavalto Penztar - lokalis konfig$\r$\n"
     FileWrite $0 "# Automatikusan generalta a telepito$\r$\n"
-    FileWrite $0 "server.port=8080$\r$\n"
-    FileWrite $0 "spring.datasource.url=jdbc:postgresql://localhost:54320/valuta$\r$\n"
+    FileWrite $0 "server.port=$HTTP_PORT$\r$\n"
+    FileWrite $0 "spring.datasource.url=jdbc:postgresql://localhost:$PG_PORT/valuta$\r$\n"
     FileWrite $0 "spring.datasource.username=valuta_user$\r$\n"
     FileWrite $0 "spring.datasource.password=$8$\r$\n"
     FileWrite $0 "spring.datasource.driver-class-name=org.postgresql.Driver$\r$\n"
@@ -596,7 +619,7 @@ Section "Telepites" SecInstall
     FileWrite $0 "spring.flyway.out-of-order=true$\r$\n"
     FileWrite $0 "# Flyway kezeli a schemat: V0_1..V144 auto-lefutnak, seed-data.sql kiegeszit$\r$\n"
     ; S6-07 fix: dev CORS origin eltavolitva (csak Electron app origin kell)
-    FileWrite $0 "cors.allowed-origins=http://localhost:3000,http://localhost:5173,http://localhost:8080,app://localhost,file://$\r$\n"
+    FileWrite $0 "cors.allowed-origins=http://localhost:3000,http://localhost:5173,http://localhost:$HTTP_PORT,app://localhost,file://$\r$\n"
     FileWrite $0 "logging.level.root=INFO$\r$\n"
     FileWrite $0 "logging.level.hu.puzzleir.valuta=INFO$\r$\n"
     FileWrite $0 "springdoc.api-docs.enabled=false$\r$\n"
@@ -616,7 +639,7 @@ Section "Telepites" SecInstall
 
     ; .env for Electron
     FileOpen $0 "$INSTDIR\.env" w
-    FileWrite $0 "VITE_API_URL=http://localhost:8080/api/v1$\r$\n"
+    FileWrite $0 "VITE_API_URL=http://localhost:$HTTP_PORT/api/v1$\r$\n"
     FileWrite $0 "VITE_BRANCH_CODE=EBC$\r$\n"
     FileWrite $0 "VITE_COMPANY_ID=1$\r$\n"
     FileClose $0
@@ -647,8 +670,8 @@ Section "Telepites" SecInstall
         FileOpen $0 "$DATA_DIR\pgsql\data\postgresql.conf" a
         FileSeek $0 0 END
         FileWrite $0 "$\r$\n# Penztar installer config$\r$\n"
-        FileWrite $0 "port = 54320$\r$\n"
-        FileWrite $0 "listen_addresses = 'localhost'$\r$\n"
+        FileWrite $0 "port = $PG_PORT$\r$\n"
+        FileWrite $0 "listen_addresses = '127.0.0.1'$\r$\n"
         FileWrite $0 "log_destination = 'stderr'$\r$\n"
         FileWrite $0 "logging_collector = on$\r$\n"
         FileWrite $0 "log_directory = 'log'$\r$\n"
@@ -663,7 +686,7 @@ Section "Telepites" SecInstall
         ; E6-01 fix (v2.28.79): IfSilent +2 0 (a +1 nem ugrott semmit -> /S blokkolt)
         ${If} $0 != 0
             IfSilent +2 0
-            MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem indult el.$\r$\nEllenorizze a log fajlt:$\r$\n$DATA_DIR\pgsql\log\postgresql.log"
+            MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem indult el (port $PG_PORT).$\r$\n$\r$\nGyakori ok: a Windows (Hyper-V/Docker) nem engedelyezi a port koteset.$\r$\nLog konyvtar: $DATA_DIR\pgsql\data\log$\r$\n(es $DATA_DIR\pgsql\log\postgresql.log)"
             Abort
         ${EndIf}
 
@@ -676,12 +699,12 @@ Section "Telepites" SecInstall
             ; ES az Abort is lefut (a +2 a MessageBox UTANI utasitasra ugrik).
             ${If} $R0 > 20
                 IfSilent +2 0
-                MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem valaszol 20 masodpercen belul."
+                MessageBox MB_OK|MB_ICONSTOP "HIBA: PostgreSQL nem valaszol 20 masodpercen belul (port $PG_PORT).$\r$\nLog: $DATA_DIR\pgsql\data\log"
                 nsExec::ExecToLog '"$DATA_DIR\pgsql\bin\pg_ctl.exe" stop -D "$DATA_DIR\pgsql\data" -m fast -w -t 10'
                 Abort
             ${EndIf}
             Sleep 1000
-            nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -c "SELECT 1" -t -A'
+            nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p $PG_PORT -U postgres -c "SELECT 1" -t -A'
             Pop $0
             Pop $1  ; stdout (stack balance)
             ${If} $0 != 0
@@ -691,7 +714,7 @@ Section "Telepites" SecInstall
 
         ; Create database
         DetailPrint "  Adatbazis letrehozasa: valuta"
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createdb.exe" -p 54320 -U postgres valuta'
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createdb.exe" -p $PG_PORT -U postgres valuta'
         Pop $0
         Pop $1  ; stdout
         ${If} $0 != 0
@@ -700,7 +723,7 @@ Section "Telepites" SecInstall
 
         ; Create user - createuser CLI first, then SQL fallback
         DetailPrint "  Felhasznalo letrehozasa: valuta_user"
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createuser.exe" -p 54320 -U postgres --no-superuser --no-createdb --no-createrole valuta_user'
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\createuser.exe" -p $PG_PORT -U postgres --no-superuser --no-createdb --no-createrole valuta_user'
         Pop $0
         Pop $1  ; stdout
         ${If} $0 != 0
@@ -713,7 +736,7 @@ Section "Telepites" SecInstall
             FileWrite $0 "  END IF;$\r$\n"
             FileWrite $0 "END $$$$;$\r$\n"
             FileClose $0
-            nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -f "$DATA_DIR\scripts\create-user-fallback.sql"'
+            nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p $PG_PORT -U postgres -f "$DATA_DIR\scripts\create-user-fallback.sql"'
             Pop $0
             Pop $1
             DetailPrint "  SQL fallback kod: $0"
@@ -734,7 +757,7 @@ Section "Telepites" SecInstall
         FileWrite $0 "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO valuta_user;$\r$\n"
         FileClose $0
 
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\setup-user.sql"'
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p $PG_PORT -U postgres -d valuta -f "$DATA_DIR\scripts\setup-user.sql"'
         Pop $0
         Pop $1  ; stdout
         ${If} $0 != 0
@@ -751,7 +774,7 @@ Section "Telepites" SecInstall
         FileOpen $0 "$DATA_DIR\scripts\verify-user.sql" w
         FileWrite $0 "SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname='valuta_user') THEN 'ROLE_OK' ELSE 'ROLE_MISSING' END;$\r$\n"
         FileClose $0
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -t -A -f "$DATA_DIR\scripts\verify-user.sql"'
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p $PG_PORT -U postgres -t -A -f "$DATA_DIR\scripts\verify-user.sql"'
         Pop $R1
         Pop $R2
         ; S6-10 fix: Secure wipe before delete (uses $0 as file handle - does NOT touch R1/R2)
@@ -837,8 +860,8 @@ Section "Telepites" SecInstall
         ; S6-04: Create .pgpass for service/maintenance access
         DetailPrint "  .pgpass letrehozas (postgres admin)..."
         FileOpen $0 "$DATA_DIR\config\.pgpass" w
-        FileWrite $0 "localhost:54320:*:postgres:$9$\r$\n"
-        FileWrite $0 "127.0.0.1:54320:*:postgres:$9$\r$\n"
+        FileWrite $0 "localhost:$PG_PORT:*:postgres:$9$\r$\n"
+        FileWrite $0 "127.0.0.1:$PG_PORT:*:postgres:$9$\r$\n"
         FileClose $0
 
         ; S6-04: Set PGPASSFILE for installer session (health check needs it)
@@ -871,6 +894,14 @@ Section "Telepites" SecInstall
             FileWrite $0 "host    all       all          ::1/128       trust$\r$\n"
             FileClose $0
 
+        ; WinNAT: a regi postgresql.conf port=54320 lehet excluded range-ben
+        FileOpen $0 "$DATA_DIR\pgsql\data\postgresql.conf" a
+        FileSeek $0 0 END
+        FileWrite $0 "$\r$\n# Penztar installer port (upgrade)$\r$\n"
+        FileWrite $0 "port = $PG_PORT$\r$\n"
+        FileWrite $0 "listen_addresses = '127.0.0.1'$\r$\n"
+        FileClose $0
+
         ; Start PG temporarily (now with trust auth)
         nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\pg_ctl.exe" start -D "$DATA_DIR\pgsql\data" -l "$DATA_DIR\pgsql\log\postgresql.log" -w -t 30'
         Pop $0
@@ -886,7 +917,7 @@ Section "Telepites" SecInstall
         FileWrite $0 "ALTER USER valuta_user WITH PASSWORD '$8';$\r$\n"
         FileWrite $0 "ALTER USER postgres WITH PASSWORD '$9';$\r$\n"
         FileClose $0
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\update-password.sql"'
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p $PG_PORT -U postgres -d valuta -f "$DATA_DIR\scripts\update-password.sql"'
         Pop $0
         Pop $1
         ; S6-10 fix: Secure wipe before delete
@@ -906,8 +937,8 @@ Section "Telepites" SecInstall
         FileOpen $0 "$DATA_DIR\config\application-local.properties" w
         FileWrite $0 "# Valutavalto Penztar - lokalis konfig$\r$\n"
         FileWrite $0 "# Automatikusan generalta a telepito (upgrade)$\r$\n"
-        FileWrite $0 "server.port=8080$\r$\n"
-        FileWrite $0 "spring.datasource.url=jdbc:postgresql://localhost:54320/valuta$\r$\n"
+        FileWrite $0 "server.port=$HTTP_PORT$\r$\n"
+        FileWrite $0 "spring.datasource.url=jdbc:postgresql://localhost:$PG_PORT/valuta$\r$\n"
         FileWrite $0 "spring.datasource.username=valuta_user$\r$\n"
         FileWrite $0 "spring.datasource.password=$8$\r$\n"
         FileWrite $0 "spring.datasource.driver-class-name=org.postgresql.Driver$\r$\n"
@@ -921,7 +952,7 @@ Section "Telepites" SecInstall
         FileWrite $0 "spring.flyway.validate-on-migrate=true$\r$\n"
         FileWrite $0 "spring.flyway.out-of-order=true$\r$\n"
         FileWrite $0 "# Flyway kezeli a schemat: V0_1..V144 auto-lefutnak, seed-data.sql kiegeszit$\r$\n"
-        FileWrite $0 "cors.allowed-origins=http://localhost:3000,http://localhost:5173,http://localhost:8080,app://localhost,file://$\r$\n"
+        FileWrite $0 "cors.allowed-origins=http://localhost:3000,http://localhost:5173,http://localhost:$HTTP_PORT,app://localhost,file://$\r$\n"
         FileWrite $0 "logging.level.root=INFO$\r$\n"
         FileWrite $0 "logging.level.hu.puzzleir.valuta=INFO$\r$\n"
         FileWrite $0 "springdoc.api-docs.enabled=false$\r$\n"
@@ -956,8 +987,8 @@ Section "Telepites" SecInstall
         ; S6-04: Create .pgpass for maintenance access (upgrade)
         DetailPrint "  .pgpass frissites (postgres admin - upgrade)..."
         FileOpen $0 "$DATA_DIR\config\.pgpass" w
-        FileWrite $0 "localhost:54320:*:postgres:$9$\r$\n"
-        FileWrite $0 "127.0.0.1:54320:*:postgres:$9$\r$\n"
+        FileWrite $0 "localhost:$PG_PORT:*:postgres:$9$\r$\n"
+        FileWrite $0 "127.0.0.1:$PG_PORT:*:postgres:$9$\r$\n"
         FileClose $0
 
         ; S6-04: Update PGPASSFILE for installer session (upgrade - new password)
@@ -1040,8 +1071,8 @@ Section "Telepites" SecInstall
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-Backend"'
     nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Valutavalto-PostgreSQL"'
     ; E6-04 fix: remoteip=127.0.0.1 - localhost-only portok, ne legyenek network-accessible
-    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-Backend" dir=in action=allow protocol=TCP localport=8080 remoteip=127.0.0.1 profile=any'
-    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-PostgreSQL" dir=in action=allow protocol=TCP localport=54320 remoteip=127.0.0.1 profile=any'
+    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-Backend" dir=in action=allow protocol=TCP localport=$HTTP_PORT remoteip=127.0.0.1 profile=any'
+    nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Valutavalto-PostgreSQL" dir=in action=allow protocol=TCP localport=$PG_PORT remoteip=127.0.0.1 profile=any'
     DetailPrint "  Firewall szabalyok OK"
 
     ; =====================================================================
@@ -1073,7 +1104,7 @@ Section "Telepites" SecInstall
             Goto pg_svc_done
         ${EndIf}
         Sleep 1000
-        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p 54320 -U postgres -c "SELECT 1" -t -A'
+        nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -p $PG_PORT -U postgres -c "SELECT 1" -t -A'
         Pop $0
         Pop $1  ; stdout (stack balance)
         ${If} $0 != 0
@@ -1106,7 +1137,7 @@ Section "Telepites" SecInstall
             Goto be_svc_done
         ${EndIf}
         Sleep 2000
-        nsExec::ExecToStack 'powershell -NoProfile -Command "try{(Invoke-WebRequest -Uri http://localhost:8080/actuator/health -UseBasicParsing -TimeoutSec 3).StatusCode}catch{1}"'
+        nsExec::ExecToStack 'powershell -NoProfile -Command "try{(Invoke-WebRequest -Uri http://localhost:$HTTP_PORT/actuator/health -UseBasicParsing -TimeoutSec 3).StatusCode}catch{1}"'
         Pop $0
         Pop $1
         StrCpy $2 $1 3
@@ -1139,7 +1170,7 @@ Section "Telepites" SecInstall
     Pop $1
     Sleep 2000
     ; Run seed
-    nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -h 127.0.0.1 -p 54320 -U postgres -d valuta -f "$DATA_DIR\scripts\seed-data.sql"'
+    nsExec::ExecToStack '"$DATA_DIR\pgsql\bin\psql.exe" -h 127.0.0.1 -p $PG_PORT -U postgres -d valuta -f "$DATA_DIR\scripts\seed-data.sql"'
     Pop $0
     Pop $1
     ${If} $0 != 0
@@ -1193,6 +1224,8 @@ Section "Telepites" SecInstall
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "Version" "${VERSION}"
     ; v2.5.9: az uninstaller olvassa hogy melyik service-eket kell stoppolni/eltavolitani
     WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "InstallMode" $INSTALL_MODE
+    WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "PgPort" $PG_PORT
+    WriteRegStr HKLM "Software\BestChange\ValutavaltoPenztar" "HttpPort" $HTTP_PORT
 
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "DisplayName" "Valutavalto Penztar ${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ValutavaltoPenztar" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
@@ -1429,6 +1462,8 @@ Function .onInit
     ; -> default = "THIN" (online mode, a Penztar a Hetzner-re csatlakozik).
     ; GUI mode: a InstallModePage felülírja a user választása szerint.
     StrCpy $INSTALL_MODE "THIN"
+    StrCpy $PG_PORT "54320"
+    StrCpy $HTTP_PORT "8080"
 
     ; =====================================================================
     ; v2.3.0: Egysegest flow - egyetlen telepito kezel minden forgatokonyvet
