@@ -315,6 +315,60 @@ class EveningClosingServiceTest {
     }
 
     @Test
+    @DisplayName("FK-091 FR-5: újrafelhasznált bridged sor → ARTIFACT_PENDING is_bridged=false")
+    void sendToHeadquarters_reusedBridgedRow_artifactPendingResetsIsBridged() throws Exception {
+        stubArtifactSync();
+        EveningSyncLog existing = EveningSyncLog.builder()
+                .branchId(BRANCH_UUID)
+                .syncDate(DATE)
+                .status("EVENING_SYNC_DONE")
+                .isBridged(true)
+                .attemptCount(1)
+                .build();
+        when(eveningSyncLogRepository.findByBranchIdAndSyncDate(any(), any()))
+                .thenReturn(Optional.of(existing));
+
+        DataSyncResult result = service.sendToHeadquarters(emptyPackage());
+
+        assertThat(result.isSuccess()).isFalse();
+        ArgumentCaptor<EveningSyncLog> captor = ArgumentCaptor.forClass(EveningSyncLog.class);
+        verify(eveningSyncLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo("ARTIFACT_PENDING");
+        assertThat(captor.getValue().getIsBridged()).isFalse();
+    }
+
+    @Test
+    @DisplayName("FK-091 FR-5: újrafelhasznált bridged sor → FAILED is_bridged=false")
+    @SuppressWarnings("unchecked")
+    void sendToHeadquarters_reusedBridgedRow_failedResetsIsBridged() throws Exception {
+        stubArtifactSync();
+        EveningSyncLog existing = EveningSyncLog.builder()
+                .branchId(BRANCH_UUID)
+                .syncDate(DATE)
+                .status("EVENING_SYNC_DONE")
+                .isBridged(true)
+                .attemptCount(1)
+                .build();
+        when(eveningSyncLogRepository.findByBranchIdAndSyncDate(any(), any()))
+                .thenReturn(Optional.of(existing));
+        when(systemParameterService.getValue("evening.closing.headquarters.url"))
+                .thenReturn("http://hq.example");
+        RestTemplate mockRt = mock(RestTemplate.class);
+        when(mockRt.exchange(anyString(), eq(org.springframework.http.HttpMethod.POST), any(), eq(String.class)))
+                .thenThrow(new RestClientException("down"));
+        ReflectionTestUtils.setField(service, "headquartersRestTemplate", mockRt);
+
+        DataSyncResult result = service.sendToHeadquarters(emptyPackage());
+
+        assertThat(result.isSuccess()).isFalse();
+        ArgumentCaptor<EveningSyncLog> captor = ArgumentCaptor.forClass(EveningSyncLog.class);
+        verify(eveningSyncLogRepository).save(captor.capture());
+        EveningSyncLog last = captor.getAllValues().get(captor.getAllValues().size() - 1);
+        assertThat(last.getStatus()).isEqualTo("FAILED");
+        assertThat(last.getIsBridged()).isFalse();
+    }
+
+    @Test
     @DisplayName("FK-091 FR-5: HQ hívás FAILED ágán is_bridged marad false")
     @SuppressWarnings("unchecked")
     void sendToHeadquarters_failedKeepsIsBridgedFalse() throws Exception {

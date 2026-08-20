@@ -25,7 +25,8 @@ A napzárás HQ-küldése üres URL mellett ne blokkoljon: a meglévő artifact-
 
 - Flyway: `ALTER TABLE evening_sync_log ADD COLUMN is_bridged BOOLEAN NOT NULL DEFAULT false` (aktuális max V380 → V381)
 - Bridged ág: `status=EVENING_SYNC_DONE` + `is_bridged=true`; HTTP 2xx: `is_bridged=false` explicit
-- PENDING / ARTIFACT_PENDING / FAILED: `is_bridged` default `false`, ezeket az ágakat nem írjuk át
+- PENDING / ARTIFACT_PENDING / FAILED: `status` értékkészlet nem bővül; `is_bridged` ezeken az
+  kimeneteken explicit `false` (újrafelhasznált sor korábbi bridged sikerét is visszaállítja)
 - Production default `true`; visszaállítás: env `EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=false` (kód nélkül)
 - entityId: `companyId + ":" + transferNumber + ":" + LocalDate.now(clock)` ; `Clock.system(Europe/Budapest)`
 - Legacy: memória-query üres — Delphi ESTIZAR/FTP, nincs `evening_sync_log.is_bridged`. Szándékos modern eltérés.

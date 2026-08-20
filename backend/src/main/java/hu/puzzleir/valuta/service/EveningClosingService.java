@@ -165,6 +165,9 @@ public class EveningClosingService {
                         .status("PENDING")
                         .attemptCount(0)
                         .build());
+        // FR-5: újrafelhasznált sor (branch_id+sync_date) korábbi bridged siker után
+        // is_bridged=true maradna, ha az ARTIFACT_PENDING/FAILED ág nem állítja vissza.
+        syncLog.setIsBridged(false);
 
         // Központi szerver URL lekérése
         String headquartersUrl;
@@ -192,6 +195,7 @@ public class EveningClosingService {
 
                     if (!artifactSuccessEnabled) {
                         syncLog.setStatus("ARTIFACT_PENDING");
+                        syncLog.setIsBridged(false);
                         syncLog.setPackageChecksum(pkg.getChecksum());
                         syncLog.setCompletedAt(LocalDateTime.now());
                         syncLog.setErrorMessage("HQ_URL_MISSING_ARTIFACT=" + artifact);
@@ -260,6 +264,7 @@ public class EveningClosingService {
 
         // Minden próba sikertelen
         syncLog.setStatus("FAILED");
+        syncLog.setIsBridged(false);
         eveningSyncLogRepository.save(syncLog);
 
         return DataSyncResult.failure(

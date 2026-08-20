@@ -6,8 +6,11 @@ title: FK-091 HQ bridged is_bridged + FK-092 transfer alert daily idempotency
 fact: |
   FK-091: evening_sync_log.is_bridged (V381, NOT NULL DEFAULT false). Bridged
   artifact-success ág EVENING_SYNC_DONE + is_bridged=true; HQ HTTP 2xx explicit
-  is_bridged=false. Production default EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true
-  (visszaállítás env=false). Status értékkészlet nem bővül.
+  is_bridged=false. ARTIFACT_PENDING/FAILED (és a küldés elején) is_bridged=false,
+  hogy újrafelhasznált sor ne maradjon bridged. Production default
+  EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true (visszaállítás env=false).
+  Status értékkészlet nem bővül. Dual-ctor: TransferReconciliationService
+  production ctor @Autowired (DariusImportPreflightValidator minta).
   FK-092: notifyBranchOnce entityId = companyId + ":" + transferNumber + ":" +
   LocalDate.now(Clock Europe/Budapest). Régi transferNumber-only kulcsok nem
   egyeznek — másnaptól újra riaszt, ha az eltérés fennáll.
@@ -17,4 +20,7 @@ legacy: |
   nincs evening_sync_log.is_bridged. Szándékos modern eltérés.
 
 tests: |
-  EveningClosingServiceTest 15 + TransferReconciliationServiceTest 16 = 31 PASS.
+  EveningClosingServiceTest 17 + TransferReconciliationServiceTest 16 = 33 PASS.
+  Reused evening_sync_log row: prior is_bridged=true is reset on ARTIFACT_PENDING
+  and FAILED. TransferReconciliationService production ctor is @Autowired
+  (Spring dual-ctor startup).

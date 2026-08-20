@@ -9,6 +9,7 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.TransferRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +52,7 @@ public class TransferReconciliationService {
     private final NotificationService notificationService;
     private final Clock clock;
 
+    @Autowired
     public TransferReconciliationService(
             TransferRepository transferRepository,
             NotificationService notificationService) {
