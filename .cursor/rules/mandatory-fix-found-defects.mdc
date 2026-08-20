@@ -1,0 +1,15 @@
+---
+description: "Ha hibát, review-findinget vagy CI-bukást találsz: javítsd. Ne kérdezz vissza, hogy javítsd-e."
+alwaysApply: true
+---
+
+# Talált hibát kötelező javítani
+
+Ha kódban, review-ban, CI-ben vagy tesztben **tényleges hibát** találsz, **javítsd**.
+Ne kérdezz vissza („javítsam?”, „folytassam?”). A javítás a munka része.
+
+- Review P0/P1, startup-breaking Spring-hiba, spec-sértés (pl. FR nem teljesül
+  újrafelhasznált soron): azonnal patch + célzott teszt + push a nyitott PR-re.
+- Telepítő/release közben talált blocker: javítsd, majd folytasd a telepítőt.
+- Ne keverj mellékes refaktort a javítás mellé.
+- Spekulációt, stílus-nitot és Scope OUT kérést ne implementálj „hiba” címkével.

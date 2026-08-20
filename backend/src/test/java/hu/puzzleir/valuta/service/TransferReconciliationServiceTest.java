@@ -9,16 +9,20 @@ import hu.puzzleir.valuta.entity.TransferLine;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.TransferRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,11 +39,28 @@ class TransferReconciliationServiceTest {
 
     @Mock private TransferRepository transferRepository;
     @Mock private NotificationService notificationService;
-    @InjectMocks private TransferReconciliationService service;
+
+    private TransferReconciliationService service;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();
     private static final UUID VAULT_BRANCH_ID = UUID.randomUUID();
     private static final LocalDate D = LocalDate.of(2026, 5, 22);
+    private static final ZoneId HU = TransferReconciliationService.BUSINESS_ZONE;
+
+    @BeforeEach
+    void setUp() {
+        service = new TransferReconciliationService(
+                transferRepository, notificationService, clockOn(D));
+    }
+
+    private static Clock clockOn(LocalDate day) {
+        Instant instant = day.atTime(12, 0).atZone(HU).toInstant();
+        return Clock.fixed(instant, HU);
+    }
+
+    private static String entityId(UUID companyId, String transferNumber, LocalDate day) {
+        return companyId + ":" + transferNumber + ":" + day;
+    }
 
     private static Currency currency(String code) {
         Currency c = new Currency();
@@ -95,7 +116,8 @@ class TransferReconciliationServiceTest {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
-            when(notificationService.notifyBranchOnce(eq(VAULT_BRANCH_ID), any(), any(), any(), any(), eq("AT0002"), any()))
+            when(notificationService.notifyBranchOnce(eq(VAULT_BRANCH_ID), any(), any(), any(), any(),
+                    eq(entityId(COMPANY_ID, "AT0002", D)), any()))
                     .thenReturn(true);
 
             TransferReconciliationResultDto result = service.reconcile(D, D);
@@ -106,9 +128,9 @@ class TransferReconciliationServiceTest {
             TransferReconciliationRowDto row = result.getRows().get(0);
             assertThat(row.getStatus()).isEqualTo(TransferReconciliationService.STATUS_MISMATCH);
             assertThat(row.getDiscrepancyNote()).contains("Eltérő összeg");
-            // az értéktár (toBranch.isVault=true) kapja az értesítést, idempotens kulcs = transferNumber
             verify(notificationService).notifyBranchOnce(eq(VAULT_BRANCH_ID), any(), any(), any(),
-                    eq("TransferReconciliation"), eq("AT0002"), eq("TRANSFER_DISCREPANCY"));
+                    eq("TransferReconciliation"), eq(entityId(COMPANY_ID, "AT0002", D)),
+                    eq("TRANSFER_DISCREPANCY"));
         }
     }
 
@@ -333,6 +355,125 @@ class TransferReconciliationServiceTest {
             // a SAJÁT cég irodáját értesítjük (foreign vault NEM kaphat értesítést)
             verify(notificationService).notifyBranchOnce(eq(ownFromId), any(), any(), any(), any(), any(), any());
             verify(notificationService, never()).notifyBranchOnce(eq(foreignVaultId), any(), any(), any(), any(), any(), any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-092 FR-3: ugyanazon a napon kétszer futtatott egyeztetés azonos entityId-t ad")
+    void sameDaySecondRunReusesCompositeEntityId() {
+        Transfer t = baseTransfer("AT0002", Transfer.TransferStatus.COMPLETED)
+                .amount(new BigDecimal("5000"))
+                .receivedAmount(new BigDecimal("4900"))
+                .build();
+        String expectedId = entityId(COMPANY_ID, "AT0002", D);
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+            when(notificationService.notifyBranchOnce(any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(true, false);
+
+            TransferReconciliationResultDto first = service.reconcile(D, D);
+            TransferReconciliationResultDto second = service.reconcile(D, D);
+
+            assertThat(first.getNotifiedBranches()).isEqualTo(1);
+            assertThat(second.getNotifiedBranches()).isZero();
+            ArgumentCaptor<String> entityIds = ArgumentCaptor.forClass(String.class);
+            verify(notificationService, times(2)).notifyBranchOnce(
+                    eq(VAULT_BRANCH_ID), any(), any(), any(),
+                    eq("TransferReconciliation"), entityIds.capture(), eq("TRANSFER_DISCREPANCY"));
+            assertThat(entityIds.getAllValues()).containsExactly(expectedId, expectedId);
+        }
+    }
+
+    @Test
+    @DisplayName("FK-092 FR-4: két egymást követő napon külön entityId / külön riasztás")
+    void nextDayGetsNewEntityId() {
+        Transfer t = baseTransfer("AT0002", Transfer.TransferStatus.COMPLETED)
+                .amount(new BigDecimal("5000"))
+                .receivedAmount(new BigDecimal("4900"))
+                .build();
+        LocalDate next = D.plusDays(1);
+        TransferReconciliationService nextDayService = new TransferReconciliationService(
+                transferRepository, notificationService, clockOn(next));
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(eq(COMPANY_ID), any(), any())).thenReturn(List.of(t));
+            when(notificationService.notifyBranchOnce(any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(true);
+
+            service.reconcile(D, D);
+            nextDayService.reconcile(next, next);
+
+            ArgumentCaptor<String> entityIds = ArgumentCaptor.forClass(String.class);
+            verify(notificationService, times(2)).notifyBranchOnce(
+                    eq(VAULT_BRANCH_ID), any(), any(), any(),
+                    eq("TransferReconciliation"), entityIds.capture(), eq("TRANSFER_DISCREPANCY"));
+            assertThat(entityIds.getAllValues()).containsExactly(
+                    entityId(COMPANY_ID, "AT0002", D),
+                    entityId(COMPANY_ID, "AT0002", next));
+        }
+    }
+
+    @Test
+    @DisplayName("FK-092 FR-5: két cég azonos átadólap-számmal nem némítja el egymást")
+    void twoCompaniesSameTransferNumberDoNotMuteEachOther() {
+        UUID companyB = UUID.randomUUID();
+        UUID vaultBId = UUID.randomUUID();
+        hu.puzzleir.valuta.entity.Company coB = new hu.puzzleir.valuta.entity.Company();
+        coB.setId(companyB);
+        Branch fromB = Branch.builder().id(UUID.randomUUID()).code("BRB1").name("B pénztár")
+                .isVault(false).company(coB).build();
+        Branch vaultB = Branch.builder().id(vaultBId).code("BRB0").name("B értéktár")
+                .isVault(true).company(coB).build();
+        Transfer tA = baseTransfer("TR-001", Transfer.TransferStatus.COMPLETED)
+                .amount(new BigDecimal("100"))
+                .receivedAmount(new BigDecimal("90"))
+                .build();
+        Transfer tB = Transfer.builder().id(2L).transferNumber("TR-001")
+                .fromBranch(fromB).toBranch(vaultB).currency(currency("EUR"))
+                .transferDate(D).status(Transfer.TransferStatus.COMPLETED)
+                .amount(new BigDecimal("100")).receivedAmount(new BigDecimal("90")).build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID, companyB);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(tA));
+            when(transferRepository.findForReconciliation(companyB, D, D)).thenReturn(List.of(tB));
+            when(notificationService.notifyBranchOnce(any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(true);
+
+            service.reconcile(D, D);
+            service.reconcile(D, D);
+
+            ArgumentCaptor<String> entityIds = ArgumentCaptor.forClass(String.class);
+            verify(notificationService, times(2)).notifyBranchOnce(
+                    any(), any(), any(), any(),
+                    eq("TransferReconciliation"), entityIds.capture(), eq("TRANSFER_DISCREPANCY"));
+            assertThat(entityIds.getAllValues()).containsExactly(
+                    entityId(COMPANY_ID, "TR-001", D),
+                    entityId(companyB, "TR-001", D));
+        }
+    }
+
+    @Test
+    @DisplayName("FK-092 FR-2: az idempotencia-dátum Europe/Budapest, nem a JVM/UTC nap")
+    void entityIdUsesBudapestDateAcrossUtcMidnight() {
+        // 2026-05-22 22:30 UTC = 2026-05-23 00:30 Europe/Budapest
+        Clock utcStillMay22 = Clock.fixed(Instant.parse("2026-05-22T22:30:00Z"), HU);
+        TransferReconciliationService midnightService = new TransferReconciliationService(
+                transferRepository, notificationService, utcStillMay22);
+        Transfer t = baseTransfer("AT0002", Transfer.TransferStatus.COMPLETED)
+                .amount(new BigDecimal("5000"))
+                .receivedAmount(new BigDecimal("4900"))
+                .build();
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transferRepository.findForReconciliation(COMPANY_ID, D, D)).thenReturn(List.of(t));
+            when(notificationService.notifyBranchOnce(any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(true);
+
+            midnightService.reconcile(D, D);
+
+            verify(notificationService).notifyBranchOnce(any(), any(), any(), any(), any(),
+                    eq(entityId(COMPANY_ID, "AT0002", LocalDate.of(2026, 5, 23))), any());
         }
     }
 

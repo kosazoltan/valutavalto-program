@@ -8,14 +8,16 @@ import hu.puzzleir.valuta.entity.TransferLine;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.TransferRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -32,7 +34,6 @@ import java.util.UUID;
  * Eltérés esetén az érintett értéktár idempotens (nem spamelő) in-app + email értesítést kap.</p>
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TransferReconciliationService {
 
@@ -45,9 +46,27 @@ public class TransferReconciliationService {
     private static final String NOTE_AWAITING_RECEIVER = "Fogadó megerősítésére vár";
     private static final String NOTIF_ENTITY_TYPE = "TransferReconciliation";
     private static final String NOTIF_TYPE = "TRANSFER_DISCREPANCY";
+    static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Budapest");
 
     private final TransferRepository transferRepository;
     private final NotificationService notificationService;
+    private final Clock clock;
+
+    @Autowired
+    public TransferReconciliationService(
+            TransferRepository transferRepository,
+            NotificationService notificationService) {
+        this(transferRepository, notificationService, Clock.system(BUSINESS_ZONE));
+    }
+
+    TransferReconciliationService(
+            TransferRepository transferRepository,
+            NotificationService notificationService,
+            Clock clock) {
+        this.transferRepository = transferRepository;
+        this.notificationService = notificationService;
+        this.clock = clock;
+    }
 
     @Transactional
     public TransferReconciliationResultDto reconcile(LocalDate startDate, LocalDate endDate) {
@@ -197,9 +216,10 @@ public class TransferReconciliationService {
                         .append(" (").append(row.getDiscrepancyNote()).append(")");
             }
         }
+        String entityId = companyId + ":" + t.getTransferNumber() + ":" + LocalDate.now(clock);
         return notificationService.notifyBranchOnce(
                 target.getId(), title, body.toString(),
-                "WARNING", NOTIF_ENTITY_TYPE, t.getTransferNumber(), NOTIF_TYPE);
+                "WARNING", NOTIF_ENTITY_TYPE, entityId, NOTIF_TYPE);
     }
 
     private Branch resolveAffectedVault(Transfer t, UUID companyId) {
