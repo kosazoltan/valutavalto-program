@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-20T02:46:01.574Z
+generated: 2026-08-24T08:00:04.278Z
 format: gfm
 ---
 
@@ -360,7 +360,7 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 - **ShipmentUnifiedReceiptControllerTest.java** (operational-receipt)
   - source: `backend/src/test/java/hu/puzzleir/valuta/controller/ShipmentUnifiedReceiptControllerTest.java`
-  - summary: package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest; import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto; import hu.puzzleir.valuta.service.ShipmentHandlingFeeService; import hu.puzzleir.valuta.service.ShipmentService; import hu.puzzleir.valuta.util.IdempotencyGuard; import io.swagger.v3.oas.annotations.responses.ApiResponses; import org.junit.jupiter.api
+  - summary: package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest; import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto; import hu.puzzleir.valuta.service.ShipmentHandlingFeeService; import hu.puzzleir.valuta.service.ShipmentService; import hu.puzzleir.valuta.service.ShipmentVatSupplyService; import hu.puzzleir.valuta.util.IdempotencyGuard; import io.swagger.v3.oas.anno
 
 - **ShipmentRequestRepositoryUnifiedReceiptContractTest.java** (operational-receipt)
   - source: `backend/src/test/java/hu/puzzleir/valuta/repository/ShipmentRequestRepositoryUnifiedReceiptContractTest.java`

@@ -167,13 +167,15 @@ export default function ShipmentNewPage() {
   )
   // FKH-018: a kezelési költség tételtípust a backend RBAC-jával azonos értéktáros
   // szerepkörök rögzíthetik. A hasCanonicalRole ADMIN-bypass-a szándékos paritás.
-  const [itemType, setItemType] = useState<'currency' | 'handlingFee'>('currency')
+  const [itemType, setItemType] = useState<'currency' | 'handlingFee' | 'vatSupply'>('currency')
   const canRecordHandlingFee = useMemo(
     () => hasCanonicalRole(['ertektar', 'foertektar']),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [hasCanonicalRole, roles, activeRole],
   )
   const isHandlingFee = itemType === 'handlingFee' && canRecordHandlingFee
+  const isVatSupply = itemType === 'vatSupply' && canRecordHandlingFee
+  const isHufOnlyItem = isHandlingFee || isVatSupply
 
   // FK-013 self-review P0-2: ha az isVaultUser flicker-el (true → false), a vaultCounterparties
   // state stale-en marad → a UI a régi 3-csoportos dropdown-t mutatja inkonzisztens módon.
@@ -282,13 +284,13 @@ export default function ShipmentNewPage() {
     const amount = Number(form.amount.replace(',', '.'))
     if (!form.fromBranchId || !form.toBranchId || !Number.isFinite(amount) || amount <= 0) {
       setError(
-        isHandlingFee
+        isHufOnlyItem
           ? 'Átadó, átvevő és pozitív összeg megadása kötelező.'
           : 'Átadó, átvevő, valuta és pozitív összeg megadása kötelező.',
       )
       return
     }
-    if (!isHandlingFee && !form.currencyId) {
+    if (!isHufOnlyItem && !form.currencyId) {
       setError('Átadó, átvevő, valuta és pozitív összeg megadása kötelező.')
       return
     }
@@ -303,8 +305,12 @@ export default function ShipmentNewPage() {
       setError(carrierSealError)
       return
     }
-    if (isHandlingFee && amount % 5 !== 0) {
-      setError(t('shipments.kezelesiKoltsegOsszegHiba'))
+    if (isHufOnlyItem && amount % 5 !== 0) {
+      setError(
+        isVatSupply
+          ? t('shipments.afaAtadasAtvetelOsszegHiba')
+          : t('shipments.kezelesiKoltsegOsszegHiba'),
+      )
       return
     }
     const normalizedDenominations = denominations
@@ -314,7 +320,7 @@ export default function ShipmentNewPage() {
         return {
           quantity,
           faceValue,
-          currencyCode: isHandlingFee ? 'HUF' : (selectedCurrency?.code ?? ''),
+          currencyCode: isHufOnlyItem ? 'HUF' : (selectedCurrency?.code ?? ''),
           lineTotal: quantity * faceValue,
         }
       })
@@ -434,6 +440,29 @@ export default function ShipmentNewPage() {
           foreignAmount: amount,
           roundedHufAmount: amount,
           transferNote: handlingFeeNote,
+        })
+        return
+      }
+
+      if (isVatSupply) {
+        const { shipment: created } = await shipmentRequestApi.createVatSupply({
+          fromBranchId: form.fromBranchId,
+          toBranchId: form.toBranchId,
+          hufAmount: amount,
+          deliveryDate: form.deliveryDate || undefined,
+          notes: form.notes,
+          carrierName: form.carrierName.trim(),
+          sealNumber: form.sealNumber.trim(),
+        })
+        if (!created.id) throw new Error('A szerver nem adott szállítmány azonosítót.')
+        const submitted = await shipmentRequestApi.submit(created.id)
+        const vatSupplyNote = `${t('shipments.afaAtadasAtvetel')}${form.notes ? `\n${form.notes}` : ''}`
+        buildAndShowReceipt(created, submitted, {
+          currencyCode: 'HUF',
+          rate: 1,
+          foreignAmount: amount,
+          roundedHufAmount: amount,
+          transferNote: vatSupplyNote,
         })
         return
       }
@@ -652,16 +681,17 @@ export default function ShipmentNewPage() {
                 value={itemType}
                 disabled={disabled}
                 onChange={(event) => {
-                  setItemType(event.target.value as 'currency' | 'handlingFee')
+                  setItemType(event.target.value as 'currency' | 'handlingFee' | 'vatSupply')
                   setCalculatedHandlingFee(null)
                 }}
               >
                 <option value="currency">{t('shipments.tetelTipusValuta')}</option>
                 <option value="handlingFee">{t('shipments.tetelTipusKezelesiKoltseg')}</option>
+                <option value="vatSupply">{t('shipments.tetelTipusAfaAtadasAtvetel')}</option>
               </select>
             </label>
           )}
-          {!isHandlingFee && (
+          {!isHufOnlyItem && (
             <label className="block">
               <span className="form-label">Valuta</span>
               <select
@@ -681,12 +711,16 @@ export default function ShipmentNewPage() {
           )}
           <label className="block">
             <span className="form-label">
-              {isHandlingFee ? t('shipments.kezelesiKoltsegOsszegeFt') : 'Összeg'}
+              {isHandlingFee
+                ? t('shipments.kezelesiKoltsegOsszegeFt')
+                : isVatSupply
+                  ? t('shipments.afaAtadasAtvetelOsszegeFt')
+                  : 'Összeg'}
             </span>
             <input
               type="number"
-              min={isHandlingFee ? '5' : '0.01'}
-              step={isHandlingFee ? '5' : '0.01'}
+              min={isHufOnlyItem ? '5' : '0.01'}
+              step={isHufOnlyItem ? '5' : '0.01'}
               className="form-input"
               value={form.amount}
               disabled={saving}
@@ -698,7 +732,7 @@ export default function ShipmentNewPage() {
           </label>
           {/* D követelmény (Bali Henriett): aktuális elszámoló árfolyam + forintosított érték
               AUTOMATIKUSAN, read-only — a felhasználó NE írja kézzel. */}
-          {!isHandlingFee && (
+          {!isHufOnlyItem && (
             <label className="block">
               <span className="form-label">
                 Alkalmazott elszámoló árfolyam
@@ -723,7 +757,7 @@ export default function ShipmentNewPage() {
           )}
           <label className="block">
             <span className="form-label">
-              {isHandlingFee ? 'Kerekített összeg' : 'Forintosított érték'}
+              {isHufOnlyItem ? 'Kerekített összeg' : 'Forintosított érték'}
               <span className="ml-1 text-xs text-gray-500">(automatikus — 5 Ft-ra kerekítve)</span>
               {isHandlingFee && calculatedHandlingFee != null && (
                 <span className="ml-1 text-xs text-gray-500">
@@ -736,8 +770,8 @@ export default function ShipmentNewPage() {
               type="text"
               className="form-input bg-gray-100 cursor-not-allowed"
               value={
-                (isHandlingFee ? roundedHandlingFeeAmount : hufValue) != null
-                  ? `${(isHandlingFee ? roundedHandlingFeeAmount : hufValue)?.toLocaleString('hu-HU')} Ft`
+                (isHufOnlyItem ? roundedHandlingFeeAmount : hufValue) != null
+                  ? `${(isHufOnlyItem ? roundedHandlingFeeAmount : hufValue)?.toLocaleString('hu-HU')} Ft`
                   : '—'
               }
               disabled
@@ -844,7 +878,7 @@ export default function ShipmentNewPage() {
                         className="form-input bg-gray-100"
                         value={
                           lineTotal > 0
-                            ? `${lineTotal.toLocaleString('hu-HU')} ${isHandlingFee ? 'HUF' : (selectedCurrency?.code ?? '')}`
+                            ? `${lineTotal.toLocaleString('hu-HU')} ${isHufOnlyItem ? 'HUF' : (selectedCurrency?.code ?? '')}`
                             : '—'
                         }
                         disabled

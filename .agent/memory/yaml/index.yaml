@@ -1,6 +1,6 @@
-generated_at: 2026-08-20T02:46:01.574Z
+generated_at: 2026-08-24T08:00:04.278Z
 schema_version: 1
-source_count: 1071
+source_count: 1072
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -1932,8 +1932,8 @@ operational:
     title: ShipmentUnifiedReceiptControllerTest.java
     type: operational-receipt
     path: backend/src/test/java/hu/puzzleir/valuta/controller/ShipmentUnifiedReceiptControllerTest.java
-    sha256: 5e2beeeddb33dd716a53af640d0b83b5805cc0c44694cded96a713a08a349417
-    summary: "package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest; import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto; import hu.puzzleir.valuta.service.ShipmentHandlingFeeService; import hu.puzzleir.valuta.service.ShipmentService; import hu.puzzleir.valuta.util.IdempotencyGuard; import io.swagger.v3.oas.annotations.responses.ApiResponses; import org.junit.jupiter.api"
+    sha256: 66174e7f041806d54c580a95f7991c941898cb1ae0e2494a2deefb074db1adb5
+    summary: "package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest; import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto; import hu.puzzleir.valuta.service.ShipmentHandlingFeeService; import hu.puzzleir.valuta.service.ShipmentService; import hu.puzzleir.valuta.service.ShipmentVatSupplyService; import hu.puzzleir.valuta.util.IdempotencyGuard; import io.swagger.v3.oas.anno"
     areas: [ertektar, penztar]
     keywords: [shipmentunifiedreceiptcontrollertest, java, package, puzzleir, valuta, controller, import, dto, shipment, shipmentdeliverrequest, shipmentrequestresponsedto, service]
   - id: 046a5142996fb766
@@ -7060,12 +7060,20 @@ long_term:
     summary: "--- schema_version: 1 session_id: 2026-05-15-codesigning-digicert-ev-pivot date: 2026-05-15 status: in-progress # cert NOT yet issued; HSM Approval submitted, vendor_status=pending operator: kosa.zoltan ai_agent: claude-opus-4.7-1m project: valutavalto-program topic: code-signing-certificate-pivot tags: - code-signing - azure-key-vault - digicert-ev-cs - sectigo-cancelled - signmycode - ci-cd - workflow-windows-signe"
     areas: [aml, deploy, installer, penztar]
     keywords: [2026, codesigning, digicert, pivot, yaml, schema_version, session_id, date, status, progress, cert, not]
+  - id: 755cd15533b8ded9
+    title: 2026-08-19-full-install-winnat-port.yaml
+    type: long-term-historical
+    path: docs/knowledge/memory/2026-08-19-full-install-winnat-port.yaml
+    sha256: 05c1d86381692ff2f320dc0161cafa6bb20b4bd28408a6f6d92a814357507e6f
+    summary: "date: 2026-08-19 type: verified-root-cause areas: [installer, database] title: FULL local install abort — WinNAT excludedportrange 54320 fact: | A Penztar FULL (lokalis PostgreSQL) telepito Abortja ezen a Windows gepen nem \"foglalt port LISTENING\" volt, hanem WinNAT/Hyper-V excludedportrange. netsh ipv4 tcp: 54313-54412 lefoglalja a 54320-at. Bind WSAEACCES (Permission denied) 127.0.0.1-re, noha netstat nem mutat LIS"
+    areas: [aml, installer, legacy, penztar, specifikacio]
+    keywords: [2026, full, install, winnat, port, yaml, date, type, verified, root, cause, areas]
   - id: a6d2f46229d869ac
     title: 2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml
     type: long-term-historical
     path: docs/knowledge/memory/2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml
-    sha256: fecc65bbc56ce2de5e7ec3cea4b192bf6d47728ef1e5a89e8512571aaa354177
-    summary: "date: 2026-08-20 type: verified-root-cause areas: [napzaras, ertektar, database] title: FK-091 HQ bridged is_bridged + FK-092 transfer alert daily idempotency fact: | FK-091: evening_sync_log.is_bridged (V381, NOT NULL DEFAULT false). Bridged artifact-success ág EVENING_SYNC_DONE + is_bridged=true; HQ HTTP 2xx explicit is_bridged=false. Production default EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true (visszaállítás e"
+    sha256: 275440ccf0f86cdad24b7021cbaa68f43b72603c2802de81d0691d5964e5638c
+    summary: "date: 2026-08-20 type: verified-root-cause areas: [napzaras, ertektar, database] title: FK-091 HQ bridged is_bridged + FK-092 transfer alert daily idempotency fact: | FK-091: evening_sync_log.is_bridged (V381, NOT NULL DEFAULT false). Bridged artifact-success ág EVENING_SYNC_DONE + is_bridged=true; HQ HTTP 2xx explicit is_bridged=false. ARTIFACT_PENDING/FAILED (és a küldés elején) is_bridged=false, hogy újrafelhaszná"
     areas: [aml, ertektar, legacy, napzaras]
     keywords: [2026, fk091, fk092, bridged, transfer, idempotencia, yaml, date, type, verified, root, cause]
   - id: f1d7389cefcfcb25
@@ -7400,7 +7408,7 @@ long_term:
     title: "Spec: FK-091 HQ vészkijárat + bridged jelzés, FK-092 transzfer-riasztás idempotencia"
     type: semantic-reference
     path: docs/specs/fk091-fk092-hq-bridged-transfer-idempotencia.md
-    sha256: a114c43f75a1936f722e451b25aba8e5319e56e0152cab580a51dccc32419761
+    sha256: 039deeeac3b2a03a2ae4ece83935daab34f4207b9a1d5267a1051822a4c9f1bf
     summary: "# Spec: FK-091 HQ vészkijárat + bridged jelzés, FK-092 transzfer-riasztás idempotencia > Dátum: 2026-08-20 · Forrás: jóváhagyott hibajegyek (Downloads FK-091, FK-092) · Állapot: JÓVÁHAGYVA (a jegyek) ## 1. Cél A napzárás HQ-küldése üres URL mellett ne blokkoljon: a meglévő artifact-vészkijárat élesben bekapcsolva, `evening_sync_log.is_bridged` megkülönbözteti a helyi fájlba írást a valódi HQ 2xx-től. A transzfer-egye"
     areas: [database, ertektar, installer, legacy, napzaras, penztar, specifikacio]
     keywords: [spec, 091, veszkijarat, bridged, jelzes, 092, transzfer, riasztas, idempotencia, datum, 2026, forras]

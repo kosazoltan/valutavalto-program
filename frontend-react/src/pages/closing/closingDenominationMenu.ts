@@ -32,7 +32,21 @@ export interface ClosingDenominationMenuItem {
   description: string
 }
 
+/** Pénztári alapértelmezett kilépés (változatlan). */
 export const CLOSING_DENOMINATION_EXIT_ROUTE = '/cashier'
+
+/** Értéktári fallback, ha nincs érvényes returnTo (FKH-039 FR-4). */
+export const CLOSING_DENOMINATION_VAULT_EXIT_ROUTE = '/evening-closing'
+
+/**
+ * FKH-039 FR-4: kontextusfüggő exit-fallback — vault → Napi zárás, pénztár → /cashier.
+ * Explicit named feltétel, közös fájlban (nem külön komponens).
+ */
+export function resolveClosingDenominationExitRoute(isVaultContext: boolean): string {
+  return isVaultContext
+    ? CLOSING_DENOMINATION_VAULT_EXIT_ROUTE
+    : CLOSING_DENOMINATION_EXIT_ROUTE
+}
 
 export const CLOSING_DENOMINATION_MENU: ClosingDenominationMenuItem[] = [
   {
@@ -57,9 +71,10 @@ export const CLOSING_DENOMINATION_MENU: ClosingDenominationMenuItem[] = [
   },
   {
     id: 'afa-penztar',
-    label: 'ÁFA PÉNZTÁR CÍMLETEZÉSE',
-    disabled: true,
-    description: 'A forrás-képernyőn inaktív (szürkített) menüpont',
+    label: 'ÁFA ÁTADÁS-ÁTVÉTEL CÍMLETEZÉSE',
+    route: '/closing/denomination-entry/VAT',
+    disabled: false,
+    description: 'ÁFA-célú HUF-ellátmány címletezése (VAT kategória)',
   },
   {
     id: 'foglalo-keszlet',

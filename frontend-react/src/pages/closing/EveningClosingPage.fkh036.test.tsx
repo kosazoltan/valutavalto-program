@@ -243,6 +243,16 @@ describe('EveningClosingPage — FKH-036', () => {
     expect(within(cta).queryByText('Kezelési díj címletezése')).toBeNull()
   })
 
+  it('FKH-040: vault kontextusban mindig megjelenik az ÁFA átadás-átvétel CTA', async () => {
+    render(<EveningClosingPage />)
+
+    const vatCta = await screen.findByTestId('fkh040-vat-supply-cta')
+    const vatLink = within(vatCta).getByRole('link', { name: 'ÁFA átadás-átvétel becímletezése' })
+    expect(vatLink.getAttribute('href')).toBe(
+      '/closing/denomination-entry/VAT?returnTo=%2Fevening-closing',
+    )
+  })
+
   it('FKH-036 kieg. #2 FR-14: handlingFeeRequired nélkül nincs kezelési díj CTA, a sorrend valuta-CTA → checklist', async () => {
     // Default VAULT_STATUS (handlingFeeRequired: false).
     render(<EveningClosingPage />)

@@ -4,19 +4,26 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.dto.denomination.DenominationBalanceDto;
 import hu.puzzleir.valuta.dto.denomination.DenominationQuantityUpdateRequestDto;
 import hu.puzzleir.valuta.dto.denomination.DenominationSelfCheckDto;
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationBalance;
 import hu.puzzleir.valuta.entity.DenominationCategory;
+import hu.puzzleir.valuta.entity.VatSupplyStock;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
+import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
+import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -48,6 +55,9 @@ public class DenominationBalanceService {
     private final CashBalanceRepository cashBalanceRepository;
     // FK-080 (FR-5): az engedelyezett cimlet-katalogus — a mentes-ut gatja.
     private final DenominationAllowedRepository denominationAllowedRepository;
+    private final ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    private final CurrencyRepository currencyRepository;
+    private final VatSupplyStockRepository vatSupplyStockRepository;
 
     /**
      * FK-080 (FR-5): a mentes elott a hivatkozott denomination sort ELLENORIZZUK.
@@ -285,6 +295,16 @@ public class DenominationBalanceService {
             denominated.put((String) row[0], (BigDecimal) row[1]);
         }
 
+        if (effectiveCategory == DenominationCategory.HANDLING_FEE) {
+            return List.of(hufSelfCheckRow(
+                    denominated,
+                    HungarianRounding.roundToFive(
+                            shipmentHandlingFeeRepository.sumDailyFeeForBranch(companyId, cashDeskId, today))));
+        }
+        if (effectiveCategory == DenominationCategory.VAT) {
+            return List.of(hufSelfCheckRow(denominated, vatSupplyExpectedBalance(cashDeskId, companyId)));
+        }
+
         List<DenominationSelfCheckDto> result = new ArrayList<>();
         for (CashBalance cashBalance : cashBalanceRepository
                 .findByBranchIdAndCompanyId(cashDeskId, companyId)) {
@@ -295,18 +315,45 @@ public class DenominationBalanceService {
             BigDecimal expected = (cashBalance.getCurrentBalance() == null
                     ? BigDecimal.ZERO : cashBalance.getCurrentBalance())
                     .setScale(2, RoundingMode.HALF_UP);
-            BigDecimal difference = denominatedAmount.subtract(expected);
-
-            result.add(DenominationSelfCheckDto.builder()
-                    .currencyCode(currencyCode)
-                    .currencyId(cashBalance.getCurrency().getId())
-                    .denominatedAmount(denominatedAmount)
-                    .expectedBalance(expected)
-                    .difference(difference)
-                    .matches(difference.compareTo(BigDecimal.ZERO) == 0)
-                    .build());
+            result.add(selfCheckRow(currencyCode, cashBalance.getCurrency().getId(),
+                    denominatedAmount, expected));
         }
         return result;
+    }
+
+    private DenominationSelfCheckDto hufSelfCheckRow(Map<String, BigDecimal> denominated, BigDecimal expectedRaw) {
+        Currency huf = currencyRepository.findByCode("HUF").orElse(null);
+        Long hufId = huf != null ? huf.getId() : 0L;
+        BigDecimal denominatedAmount = denominated
+                .getOrDefault("HUF", BigDecimal.ZERO)
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal expected = (expectedRaw == null ? BigDecimal.ZERO : expectedRaw)
+                .setScale(2, RoundingMode.HALF_UP);
+        return selfCheckRow("HUF", hufId, denominatedAmount, expected);
+    }
+
+    private static DenominationSelfCheckDto selfCheckRow(
+            String currencyCode, Long currencyId, BigDecimal denominatedAmount, BigDecimal expected) {
+        BigDecimal difference = denominatedAmount.subtract(expected);
+        return DenominationSelfCheckDto.builder()
+                .currencyCode(currencyCode)
+                .currencyId(currencyId)
+                .denominatedAmount(denominatedAmount)
+                .expectedBalance(expected)
+                .difference(difference)
+                .matches(difference.compareTo(BigDecimal.ZERO) == 0)
+                .build();
+    }
+
+    private BigDecimal vatSupplyExpectedBalance(UUID cashDeskId, UUID companyId) {
+        Branch branch = branchRepository.findByIdAndCompanyId(cashDeskId, companyId).orElse(null);
+        if (branch == null || branch.getVaultTerritoryId() == null) {
+            return BigDecimal.ZERO;
+        }
+        return vatSupplyStockRepository
+                .findByCompanyIdAndVaultTerritoryId(companyId, branch.getVaultTerritoryId())
+                .map(VatSupplyStock::getCurrentBalance)
+                .orElse(BigDecimal.ZERO);
     }
 
     /**

@@ -18,7 +18,9 @@ import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { isAllowedFaceValue } from '../../utils/denominationRules'
-import { CLOSING_DENOMINATION_EXIT_ROUTE } from './closingDenominationMenu'
+import {
+  resolveClosingDenominationExitRoute,
+} from './closingDenominationMenu'
 
 /**
  * FK-078 — kozos, kategoria-tudatos becimletezo oldal.
@@ -31,8 +33,7 @@ import { CLOSING_DENOMINATION_EXIT_ROUTE } from './closingDenominationMenu'
  * becimletezest a CIMLETPISZKOZAT tabla szolgalta ki (KCIMLET/KESZEDIT/ATADVET modulok),
  * elkulonitve a veglegesitett CIMLETEK retegtol.</p>
  *
- * <p>FR-4: minden sikeres mentes utan penznemenkenti "egyezik / nem egyezik" jelzes —
- * KIZAROLAG az EVENING kategoriara, es kizarolag tajekoztato jelleggel (nem blokkol).</p>
+ * <p>FKH-039 FR-8/FR-9: önellenőrzés EVENING + HANDLING_FEE; explicit elvárt célösszeg.</p>
  *
  * <p>FK-079 orokseg (spec 9.4, kotelezo): minden cimlet-lista es minden mentes-payload
  * atmegy az isAllowedFaceValue szuresen — tort (1 alatti) nevertekhez semmilyen uton nem
@@ -43,29 +44,29 @@ import { CLOSING_DENOMINATION_EXIT_ROUTE } from './closingDenominationMenu'
 const CATEGORY_TITLES: Record<DenominationBalanceCategory, string> = {
   EVENING: 'Esti zárás címletezése',
   HANDLING_FEE: 'Kezelési díj címletezése',
+  VAT: 'ÁFA átadás-átvétel címletezése',
 }
 
 function parseCategory(raw: string | undefined): DenominationBalanceCategory {
-  return raw === 'HANDLING_FEE' ? 'HANDLING_FEE' : 'EVENING'
+  if (raw === 'HANDLING_FEE') return 'HANDLING_FEE'
+  if (raw === 'VAT') return 'VAT'
+  return 'EVENING'
 }
 
 export default function DenominationEntryPage() {
   const navigate = useNavigate()
   const { category: categoryParam } = useParams<{ category?: string }>()
   const category = parseCategory(categoryParam)
-  // FR-4 / Scope OUT: egyezes-jelzes KIZAROLAG az esti zarasnal.
-  const selfCheckEnabled = category === 'EVENING'
+  // FKH-039 FR-8 / FKH-040: önellenőrzés EVENING, HANDLING_FEE és VAT kategórián.
+  const selfCheckEnabled =
+    category === 'EVENING' || category === 'HANDLING_FEE' || category === 'VAT'
 
   // FKH-036 FR-4: a hivo adja meg a visszateresi cimet (returnTo query-param).
   const [searchParams] = useSearchParams()
   /**
    * FKH-036 FR-4 + kieg. #2 FR-11: a hívó adja meg a visszatérési címet. Csak azonos-origójú,
    * relatív útvonal fogadható el (open-redirect védelem: a '//' protokol-relatív prefix és a
-   * nem-'/' kezdet elutasítva); minden más esetben null (penztári kontextus).
-   *
-   * FR-11: a validált returnTo maga a vault-kontextus jelzése — ugyanaz a felismerés, amit a
-   * Kilépés gomb használ; a „Napi zárás végrehajtása" gomb vault-kontextusban a Kilépéssel
-   * AZONOS célpontot ad (soha nem hardkódolt '/evening-closing' — a routing-tudás egy helyen).
+   * nem-'/' kezdet elutasítva); minden más esetben null.
    */
   const returnToRoute = useMemo(() => {
     const raw = searchParams.get('returnTo')
@@ -73,11 +74,21 @@ export default function DenominationEntryPage() {
     return null
   }, [searchParams])
 
-  const exitRoute = returnToRoute ?? CLOSING_DENOMINATION_EXIT_ROUTE
-
   const worker = useAuthStore(
     (s: { worker: { id?: string | number; branchId: string; role?: string } | null }) => s.worker,
   )
+  const hasCanonicalRole = useAuthStore(
+    (s: { hasCanonicalRole?: (roles: string | string[]) => boolean }) => s.hasCanonicalRole,
+  )
+  /**
+   * FKH-039: vault vs pénztár — explicit named feltétel a közös fájlban (FR-3).
+   * Szerepkör-alapú, a ShipmentNewPage / ClosingWizard mintájára.
+   */
+  const isVaultContext = Boolean(hasCanonicalRole?.(['ertektar', 'foertektar']))
+
+  const exitRoute =
+    returnToRoute ?? resolveClosingDenominationExitRoute(isVaultContext)
+
   const selectedCashDeskId = worker?.branchId ?? ''
 
   const [currencies, setCurrencies] = useState<Currency[]>([])
@@ -189,8 +200,8 @@ export default function DenominationEntryPage() {
   }
 
   /**
-   * FR-2/FR-3/FR-4: szabad, ismetelt mentes a helyes kategoriaval, majd — csak EVENING
-   * eseten — azonnali onellenorzes. A mentes SOHA nem blokkolodik az onellenorzes miatt.
+   * FR-2/FR-3/FR-4 + FKH-039 FR-8: szabad, ismetelt mentes a helyes kategoriaval, majd —
+   * EVENING és HANDLING_FEE eseten — azonnali onellenorzes. A mentes SOHA nem blokkolodik.
    */
   const persist = async (): Promise<boolean> => {
     if (!selectedCashDeskId) {
@@ -232,7 +243,10 @@ export default function DenominationEntryPage() {
     }
   }
 
-  /** FR-2: "Mentés és visszalépés" — ment, majd vissza a "Címletezés – zárások" oldalra. */
+  /**
+   * FR-2: "Mentés és visszalépés" — csak pénztári kontextusban (FKH-039 FR-3).
+   * Vault-ban a gomb el van rejtve; a Kilépés ment+navigál.
+   */
   const handleSaveAndReturn = async () => {
     const ok = await persist()
     if (ok) navigate('/closing/denominations-menu')
@@ -244,13 +258,26 @@ export default function DenominationEntryPage() {
   }
 
   /**
+   * FKH-039 FR-1/FR-4/FR-5: vault-ban mentés után navigál; pénztárban változatlanul
+   * mentés nélkül (FR-3 regresszióvédelem).
+   */
+  const handleExit = async () => {
+    if (isVaultContext) {
+      const ok = await persist()
+      if (ok) navigate(exitRoute)
+      return
+    }
+    navigate(exitRoute)
+  }
+
+  /**
    * FR-5: "Napi zárás végrehajtása" — ez, es csak ez inditja a tenyleges zaras-varazslot.
    * A varazslo belso logikaja valtozatlan (NFR-3): a /closing/wizard oldal sajat
    * "runClosing" folyamata fut le, ugyanugy, mint ma.
    *
    * FKH-036 kieg. #2 FR-11: vault-kontextusban (van valid returnTo) ez a gomb a Kilepes
-   * gombbal AZONOS — csak visszanavigal a hivo oldalra, zaras-kuldes nelkul (nincs
-   * eveningClosingApi.send hivás). FR-12: returnTo nelkul valtozatlanul a varazslo.
+   * gombbal AZONOS célpontra visz — csak visszanavigal a hivo oldalra, zaras-kuldes nelkul.
+   * FR-12: returnTo nelkul valtozatlanul a varazslo.
    */
   const handleStartClosing = () => {
     if (returnToRoute) {
@@ -388,7 +415,7 @@ export default function DenominationEntryPage() {
         )}
       </div>
 
-      {/* FR-4: penznemenkenti, NEM blokkolo egyezes-jelzes — csak EVENING kategorian. */}
+      {/* FKH-039 FR-8/FR-9/FR-10: önellenőrzés EVENING + HANDLING_FEE; explicit elvárt összeg. */}
       {selfCheckEnabled && selfCheck && selfCheck.length > 0 && (
         <div className="form-panel space-y-2" data-testid="denomination-entry-selfcheck">
           <h2 className="text-sm font-bold text-secondary-900">Önellenőrzés</h2>
@@ -400,7 +427,7 @@ export default function DenominationEntryPage() {
               <li
                 key={row.currencyCode}
                 data-testid={`denomination-entry-selfcheck-${row.currencyCode}`}
-                className={`flex items-center gap-2 rounded px-2 py-1 text-sm ${
+                className={`flex flex-wrap items-center gap-2 rounded px-2 py-1 text-sm ${
                   row.matches ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
                 }`}
               >
@@ -411,11 +438,14 @@ export default function DenominationEntryPage() {
                 )}
                 <span className="font-mono font-bold">{row.currencyCode}</span>
                 <span>{row.matches ? 'Egyezik' : 'Nem egyezik'}</span>
-                {!row.matches && (
-                  <span className="font-mono">
-                    (eltérés: {formatDecimal(Number(row.difference), 2, 2)})
-                  </span>
-                )}
+                <span className="font-mono text-xs">
+                  (becímletezett: {formatDecimal(Number(row.denominatedAmount), 2, 2)}, elvárt:{' '}
+                  {formatDecimal(Number(row.expectedBalance), 2, 2)}
+                  {!row.matches
+                    ? `, eltérés: ${formatDecimal(Number(row.difference), 2, 2)}`
+                    : ''}
+                  )
+                </span>
               </li>
             ))}
           </ul>
@@ -433,16 +463,19 @@ export default function DenominationEntryPage() {
           <Save size={16} />
           Mentés
         </button>
-        <button
-          type="button"
-          onClick={() => void handleSaveAndReturn()}
-          disabled={saving || !selectedCashDeskId}
-          data-testid="denomination-entry-save-and-return"
-          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow transition-colors flex items-center gap-2"
-        >
-          <Save size={16} />
-          Mentés és visszalépés
-        </button>
+        {/* FKH-039 FR-2/FR-3: Mentés és visszalépés csak pénztári kontextusban. */}
+        {!isVaultContext && (
+          <button
+            type="button"
+            onClick={() => void handleSaveAndReturn()}
+            disabled={saving || !selectedCashDeskId}
+            data-testid="denomination-entry-save-and-return"
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow transition-colors flex items-center gap-2"
+          >
+            <Save size={16} />
+            Mentés és visszalépés
+          </button>
+        )}
         <button
           type="button"
           onClick={handleStartClosing}
@@ -455,9 +488,10 @@ export default function DenominationEntryPage() {
         </button>
         <button
           type="button"
-          onClick={() => navigate(exitRoute)}
+          onClick={() => void handleExit()}
+          disabled={saving}
           data-testid="denomination-entry-exit"
-          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-bold rounded-lg shadow transition-colors"
+          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow transition-colors"
         >
           Kilépés
         </button>

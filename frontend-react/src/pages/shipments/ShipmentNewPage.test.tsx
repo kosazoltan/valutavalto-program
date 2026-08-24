@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   },
   currencyApi: { getActive: vi.fn() },
   exchangeRateApi: { getByCurrencyId: vi.fn() },
-  shipmentRequestApi: { create: vi.fn(), createHandlingFee: vi.fn(), submit: vi.fn() },
+  shipmentRequestApi: { create: vi.fn(), createHandlingFee: vi.fn(), createVatSupply: vi.fn(), submit: vi.fn() },
   persistToken: vi.fn(),
   clearPersistedToken: vi.fn(),
 }))
@@ -462,6 +462,84 @@ describe('ShipmentNewPage', () => {
         screen.getByText(/pozitív, 5 Ft-ra kerekített érték kell legyen/i),
       ).toBeInTheDocument(),
     )
+    expect(mocks.shipmentRequestApi.createHandlingFee).not.toHaveBeenCalled()
+  })
+
+  it('FKH-040: értéktáros user kiválaszthatja az ÁFA átadás-átvétel tételtípust és a createVatSupply hívódik', async () => {
+    const user = userEvent.setup()
+    useAuthStore.setState({
+      worker: {
+        id: 99,
+        workerCode: 'BALI',
+        firstName: 'Henriett',
+        lastName: 'Bali',
+        fullName: 'Bali Henriett',
+        role: 'CASHIER',
+        branchId: 'BR-VAULT-SZEGED',
+        branchCode: 'BR075',
+        branchName: 'Szeged Értéktár',
+        companyId: 'C-1',
+        companyCode: 'EBC',
+        companyName: 'EBC',
+      },
+      isAuthenticated: true,
+      roles: ['ertektar'],
+      activeRole: 'ertektar',
+    })
+    mocks.branchApi.listVaultCounterparties.mockResolvedValue({
+      territorialCashiers: [{ id: 'BR-TER-1', code: 'BR026', name: 'Szeged Móra', isActive: true }],
+      peerVaults: [],
+      fixedCounterparties: [],
+    })
+    mocks.shipmentRequestApi.createVatSupply.mockResolvedValue({
+      shipment: {
+        id: 'shipment-vat-1',
+        requestNumber: 'KK-000002',
+        fromBranchCode: 'BR026',
+        fromBranchName: 'Szeged Móra',
+        toBranchCode: 'BR075',
+        toBranchName: 'Szeged Értéktár',
+        requestedByWorkerName: 'Bali Henriett',
+        requestedAt: '2026-06-21T10:00:00',
+        carrierName: "Brink's Hungary Kft.",
+        sealNumber: 'ABC/12-3',
+      },
+      vatSupplyItem: {
+        hufAmount: 50000,
+        status: 'DRAFT',
+      },
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/shipments/new?direction=inbound']}>
+        <ShipmentNewPage />
+      </MemoryRouter>,
+    )
+
+    const itemTypeSelect = await screen.findByLabelText(/Tétel típusa/i)
+    await waitFor(() => expect(itemTypeSelect).not.toBeDisabled())
+    await user.selectOptions(itemTypeSelect, 'vatSupply')
+
+    expect(screen.queryByLabelText(/Valuta/i)).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText(/Átadó/i), 'BR-TER-1')
+    await user.type(screen.getByLabelText(/ÁFA ellátmány összege/i), '50000')
+    await user.type(screen.getByLabelText(/Szállító neve/i), "Brink's Hungary Kft.")
+    await user.type(screen.getByLabelText(/Plombaszám/i), 'ABC/12-3')
+    await user.click(screen.getByRole('button', { name: /Igény beküldése/i }))
+
+    await waitFor(() =>
+      expect(mocks.shipmentRequestApi.createVatSupply).toHaveBeenCalledWith({
+        fromBranchId: 'BR-TER-1',
+        toBranchId: 'BR-VAULT-SZEGED',
+        hufAmount: 50000,
+        deliveryDate: undefined,
+        notes: '',
+        carrierName: "Brink's Hungary Kft.",
+        sealNumber: 'ABC/12-3',
+      }),
+    )
+    expect(mocks.shipmentRequestApi.submit).toHaveBeenCalledWith('shipment-vat-1')
+    expect(mocks.shipmentRequestApi.create).not.toHaveBeenCalled()
     expect(mocks.shipmentRequestApi.createHandlingFee).not.toHaveBeenCalled()
   })
 })

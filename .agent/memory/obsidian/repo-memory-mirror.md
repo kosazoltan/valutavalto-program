@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-20T02:46:01.574Z
+generated: 2026-08-24T08:00:04.278Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-20T02:46:01.574Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1071
-- generated: 2026-08-20T02:46:01.574Z
+- sources: 1072
+- generated: 2026-08-24T08:00:04.278Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -649,6 +649,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[2026-05-14-local-first-architecture-mandate.yaml]] — `docs/knowledge/memory/2026-05-14-local-first-architecture-mandate.yaml` (long-term-historical)
 - [[2026-05-15 Code Signing: Sectigo → DigiCert EV CS Pivot (Azure Key Vault native)]] — `docs/knowledge/memory/2026-05-15-codesigning-digicert-ev-pivot.qmd` (long-term-historical)
 - [[2026-05-15-codesigning-digicert-ev-pivot.yaml]] — `docs/knowledge/memory/2026-05-15-codesigning-digicert-ev-pivot.yaml` (long-term-historical)
+- [[2026-08-19-full-install-winnat-port.yaml]] — `docs/knowledge/memory/2026-08-19-full-install-winnat-port.yaml` (long-term-historical)
 - [[2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml]] — `docs/knowledge/memory/2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml` (long-term-historical)
 - [[Bence — Modern Szoftver Üzleti Logika Elemzés]] — `docs/knowledge/reviews/bence-modern-uzleti-logika-elemzes-2026-04-07.md` (semantic-reference)
 - [[Valutaváltó Delphi — Core-ból Kifelé Elemzés (2026-04-04)]] — `docs/knowledge/reviews/delphi-core-outward-analysis-2026-04-04.md` (analysis)

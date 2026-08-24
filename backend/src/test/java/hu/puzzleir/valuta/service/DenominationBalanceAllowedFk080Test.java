@@ -12,9 +12,12 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
+import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
+import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -62,6 +65,9 @@ class DenominationBalanceAllowedFk080Test {
     @Mock private BranchRepository branchRepository;
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private DenominationAllowedRepository denominationAllowedRepository;
+    @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    @Mock private CurrencyRepository currencyRepository;
+    @Mock private VatSupplyStockRepository vatSupplyStockRepository;
 
     private final UUID companyId = UUID.randomUUID();
     private final UUID otherCompanyId = UUID.randomUUID();
@@ -70,7 +76,8 @@ class DenominationBalanceAllowedFk080Test {
     private DenominationBalanceService service() {
         return new DenominationBalanceService(
                 balanceRepository, denominationRepository, cashRegisterDeviceRepository, branchRepository,
-                cashBalanceRepository, denominationAllowedRepository);
+                cashBalanceRepository, denominationAllowedRepository,
+                shipmentHandlingFeeRepository, currencyRepository, vatSupplyStockRepository);
     }
 
     private Denomination row(long id, UUID owner, String code, long currencyId,

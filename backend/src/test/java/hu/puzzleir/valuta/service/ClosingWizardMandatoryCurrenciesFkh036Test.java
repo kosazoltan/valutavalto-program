@@ -76,6 +76,7 @@ class ClosingWizardMandatoryCurrenciesFkh036Test {
     // FKH-036: az új mozgás-alapú függőségek (WU-5).
     @Mock private ShipmentRequestRepository shipmentRequestRepository;
     @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    @Mock private VatSupplyStockRepository vatSupplyStockRepository;
 
     private Branch vaultBranch;
 

@@ -263,6 +263,20 @@ export default function EveningClosingPage() {
         </div>
       )}
 
+      {closingStatus?.vaultContext && (
+        <div data-testid="fkh040-vat-supply-cta" className="form-panel space-y-2">
+          <h2 className="font-semibold">ÁFA átadás-átvétel becímletezése</h2>
+          <div className="flex gap-2">
+            <Link
+              to={`/closing/denomination-entry/VAT?returnTo=${encodeURIComponent('/evening-closing')}`}
+              className="form-button"
+            >
+              ÁFA átadás-átvétel becímletezése
+            </Link>
+          </div>
+        </div>
+      )}
+
       {closingStatus?.vaultContext && !closingStatus.exactMatch && (
         <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded">
           {closingStatus.message}

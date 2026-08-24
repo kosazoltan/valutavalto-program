@@ -24,6 +24,7 @@ import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.DailyClosingService.ClosingWizardResult;
@@ -72,6 +73,8 @@ public class ClosingWizardService {
     // FKH-036 FR-5/FR-6: a mozgás-alapú kötelező valuta-halmaz forrásai.
     private final ShipmentRequestRepository shipmentRequestRepository;
     private final ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    // FKH-040 FR-11: ÁFA HUF-címletezés vs. vat_supply_stock exactMatch.
+    private final VatSupplyStockRepository vatSupplyStockRepository;
 
     /** G3: a zárás-eltérés magyarázat-kötelezettség feature-flag SystemParameter kulcsa. */
     static final String CLOSING_DISCREPANCY_PARAM = "CLOSING_DISCREPANCY_EXPLANATION_REQUIRED";
@@ -1127,9 +1130,11 @@ public class ClosingWizardService {
             handlingFeeRequired = shipmentHandlingFeeRepository
                     .existsDailyMovementForSourceBranch(companyId, branchId, date);
             Set<String> blocking = new HashSet<>(requiredCurrencies);
-            exactMatch = denominationRecorded && differences.stream()
+            boolean currencyExactMatch = denominationRecorded && differences.stream()
                     .filter(item -> blocking.contains(String.valueOf(item.get("currencyCode"))))
                     .allMatch(item -> "OK".equals(String.valueOf(item.get("status"))));
+            // FKH-040 FR-11: ÁFA címletezés ↔ vat_supply_stock teljes egyezés (0==0 OK).
+            exactMatch = currencyExactMatch && isVatSupplyExactMatch(companyId, branch, date);
         } else {
             // PÉNZTÁRI ÁG — VÁLTOZATLAN SZEMANTIKA (FKH-036 FR-10): a teljes lista számít.
             exactMatch = denominationRecorded && differences.stream()
@@ -1329,6 +1334,35 @@ public class ClosingWizardService {
 
     private boolean isVaultContext(Branch branch) {
         return branch != null && Boolean.TRUE.equals(branch.getIsVault());
+    }
+
+    /**
+     * FKH-040 FR-9/FR-11: ÁFA HUF-címletezés (DenominationCategory.VAT) vs.
+     * vat_supply_stock.currentBalance — 0==0 egyezik (nincs készletsor esetén is).
+     */
+    private boolean isVatSupplyExactMatch(UUID companyId, Branch branch, LocalDate date) {
+        BigDecimal expected = BigDecimal.ZERO;
+        if (branch.getVaultTerritoryId() != null) {
+            expected = vatSupplyStockRepository
+                    .findByCompanyIdAndVaultTerritoryId(companyId, branch.getVaultTerritoryId())
+                    .flatMap(stock -> Optional.ofNullable(stock.getCurrentBalance()))
+                    .orElse(BigDecimal.ZERO);
+        }
+        BigDecimal denominated = BigDecimal.ZERO;
+        List<Object[]> vatRows = denominationBalanceRepository.sumActualStockByCurrency(
+                branch.getId(), date, DenominationCategory.VAT);
+        if (vatRows != null) {
+            for (Object[] row : vatRows) {
+                if (row != null && row.length >= 2
+                        && "HUF".equals(String.valueOf(row[0]))
+                        && row[1] instanceof BigDecimal amount) {
+                    denominated = amount;
+                    break;
+                }
+            }
+        }
+        return denominated.setScale(2, java.math.RoundingMode.HALF_UP)
+                .compareTo(expected.setScale(2, java.math.RoundingMode.HALF_UP)) == 0;
     }
 
     private String resolveVaultEntityId(Branch branch) {

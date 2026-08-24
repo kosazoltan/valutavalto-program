@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeCreateRequest;
 import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeCreateResponseDto;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
+import hu.puzzleir.valuta.service.ShipmentVatSupplyService;
 import hu.puzzleir.valuta.service.ShipmentService;
 import hu.puzzleir.valuta.util.IdempotencyGuard;
 import jakarta.validation.Validation;
@@ -147,6 +148,11 @@ class ShipmentHandlingFeeControllerSecurityTest {
         }
 
         @Bean
+        ShipmentVatSupplyService shipmentVatSupplyService() {
+            return mock(ShipmentVatSupplyService.class);
+        }
+
+        @Bean
         IdempotencyGuard idempotencyGuard() {
             return mock(IdempotencyGuard.class);
         }
@@ -155,8 +161,10 @@ class ShipmentHandlingFeeControllerSecurityTest {
         ShipmentController shipmentController(
                 ShipmentService shipmentService,
                 ShipmentHandlingFeeService shipmentHandlingFeeService,
+                ShipmentVatSupplyService shipmentVatSupplyService,
                 IdempotencyGuard idempotencyGuard) {
-            return new ShipmentController(shipmentService, shipmentHandlingFeeService, idempotencyGuard);
+            return new ShipmentController(
+                    shipmentService, shipmentHandlingFeeService, shipmentVatSupplyService, idempotencyGuard);
         }
     }
 }

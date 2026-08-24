@@ -112,4 +112,32 @@ public interface ShipmentHandlingFeeRepository extends JpaRepository<ShipmentHan
     default boolean existsDailyMovementForSourceBranch(UUID companyId, UUID branchId, LocalDate date) {
         return existsMovementForBranchAndDate(companyId, branchId, date, KPI_COUNTED_STATUSES);
     }
+
+    /**
+     * FKH-039 FR-6/FR-7: a HANDLING_FEE önellenőrzés elvárt összege — az aznapi KK
+     * {@code calculatedFee} összege a becímletező fiókra (küldő VAGY fogadó).
+     *
+     * <p>Üzleti dátum: {@code ShipmentRequest.requestDate} (nem {@code createdAt}) —
+     * ugyanaz a TBD-1 döntés, mint az {@link #existsMovementForBranchAndDate} kapunál.
+     * Ha nincs aznapi tétel, a SUM 0 (soha nem null).</p>
+     */
+    @Query("""
+            SELECT COALESCE(SUM(f.calculatedFee), 0)
+            FROM ShipmentHandlingFee f, ShipmentRequest r
+            WHERE r.id = f.shipmentRequestId
+              AND f.companyId = :companyId
+              AND (f.sourceBranchId = :branchId OR r.toBranchId = :branchId)
+              AND r.serialPrefix = 'KK'
+              AND r.requestDate = :date
+              AND f.status IN :statuses
+            """)
+    BigDecimal sumDailyFeeForBranch(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("date") LocalDate date,
+            @Param("statuses") Collection<ShipmentRequestStatus> statuses);
+
+    default BigDecimal sumDailyFeeForBranch(UUID companyId, UUID branchId, LocalDate date) {
+        return sumDailyFeeForBranch(companyId, branchId, date, KPI_COUNTED_STATUSES);
+    }
 }

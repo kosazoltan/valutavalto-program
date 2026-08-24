@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-20T02:46:01.574Z",
-  "source_count": 1071,
+  "generated_at": "2026-08-24T08:00:04.278Z",
+  "source_count": 1072,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -5905,7 +5905,7 @@
     },
     {
       "path": "backend/src/test/java/hu/puzzleir/valuta/controller/ShipmentUnifiedReceiptControllerTest.java",
-      "sha256": "5e2beeeddb33dd716a53af640d0b83b5805cc0c44694cded96a713a08a349417",
+      "sha256": "66174e7f041806d54c580a95f7991c941898cb1ae0e2494a2deefb074db1adb5",
       "type": "operational-receipt",
       "areas": [
         "ertektar",
@@ -7430,8 +7430,20 @@
       ]
     },
     {
+      "path": "docs/knowledge/memory/2026-08-19-full-install-winnat-port.yaml",
+      "sha256": "05c1d86381692ff2f320dc0161cafa6bb20b4bd28408a6f6d92a814357507e6f",
+      "type": "long-term-historical",
+      "areas": [
+        "aml",
+        "installer",
+        "legacy",
+        "penztar",
+        "specifikacio"
+      ]
+    },
+    {
       "path": "docs/knowledge/memory/2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml",
-      "sha256": "fecc65bbc56ce2de5e7ec3cea4b192bf6d47728ef1e5a89e8512571aaa354177",
+      "sha256": "275440ccf0f86cdad24b7021cbaa68f43b72603c2802de81d0691d5964e5638c",
       "type": "long-term-historical",
       "areas": [
         "aml",
@@ -8096,7 +8108,7 @@
     },
     {
       "path": "docs/specs/fk091-fk092-hq-bridged-transfer-idempotencia.md",
-      "sha256": "a114c43f75a1936f722e451b25aba8e5319e56e0152cab580a51dccc32419761",
+      "sha256": "039deeeac3b2a03a2ae4ece83935daab34f4207b9a1d5267a1051822a4c9f1bf",
       "type": "semantic-reference",
       "areas": [
         "database",

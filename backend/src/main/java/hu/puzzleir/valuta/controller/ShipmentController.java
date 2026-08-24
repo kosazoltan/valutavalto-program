@@ -3,6 +3,9 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeCreateRequest;
 import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeCreateResponseDto;
 import hu.puzzleir.valuta.dto.shipment.ShipmentHandlingFeeDto;
+import hu.puzzleir.valuta.dto.shipment.ShipmentVatSupplyCreateRequest;
+import hu.puzzleir.valuta.dto.shipment.ShipmentVatSupplyCreateResponseDto;
+import hu.puzzleir.valuta.dto.shipment.ShipmentVatSupplyDto;
 import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest;
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.entity.ShipmentRequest;
@@ -10,6 +13,7 @@ import hu.puzzleir.valuta.entity.ShipmentRequestStatus;
 import hu.puzzleir.valuta.exception.ErrorResponse;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentService;
+import hu.puzzleir.valuta.service.ShipmentVatSupplyService;
 import hu.puzzleir.valuta.util.IdempotencyGuard;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -46,6 +50,7 @@ public class ShipmentController {
 
     private final ShipmentService shipmentService;
     private final ShipmentHandlingFeeService shipmentHandlingFeeService;
+    private final ShipmentVatSupplyService shipmentVatSupplyService;
     private final IdempotencyGuard idempotencyGuard;
 
     private static final String DEPRECATION_SUNSET = "Thu, 31 Dec 2026 23:59:59 GMT";
@@ -103,6 +108,28 @@ public class ShipmentController {
             @Valid @RequestBody ShipmentHandlingFeeCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(shipmentHandlingFeeService.create(request));
+    }
+
+    /**
+     * FKH-040: ÁFA átadás-átvétel tétel lekérése (404, ha nincs).
+     * GET /api/v1/shipments/{id}/vat-supply
+     */
+    @GetMapping("/{id}/vat-supply")
+    public ResponseEntity<ShipmentVatSupplyDto> getVatSupply(@PathVariable UUID id) {
+        return ResponseEntity.ok(shipmentVatSupplyService.findByShipmentId(id));
+    }
+
+    /**
+     * FKH-040: ÁFA átadás-átvétel rögzítése — shipment (AS prefix, 1 HUF item)
+     * és shipment_vat_supply_item sor egy tranzakcióban. Nincs calculatedFee.
+     * POST /api/v1/shipments/vat-supply
+     */
+    @PostMapping("/vat-supply")
+    @PreAuthorize("hasAnyRole('ERTEKTAR', 'FOERTEKTAR', 'ADMIN')")
+    public ResponseEntity<ShipmentVatSupplyCreateResponseDto> createVatSupply(
+            @Valid @RequestBody ShipmentVatSupplyCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(shipmentVatSupplyService.create(request));
     }
 
     /**

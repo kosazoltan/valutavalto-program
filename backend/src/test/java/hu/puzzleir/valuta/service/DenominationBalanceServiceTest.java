@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
@@ -8,6 +9,7 @@ import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationBalance;
 import hu.puzzleir.valuta.entity.DenominationCategory;
 import hu.puzzleir.valuta.entity.DenominationType;
+import hu.puzzleir.valuta.entity.VatSupplyStock;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.denomination.DenominationSelfCheckDto;
@@ -15,9 +17,12 @@ import hu.puzzleir.valuta.dto.denomination.DenominationQuantityUpdateRequestDto;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
+import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
+import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,11 +51,15 @@ class DenominationBalanceServiceTest {
     @Mock private CashBalanceRepository cashBalanceRepository;
     // FK-080 (FR-5): a mentes-ut allowlist-gatjanak katalogus-repoja.
     @Mock private DenominationAllowedRepository denominationAllowedRepository;
+    @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    @Mock private CurrencyRepository currencyRepository;
+    @Mock private VatSupplyStockRepository vatSupplyStockRepository;
 
     private DenominationBalanceService service() {
         return new DenominationBalanceService(
                 balanceRepository, denominationRepository, cashRegisterDeviceRepository, branchRepository,
-                cashBalanceRepository, denominationAllowedRepository);
+                cashBalanceRepository, denominationAllowedRepository,
+                shipmentHandlingFeeRepository, currencyRepository, vatSupplyStockRepository);
     }
 
     @Test
@@ -424,29 +433,84 @@ class DenominationBalanceServiceTest {
     }
 
     /**
-     * FKH-038 regresszió: az önellenőrzés továbbra is a kért kategóriát adja a
-     * {@code sumActualStockByCurrency} hívásnak — a READ-javítás nem nyúl hozzá.
+     * FKH-039 FR-6/FR-7: HANDLING_FEE önellenőrzés az aznapi KK calculatedFee összeget
+     * várja el (nem cash_balance-t); üres nap → elvárt 0, egy HUF sor.
      */
     @Test
-    void selfCheckStillForwardsHandlingFeeCategory() {
+    void selfCheckHandlingFeeUsesDailyFeeSumNotCashBalance() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
+        when(balanceRepository.sumActualStockByCurrency(
+                branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE))
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("5000.00")}));
+        when(shipmentHandlingFeeRepository.sumDailyFeeForBranch(companyId, branchId, LocalDate.now()))
+                .thenReturn(new BigDecimal("5000"));
+        when(currencyRepository.findByCode("HUF"))
+                .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            List<DenominationSelfCheckDto> result =
+                    service().selfCheck(branchId, DenominationCategory.HANDLING_FEE);
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getCurrencyCode()).isEqualTo("HUF");
+            assertThat(result.get(0).getExpectedBalance()).isEqualByComparingTo("5000.00");
+            assertThat(result.get(0).getDenominatedAmount()).isEqualByComparingTo("5000.00");
+            assertThat(result.get(0).isMatches()).isTrue();
+        }
+
+        verify(shipmentHandlingFeeRepository).sumDailyFeeForBranch(companyId, branchId, LocalDate.now());
+        verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
+    }
+
+    @Test
+    void selfCheckHandlingFeeZeroWhenNoDailyMovement() {
         UUID companyId = UUID.randomUUID();
         UUID branchId = UUID.randomUUID();
         when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
         when(balanceRepository.sumActualStockByCurrency(
                 branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE))
                 .thenReturn(List.of());
-        when(cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId))
-                .thenReturn(List.of());
+        when(shipmentHandlingFeeRepository.sumDailyFeeForBranch(companyId, branchId, LocalDate.now()))
+                .thenReturn(BigDecimal.ZERO);
+        when(currencyRepository.findByCode("HUF"))
+                .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
-            assertThat(service().selfCheck(branchId, DenominationCategory.HANDLING_FEE)).isEmpty();
+            List<DenominationSelfCheckDto> result =
+                    service().selfCheck(branchId, DenominationCategory.HANDLING_FEE);
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getExpectedBalance()).isEqualByComparingTo("0.00");
+            assertThat(result.get(0).isMatches()).isTrue();
         }
+    }
 
-        verify(balanceRepository).sumActualStockByCurrency(
-                branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE);
-        verify(balanceRepository, never()).sumActualStockByCurrency(
-                eq(branchId), any(), eq(DenominationCategory.EVENING));
+    @Test
+    void selfCheckVatUsesSupplyStockBalance() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = Branch.builder().id(branchId).vaultTerritoryId(7).build();
+        when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
+        when(balanceRepository.sumActualStockByCurrency(
+                branchId, LocalDate.now(), DenominationCategory.VAT))
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("12000.00")}));
+        when(branchRepository.findByIdAndCompanyId(branchId, companyId)).thenReturn(Optional.of(branch));
+        when(vatSupplyStockRepository.findByCompanyIdAndVaultTerritoryId(companyId, 7))
+                .thenReturn(Optional.of(VatSupplyStock.builder()
+                        .currentBalance(new BigDecimal("12000.00")).build()));
+        when(currencyRepository.findByCode("HUF"))
+                .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            List<DenominationSelfCheckDto> result =
+                    service().selfCheck(branchId, DenominationCategory.VAT);
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getExpectedBalance()).isEqualByComparingTo("12000.00");
+            assertThat(result.get(0).isMatches()).isTrue();
+        }
     }
 
     private static CashBalance cashBalance(Long currencyId, String code, BigDecimal balance) {

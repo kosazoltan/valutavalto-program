@@ -69,6 +69,9 @@ class ShipmentServiceTest {
     private ShipmentHandlingFeeSyncService handlingFeeSyncService;
 
     @Mock
+    private ShipmentVatSupplySyncService vatSupplySyncService;
+
+    @Mock
     private AccessScopeService accessScopeService;
 
     @Mock
@@ -1266,6 +1269,7 @@ class ShipmentServiceTest {
                 transferSerialSequenceService,
                 bookingService,
                 handlingFeeSyncService,
+                vatSupplySyncService,
                 accessScopeService,
                 auditLogService,
                 systemParameterService,

@@ -18,6 +18,7 @@ import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
 import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
+import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.repository.ShipmentRequestRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.WorkerRepository;
@@ -89,6 +90,7 @@ class ClosingWizardDenominationAllowedFk076Test {
     // FKH-036 WU-5: az új konstruktor-függőségek mockjai (pitfall 1).
     @Mock private ShipmentRequestRepository shipmentRequestRepository;
     @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    @Mock private VatSupplyStockRepository vatSupplyStockRepository;
     @InjectMocks private ClosingWizardService service;
 
     private final UUID branchId = UUID.randomUUID();
