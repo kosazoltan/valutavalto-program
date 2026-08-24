@@ -6,7 +6,7 @@ A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munká
 befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az
 auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre.
 
-## Mergelve (5 PR)
+## Mergelve (6 PR)
 
 | PR | Mit | main SHA |
 |---|---|---|
@@ -14,7 +14,29 @@ auto-update semverre ül — a második build tartalma sosem jutott ki a pénzt�
 | #1653 | standby health: abszolút 240 s határidő | `47c1823f` |
 | #1655 | `GH_TOKEN` a Pénztár installer lépésnek | `13e9ea50` |
 | #1654 | standby `.env` merge-only kulcsszinkron | `8d6e1a89` |
-| #1656 | script-injekció + `notes` hosszkorlát | CI-ben |
+| #1656 | script-injekció + `notes` hosszkorlát | `e453df15` |
+| #1657 | repo-memória + hivatkozott handoff-források | `c7db0145` |
+
+## VÉGEREDMÉNY: v2.28.87 KIADVA ÉS IGAZOLVA
+
+Release: https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.28.87
+Kiadva 2026-08-24T23:18:36Z, 8 artefaktum, Git SHA `c7db0145`.
+
+Verifikáció a Downloads-másolatokon:
+
+| ellenőrzés | eredmény |
+|---|---|
+| méret-egyezés a GitHub-nyilvántartással | **8/8** |
+| SHA-256 a manifest ellen | **4/4 egyezik** |
+| Authenticode | **3/3 Valid** (EXCLUSIVE BEST Change Zrt., DigiCert EV CS, HSM, időbélyeggel) |
+| `update-manifest.json` | 2.28.87, rollout 100 |
+| `munkaallomas.yml` | 2.28.87 + sha512 + méret |
+
+A #1656 notes-limit élő igazolása: a manifest `notes` mezője 2514 karakter,
+bitre azonos az eredetivel, lábléc nélkül — a 4000-es limit alatt maradt.
+
+Részletes záró jegyzőkönyv:
+`.hermes/tickets/2026-08-24-verzio-gate-kiadas-folytatas.md`
 
 ## A nap fő eredménye: a hot-standby életre kelt
 
