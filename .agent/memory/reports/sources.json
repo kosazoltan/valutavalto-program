@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-24T08:00:04.278Z",
-  "source_count": 1072,
+  "generated_at": "2026-08-24T22:20:05.050Z",
+  "source_count": 1074,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12566,6 +12566,30 @@
         "cimletezes",
         "deploy",
         "ertektar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md",
+      "sha256": "a612fcd578bd110a0001e73bfbfc8583a575a38f0426804ef3e5ae39b26cf2c4",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "database",
+        "deploy",
+        "frontend",
+        "installer",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md",
+      "sha256": "84cb53ab74e6a008de1fedc201aa1c726fbbe942dd7b5129c0d5b439184981d6",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "installer",
+        "penztar",
+        "specifikacio"
       ]
     },
     {
