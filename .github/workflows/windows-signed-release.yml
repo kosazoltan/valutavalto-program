@@ -201,8 +201,13 @@ jobs:
       - name: Resolve version + build date
         id: resolve
         shell: pwsh
+        env:
+          # Nyers ${{ }} interpolacio helyett env: — a behelyettesites a shell
+          # PARSE-olasa ELOTT tortenik, igy egy aposztróf/backtick a szovegben
+          # kodda valna (lasd run 32771533675 ParserError).
+          VERSION_INPUT: ${{ github.event.inputs.version }}
         run: |
-          $version = "${{ github.event.inputs.version }}"
+          $version = $env:VERSION_INPUT
           if (-not $version) {
             $pkg = Get-Content package.json | ConvertFrom-Json
             $version = $pkg.version
@@ -696,6 +701,14 @@ jobs:
 
       - name: Flatten artifacts + generate SHA-256 manifest
         shell: pwsh
+        env:
+          # A release-notes NEM interpolalhato nyersen a scriptbe: a ${{ }} behelyettesites
+          # a PowerShell PARSE-olasa ELOTT tortenik, ezert egy backtick vagy aposztrof a
+          # szovegben szintaktikai hibava valik (elo eset: run 32771533675, ParserError
+          # "Unexpected token 'true'`-val"), rosszabb esetben tetszoleges kodot futtat.
+          # Env-valtozon at biztonsagos: a shell csak adatkent latja.
+          RELEASE_NOTES_INPUT: ${{ github.event.inputs.release_notes }}
+          ROLLOUT_PERCENT_INPUT: ${{ github.event.inputs.rollout_percent }}
         run: |
           $flatDir = "release-flat"
           New-Item -ItemType Directory -Force -Path $flatDir | Out-Null
@@ -766,7 +779,23 @@ jobs:
             Write-Host "::error::Ervenytelen SHA-256 a manifest sorban: $hashLine"
             exit 1
           }
-          $rollout = '${{ github.event.inputs.rollout_percent }}'
+          $rollout = $env:ROLLOUT_PERCENT_INPUT
+          # A notes bekerul az update-manifest.json-ba, amit MINDEN penztargep
+          # letolt minden frissites-ellenorzeskor. Egy tulmeretes release-notes
+          # nem a buildet torne el (100 000 karakter is atmegy env-en, merve),
+          # hanem a kliens-oldali feedet hizlalna feleslegesen. Ezert a manifestbe
+          # rovid osszefoglalo megy; a TELJES szoveg a GitHub Release body-ban
+          # marad, ahol nincs meretkorlat-gond.
+          $notesFull = $env:RELEASE_NOTES_INPUT
+          if ($null -eq $notesFull) { $notesFull = '' }
+          $NOTES_MAX = 4000
+          if ($notesFull.Length -gt $NOTES_MAX) {
+            $notesForManifest = $notesFull.Substring(0, $NOTES_MAX) +
+              "`n[...] Teljes valtozasleiras: a GitHub Release oldalan."
+            Write-Host "update-manifest notes: $($notesFull.Length) -> $($notesForManifest.Length) karakter (rovidítve)"
+          } else {
+            $notesForManifest = $notesFull
+          }
           if ([string]::IsNullOrWhiteSpace($rollout)) { $rollout = '100' }
           $rolloutInt = 0
           if (-not [int]::TryParse($rollout, [ref]$rolloutInt) -or $rolloutInt -lt 0 -or $rolloutInt -gt 100) {
@@ -780,7 +809,7 @@ jobs:
             releasedAt     = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
             rolloutPercent = $rolloutInt
             mandatory      = $false
-            notes          = '${{ github.event.inputs.release_notes }}'
+            notes          = $notesForManifest
             penztar        = [ordered]@{
               file       = $penztarExe.Name
               url        = "https://github.com/${{ github.repository }}/releases/download/$tag/$($penztarExe.Name)"
