@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-24T21:12:52.384Z
+generated: 2026-08-24T21:40:08.303Z
 format: gfm
 ---
 
