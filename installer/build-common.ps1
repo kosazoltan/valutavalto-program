@@ -250,6 +250,63 @@ function Get-AllProjectVersions {
     }
 }
 
+function Get-LatestPublishedReleaseVersion {
+    <#
+    .SYNOPSIS
+      Returns the highest vX.Y.Z tag from published GitHub Releases, or $null.
+    .DESCRIPTION
+      A verzio-bump gate nem csak a lokalis installer/build/*.exe fajlokat nezheti:
+      CI-ben ures a build mappa, igy ugyanazzal a package.json verzio szammal ujra
+      kiadhato egy release -> az auto-update nem indul (electron-updater semver).
+      Ha elerheto a gh CLI, a publikalt release tag-ek kozul a legmagasabb verziot adja.
+    .PARAMETER Repository
+      GitHub repo (owner/name). Uresen a gh default remote-jat hasznalja.
+    .OUTPUTS
+      PSCustomObject @{ Version; TagName; Source } or $null
+    #>
+    param(
+        [string]$Repository = ''
+    )
+
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+        return $null
+    }
+
+    try {
+        $args = @('release', 'list', '--limit', '40', '--json', 'tagName')
+        if (-not [string]::IsNullOrWhiteSpace($Repository)) {
+            $args += @('-R', $Repository)
+        }
+        $json = & gh @args 2>$null
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($json)) {
+            return $null
+        }
+
+        $tags = @($json | ConvertFrom-Json)
+        $parsed = @()
+        foreach ($item in $tags) {
+            $tag = [string]$item.tagName
+            if ($tag -match '^v?(\d+\.\d+\.\d+)$') {
+                $parsed += [PSCustomObject]@{
+                    Version    = $Matches[1]
+                    VersionObj = [version]$Matches[1]
+                    TagName    = if ($tag -match '^v') { $tag } else { "v$tag" }
+                }
+            }
+        }
+
+        if ($parsed.Count -eq 0) { return $null }
+        $best = $parsed | Sort-Object -Property { $_.VersionObj } -Descending | Select-Object -First 1
+        return [PSCustomObject]@{
+            Version = $best.Version
+            TagName = $best.TagName
+            Source  = 'github-release'
+        }
+    } catch {
+        return $null
+    }
+}
+
 function Get-LatestExistingBuildVersion {
     <#
     .SYNOPSIS

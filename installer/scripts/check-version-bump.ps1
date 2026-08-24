@@ -23,8 +23,11 @@
 # (2026-08-11: az arfolyam-keszito-client torolve — 11 helybol 9 maradt.)
 #
 # Behavior (DEFAULT mode = AUTO-PATCH):
-#   - If current version <= latest existing build/*.exe: bump all 9 locations
-#   - If current version > latest existing: keep as-is (no bump)
+#   - Baseline = max(latest local installer/build/*.exe, latest GitHub Release tag)
+#   - If current version <= baseline: bump all 9 locations
+#   - If current version > baseline: keep as-is (no bump)
+#   CI-ben ures a build mappa — a GitHub Release baseline nelkul duplikalt verzio
+#   keszulhet (auto-update nem indul). Lasd mandatory-installer-version-bump.mdc.
 #
 # Optional flags:
 #   -NoAutoPatch : strict mode, error out instead of bumping
@@ -258,37 +261,63 @@ if ($CurrentVersion -ne $rootCurrentVersion) {
     $CurrentVersion = $rootCurrentVersion
 }
 
-# Use build-common.ps1 helper to scan existing builds
+# Baseline: max(local installer/build/*.exe, published GitHub Release tag)
 $maxExisting = Get-LatestExistingBuildVersion -BuildDir $BuildDir
+$maxPublished = Get-LatestPublishedReleaseVersion
 
 if ($maxExisting) {
-    Write-Host "Latest existing: v$($maxExisting.Version) ($($maxExisting.Variant), $($maxExisting.Date))" -ForegroundColor Yellow
+    Write-Host "Latest local build: v$($maxExisting.Version) ($($maxExisting.Variant), $($maxExisting.Date))" -ForegroundColor Yellow
 } else {
-    Write-Host "No existing builds found - virgin install OK" -ForegroundColor Green
+    Write-Host "No local installer/build/*.exe found" -ForegroundColor DarkGray
+}
+
+if ($maxPublished) {
+    Write-Host "Latest GitHub release: $($maxPublished.TagName)" -ForegroundColor Yellow
+} else {
+    Write-Host "No GitHub release baseline (gh unavailable or no tags)" -ForegroundColor DarkGray
+}
+
+$baselineVersion = $null
+$baselineSource = $null
+if ($maxExisting) {
+    $baselineVersion = $maxExisting.Version
+    $baselineSource = "local build ($($maxExisting.Variant), $($maxExisting.Date))"
+}
+if ($maxPublished) {
+    if (-not $baselineVersion -or ([version]::Parse($maxPublished.Version).CompareTo([version]::Parse($baselineVersion)) -gt 0)) {
+        $baselineVersion = $maxPublished.Version
+        $baselineSource = "GitHub release $($maxPublished.TagName)"
+    }
+}
+
+if ($baselineVersion) {
+    Write-Host "Release baseline: v$baselineVersion ($baselineSource)" -ForegroundColor Yellow
+} else {
+    Write-Host "No release baseline — virgin install OK" -ForegroundColor Green
 }
 
 # Decide: bump needed?
 # Use [version]::Parse + CompareTo (avoids WinPS 5.1 -le operator caching bug)
 $bumpNeeded = $false
-if ($maxExisting) {
+if ($baselineVersion) {
     $cur = [version]::Parse($CurrentVersion)
-    $max = [version]::Parse($maxExisting.Version)
+    $max = [version]::Parse($baselineVersion)
     if ($cur.CompareTo($max) -le 0) {
         $bumpNeeded = $true
     }
 }
 
 if (-not $bumpNeeded) {
-    Write-Host "Version OK: $CurrentVersion is greater than latest build (no bump needed)" -ForegroundColor Green
+    Write-Host "Version OK: $CurrentVersion is greater than release baseline (no bump needed)" -ForegroundColor Green
     Write-Output "KEPT_VERSION=$CurrentVersion"
     exit 0
 }
 
 # Bump needed
 if ($NoAutoPatch) {
-    $maxV = $maxExisting.Version
+    $maxV = $baselineVersion
     $msg = 'VERSION BUMP REQUIRED!' + [Environment]::NewLine + [Environment]::NewLine
-    $msg += "Current version ($CurrentVersion) is not greater than latest build ($maxV)." + [Environment]::NewLine
+    $msg += "Current version ($CurrentVersion) is not greater than release baseline ($maxV)." + [Environment]::NewLine
     $msg += 'Manual bump required (NoAutoPatch mode active).' + [Environment]::NewLine + [Environment]::NewLine
     $msg += 'Run (9-way sync needed; npm also updates the matching package-lock.json files):' + [Environment]::NewLine
     $msg += "  cd $RepoRoot && npm version patch --no-git-tag-version" + [Environment]::NewLine
@@ -301,11 +330,11 @@ if ($NoAutoPatch) {
 }
 
 # AUTO-PATCH path
-# If existing > current, sync up to existing first (so bump produces existing+1)
+# If baseline > current, sync up to baseline first (so bump produces baseline+1)
 $baseVersion = $CurrentVersion
-if ($maxExisting -and ([version]::Parse($CurrentVersion).CompareTo([version]::Parse($maxExisting.Version)) -lt 0)) {
-    $baseVersion = $maxExisting.Version
-    Write-Host "Sync: package.json $CurrentVersion -> $baseVersion (matching latest build before patch)" -ForegroundColor DarkGray
+if ($baselineVersion -and ([version]::Parse($CurrentVersion).CompareTo([version]::Parse($baselineVersion)) -lt 0)) {
+    $baseVersion = $baselineVersion
+    Write-Host "Sync: package.json $CurrentVersion -> $baseVersion (matching release baseline before patch)" -ForegroundColor DarkGray
 }
 
 # Compute target version
