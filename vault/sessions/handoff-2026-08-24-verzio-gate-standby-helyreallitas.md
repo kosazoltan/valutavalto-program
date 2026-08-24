@@ -35,8 +35,29 @@ Verifikáció a Downloads-másolatokon:
 A #1656 notes-limit élő igazolása: a manifest `notes` mezője 2514 karakter,
 bitre azonos az eredetivel, lábléc nélkül — a 4000-es limit alatt maradt.
 
-Részletes záró jegyzőkönyv:
-`.hermes/tickets/2026-08-24-verzio-gate-kiadas-folytatas.md`
+### Build-integritási kapu (AGENTS.md §3.1, L227-L236)
+
+A `scripts/build-integrity-gate.sh` ezen a gépen nem érhető el, ezért a kapu
+ellenőrzéseit tételesen futtattam le a release SHA-jára:
+
+| ellenőrzés | eredmény |
+|---|---|
+| build-forrás commit (`git rev-parse`) | `c7db014552ce6e0d4537fe698a2b3758bbe49f05` |
+| `main` szinkron `origin/main`-nel | **igen** (azonos SHA) |
+| tiszta worktree | **igen** (0 módosított fájl) |
+| a release a `main` tetejéről épült | **igen** (release SHA == origin/main) |
+| `workflow_dispatch` ref | `main` |
+| nem-dependabot nyitott ág | 1 — `docs/20260824-handoff-lezaras` |
+| nem-dependabot nyitott PR | 1 — **#1658, maga ez a dokumentációs PR** |
+
+**Kapu eredménye: FELTÉTELES → nyugtázva.** Egyetlen nem-dependabot nyitott ág/PR
+van, és az kizárólag ezt a handoffot módosítja (kódváltozás nélkül), tehát a
+buildből semmilyen aktuális javítás nem maradt ki. A 9 dependabot-PR az AGENTS
+szerint külön elbírálandó, a release tartalmát nem érinti.
+
+Részletes záró jegyzőkönyv (Hermes-lokális, `.git/info/exclude`-olt — nem a
+repóból nyílik): `.hermes/tickets/2026-08-24-verzio-gate-kiadas-folytatas.md`.
+A repóban verziókezelt bizonyíték ehelyett ez a handoff és a lenti hivatkozások.
 
 ## A nap fő eredménye: a hot-standby életre kelt
 
@@ -106,17 +127,31 @@ Felmérés (`classify-injection.py`), **tényleges kockázat** szerint osztályo
    stringgel hasonlít és külön jóváhagyáshoz kötött, de a minta azonos.
 2. **`ssh-keyscan` + `accept-new` TOFU** minden deploy-útvonalon. Nem verifikáció.
    Egyetlen lépésben átírni inkonzisztens állapotot szülne — külön feladat.
-3. **v2.28.87 release** — a 3. kísérlet a #1656 merge után indítható.
+3. **~47 lokális-only session a memória-indexben.** A `sources.json` 173
+   `vault/sessions/` útvonalat hivatkozik, a mainben 125 ilyen fájl van. A jelen
+   munkától független, meglévő állapot (a mai két handoff már commitolva, #1657).
+
+> **v2.28.87: NEM nyitott feladat — KIADVA és igazolva** (lásd a fenti
+> „VÉGEREDMÉNY" szakaszt). A 3. kísérlet 2026-08-24T23:18:36Z-kor sikeresen
+> lefutott; a következő munkamenet ne indítson újabb release-kísérletet erre a
+> verzióra.
 
 ## Külső akadály
 
-`actions/checkout@v7` **hétszer** ragadt be 5–15 percre egy nap alatt, miközben
+`actions/checkout@v7` **nyolcszor** ragadt be 5–15 percre egy nap alatt, miközben
 githubstatus.com végig „All Systems Operational" volt. Minden esetben `gh run rerun
---failed` oldotta meg; ~1,5 órát vitt el. A `penztar-client scanner.test.ts`
+--failed` oldotta meg; ~2 órát vitt el. A `penztar-client scanner.test.ts`
 flaky-nak bizonyult (lokálisan 17/17 PASS 1.9 s).
 
 ## Bizonyítékok
 
+**A repóban verziókezelve:**
+- ez a handoff (a mérési eredmények idézve, nem hivatkozva)
+- `.agent/memory/**` — a #1657-tel újraépített repo-memória
+- a hat PR diffje és review-válaszai (#1652, #1653, #1654, #1655, #1656, #1657)
+- CI-futások: release `32787507653`, standby-deploy `32774120617`
+
+**Hermes-lokális (a `.git/info/exclude` kizárja, a repóból NEM nyílik meg):**
 - `.hermes/tickets/2026-08-24-verzio-gate-kiadas-folytatas.md`
 - `.hermes/evidence/2026-08-24/standby-config-drift.md`
 - skill frissítve: `valutavalto-secure-release` (4 új pitfall)

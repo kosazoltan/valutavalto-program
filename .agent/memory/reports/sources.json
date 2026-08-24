@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T22:20:05.050Z",
+  "generated_at": "2026-08-24T23:49:46.900Z",
   "source_count": 1074,
   "sources": [
     {
@@ -12583,11 +12583,12 @@
     },
     {
       "path": "vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md",
-      "sha256": "84cb53ab74e6a008de1fedc201aa1c726fbbe942dd7b5129c0d5b439184981d6",
+      "sha256": "7b0aa2983a59f8d988c3d584f89f1b9d7f3831d5cd0b746b55c42ef1cd09a252",
       "type": "medium-term-episodic",
       "areas": [
         "deploy",
         "installer",
+        "napzaras",
         "penztar",
         "specifikacio"
       ]
