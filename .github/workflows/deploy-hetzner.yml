@@ -199,6 +199,18 @@ jobs:
             if ! grep -qE '^DARIUS_PV_CODES=.+$' "$ENV_FILE"; then
               echo "::warning::DARIUS_PV_CODES hianyzik a $ENV_FILE fajlbol — a Raiffeisen importfajl-export fail-closed tiltva."
             fi
+            # FK-091 (2026-08-24): prod profil, nem application-production.properties — env-ből kell.
+            if ! grep -qE '^EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=' "$ENV_FILE"; then
+              printf '\n# FK-091 HQ veszkijarat (auto-provisioned by deploy, 2026-08-24)\nEVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true\n' >> "$ENV_FILE"
+              chown root:${{ env.VPS_USER_OWNER }} "$ENV_FILE" || true
+              chmod 640 "$ENV_FILE" || true
+              echo "EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED auto-provisioned (true)"
+            elif grep -qE '^EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=false' "$ENV_FILE"; then
+              sed -i 's/^EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=false/EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true/' "$ENV_FILE"
+              chown root:${{ env.VPS_USER_OWNER }} "$ENV_FILE" || true
+              chmod 640 "$ENV_FILE" || true
+              echo "EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED upgraded false -> true (FK-091)"
+            fi
             echo "=== Restarting ${{ env.SERVICE_NAME }} ==="
             systemctl restart ${{ env.SERVICE_NAME }}
             sleep 15

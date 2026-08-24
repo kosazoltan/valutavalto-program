@@ -25,6 +25,21 @@ if ($verify -match 'BestChangeLocalPenztarJWT2026SecretKey') {
 }
 Write-Host "  F-01 VERIFIED: Hardcoded secret removed" -ForegroundColor Green
 
+# --- FK-091: HQ vészkijárat (local profil, nem application-production.properties) ---
+Write-Host ""
+Write-Host "FK-091: Ensuring evening.closing.artifact-success-enabled=true..."
+if ($config -notmatch '(?m)^evening\.closing\.artifact-success-enabled=') {
+    $config = $config.TrimEnd() + "`nevening.closing.artifact-success-enabled=true`n"
+    Set-Content $configPath -Value $config -Encoding UTF8 -NoNewline
+    Write-Host "  FK-091: property appended" -ForegroundColor Green
+} elseif ($config -match '(?m)^evening\.closing\.artifact-success-enabled=false') {
+    $config = $config -replace '(?m)^evening\.closing\.artifact-success-enabled=false', 'evening.closing.artifact-success-enabled=true'
+    Set-Content $configPath -Value $config -Encoding UTF8 -NoNewline
+    Write-Host "  FK-091: property upgraded false -> true" -ForegroundColor Green
+} else {
+    Write-Host "  FK-091: already enabled" -ForegroundColor Green
+}
+
 # --- F-04: Remove DB password from NSSM AppParameters ---
 Write-Host ""
 Write-Host "F-04: Fixing NSSM AppParameters..."
