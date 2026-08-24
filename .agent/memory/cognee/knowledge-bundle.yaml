@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-24T08:00:04.278Z
+generated_at: 2026-08-24T21:12:52.384Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7492,6 +7492,20 @@ nodes:
     summary: "# Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089 Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` HEAD at start: `bbf0a8aa` (a FK-090 jegy `55c8e9cc`-t várt — a main azóta release-elt). ## FKH-038 Becímletező READ kategória-szűrt (`findByCashDeskIdAndCurrencyIdAndCategory`). WRITE változatlan. EVENING/HANDLING_FEE nem keveredik. ## FK-090 Transfer-egyeztetés: - RECEIVED kikerült a megerős"
     tags: [handoff, 2026, fkh, 038, 090, 089, branch, feature, ertektar, fkh038]
     areas: [cimletezes, deploy, ertektar]
+  - id: 6450c8dbe47b4c1c
+    type: medium-term-episodic
+    title: "FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP"
+    source_path: vault/sessions/handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md
+    summary: "--- date: 2026-08-24 title: FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP type: session status: partial tags: [fkh039, fkh040, fk091, fk092, fk093, installer, deploy, release, version-bump] --- # Handoff — 2026-08-24 (FKH-039…FK-093 + verzió-gate) Státusz: **funkciók a mainen, prod JAR 2.28.86, auto-update TORZÍTVA.** `origin/main` = `571dbd53` (#1651). Working tree **piszkos**: 2.28.87 bump"
+    tags: [fkh, 039, 040, 091, 092, 093, dupla, verzio, gate, wip]
+    areas: [cimletezes, database, deploy, frontend, installer, penztar]
+  - id: f5e96d18f0ff5f8a
+    type: medium-term-episodic
+    title: "Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás"
+    source_path: vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md
+    summary: "# Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (5 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi"
+    tags: [handoff, 2026, verzio, gate, kiadas, standby, helyreallitas, volt, feladat, fkh039]
+    areas: [deploy, installer, penztar, specifikacio]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22795,6 +22809,36 @@ edges:
   - from: 182029da334faa90
     to: area_ertektar
     relation: belongs_to_area
+  - from: 6450c8dbe47b4c1c
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 6450c8dbe47b4c1c
+    to: area_database
+    relation: belongs_to_area
+  - from: 6450c8dbe47b4c1c
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 6450c8dbe47b4c1c
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 6450c8dbe47b4c1c
+    to: area_installer
+    relation: belongs_to_area
+  - from: 6450c8dbe47b4c1c
+    to: area_penztar
+    relation: belongs_to_area
+  - from: f5e96d18f0ff5f8a
+    to: area_deploy
+    relation: belongs_to_area
+  - from: f5e96d18f0ff5f8a
+    to: area_installer
+    relation: belongs_to_area
+  - from: f5e96d18f0ff5f8a
+    to: area_penztar
+    relation: belongs_to_area
+  - from: f5e96d18f0ff5f8a
+    to: area_specifikacio
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22852,12 +22896,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: ae3cbba0a3313652
-    to: repo_project_state
-    relation: informs
-  - from: a1fd6ef587fc2523
-    to: repo_project_state
-    relation: informs
   - from: 41bd75b51913a86b
     to: repo_project_state
     relation: informs
@@ -23084,6 +23122,12 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 182029da334faa90
+    to: repo_project_state
+    relation: informs
+  - from: 6450c8dbe47b4c1c
+    to: repo_project_state
+    relation: informs
+  - from: f5e96d18f0ff5f8a
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-24T08:00:04.278Z
+generated: 2026-08-24T21:12:52.384Z
 format: gfm
 ---
 
@@ -111,14 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **HANDOFF — 2026-07-09 backlog-grind (gép-újraindítás + Hermes-frissítés előtti állapot)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-09-restart-and-update.md`
-  - summary: # HANDOFF — 2026-07-09 backlog-grind (gép-újraindítás + Hermes-frissítés előtti állapot) > Cél: e session lezárása után a gép újraindítható, a Hermes Agent frissíthető, > és egy friss session EBBŐL a fájlból + a BACKLOG.md-ből folytatni tud. > Frissítés-recept: `hermes-update-maintenance` skill. ## 1. AZONNALI folytatási pont (ha a session megszakadt) **In-flight munka: SYSPARAM-NO-COMPANYID Slice 1** — branch `fix/s
-
-- **HANDOFF — 2026-07-10 nappal: backlog-grind folytatás (FK-028 után)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-10-backlog-grind-2.md`
-  - summary: # HANDOFF — 2026-07-10 nappal: backlog-grind folytatás (FK-028 után) ## Ma merged (mind teljes pipeline: terv→coder→dual review→holdout→CI→deploy→origin-check) | PR | SHA | Mi | |---|---|---| | #1391 | 826e6715 | FS-12 gyanús ügyfél dashboard + 10M XLSX (V-nincs; suite 2794/0) | | #1392 | bcae65fc | FS-14 kamera ellenőri workflow (V354; 2812/0; vizuál PASS) | | #1393 | 650e1e9f | CAMERA-FREEZE-DETECT legacy-parity (2
 
 - **HANDOFF — 2026-07-10 éjjel: INVSTOCK + FE-hygiene + FK-028 teljes** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-10-fk028-complete.md`
@@ -243,6 +235,14 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md`
   - summary: # Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089 Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` HEAD at start: `bbf0a8aa` (a FK-090 jegy `55c8e9cc`-t várt — a main azóta release-elt). ## FKH-038 Becímletező READ kategória-szűrt (`findByCashDeskIdAndCurrencyIdAndCategory`). WRITE változatlan. EVENING/HANDLING_FEE nem keveredik. ## FK-090 Transfer-egyeztetés: - RECEIVED kikerült a megerős
+
+- **FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md`
+  - summary: --- date: 2026-08-24 title: FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP type: session status: partial tags: [fkh039, fkh040, fk091, fk092, fk093, installer, deploy, release, version-bump] --- # Handoff — 2026-08-24 (FKH-039…FK-093 + verzió-gate) Státusz: **funkciók a mainen, prod JAR 2.28.86, auto-update TORZÍTVA.** `origin/main` = `571dbd53` (#1651). Working tree **piszkos**: 2.28.87 bump
+
+- **Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md`
+  - summary: # Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (5 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`

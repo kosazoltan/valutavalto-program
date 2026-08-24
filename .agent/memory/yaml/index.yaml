@@ -1,6 +1,6 @@
-generated_at: 2026-08-24T08:00:04.278Z
+generated_at: 2026-08-24T21:12:52.384Z
 schema_version: 1
-source_count: 1072
+source_count: 1074
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,22 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 44de0e45070c3019
-    title: "2026-04-29 — Legacy memória felépítése + TreasuryLayout role-filter bug fix"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-legacy-memory-and-treasury-bug-fix.md
-    sha256: e249bf999735ab75986485e5a0d7db951f167f318eb155f837a1da47aed8fdb4
-    summary: "--- date: 2026-04-29 session_type: legacy-memory-build + bug-fix context: post-reboot Setup #3 SUCCESS után — user-direktíva: \"olvasd be Anti/-t és építs memóriát + javítsd a Pénztár UI bug-jait\" priority: P0 — éles teszthez kell --- # 2026-04-29 — Legacy memória felépítése + TreasuryLayout role-filter bug fix ## User-direktíva > \"D:\\repo\\valutavalto-program\\Anti — Akkor olvast be ebből a könyvtárból a régi szoftver"
-    areas: [arfolyam, cimletezes, database, deploy, ertektar, frontend, legacy, napzaras, penztar]
-    keywords: [2026, legacy, memoria, felepitese, treasurylayout, role, filter, bug, fix, date, session_type, memory]
-  - id: aa6eeadebe352a44
-    title: "2026-04-29 — Mandate-cycle Complete (PR #271 → #288, 18 PR egy session)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-mandate-cycle-complete.md
-    sha256: 06f8d121a3123c637b9c73773abf1434fee929f76a8d3aaaca1e84604746b746
-    summary: "--- date: 2026-04-29 session_type: mandate-cycle-complete context: AI Review Zero-Tolerance + Hallucinációs Kör Megszüntetése — 18 PR session priority: P0 — final summary --- # 2026-04-29 — Mandate-cycle Complete (PR #271 → #288, 18 PR egy session) ## Mandate-évolúció a session során ### 1. AI Review Zero-Tolerance Mandate (21:00 CEST) **User-direktíva:** \"Addig nem léphetsz tovább, amíg a GitHub Codex + Sourcery AI"
-    areas: [arfolyam, ertektar, penztar, security]
-    keywords: [2026, mandate, cycle, complete, 271, 288, egy, session, date, session_type, context, review]
   - id: 8bf53d382ff5e3d9
     title: "2026-04-29 Multi-track A+B+C execution + AI review fix cycle"
     type: medium-term-episodic
@@ -1703,6 +1687,23 @@ medium_term:
     summary: "# Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089 Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` HEAD at start: `bbf0a8aa` (a FK-090 jegy `55c8e9cc`-t várt — a main azóta release-elt). ## FKH-038 Becímletező READ kategória-szűrt (`findByCashDeskIdAndCurrencyIdAndCategory`). WRITE változatlan. EVENING/HANDLING_FEE nem keveredik. ## FK-090 Transfer-egyeztetés: - RECEIVED kikerült a megerős"
     areas: [cimletezes, deploy, ertektar]
     keywords: [handoff, 2026, fkh, 038, 090, 089, branch, feature, ertektar, fkh038, becimletezes, kategoria]
+  - id: 6450c8dbe47b4c1c
+    title: "FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md
+    status: partial
+    sha256: a612fcd578bd110a0001e73bfbfc8583a575a38f0426804ef3e5ae39b26cf2c4
+    summary: "--- date: 2026-08-24 title: FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP type: session status: partial tags: [fkh039, fkh040, fk091, fk092, fk093, installer, deploy, release, version-bump] --- # Handoff — 2026-08-24 (FKH-039…FK-093 + verzió-gate) Státusz: **funkciók a mainen, prod JAR 2.28.86, auto-update TORZÍTVA.** `origin/main` = `571dbd53` (#1651). Working tree **piszkos**: 2.28.87 bump"
+    areas: [cimletezes, database, deploy, frontend, installer, penztar]
+    keywords: [fkh, 039, 040, 091, 092, 093, dupla, verzio, gate, wip, date, 2026]
+  - id: f5e96d18f0ff5f8a
+    title: "Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md
+    sha256: f14f09dbd4c711b1260df8fc6c029c7ca174a7ad3788b3e33b67e5ae2e842138
+    summary: "# Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (5 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi"
+    areas: [deploy, installer, penztar, specifikacio]
+    keywords: [handoff, 2026, verzio, gate, kiadas, standby, helyreallitas, volt, feladat, fkh039, fk093, felbehagyott]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic
