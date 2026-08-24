@@ -731,4 +731,44 @@ class StockSnapshotServiceTest {
         assertThat(eur.getDailyBuyHuf()).isEqualTo(50000);
         assertThat(usd.getDailyBuyHuf()).isEqualTo(30000);
     }
+
+    @Test
+    @DisplayName("FK-093 FR-6: hasBalance a cash_balance sor létezését tükrözi (0 egyenleg is true)")
+    void snapshot_hasBalance_followsCashBalanceRowPresence() {
+        Branch branchWithGbp = createBranch(BRANCH_1_ID, "B01", "Penztar 1", "10");
+        Branch branchWithoutGbp = createBranch(BRANCH_2_ID, "B02", "Penztar 2", "20");
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(List.of(branchWithGbp, branchWithoutGbp));
+        when(currencyRepository.findAllActiveOrdered()).thenReturn(List.of(
+                Currency.builder().code("HUF").name("Magyar forint").displayOrder(0).active(true).build(),
+                Currency.builder().code("EUR").name("Euró").displayOrder(8).active(true).build(),
+                Currency.builder().code("GBP").name("Angol font").displayOrder(9).active(true).build(),
+                Currency.builder().code("USD").name("Amerikai dollár").displayOrder(21).active(true).build()
+        ));
+        setCompanyBalances(
+                createCashBalance(branchWithGbp, "EUR", "1000"),
+                createCashBalance(branchWithGbp, "GBP", "0"),
+                createCashBalance(branchWithoutGbp, "EUR", "1000"));
+
+        StockSnapshotDto result = service.getFullSnapshot(COMPANY_ID);
+
+        BranchSnapshotDto withGbp = result.getRegions().stream()
+                .flatMap(r -> r.getBranches().stream())
+                .filter(b -> BRANCH_1_ID.equals(b.getBranchId()))
+                .findFirst()
+                .orElseThrow();
+        BranchSnapshotDto withoutGbp = result.getRegions().stream()
+                .flatMap(r -> r.getBranches().stream())
+                .filter(b -> BRANCH_2_ID.equals(b.getBranchId()))
+                .findFirst()
+                .orElseThrow();
+
+        CurrencyStockDetailDto gbpManaged = findCurrency(withGbp.getCurrencies(), "GBP");
+        assertThat(gbpManaged.isHasBalance()).isTrue();
+        assertThat(gbpManaged.getStock()).isZero();
+
+        CurrencyStockDetailDto gbpUnmanaged = findCurrency(withoutGbp.getCurrencies(), "GBP");
+        assertThat(gbpUnmanaged.isHasBalance()).isFalse();
+        assertThat(gbpUnmanaged.getStock()).isZero();
+    }
 }
