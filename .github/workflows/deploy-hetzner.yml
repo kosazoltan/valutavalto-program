@@ -475,7 +475,10 @@ jobs:
     if: ${{ !cancelled() && needs.deploy.result == 'success' }}
     runs-on: ubuntu-latest
     needs: [build, deploy]
-    timeout-minutes: 10
+    # A health-ablak 30x8s (~240s) — a hideg standby-indulas ennyit is igenyelhet.
+    # Az elozo futas 2p17s volt 80s ablakkal, igy a legrosszabb eset ~5 perc;
+    # a 15 perc bizonsagos rahagyas, es NEM fedi el a valodi elakadast.
+    timeout-minutes: 15
     steps:
       - name: Download JAR artifact
         uses: actions/download-artifact@v8
@@ -671,23 +674,40 @@ jobs:
             systemctl enable valuta-backend.service
             systemctl reset-failed valuta-backend.service 2>/dev/null || true
             systemctl restart valuta-backend.service
-            # 5) health — a standby lassabban all fel (read-only replikan ~30s)
-            for i in 1 2 3 4 5 6 7 8 9 10; do
+            # 5) health — a standby HIDEG indulasa lassabb, mint a primary-e.
+            #    Meres (run 32728860407, 2026-08-24): a restart 12:50:24-kor indult,
+            #    a Spring context 12:51:44-kor (Tomcat) es 12:51:46-kor (Flyway/DB) meg
+            #    epult, az utolso init-log 12:52:03-kor jott — az akkori 10x8s (~80s)
+            #    ablak 12:52:04-kor jart le, azaz a backend ~1-2 masodperccel a kapu
+            #    utan allt volna fel. A hamis FAILURE a standby-t elavult kodon hagyta.
+            #
+            #    ABSZOLUT hatarido, nem probalkozas-szamlalo: egy iteracio 8s alvas +
+            #    akar 8s curl-timeout, igy egy "30 probalkozas" alapu ciklus a
+            #    valosagban ~480s-ig is elhuzodhatna, es a hibauzenet hazudna a
+            #    tenyleges varakozasi idorol (sourcery review, PR #1653).
+            HEALTH_TIMEOUT=240
+            HEALTH_START=$(date +%s)
+            ATTEMPT=0
+            while :; do
+              ELAPSED=$(( $(date +%s) - HEALTH_START ))
+              if [ "$ELAPSED" -ge "$HEALTH_TIMEOUT" ]; then
+                echo "::error::Standby health check FAILED — a tartalek nem all keszen az atvetelre (${ELAPSED}s / limit ${HEALTH_TIMEOUT}s, ${ATTEMPT} probalkozas)"
+                journalctl -u valuta-backend.service -n 40 --no-pager
+                exit 1
+              fi
+              ATTEMPT=$((ATTEMPT + 1))
               sleep 8
               CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:8080/api/v1/auth/bootstrap-status || echo 000)
-              echo "standby health attempt $i: HTTP $CODE"
+              echo "standby health attempt ${ATTEMPT} (${ELAPSED}s/${HEALTH_TIMEOUT}s): HTTP $CODE"
               if [ "$CODE" = "200" ]; then
                 journalctl -u valuta-backend.service -n 200 --no-pager | grep -oE '"service_version":"[^"]*"' | tail -1
                 # vegso assert: meg mindig recovery-ben (a restart nem promote-olt)
                 STILL=$(sudo -u postgres psql -tAc "SELECT pg_is_in_recovery();")
                 echo "standby pg_is_in_recovery (t=jo): $STILL"
-                echo "=== Standby warm backend UP ==="
+                echo "=== Standby warm backend UP ($(( $(date +%s) - HEALTH_START ))s, ${ATTEMPT} probalkozas) ==="
                 exit 0
               fi
             done
-            echo "::error::Standby health check FAILED — a tartalek nem all keszen az atvetelre"
-            journalctl -u valuta-backend.service -n 40 --no-pager
-            exit 1
           ENDSSH
 
       - name: Standby summary
