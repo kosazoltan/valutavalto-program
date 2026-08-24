@@ -415,6 +415,11 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # A build-installer.ps1 verzio-kapuja a kiadott GitHub Release-eket kerdezi le
+          # baseline-kent (`gh release list`). GH_TOKEN nelkul a gh exit 4-et ad, es a
+          # kapu — helyesen — FAIL-CLOSED modon leall: baseline nelkul duplikalt release
+          # keszulhetne. Meres: run 32764343049, "gh release list exit code 4".
+          GH_TOKEN: ${{ github.token }}
         run: |
           Push-Location installer
           ./build-installer.ps1 -SkipBackendBuild
