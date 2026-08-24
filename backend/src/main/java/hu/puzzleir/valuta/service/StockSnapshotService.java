@@ -312,6 +312,7 @@ public class StockSnapshotService {
                     .dailyBuyHuf(dailyBuyHuf)
                     .dailySell(dailySell)
                     .dailySellHuf(dailySellHuf)
+                    .hasBalance(cb != null)
                     .build());
         }
 

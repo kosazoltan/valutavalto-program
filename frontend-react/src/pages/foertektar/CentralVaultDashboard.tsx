@@ -39,6 +39,7 @@ interface StockRow {
   branchId: string
   currencyCode: string
   amount: number
+  hasBalance: boolean
 }
 
 // Fix 2026-04-24: backend /api/v1/stock-snapshot response shape (StockSnapshotDto)
@@ -46,6 +47,7 @@ interface StockRow {
 interface CurrencyDetail {
   currencyCode: string
   stock: number
+  hasBalance?: boolean
 }
 interface BackendBranch {
   branchId: string
@@ -84,6 +86,7 @@ function flattenStockSnapshot(snap: StockSnapshotResponse | null): StockRow[] {
           branchId: branch.branchId,
           currencyCode: cur.currencyCode,
           amount: cur.stock ?? 0,
+          hasBalance: cur.hasBalance === true,
         })
       }
     }
@@ -156,19 +159,20 @@ export default function CentralVaultDashboard() {
         .map((b) => {
           const device = devices.find((d) => d.branchId === b.id)
           const branchStocks: Record<string, number> = {}
+          const hasBalanceByCurrency: Record<string, boolean> = {}
           stocks
             .filter((s) => s.branchId === b.id)
             .forEach((s) => {
               branchStocks[s.currencyCode] = (branchStocks[s.currencyCode] || 0) + (s.amount || 0)
+              hasBalanceByCurrency[s.currencyCode] = s.hasBalance
             })
-          // FK-048 FR-1/2: a STOCK UNKNOWN (nincs cash_balance adat) NEM riasztás — külön
-          // hasStockData flag jelzi, és NEM kerül a stockAlert-be (így nem növeli az alertCount-ot,
-          // és semleges, nem-piros jelzéssel jelenik meg). A valódi, küszöb alatti riasztás (FR-3)
-          // változatlanul a stockAlert-be kerül.
-          const hasStockData = Object.keys(branchStocks).length > 0
+          // FK-048 FR-1/2 + FK-093: STOCK UNKNOWN = egyetlen vezetett deviza sincs (hasBalance);
+          // a nem-forgalmazott deviza (stock:0, hasBalance:false) NEM riasztás.
+          const hasStockData = Object.values(hasBalanceByCurrency).some(Boolean)
           const stockAlert: string[] = []
           if (hasStockData) {
             for (const [ccy, threshold] of Object.entries(CRITICAL_THRESHOLDS)) {
+              if (!hasBalanceByCurrency[ccy]) continue
               const amt = branchStocks[ccy] || 0
               if (amt < threshold) stockAlert.push(`${ccy} < ${threshold.toLocaleString('hu-HU')}`)
             }

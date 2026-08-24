@@ -11,4 +11,6 @@ public class CurrencyStockDetailDto {
     private long dailyBuyHuf;
     private long dailySell;
     private long dailySellHuf;
+    /** FK-093: van-e cash_balance sor az adott fiók-deviza párra (nem azonos stock>0-val). */
+    private boolean hasBalance;
 }

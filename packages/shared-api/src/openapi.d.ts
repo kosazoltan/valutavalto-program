@@ -21614,6 +21614,8 @@ export interface components {
       dailySell?: number
       /** Format: int64 */
       dailySellHuf?: number
+      /** FK-093: van-e cash_balance sor az adott fiók-deviza párra */
+      hasBalance?: boolean
     }
     RegionSnapshotDto: {
       regionCode?: string

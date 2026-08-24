@@ -64,7 +64,7 @@ function snapshotWithLowEurForA() {
     regions: [
       {
         regionCode: 'SZEGED',
-        branches: [{ branchId: 'a1', currencies: [{ currencyCode: 'EUR', stock: 100 }] }],
+        branches: [{ branchId: 'a1', currencies: [{ currencyCode: 'EUR', stock: 100, hasBalance: true }] }],
       },
     ],
   }
@@ -149,11 +149,11 @@ const FIVE_CCY_SNAPSHOT = {
         {
           branchId: 'a1',
           currencies: [
-            { currencyCode: 'EUR', stock: 1000 },
-            { currencyCode: 'USD', stock: 1000 },
-            { currencyCode: 'GBP', stock: 1000 },
-            { currencyCode: 'CHF', stock: 1000 },
-            { currencyCode: 'HUF', stock: 1_000_000 },
+            { currencyCode: 'EUR', stock: 1000, hasBalance: true },
+            { currencyCode: 'USD', stock: 1000, hasBalance: true },
+            { currencyCode: 'GBP', stock: 1000, hasBalance: true },
+            { currencyCode: 'CHF', stock: 1000, hasBalance: true },
+            { currencyCode: 'HUF', stock: 1_000_000, hasBalance: true },
           ],
         },
       ],
@@ -188,11 +188,11 @@ describe('CentralVaultDashboard — FK-085 GBP/CHF készlet + devices-hibakezel�
               {
                 branchId: 'a1',
                 currencies: [
-                  { currencyCode: 'EUR', stock: 1000 },
-                  { currencyCode: 'USD', stock: 1000 },
-                  { currencyCode: 'GBP', stock: 100 },
-                  { currencyCode: 'CHF', stock: 100 },
-                  { currencyCode: 'HUF', stock: 1_000_000 },
+                  { currencyCode: 'EUR', stock: 1000, hasBalance: true },
+                  { currencyCode: 'USD', stock: 1000, hasBalance: true },
+                  { currencyCode: 'GBP', stock: 100, hasBalance: true },
+                  { currencyCode: 'CHF', stock: 100, hasBalance: true },
+                  { currencyCode: 'HUF', stock: 1_000_000, hasBalance: true },
                 ],
               },
             ],
@@ -251,5 +251,69 @@ describe('CentralVaultDashboard — FK-085 GBP/CHF készlet + devices-hibakezel�
     render(<CentralVaultDashboard />)
     await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
     expect(screen.queryByText(/A pénztárgép-állapot betöltése sikertelen/)).not.toBeInTheDocument()
+  })
+})
+
+// FK-093 — nem-forgalmazott deviza (hasBalance:false) ne generáljon hamis riasztást.
+describe('CentralVaultDashboard — FK-093 hasBalance riasztás-szűrés', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+  })
+
+  it('FK-093 FR-5: EUR/USD/HUF forgalmazott, GBP/CHF nem — nincs GBP/CHF riasztás', async () => {
+    setupApi({
+      branches: [BRANCH_A],
+      stock: {
+        regions: [
+          {
+            regionCode: 'SZEGED',
+            branches: [
+              {
+                branchId: 'a1',
+                currencies: [
+                  { currencyCode: 'EUR', stock: 1000, hasBalance: true },
+                  { currencyCode: 'USD', stock: 1000, hasBalance: true },
+                  { currencyCode: 'GBP', stock: 0, hasBalance: false },
+                  { currencyCode: 'CHF', stock: 0, hasBalance: false },
+                  { currencyCode: 'HUF', stock: 1_000_000, hasBalance: true },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.queryByText(/GBP <\s?300/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/CHF <\s?300/)).not.toBeInTheDocument()
+  })
+
+  it('FK-093 FR-4: forgalmazott GBP alacsony egyenleggel továbbra is riaszt', async () => {
+    setupApi({
+      branches: [BRANCH_A],
+      stock: {
+        regions: [
+          {
+            regionCode: 'SZEGED',
+            branches: [
+              {
+                branchId: 'a1',
+                currencies: [
+                  { currencyCode: 'EUR', stock: 1000, hasBalance: true },
+                  { currencyCode: 'USD', stock: 1000, hasBalance: true },
+                  { currencyCode: 'GBP', stock: 50, hasBalance: true },
+                  { currencyCode: 'CHF', stock: 1000, hasBalance: true },
+                  { currencyCode: 'HUF', stock: 1_000_000, hasBalance: true },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+    render(<CentralVaultDashboard />)
+    await waitFor(() => expect(screen.getByText('P01')).toBeInTheDocument())
+    expect(screen.getByText(/GBP <\s?300/)).toBeInTheDocument()
   })
 })
