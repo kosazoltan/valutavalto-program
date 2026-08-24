@@ -118,6 +118,8 @@ management.health.mail.enabled=false
 penztar.bootstrap.company-code=EBC
 penztar.bootstrap.worker-code=BORSI
 penztar.bootstrap.role-code=CASHIER
+# FK-091: local profil — HQ vészkijárat (application-production.properties nem töltődik)
+evening.closing.artifact-success-enabled=true
 "@
 [System.IO.File]::WriteAllText("$StageDir\config\application-local.properties", $backendConfig)
 $penztarEnv = "VITE_API_URL=http://localhost:8080/api/v1`nVITE_BRANCH_CODE=EBC`nVITE_COMPANY_ID=1"

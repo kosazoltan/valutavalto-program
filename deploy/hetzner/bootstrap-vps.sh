@@ -139,6 +139,9 @@ APP_RATE_PRINT_HMAC_SECRET=$rate_print_secret
 ALLOWED_ORIGINS=https://excvaluta.com,https://www.excvaluta.com
 SPRING_PROFILES_ACTIVE=prod
 
+# --- FK-091: HQ vészkijárat (profilfüggetlen; prod != application-production.properties) ---
+EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true
+
 # --- Redis (opcionalis - 4. lepes) ---
 REDIS_ENABLED=false
 # REDIS_HOST=127.0.0.1

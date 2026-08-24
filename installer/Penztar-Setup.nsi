@@ -630,9 +630,10 @@ Section "Telepites" SecInstall
     FileWrite $0 "app.encryption.key=$6$\r$\n"
     FileWrite $0 "app.encryption.salt=$4$\r$\n"
     FileWrite $0 "management.endpoints.web.exposure.include=health,info$\r$\n"
-    FileWrite $0 "management.endpoint.health.show-details=never$\r$\n"
-    FileWrite $0 "management.health.mail.enabled=false$\r$\n"
-    FileWrite $0 "penztar.bootstrap.company-code=EBC$\r$\n"
+        FileWrite $0 "management.endpoint.health.show-details=never$\r$\n"
+        FileWrite $0 "management.health.mail.enabled=false$\r$\n"
+        FileWrite $0 "evening.closing.artifact-success-enabled=true$\r$\n"
+        FileWrite $0 "penztar.bootstrap.company-code=EBC$\r$\n"
     FileWrite $0 "penztar.bootstrap.worker-code=BORSI$\r$\n"
     FileWrite $0 "penztar.bootstrap.role-code=CASHIER$\r$\n"
     FileClose $0
@@ -965,6 +966,7 @@ Section "Telepites" SecInstall
         FileWrite $0 "management.endpoints.web.exposure.include=health,info$\r$\n"
         FileWrite $0 "management.endpoint.health.show-details=never$\r$\n"
         FileWrite $0 "management.health.mail.enabled=false$\r$\n"
+        FileWrite $0 "evening.closing.artifact-success-enabled=true$\r$\n"
         FileClose $0
         DetailPrint "  Config frissitve az uj jelszavakkal!"
 
