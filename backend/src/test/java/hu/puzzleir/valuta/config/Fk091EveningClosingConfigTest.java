@@ -28,14 +28,48 @@ class Fk091EveningClosingConfigTest {
     }
 
     @Test
-    @DisplayName("FK-091: env nélkül az application.properties false default marad (prod/local profil)")
-    void artifactSuccessEnabledDefaultsToFalseWithoutEnv() throws Exception {
+    @DisplayName("FK-091: application-local.properties classpath default true")
+    void applicationLocalPropertiesDocumentsFk091Default() throws Exception {
+        java.util.Properties props = new java.util.Properties();
+        try (java.io.InputStream is = getClass().getResourceAsStream("/application-local.properties")) {
+            assertThat(is).isNotNull();
+            props.load(is);
+        }
+        assertThat(props.getProperty("evening.closing.artifact-success-enabled"))
+                .contains("true");
+    }
+
+    @Test
+    @DisplayName("FK-091: env nélkül az application.properties false default marad (profil nélkül)")
+    void artifactSuccessEnabledDefaultsToFalseWithoutProfile() throws Exception {
         StandardEnvironment env = new StandardEnvironment();
         env.getPropertySources().addLast(
                 new ResourcePropertySource("classpath:application.properties"));
 
         assertThat(env.getProperty("evening.closing.artifact-success-enabled", Boolean.class))
                 .isFalse();
+    }
+
+    @Test
+    @DisplayName("FK-091: application-production.properties default true (production profil)")
+    void productionPropertiesDocumentFk091Default() throws Exception {
+        java.util.Properties props = new java.util.Properties();
+        try (java.io.InputStream is = getClass().getResourceAsStream("/application-production.properties")) {
+            assertThat(is).isNotNull();
+            props.load(is);
+        }
+        assertThat(props.getProperty("evening.closing.artifact-success-enabled")).contains("true");
+    }
+
+    @Test
+    @DisplayName("FK-091: prod→production profile group az application.properties-ben")
+    void applicationPropertiesDeclaresProdProfileGroup() throws Exception {
+        java.util.Properties props = new java.util.Properties();
+        try (java.io.InputStream is = getClass().getResourceAsStream("/application.properties")) {
+            assertThat(is).isNotNull();
+            props.load(is);
+        }
+        assertThat(props.getProperty("spring.profiles.group.prod")).isEqualTo("production");
     }
 
     @Test
