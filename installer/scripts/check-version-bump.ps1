@@ -197,40 +197,10 @@ function Write-VersionLocations {
     }
 }
 
-function Set-PackageLockJsonVersion {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-
-        [Parameter(Mandatory = $true)]
-        [string]$NewVersion
-    )
-
-    if (-not (Test-Path $Path)) {
-        throw "package-lock.json not found: $Path"
-    }
-
-    $content = Get-Content $Path -Raw
-    if ((Get-Command Test-Json -ErrorAction SilentlyContinue) -and -not (Test-Json $content)) {
-        throw "Invalid package-lock.json: $Path"
-    }
-
-    $topPattern = '("version"\s*:\s*")([^"]*)(")'
-    if (-not [regex]::IsMatch($content, $topPattern)) {
-        throw "package-lock.json missing top-level version field: $Path"
-    }
-    $topRegex = [regex]::new($topPattern)
-    $content = $topRegex.Replace($content, { param($m) $m.Groups[1].Value + $NewVersion + $m.Groups[3].Value }, 1)
-
-    $rootPackagePattern = '(?s)("packages"\s*:\s*\{\s*""\s*:\s*\{.*?"version"\s*:\s*")([^"]*)(")'
-    if (-not [regex]::IsMatch($content, $rootPackagePattern)) {
-        throw ("package-lock.json missing packages.`"`".version field: {0}" -f $Path)
-    }
-    $rootPackageRegex = [regex]::new($rootPackagePattern)
-    $content = $rootPackageRegex.Replace($content, { param($m) $m.Groups[1].Value + $NewVersion + $m.Groups[3].Value }, 1)
-
-    Set-Content -Path $Path -Value $content -NoNewline
-}
+# Set-PackageLockJsonVersion: 2026-08-24 ota a MEGOSZTOTT installer/build-common.ps1-ben
+# el (ezt a script a 64. sorban dot-source-olja). Azert kerult at, mert az
+# apply-release-version.ps1-nek is kell — a script-lokalis masolat lathatatlan volt
+# neki, es a release job futasidoben bukott el ra.
 
 # Validate ALL 9 version locations are in sync BEFORE deciding on bump.
 # Eszter F2 finding 3 (HIGH): no-bump early-exit must not skip this check.
@@ -263,7 +233,23 @@ if ($CurrentVersion -ne $rootCurrentVersion) {
 
 # Baseline: max(local installer/build/*.exe, published GitHub Release tag)
 $maxExisting = Get-LatestExistingBuildVersion -BuildDir $BuildDir
-$maxPublished = Get-LatestPublishedReleaseVersion
+$publishedLookup = Get-LatestPublishedReleaseVersion
+
+# Fail-closed: a "lekerdezes elbukott" NEM ugyanaz, mint a "nincs release".
+# CI-ben ures a build mappa, igy egy elbukott lookup baseline nelkul hagyna a
+# kaput -> ujra duplikalt verzio mehetne ki. Ezert CI-ben ez BLOKKOLO hiba.
+$maxPublished = $null
+if ($publishedLookup -and $publishedLookup.PSObject.Properties.Name -contains 'LookupFailed') {
+    $reason = $publishedLookup.Reason
+    if ($env:GITHUB_ACTIONS -eq 'true' -or $env:CI -eq 'true') {
+        Write-Host "VERSION BUMP GATE: a GitHub Release baseline lekerdezese ELBUKOTT: $reason" -ForegroundColor Red
+        Write-Host "CI-ben ez blokkolo — baseline nelkul duplikalt release keszulhetne." -ForegroundColor Red
+        exit 3
+    }
+    Write-Host "FIGYELEM: GitHub Release baseline nem elerheto ($reason) — csak lokalis build baseline." -ForegroundColor Yellow
+} else {
+    $maxPublished = $publishedLookup
+}
 
 if ($maxExisting) {
     Write-Host "Latest local build: v$($maxExisting.Version) ($($maxExisting.Variant), $($maxExisting.Date))" -ForegroundColor Yellow

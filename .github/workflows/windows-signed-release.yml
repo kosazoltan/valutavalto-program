@@ -164,6 +164,40 @@ jobs:
         run: |
           pwsh -NoLogo -NoProfile -File installer/scripts/ci-version-bump-gate.ps1
 
+      # Explicit verzio-input eseten a kaput NEM kerulhetjuk meg: a publish job
+      # akkor is letrehozza/frissiti a v<input> taget, tehat pontosan az a
+      # duplikalt-verzio ut maradna nyitva, amit ez a valtozas be akar zarni.
+      # Ezert az explicit verziot a publikalt release-baseline ellen validaljuk.
+      - name: Validate explicit version input against published releases
+        if: github.event.inputs.version != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $v = $env:INPUT_VERSION
+          if ($v -notmatch '^\d+\.\d+\.\d+$') {
+            Write-Host "::error::Ervenytelen version input '$v' (X.Y.Z kell)."
+            exit 1
+          }
+          . ./installer/build-common.ps1
+          $lookup = Get-LatestPublishedReleaseVersion
+          if ($lookup -and $lookup.PSObject.Properties.Name -contains 'LookupFailed') {
+            Write-Host "::error::Release baseline lekerdezes elbukott: $($lookup.Reason) — fail-closed."
+            exit 1
+          }
+          if (-not $lookup) {
+            Write-Host "Nincs publikalt release baseline — az explicit v$v elfogadva."
+            exit 0
+          }
+          $baseline = [version]::Parse($lookup.Version)
+          if ([version]::Parse($v).CompareTo($baseline) -le 0) {
+            Write-Host "::error::A megadott verzio ($v) NEM nagyobb a legutobbi kiadott release-nel ($($lookup.TagName)). Az auto-update semver-t nez: azonos vagy kisebb verzio eseten a flotta NEM frissul."
+            exit 1
+          }
+          Write-Host "Explicit verzio OK: v$v > $($lookup.TagName)"
+
       - name: Resolve version + build date
         id: resolve
         shell: pwsh
@@ -813,18 +847,17 @@ jobs:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Apply version bump from release preflight
+      - name: Apply the exact released version (NO gate re-run)
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
           TARGET_VERSION: ${{ needs.preflight.outputs.version }}
         run: |
-          pwsh -NoLogo -NoProfile -File installer/scripts/ci-version-bump-gate.ps1
-          $actual = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          if ($actual -ne $env:TARGET_VERSION) {
-            Write-Host "::error::package.json ($actual) != preflight version ($env:TARGET_VERSION)"
-            exit 1
-          }
+          # FONTOS: itt NEM futtatjuk ujra a verzio-kaput. Ez a job a
+          # publish-release UTAN fut, ekkor a kapu baseline-ja mar az EPP KIADOTT
+          # tag lenne, igy meg egy patch-csel tovabb bumpolna (TARGET+1), a lenti
+          # ellenorzes elbukna, es a kiadott verzio sosem kerulne be a main-be.
+          # Helyette determinisztikusan a preflight altal kiadott verziot irjuk be.
+          pwsh -NoLogo -NoProfile -File installer/scripts/apply-release-version.ps1 -TargetVersion $env:TARGET_VERSION
 
       - name: Commit and push version files
         shell: bash

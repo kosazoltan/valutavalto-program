@@ -33,8 +33,12 @@ $bumped = $Matches[1] -eq 'BUMPED_VERSION'
 Write-Host "CI version gate: v$resolvedVersion (bumped=$bumped)" -ForegroundColor Cyan
 
 if ($env:GITHUB_OUTPUT) {
+    # A GitHub Actions kifejezes-nyelve KISBETUS 'true'/'false' stringgel hasonlit
+    # (needs.<job>.outputs.x == 'true'). A PowerShell boolean interpolacioja
+    # 'True'/'False' — az sosem egyezne, es a ra epulo job NEMA modon kimaradna.
+    $bumpedText = if ($bumped) { 'true' } else { 'false' }
     "version=$resolvedVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-    "bumped=$bumped" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+    "bumped=$bumpedText" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 }
 
 exit 0
