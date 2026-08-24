@@ -492,6 +492,10 @@ jobs:
           echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          # A primary kulcs a .env-kulcsszinkronhoz kell (lasd a preflight UTANI lepest).
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
       # 2026-07-11 (run 29158727601): a standby diskje betelt, ezert az scp
       # "write remote: Failure" hibaval leallt. Az upload elotti preflight csak
@@ -594,6 +598,163 @@ jobs:
             fi
             echo "=== Preflight OK ==="
           ENDSSH
+
+      # 2026-08-24: a standby backend INDULASKOR OSSZEOMLOTT, mert a sajat .env-jebol
+      # hianyzott az APP_SUPERVISOR_PASSWORD_HASH:
+      #   IllegalStateException: FATAL: app.supervisor.password-hash nincs konfiguralva
+      #   systemd: valuta-backend.service: Main process exited, code=exited, status=1/FAILURE
+      # Ez korabban NEM latszott: a 80s-os health-ablak elobb jart le, mint a crash-ciklus,
+      # ezert idozitesi hibanak tunt. A deploy job eddig CSAK a JAR-t masolta at, a
+      # konfiguraciot nem — a JAR verziozott, a .env kezzel karbantartott, igy a ket gep
+      # elcsuszott egymastol (konfiguracios drift).
+      #
+      # SORREND (review P1): ez a lepes a PREFLIGHT UTAN all, mert a preflight tartalmazza
+      # a pg_is_in_recovery() split-brain gardot. Ha a Scaleway-t mar promotaltak, a
+      # preflight abortal, es EZ A LEPES EL SEM INDUL — nem irjuk at egy AKTIV primary
+      # konfiguraciojat. A tavoli script ezen felul MEGEGYSZER ellenorzi a recovery
+      # allapotot kozvetlenul az iras elott (TOCTOU-zaras, ketto-a-melysegben).
+      #
+      # MERGE-ONLY, NEM felulir: a standby .env-je SZANDEKOSAN eltero (Flyway tiltva a
+      # read-only replikan, sajat DATABASE_URL). A teljes atmasolas Flyway-t inditana egy
+      # read-only replikan — ezert csak a HIANYZO/URES kulcsokat potoljuk, es a
+      # topologia-fuggo kulcsokat blocklist zarja ki.
+      #
+      # OSZTOTT TITKOK (review P1): a JWT_SECRET / ENCRYPTION_KEY / ENCRYPTION_SALT
+      # ELTERESE nem javithato csendben — ha a ket gepen mas, failover utan minden token
+      # ervenytelen es a titkositott mezok visszafejthetetlenek. Ezeknel ELTERES ESETEN
+      # FAIL-CLOSED leallunk, operator altal jovahagyott rotaciot kerve.
+      #
+      # Titokkezeles: ertek SOHA nem kerul logba. A .env base64-kent, stdin-en utazik,
+      # es a lepes kizarolag a kulcsNEVEKET irja ki.
+      - name: Sync missing env keys (primary -> standby, merge-only)
+        run: |
+          set -euo pipefail
+
+          PRIMARY_ENV_B64=$(ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              -o BatchMode=yes -o ConnectTimeout=15 \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "base64 -w0 /opt/valutavalto/backend/.env")
+
+          if [ -z "$PRIMARY_ENV_B64" ]; then
+            echo "::error::A primary .env nem olvashato — a kulcsszinkron fail-closed leall."
+            exit 1
+          fi
+
+          cat > /tmp/standby-env-merge.sh <<'MERGESCRIPT'
+          set -euo pipefail
+          ENV_FILE=/opt/valutavalto/backend/.env
+
+          # --- TOCTOU-zaras: split-brain gard KOZVETLENUL az iras elott -------------
+          IN_REC=$(sudo -u postgres psql -tAc "SELECT pg_is_in_recovery();" 2>/dev/null || echo "x")
+          IN_REC=$(printf '%s' "$IN_REC" | tr -d '[:space:]')
+          if [ "$IN_REC" != "t" ]; then
+            echo "env-szinkron ABORT: pg_is_in_recovery()='$IN_REC' (nem 't') — lehet aktiv primary, a .env-hez NEM nyulunk." >&2
+            exit 1
+          fi
+
+          # --- soros futas: parhuzamos deploy ne duplikaljon kulcsokat -------------
+          exec 9>/var/lock/valuta-env-sync.lock
+          flock -w 120 9 || { echo "env-szinkron: nem sikerult a zarat megszerezni 120s alatt" >&2; exit 1; }
+
+          PRIMARY_ENV=$(mktemp); trap 'rm -f "$PRIMARY_ENV"' EXIT
+          base64 -d > "$PRIMARY_ENV"
+
+          # Topologia-fuggo kulcsok: a ket gepen SZANDEKOSAN elternek, sosem masoljuk.
+          BLOCKLIST="DATABASE_URL DATABASE_USERNAME DATABASE_PASSWORD SPRING_FLYWAY_ENABLED
+                     NEON_DATABASE_URL NEON_SYNC_ENABLED MANAGEMENT_SERVER_ADDRESS
+                     REDIS_ENABLED SPRING_JPA_PROPERTIES_HIBERNATE_CONNECTION_DEFAULT_READ_ONLY"
+
+          # Osztott titkok: ELTERES eseten fail-closed (nem javitjuk csendben).
+          SHARED_SECRETS="JWT_SECRET ENCRYPTION_KEY ENCRYPTION_SALT APP_SUPERVISOR_PASSWORD_HASH"
+
+          value_of() { sed -n "s/^$1=//p" "$2" | head -1; }
+
+          ADDED=""
+          MISMATCH=""
+          while IFS= read -r line; do
+            line=${line%$'\r'}
+            case "$line" in ''|'#'*) continue ;; esac
+            case "$line" in *=*) : ;; *) continue ;; esac
+            KEY="${line%%=*}"
+            case "$KEY" in *[!A-Za-z0-9_]*|'') continue ;; esac
+
+            SKIP=0
+            for b in $BLOCKLIST; do [ "$KEY" = "$b" ] && SKIP=1; done
+            [ "$SKIP" = 1 ] && continue
+
+            PVAL=$(value_of "$KEY" "$PRIMARY_ENV")
+            [ -z "$PVAL" ] && continue          # ures a primaryn -> nincs mit potolni
+
+            if grep -q "^${KEY}=" "$ENV_FILE"; then
+              SVAL=$(value_of "$KEY" "$ENV_FILE")
+              # URES ertek = hianyzo (a presence-only ellenorzes ezt benne hagyta volna)
+              if [ -z "$SVAL" ]; then
+                ADDED="$ADDED $KEY"
+                continue
+              fi
+              # meglevo, NEM ures: osztott titoknal az elteres BLOKKOLO
+              for s in $SHARED_SECRETS; do
+                if [ "$KEY" = "$s" ] && [ "$SVAL" != "$PVAL" ]; then
+                  MISMATCH="$MISMATCH $KEY"
+                fi
+              done
+              continue
+            fi
+            ADDED="$ADDED $KEY"
+          done < "$PRIMARY_ENV"
+
+          if [ -n "$MISMATCH" ]; then
+            echo "::error::env-szinkron FAIL-CLOSED: osztott titok ELTER a ket gepen:$MISMATCH" >&2
+            echo "Failover utan a tokenek ervenytelenek / a titkositott mezok visszafejthetetlenek lennenek." >&2
+            echo "Operator altal jovahagyott rotacio szukseges; a deploy NEM ir felul erteket." >&2
+            exit 1
+          fi
+
+          if [ -z "$ADDED" ]; then
+            echo "env-szinkron: nincs hianyzo vagy ures kulcs — a standby konfiguracioja teljes."
+            exit 0
+          fi
+
+          cp -a "$ENV_FILE" "${ENV_FILE}.bak-$(date +%Y%m%d-%H%M%S)"
+
+          # Atomikus, validalt csere ideiglenes fajlon keresztul.
+          TMP_ENV=$(mktemp); chmod 600 "$TMP_ENV"
+          cat "$ENV_FILE" > "$TMP_ENV"
+          # Zaro sortores biztositasa (kulonben az elso hozzafuzes a legutolso
+          # ertekhez tapadna, es a kulcs tovabbra is hianyozna — miközben a lepes
+          # sikert jelentene).
+          [ -s "$TMP_ENV" ] && [ "$(tail -c1 "$TMP_ENV" | wc -l)" -eq 0 ] && printf '\n' >> "$TMP_ENV"
+
+          for KEY in $ADDED; do
+            # ures placeholder sor eltavolitasa, hogy ne maradjon duplikatum
+            sed -i "/^${KEY}=$/d" "$TMP_ENV"
+            grep -m1 "^${KEY}=" "$PRIMARY_ENV" >> "$TMP_ENV"
+          done
+
+          for KEY in $ADDED; do
+            if [ "$(grep -c "^${KEY}=" "$TMP_ENV")" -ne 1 ]; then
+              echo "::error::env-szinkron: $KEY nem pontosan egyszer szerepel — nem irunk semmit." >&2
+              rm -f "$TMP_ENV"; exit 1
+            fi
+          done
+
+          chmod 600 "$TMP_ENV"
+          mv -f "$TMP_ENV" "$ENV_FILE"
+          chmod 600 "$ENV_FILE"
+
+          echo "env-szinkron: potolt kulcsok (ertek nelkul):"
+          for KEY in $ADDED; do echo "  + $KEY"; done
+          MERGESCRIPT
+
+          # A scriptet base64-kent adjuk at a parancssorban, az ADATOT a stdin-en.
+          # A tavoli oldalon mktemp -> NINCS kiszamithato /tmp/m.sh, amit egy helyi
+          # folyamat symlinkkel vagy cserevel eltarithatna root jogon (review P1).
+          SCRIPT_B64=$(base64 -w0 /tmp/standby-env-merge.sh)
+          printf '%s' "$PRIMARY_ENV_B64" | ssh -i ~/.ssh/scaleway_key \
+              -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=15 \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              "set -e; t=\$(mktemp); chmod 600 \"\$t\"; trap 'rm -f \"\$t\"' EXIT; printf '%s' '$SCRIPT_B64' | base64 -d > \"\$t\"; bash \"\$t\""
+          rm -f /tmp/standby-env-merge.sh
 
       - name: Upload JAR to standby
         run: |
