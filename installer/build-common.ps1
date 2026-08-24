@@ -201,6 +201,53 @@ function Set-PomXmlVersion {
     Set-Content -Path $Path -Value $newContent -NoNewline
 }
 
+function Set-PackageLockJsonVersion {
+    <#
+    .SYNOPSIS
+      Sets BOTH version fields in a package-lock.json (top-level + packages."").
+    .DESCRIPTION
+      SHARED helper (moved here from installer/scripts/check-version-bump.ps1 on
+      2026-08-24). Reason: apply-release-version.ps1 also needs it, and a script-local
+      copy is invisible to other callers — the release job failed at runtime with
+      "The term 'Set-PackageLockJsonVersion' is not recognized".
+
+      Regex-based on purpose: package-lock.json contains a `"packages": { "": {...} }`
+      entry whose EMPTY property name makes ConvertFrom-Json throw without -AsHashTable.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [string]$NewVersion
+    )
+
+    if (-not (Test-Path $Path)) {
+        throw "package-lock.json not found: $Path"
+    }
+
+    $content = Get-Content $Path -Raw
+    if ((Get-Command Test-Json -ErrorAction SilentlyContinue) -and -not (Test-Json $content)) {
+        throw "Invalid package-lock.json: $Path"
+    }
+
+    $topPattern = '("version"\s*:\s*")([^"]*)(")'
+    if (-not [regex]::IsMatch($content, $topPattern)) {
+        throw "package-lock.json missing top-level version field: $Path"
+    }
+    $topRegex = [regex]::new($topPattern)
+    $content = $topRegex.Replace($content, { param($m) $m.Groups[1].Value + $NewVersion + $m.Groups[3].Value }, 1)
+
+    $rootPackagePattern = '(?s)("packages"\s*:\s*\{\s*""\s*:\s*\{.*?"version"\s*:\s*")([^"]*)(")'
+    if (-not [regex]::IsMatch($content, $rootPackagePattern)) {
+        throw ("package-lock.json missing packages.`"`".version field: {0}" -f $Path)
+    }
+    $rootPackageRegex = [regex]::new($rootPackagePattern)
+    $content = $rootPackageRegex.Replace($content, { param($m) $m.Groups[1].Value + $NewVersion + $m.Groups[3].Value }, 1)
+
+    Set-Content -Path $Path -Value $content -NoNewline
+}
+
 function Get-AllProjectVersions {
     <#
     .SYNOPSIS
@@ -247,6 +294,71 @@ function Get-AllProjectVersions {
         BackendPom            = $backendPomVer
         IsConsistent          = $isConsistent
         UniqueVersions        = $unique
+    }
+}
+
+function Get-LatestPublishedReleaseVersion {
+    <#
+    .SYNOPSIS
+      Returns the highest vX.Y.Z tag from published GitHub Releases, or $null.
+    .DESCRIPTION
+      A verzio-bump gate nem csak a lokalis installer/build/*.exe fajlokat nezheti:
+      CI-ben ures a build mappa, igy ugyanazzal a package.json verzio szammal ujra
+      kiadhato egy release -> az auto-update nem indul (electron-updater semver).
+      Ha elerheto a gh CLI, a publikalt release tag-ek kozul a legmagasabb verziot adja.
+    .PARAMETER Repository
+      GitHub repo (owner/name). Uresen a gh default remote-jat hasznalja.
+    .OUTPUTS
+      PSCustomObject @{ Version; TagName; Source } vagy
+      PSCustomObject @{ LookupFailed = $true; Reason } ha a lekerdezes NEM sikerult.
+      FONTOS: a "sikeres, de ures release-lista" es a "lekerdezes elbukott" KET
+      KULONBOZO allapot. Utobbinal a hivo fail-closed kell legyen CI-ben, kulonben
+      egy atmeneti halozati/auth hiba ujra duplikalt verziot engedne at.
+    #>
+    param(
+        [string]$Repository = ''
+    )
+
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+        return [PSCustomObject]@{ LookupFailed = $true; Reason = 'gh CLI not available' }
+    }
+
+    try {
+        $ghArgs = @('release', 'list', '--limit', '200', '--json', 'tagName')
+        if (-not [string]::IsNullOrWhiteSpace($Repository)) {
+            $ghArgs += @('-R', $Repository)
+        }
+        $json = & gh @ghArgs 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return [PSCustomObject]@{ LookupFailed = $true; Reason = "gh release list exit code $LASTEXITCODE" }
+        }
+        if ([string]::IsNullOrWhiteSpace($json)) {
+            return [PSCustomObject]@{ LookupFailed = $true; Reason = 'gh release list returned empty output' }
+        }
+
+        $tags = @($json | ConvertFrom-Json)
+        $parsed = @()
+        foreach ($item in $tags) {
+            $tag = [string]$item.tagName
+            if ($tag -match '^v?(\d+\.\d+\.\d+)$') {
+                $parsed += [PSCustomObject]@{
+                    Version    = $Matches[1]
+                    VersionObj = [version]$Matches[1]
+                    TagName    = if ($tag -match '^v') { $tag } else { "v$tag" }
+                }
+            }
+        }
+
+        # Sikeres lekerdezes, de nincs egyetlen semver tag sem -> valodi "nincs baseline".
+        if ($parsed.Count -eq 0) { return $null }
+        $best = $parsed | Sort-Object -Property { $_.VersionObj } -Descending | Select-Object -First 1
+        return [PSCustomObject]@{
+            Version = $best.Version
+            TagName = $best.TagName
+            Source  = 'github-release'
+        }
+    } catch {
+        return [PSCustomObject]@{ LookupFailed = $true; Reason = $_.Exception.Message }
     }
 }
 

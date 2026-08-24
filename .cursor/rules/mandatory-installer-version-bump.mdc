@@ -1,0 +1,55 @@
+---
+description: "Use when: building Penztar/Kozponti installer, signed release, package:*, build-installer.ps1, windows-signed-release workflow, or any deliverable that ships auto-update."
+alwaysApply: true
+---
+
+# Kötelező telepítő verzió-bump (AUTO-UPDATE)
+
+## Miért kötelező
+
+Az `electron-updater` / suite-updater **semver szerint** dönt: ha az új telepítő
+**ugyanaz a `X.Y.Z`**, mint a már kiadott release, a flotta **nem frissít**.
+
+Tipikus hiba: a `package.json` `2.28.86`, a GitHub Release-en már van `v2.28.86`,
+de a CI-ben üres az `installer/build/` → a gate nem bumpol → **duplikált verzió**.
+
+## Kötelező szabály (nincs kivétel)
+
+1. **Minden** telepítő/release build **ELŐTT** le kell futtatni a verzió-kaput:
+   ```powershell
+   pwsh -NoLogo -NoProfile -File installer\scripts\ci-version-bump-gate.ps1
+   ```
+   Lokálisan ezt a `build-installer.ps1` automatikusan hívja; a **signed release
+   workflow** minden build-jobban expliciten futtatja (preflight + backend + kozponti).
+
+2. A baseline **NEM csak** `installer/build/*.exe`, hanem:
+   **`max(lokális Setup/Eltávolító EXE, legutóbbi GitHub Release tag)`**.
+   Implementáció: `Get-LatestPublishedReleaseVersion` + `check-version-bump.ps1`.
+
+3. Ha `current <= baseline` → **AUTO-PATCH** kötelező (9-way sync):
+   - `package.json` (root, frontend-react, penztar-client, kozponti-client)
+   - `package-lock.json` (mind a 4)
+   - `backend/pom.xml` top-level `<version>`
+
+4. **Tilos** ugyanazzal a verziószámmal új signed release-et publikálni, hogy
+   „csak a kód változott”. Mindig **patch bump** (pl. `2.28.86` → `2.28.87`).
+
+5. Release után a bumpolt verzió **main-be commitolva** legyen (CI `commit-version-bump`
+   job, vagy kézi commit a 9 fájllal).
+
+## Ellenőrzés build előtt
+
+```powershell
+. installer\build-common.ps1
+Get-AllProjectVersions -RepoRoot (Get-Location) | Format-Table
+gh release list --limit 3
+```
+
+Elfogadás: `package.json` verzió **>** legutóbbi `vX.Y.Z` release tag.
+
+## Agent tiltások
+
+- NE indíts `windows-signed-release` workflow-t anélkül, hogy a gate logban
+  `BUMPED_VERSION` vagy `KEPT_VERSION` **nagyobb** legyen, mint a legutóbbi release.
+- NE hagyd a `KEPT_VERSION`-t, ha a GitHubon már létezik azonos tag.
+- Ha duplikált release készült: **azonnal** patch bump + új signed release.

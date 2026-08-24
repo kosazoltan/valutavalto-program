@@ -45,8 +45,9 @@ pwsh -NoLogo -NoProfile -File installer\build-installer.ps1
 - `-SkipDownloads` — if PG/NSSM/VC++ already in `installer/build/downloads/`
 
 The build **automatically** runs the version-bump gate (`installer/scripts/check-version-bump.ps1`) which:
-- Validates 4-way version sync (drift → exit 2)
-- AUTO-PATCH bumps if current ≤ max(existing build/*.exe)
+- Validates 9-way version sync (drift → exit 2)
+- Baseline = **max(local installer/build/*.exe, latest GitHub Release tag)**
+- AUTO-PATCH bumps if current ≤ baseline (duplicate release = auto-update failure)
 - Updates ALL 4 locations:
   1. `package.json`
   2. `frontend-react/package.json`
