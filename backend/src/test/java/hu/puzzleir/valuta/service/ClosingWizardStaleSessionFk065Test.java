@@ -89,6 +89,7 @@ class ClosingWizardStaleSessionFk065Test {
     // FKH-036 WU-5: az új konstruktor-függőségek mockjai (pitfall 1).
     @Mock private ShipmentRequestRepository shipmentRequestRepository;
     @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    @Mock private VatSupplyStockRepository vatSupplyStockRepository;
     @InjectMocks private ClosingWizardService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();

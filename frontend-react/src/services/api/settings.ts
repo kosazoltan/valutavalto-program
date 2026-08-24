@@ -421,7 +421,7 @@ export interface DenominationQuantityUpdateRequest {
  * FK-078 (FR-3): a `denomination_balance` sor kategóriája. A becímletező oldal a csempe
  * szerint adja át — a backend `DenominationCategory` enum két itt használt értéke.
  */
-export type DenominationBalanceCategory = 'EVENING' | 'HANDLING_FEE'
+export type DenominationBalanceCategory = 'EVENING' | 'HANDLING_FEE' | 'VAT'
 
 /**
  * FK-078 (FR-4): napközbeni önellenőrzés egy pénznemre — a becímletezett összeg és a

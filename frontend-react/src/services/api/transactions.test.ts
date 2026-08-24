@@ -663,6 +663,56 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result.handlingFee.calculatedFee).toBe(625)
   })
 
+  it('createVatSupply: a /shipments/vat-supply endpointot hívja és normalizálja a shipmentet', async () => {
+    mockApi.post.mockResolvedValue({
+      data: {
+        shipment: {
+          id: 'shipment-2',
+          requestNumber: 'KK-000002',
+          status: 'DRAFT',
+          fromBranchId: 'BR-A',
+          fromBranchName: 'Szeged Móra',
+          toBranchId: 'BR-B',
+          toBranchName: 'Szeged Értéktár',
+          createdAt: '2026-07-14T09:00:00Z',
+        },
+        vatSupplyItem: {
+          id: 'vat-1',
+          shipmentRequestId: 'shipment-2',
+          fromBranchId: 'BR-A',
+          toBranchId: 'BR-B',
+          hufAmount: 50000,
+          status: 'DRAFT',
+          createdAt: '2026-07-14T09:00:00Z',
+        },
+      },
+    })
+
+    const result = await shipmentRequestApi.createVatSupply({
+      fromBranchId: 'BR-A',
+      toBranchId: 'BR-B',
+      hufAmount: 50000,
+      deliveryDate: '',
+      notes: ' áfa ellátmány ',
+      carrierName: ' Teszt Szállító ',
+      sealNumber: ' KK-456 ',
+    })
+
+    expect(mockApi.post).toHaveBeenCalledWith('/shipments/vat-supply', {
+      fromBranchId: 'BR-A',
+      toBranchId: 'BR-B',
+      hufAmount: 50000,
+      deliveryDate: undefined,
+      notes: 'áfa ellátmány',
+      carrierName: 'Teszt Szállító',
+      sealNumber: 'KK-456',
+    })
+    expect(result.shipment.requestStatus).toBe('DRAFT')
+    expect(result.shipment.requestingBranchId).toBe('BR-A')
+    expect(result.shipment.targetBranchId).toBe('BR-B')
+    expect(result.vatSupplyItem.hufAmount).toBe(50000)
+  })
+
   it('submit: a /shipments/{id}/submit endpointot hivja', async () => {
     mockApi.post.mockResolvedValue({ data: { id: 'shipment-1', status: 'SUBMITTED' } })
     const result = await shipmentRequestApi.submit('shipment-1')

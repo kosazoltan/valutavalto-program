@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest;
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentService;
+import hu.puzzleir.valuta.service.ShipmentVatSupplyService;
 import hu.puzzleir.valuta.util.IdempotencyGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,13 +27,15 @@ class ShipmentStaleDeliveryControllerTest {
 
     @Mock private ShipmentService shipmentService;
     @Mock private ShipmentHandlingFeeService handlingFeeService;
+    @Mock private ShipmentVatSupplyService vatSupplyService;
     @Mock private IdempotencyGuard idempotencyGuard;
 
     private ShipmentController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new ShipmentController(shipmentService, handlingFeeService, idempotencyGuard);
+        controller = new ShipmentController(
+                shipmentService, handlingFeeService, vatSupplyService, idempotencyGuard);
     }
 
     @Test

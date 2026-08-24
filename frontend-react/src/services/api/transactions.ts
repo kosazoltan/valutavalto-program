@@ -1593,6 +1593,27 @@ export interface ShipmentHandlingFeeDto {
   approvedAt?: string | null
 }
 
+export interface ShipmentVatSupplyCreatePayload {
+  fromBranchId: string
+  toBranchId: string
+  hufAmount: number
+  deliveryDate?: string
+  notes?: string
+  carrierName: string
+  sealNumber: string
+}
+
+export interface ShipmentVatSupplyDto {
+  id: string
+  shipmentRequestId: string
+  fromBranchId: string
+  toBranchId: string
+  hufAmount: number
+  status: string
+  createdAt?: string
+  approvedAt?: string
+}
+
 export interface ShipmentUpdateRequest {
   fromBranchId: string
   toBranchId: string
@@ -1730,6 +1751,24 @@ export const shipmentRequestApi = {
     return {
       shipment: normalizeShipmentRequest(response.data.shipment),
       handlingFee: response.data.handlingFee,
+    }
+  },
+  createVatSupply: async (
+    payload: ShipmentVatSupplyCreatePayload,
+  ): Promise<{ shipment: ShipmentRequest; vatSupplyItem: ShipmentVatSupplyDto }> => {
+    const response = await api.post<{
+      shipment: Record<string, unknown>
+      vatSupplyItem: ShipmentVatSupplyDto
+    }>('/shipments/vat-supply', {
+      ...payload,
+      notes: payload.notes?.trim() || undefined,
+      carrierName: payload.carrierName.trim(),
+      sealNumber: payload.sealNumber.trim(),
+      deliveryDate: payload.deliveryDate || undefined,
+    })
+    return {
+      shipment: normalizeShipmentRequest(response.data.shipment),
+      vatSupplyItem: response.data.vatSupplyItem,
     }
   },
   submit: async (requestId: string): Promise<ShipmentRequest> => {

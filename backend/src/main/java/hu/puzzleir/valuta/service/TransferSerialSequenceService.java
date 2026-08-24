@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TransferSerialSequenceService {
 
-    private static final Set<String> ALLOWED_PREFIXES = Set.of("AT", "AV", "FF", "UF", "KK");
+    private static final Set<String> ALLOWED_PREFIXES = Set.of("AT", "AV", "FF", "UF", "KK", "AS");
 
     @PersistenceContext
     private EntityManager entityManager;

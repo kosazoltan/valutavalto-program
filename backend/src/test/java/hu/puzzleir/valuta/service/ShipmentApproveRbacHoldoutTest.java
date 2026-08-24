@@ -51,6 +51,7 @@ class ShipmentApproveRbacHoldoutTest {
     @Mock private TransferSerialSequenceService transferSerialSequenceService;
     @Mock private AuditLogService auditLogService;
     @Mock private ShipmentHandlingFeeSyncService handlingFeeSyncService;
+    @Mock private ShipmentVatSupplySyncService vatSupplySyncService;
     @Mock private AccessScopeService accessScopeService;
     @Mock private SystemParameterService systemParameterService;
     @Mock private HufDaybookSequenceService hufDaybookSequenceService;
@@ -78,6 +79,7 @@ class ShipmentApproveRbacHoldoutTest {
                 transferSerialSequenceService,
                 realStockBookingService,
                 handlingFeeSyncService,
+                vatSupplySyncService,
                 accessScopeService,
                 auditLogService,
                 systemParameterService,

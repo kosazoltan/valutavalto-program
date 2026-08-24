@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastWarning: vi.fn(),
   toastError: vi.fn(),
+  hasCanonicalRole: vi.fn((_roles: string | string[]) => false),
 }))
 
 let categoryParam = 'EVENING'
@@ -45,6 +46,7 @@ vi.mock('../../stores/authStore', () => ({
     selector({
       worker: { id: 'worker-1', branchId: 'branch-1', role: 'CASHIER' },
       activeRole: 'CASHIER',
+      hasCanonicalRole: mocks.hasCanonicalRole,
     }),
 }))
 
@@ -123,6 +125,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   categoryParam = 'EVENING'
   searchParamsValue = new URLSearchParams()
+  mocks.hasCanonicalRole.mockReturnValue(false)
   mocks.currencyGetActive.mockResolvedValue([{ id: 1, code: 'EUR', name: 'Euró' }])
   mocks.denominationGetByCurrencyId.mockResolvedValue(EUR_DENOMINATIONS)
   mocks.balancesGetByCurrency.mockResolvedValue([])
@@ -203,6 +206,7 @@ describe('DenominationEntryPage — FK-078', () => {
 
     const row = await screen.findByTestId('denomination-entry-selfcheck-EUR')
     expect(row).toHaveTextContent('Egyezik')
+    expect(row).toHaveTextContent('elvárt')
     expect(row.className).toContain('green')
   })
 
@@ -225,21 +229,109 @@ describe('DenominationEntryPage — FK-078', () => {
     const row = await screen.findByTestId('denomination-entry-selfcheck-EUR')
     expect(row).toHaveTextContent('Nem egyezik')
     expect(row).toHaveTextContent('-50')
+    expect(row).toHaveTextContent('elvárt')
     expect(row.className).toContain('red')
     // Nem blokkoló: a mentés lefutott és sikerről szólt.
     expect(mocks.toastSuccess).toHaveBeenCalled()
   })
 
-  it('FR-4 Scope OUT: HANDLING_FEE kategóriánál nincs egyezés-jelzés', async () => {
+  it('FKH-039 FR-8/FR-9: HANDLING_FEE kategóriánál is fut az önellenőrzés, explicit elvárt összeggel', async () => {
     categoryParam = 'HANDLING_FEE'
+    mocks.balancesSelfCheck.mockResolvedValue([
+      {
+        currencyCode: 'HUF',
+        currencyId: 2,
+        denominatedAmount: 5000,
+        expectedBalance: 5000,
+        difference: 0,
+        matches: true,
+      },
+    ])
     const user = userEvent.setup()
     renderPage()
 
     await user.click(await screen.findByTestId('denomination-entry-save'))
 
+    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'HANDLING_FEE'))
+    const row = await screen.findByTestId('denomination-entry-selfcheck-HUF')
+    expect(row).toHaveTextContent('Egyezik')
+    expect(row).toHaveTextContent('elvárt')
+    expect(row).toHaveTextContent('5000')
+    expect(row.className).toContain('green')
+  })
+
+  it('FKH-040: VAT kategóriánál is fut az önellenőrzés', async () => {
+    categoryParam = 'VAT'
+    mocks.balancesSelfCheck.mockResolvedValue([
+      {
+        currencyCode: 'HUF',
+        currencyId: 2,
+        denominatedAmount: 10000,
+        expectedBalance: 10000,
+        difference: 0,
+        matches: true,
+      },
+    ])
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByTestId('denomination-entry-title')).toHaveTextContent(
+      'ÁFA átadás-átvétel címletezése',
+    )
+
+    await user.click(await screen.findByTestId('denomination-entry-save'))
+
+    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'VAT'))
+    const row = await screen.findByTestId('denomination-entry-selfcheck-HUF')
+    expect(row).toHaveTextContent('Egyezik')
+  })
+
+  it('FKH-039 FR-2: vault kontextusban nincs „Mentés és visszalépés” gomb', async () => {
+    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
+      const list = Array.isArray(roles) ? roles : [roles]
+      return list.includes('ertektar') || list.includes('foertektar')
+    })
+    renderPage()
+
+    expect(await screen.findByTestId('denomination-entry-exit')).toBeInTheDocument()
+    expect(screen.queryByTestId('denomination-entry-save-and-return')).toBeNull()
+  })
+
+  it('FKH-039 FR-3: pénztári kontextusban mindkét gomb látható', async () => {
+    renderPage()
+
+    expect(await screen.findByTestId('denomination-entry-exit')).toBeInTheDocument()
+    expect(screen.getByTestId('denomination-entry-save-and-return')).toBeInTheDocument()
+  })
+
+  it('FKH-039 FR-1: vault Kilépés ment, majd navigál', async () => {
+    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
+      const list = Array.isArray(roles) ? roles : [roles]
+      return list.includes('ertektar') || list.includes('foertektar')
+    })
+    searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+
     await waitFor(() => expect(mocks.balancesSetQuantities).toHaveBeenCalledTimes(1))
-    expect(mocks.balancesSelfCheck).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('denomination-entry-selfcheck')).toBeNull()
+    expect(mocks.navigate).toHaveBeenCalledWith('/evening-closing')
+  })
+
+  it('FKH-039 FR-4: vault returnTo nélkül a Kilépés (mentés után) /evening-closing-re esik', async () => {
+    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
+      const list = Array.isArray(roles) ? roles : [roles]
+      return list.includes('ertektar') || list.includes('foertektar')
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+
+    await waitFor(() => expect(mocks.balancesSetQuantities).toHaveBeenCalledTimes(1))
+    expect(mocks.navigate).toHaveBeenCalledWith('/evening-closing')
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/cashier')
   })
 
   it('FR-4: az önellenőrzés hibája nem rontja el a sikeres mentést', async () => {
@@ -284,6 +376,10 @@ describe('DenominationEntryPage — FK-078', () => {
   })
 
   it('FKH-036 kieg. #2 FR-11: vault kontextusban a két gomb ugyanoda visz (Kilépés === Napi zárás végrehajtása)', async () => {
+    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
+      const list = Array.isArray(roles) ? roles : [roles]
+      return list.includes('ertektar') || list.includes('foertektar')
+    })
     searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
     const user = userEvent.setup()
     renderPage()
@@ -292,7 +388,8 @@ describe('DenominationEntryPage — FK-078', () => {
     await user.click(await screen.findByTestId('denomination-entry-exit'))
 
     expect(mocks.navigate).toHaveBeenNthCalledWith(1, '/evening-closing')
-    expect(mocks.navigate).toHaveBeenNthCalledWith(2, '/evening-closing')
+    await waitFor(() => expect(mocks.balancesSetQuantities).toHaveBeenCalled())
+    expect(mocks.navigate).toHaveBeenCalledWith('/evening-closing')
   })
 
   it('FKH-036 kieg. #2 FR-11 biztonság: protokoll-relatív returnTo esetén a gomb a pénztári varázslóra esik vissza', async () => {
@@ -366,6 +463,7 @@ describe('DenominationEntryPage — FK-078', () => {
   // ——— FKH-036 FR-4: kontextus-érzékeny Kilépés útvonal ———
 
   it('FKH-036 FR-4: returnTo paraméterrel a Kilépés az Értéktár Napi zárás oldalra visz', async () => {
+    // Pénztári szerep + returnTo: mentés nélkül navigál (FKH-039 FR-3 — pénztár exit változatlan).
     searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
     const user = userEvent.setup()
     renderPage()
@@ -373,6 +471,7 @@ describe('DenominationEntryPage — FK-078', () => {
     await user.click(await screen.findByTestId('denomination-entry-exit'))
 
     expect(mocks.navigate).toHaveBeenCalledWith('/evening-closing')
+    expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
   })
 
   it('FKH-036 FR-4: returnTo nélkül a Kilépés változatlanul a /cashier-re visz', async () => {
@@ -382,6 +481,7 @@ describe('DenominationEntryPage — FK-078', () => {
     await user.click(await screen.findByTestId('denomination-entry-exit'))
 
     expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
+    expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
   })
 
   it('FKH-036 FR-4 biztonság: abszolút/protokoll-relatív returnTo elutasítva', async () => {

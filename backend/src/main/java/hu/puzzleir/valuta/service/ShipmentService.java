@@ -59,6 +59,7 @@ public class ShipmentService {
     private final TransferSerialSequenceService transferSerialSequenceService;
     private final ShipmentStockBookingService stockBookingService;
     private final ShipmentHandlingFeeSyncService handlingFeeSyncService;
+    private final ShipmentVatSupplySyncService vatSupplySyncService;
     private final AccessScopeService accessScopeService;
     private final AuditLogService auditLogService;
     private final SystemParameterService systemParameterService;
@@ -372,6 +373,7 @@ public class ShipmentService {
             throw new ValidationException("Csak DRAFT státuszú kérés módosítható!");
         }
         handlingFeeSyncService.assertNotHandlingFeeShipment(existing);
+        vatSupplySyncService.assertNotVatSupplyShipment(existing);
         validateEditableRequest(updated);
 
         existing.setFromBranchId(updated.getFromBranchId());
@@ -422,13 +424,16 @@ public class ShipmentService {
         // FK (TBD-1 döntés): az ÁTADÓ oldal készlete a beküldéskor AZONNAL csökken (OUT-könyvelés),
         // pesszimista lockkal + elégség-ellenőrzéssel (FR-2/5/7/8). Ha elégtelen → 422 VV-VALID-003,
         // a teljes @Transactional rollbackel (a státusz nem vált), az audit REQUIRES_NEW-ban megmarad.
-        stockBookingService.bookStockOut(request, SecurityUtils.getCurrentCompanyId());
+        // FKH-040: AS (ÁFA ellátmány) NEM currency_stock-ot mozgat — a vat_supply_stock a sync-ben él.
+        if (!skipsCurrencyStockBooking(request)) {
+            stockBookingService.bookStockOut(request, SecurityUtils.getCurrentCompanyId());
+        }
         writeStatusAudit(ACTION_SUBMITTED, request, ShipmentRequestStatus.DRAFT,
                 ShipmentRequestStatus.SUBMITTED);
         request.setStatus(ShipmentRequestStatus.SUBMITTED);
         log.info("Szállítmánykérés beküldve: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
-        handlingFeeSyncService.syncFromShipment(saved);
+        syncSpecialShipmentItems(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -452,7 +457,7 @@ public class ShipmentService {
         request.setStatus(ShipmentRequestStatus.APPROVED);
         log.info("Szállítmánykérés jóváhagyva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
-        handlingFeeSyncService.syncFromShipment(saved);
+        syncSpecialShipmentItems(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -492,7 +497,10 @@ public class ShipmentService {
             }
         }
         // FR-3: az ÁTVEVŐ oldal készlete a visszaigazoláskor nő (IN-könyvelés), get-or-create + lock.
-        stockBookingService.bookStockIn(request, SecurityUtils.getCurrentCompanyId());
+        // FKH-040: AS → vat_supply_stock a sync-ben, nem currency_stock.
+        if (!skipsCurrencyStockBooking(request)) {
+            stockBookingService.bookStockIn(request, SecurityUtils.getCurrentCompanyId());
+        }
         writeStatusAudit(
                 previousStatus == ShipmentRequestStatus.SUBMITTED ? ACTION_DIRECT_DELIVER : ACTION_DELIVERED,
                 request, previousStatus, ShipmentRequestStatus.DELIVERED);
@@ -503,7 +511,7 @@ public class ShipmentService {
         request.setDeliveryDate(LocalDate.now());
         log.info("Szállítmánykérés leszállítva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
-        handlingFeeSyncService.syncFromShipment(saved);
+        syncSpecialShipmentItems(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -524,7 +532,7 @@ public class ShipmentService {
         // TBD-1: a készlet az átadó oldalon a beküldéskor (SUBMITTED) csökkent. Ha egy már OUT-könyvelt
         // (SUBMITTED/APPROVED/IN_TRANSIT) kérést visszavonnak, a készletet vissza kell pótolni, különben
         // elveszne. DRAFT-ból visszavonáskor nem volt OUT-könyvelés → nincs reverzió (dupla-jóváírás elkerülés).
-        if (wasStockBookedOut(previousStatus)) {
+        if (wasStockBookedOut(previousStatus) && !skipsCurrencyStockBooking(request)) {
             stockBookingService.reverseStockOut(request, SecurityUtils.getCurrentCompanyId());
         }
         Long workerId = SecurityUtils.getCurrentWorkerId();
@@ -543,7 +551,7 @@ public class ShipmentService {
         }
         log.info("Szállítmánykérés visszavonva: {}", request.getRequestNumber());
         ShipmentRequest saved = shipmentRequestRepository.save(request);
-        handlingFeeSyncService.syncFromShipment(saved);
+        syncSpecialShipmentItems(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -569,7 +577,10 @@ public class ShipmentService {
         Long workerId = SecurityUtils.getCurrentWorkerId();
         // TBD-1: a reject CSAK SUBMITTED-ből megengedett, ami mindig OUT-könyvelt állapot → a készletet
         // mindig vissza kell pótolni az átadó oldalra (SHIPMENT_STOCK_REVERSAL audit).
-        stockBookingService.reverseStockOut(request, SecurityUtils.getCurrentCompanyId());
+        // FKH-040: AS nem currency_stock-ot könyvelt.
+        if (!skipsCurrencyStockBooking(request)) {
+            stockBookingService.reverseStockOut(request, SecurityUtils.getCurrentCompanyId());
+        }
         writeStatusAudit(ACTION_REJECT_DEPRECATED, request, ShipmentRequestStatus.SUBMITTED,
                 ShipmentRequestStatus.REJECTED);
         request.setStatus(ShipmentRequestStatus.REJECTED);
@@ -577,7 +588,7 @@ public class ShipmentService {
         request.setRejectedByWorkerId(workerId);
         log.info("Szállítmánykérés elutasítva: {} (elutasító worker={})", request.getRequestNumber(), workerId);
         ShipmentRequest saved = shipmentRequestRepository.save(request);
-        handlingFeeSyncService.syncFromShipment(saved);
+        syncSpecialShipmentItems(saved);
         initLazyForSerialization(saved);
         return saved;
     }
@@ -885,5 +896,21 @@ public class ShipmentService {
 
     private static boolean isHufDaybookPrefix(String prefix) {
         return "FF".equalsIgnoreCase(prefix) || "UF".equalsIgnoreCase(prefix);
+    }
+
+    /**
+     * FKH-040: ÁFA ellátmány (AS) — a currency_stock könyvelést KI kell hagyni, mert az
+     * ÁFA-pénz a {@code vat_supply_stock} területi egyenlegben él (a mozgást a
+     * {@link ShipmentVatSupplySyncService} könyveli). A prefix az elsődleges, gyors jel;
+     * a napló-sor léte a tartalék (régi/prefix nélküli sorokra is fail-closed).
+     */
+    private boolean skipsCurrencyStockBooking(ShipmentRequest request) {
+        return ShipmentVatSupplyService.SERIAL_PREFIX_VAT_SUPPLY.equalsIgnoreCase(request.getSerialPrefix())
+                || vatSupplySyncService.isVatSupplyShipment(request);
+    }
+
+    private void syncSpecialShipmentItems(ShipmentRequest saved) {
+        handlingFeeSyncService.syncFromShipment(saved);
+        vatSupplySyncService.syncFromShipment(saved);
     }
 }

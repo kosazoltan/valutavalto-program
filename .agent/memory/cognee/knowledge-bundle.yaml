@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-20T02:46:01.574Z
+generated_at: 2026-08-24T08:00:04.278Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -3667,7 +3667,7 @@ nodes:
     type: operational-receipt
     title: ShipmentUnifiedReceiptControllerTest.java
     source_path: backend/src/test/java/hu/puzzleir/valuta/controller/ShipmentUnifiedReceiptControllerTest.java
-    summary: "package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest; import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto; import hu.puzzleir.valuta.service.ShipmentHandlingFeeService; import hu.puzzleir.valuta.service.ShipmentService; import hu.puzzleir.valuta.util.IdempotencyGuard; import io.swagger.v3.oas.annotations.responses.ApiResponses; import org.junit.jupiter.api"
+    summary: "package hu.puzzleir.valuta.controller; import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest; import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto; import hu.puzzleir.valuta.service.ShipmentHandlingFeeService; import hu.puzzleir.valuta.service.ShipmentService; import hu.puzzleir.valuta.service.ShipmentVatSupplyService; import hu.puzzleir.valuta.util.IdempotencyGuard; import io.swagger.v3.oas.anno"
     tags: [shipmentunifiedreceiptcontrollertest, java, package, puzzleir, valuta, controller, import, dto, shipment, shipmentdeliverrequest]
     areas: [ertektar, penztar]
   - id: d27d0b2664c3f273
@@ -4461,11 +4461,18 @@ nodes:
     summary: "--- schema_version: 1 session_id: 2026-05-15-codesigning-digicert-ev-pivot date: 2026-05-15 status: in-progress # cert NOT yet issued; HSM Approval submitted, vendor_status=pending operator: kosa.zoltan ai_agent: claude-opus-4.7-1m project: valutavalto-program topic: code-signing-certificate-pivot tags: - code-signing - azure-key-vault - digicert-ev-cs - sectigo-cancelled - signmycode - ci-cd - workflow-windows-signe"
     tags: [2026, codesigning, digicert, pivot, yaml, schema_version, session_id, date, status, progress]
     areas: [aml, deploy, installer, penztar]
+  - id: 755cd15533b8ded9
+    type: long-term-historical
+    title: 2026-08-19-full-install-winnat-port.yaml
+    source_path: docs/knowledge/memory/2026-08-19-full-install-winnat-port.yaml
+    summary: "date: 2026-08-19 type: verified-root-cause areas: [installer, database] title: FULL local install abort — WinNAT excludedportrange 54320 fact: | A Penztar FULL (lokalis PostgreSQL) telepito Abortja ezen a Windows gepen nem \"foglalt port LISTENING\" volt, hanem WinNAT/Hyper-V excludedportrange. netsh ipv4 tcp: 54313-54412 lefoglalja a 54320-at. Bind WSAEACCES (Permission denied) 127.0.0.1-re, noha netstat nem mutat LIS"
+    tags: [2026, full, install, winnat, port, yaml, date, type, verified, root]
+    areas: [aml, installer, legacy, penztar, specifikacio]
   - id: a6d2f46229d869ac
     type: long-term-historical
     title: 2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml
     source_path: docs/knowledge/memory/2026-08-20-fk091-fk092-hq-bridged-transfer-idempotencia.yaml
-    summary: "date: 2026-08-20 type: verified-root-cause areas: [napzaras, ertektar, database] title: FK-091 HQ bridged is_bridged + FK-092 transfer alert daily idempotency fact: | FK-091: evening_sync_log.is_bridged (V381, NOT NULL DEFAULT false). Bridged artifact-success ág EVENING_SYNC_DONE + is_bridged=true; HQ HTTP 2xx explicit is_bridged=false. Production default EVENING_CLOSING_ARTIFACT_SUCCESS_ENABLED=true (visszaállítás e"
+    summary: "date: 2026-08-20 type: verified-root-cause areas: [napzaras, ertektar, database] title: FK-091 HQ bridged is_bridged + FK-092 transfer alert daily idempotency fact: | FK-091: evening_sync_log.is_bridged (V381, NOT NULL DEFAULT false). Bridged artifact-success ág EVENING_SYNC_DONE + is_bridged=true; HQ HTTP 2xx explicit is_bridged=false. ARTIFACT_PENDING/FAILED (és a küldés elején) is_bridged=false, hogy újrafelhaszná"
     tags: [2026, fk091, fk092, bridged, transfer, idempotencia, yaml, date, type, verified]
     areas: [aml, ertektar, legacy, napzaras]
   - id: f1d7389cefcfcb25
@@ -16427,6 +16434,21 @@ edges:
     relation: belongs_to_area
   - from: 1838f60fecfd6da7
     to: area_penztar
+    relation: belongs_to_area
+  - from: 755cd15533b8ded9
+    to: area_aml
+    relation: belongs_to_area
+  - from: 755cd15533b8ded9
+    to: area_installer
+    relation: belongs_to_area
+  - from: 755cd15533b8ded9
+    to: area_legacy
+    relation: belongs_to_area
+  - from: 755cd15533b8ded9
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 755cd15533b8ded9
+    to: area_specifikacio
     relation: belongs_to_area
   - from: a6d2f46229d869ac
     to: area_aml

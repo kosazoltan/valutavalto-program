@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.shipment.ShipmentDeliverRequest;
 import hu.puzzleir.valuta.dto.shipment.ShipmentRequestResponseDto;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentService;
+import hu.puzzleir.valuta.service.ShipmentVatSupplyService;
 import hu.puzzleir.valuta.util.IdempotencyGuard;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
@@ -37,6 +38,7 @@ class ShipmentUnifiedReceiptControllerTest {
 
     @Mock private ShipmentService shipmentService;
     @Mock private ShipmentHandlingFeeService handlingFeeService;
+    @Mock private ShipmentVatSupplyService vatSupplyService;
     @Mock private IdempotencyGuard idempotencyGuard;
 
 
@@ -44,7 +46,8 @@ class ShipmentUnifiedReceiptControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ShipmentController(shipmentService, handlingFeeService, idempotencyGuard);
+        controller = new ShipmentController(
+                shipmentService, handlingFeeService, vatSupplyService, idempotencyGuard);
     }
 
     @Test
