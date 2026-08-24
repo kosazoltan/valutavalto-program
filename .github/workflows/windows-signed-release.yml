@@ -780,6 +780,22 @@ jobs:
             exit 1
           }
           $rollout = $env:ROLLOUT_PERCENT_INPUT
+          # A notes bekerul az update-manifest.json-ba, amit MINDEN penztargep
+          # letolt minden frissites-ellenorzeskor. Egy tulmeretes release-notes
+          # nem a buildet torne el (100 000 karakter is atmegy env-en, merve),
+          # hanem a kliens-oldali feedet hizlalna feleslegesen. Ezert a manifestbe
+          # rovid osszefoglalo megy; a TELJES szoveg a GitHub Release body-ban
+          # marad, ahol nincs meretkorlat-gond.
+          $notesFull = $env:RELEASE_NOTES_INPUT
+          if ($null -eq $notesFull) { $notesFull = '' }
+          $NOTES_MAX = 4000
+          if ($notesFull.Length -gt $NOTES_MAX) {
+            $notesForManifest = $notesFull.Substring(0, $NOTES_MAX) +
+              "`n[...] Teljes valtozasleiras: a GitHub Release oldalan."
+            Write-Host "update-manifest notes: $($notesFull.Length) -> $($notesForManifest.Length) karakter (rovidítve)"
+          } else {
+            $notesForManifest = $notesFull
+          }
           if ([string]::IsNullOrWhiteSpace($rollout)) { $rollout = '100' }
           $rolloutInt = 0
           if (-not [int]::TryParse($rollout, [ref]$rolloutInt) -or $rolloutInt -lt 0 -or $rolloutInt -gt 100) {
@@ -793,7 +809,7 @@ jobs:
             releasedAt     = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
             rolloutPercent = $rolloutInt
             mandatory      = $false
-            notes          = $env:RELEASE_NOTES_INPUT
+            notes          = $notesForManifest
             penztar        = [ordered]@{
               file       = $penztarExe.Name
               url        = "https://github.com/${{ github.repository }}/releases/download/$tag/$($penztarExe.Name)"
