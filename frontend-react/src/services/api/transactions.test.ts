@@ -676,7 +676,7 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
           toBranchName: 'Szeged Értéktár',
           createdAt: '2026-07-14T09:00:00Z',
         },
-        vatSupplyItem: {
+        vatSupply: {
           id: 'vat-1',
           shipmentRequestId: 'shipment-2',
           fromBranchId: 'BR-A',
@@ -710,7 +710,7 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result.shipment.requestStatus).toBe('DRAFT')
     expect(result.shipment.requestingBranchId).toBe('BR-A')
     expect(result.shipment.targetBranchId).toBe('BR-B')
-    expect(result.vatSupplyItem.hufAmount).toBe(50000)
+    expect(result.vatSupply.hufAmount).toBe(50000)
   })
 
   it('submit: a /shipments/{id}/submit endpointot hivja', async () => {

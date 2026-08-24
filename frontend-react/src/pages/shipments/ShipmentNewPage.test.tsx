@@ -504,7 +504,7 @@ describe('ShipmentNewPage', () => {
         carrierName: "Brink's Hungary Kft.",
         sealNumber: 'ABC/12-3',
       },
-      vatSupplyItem: {
+      vatSupply: {
         hufAmount: 50000,
         status: 'DRAFT',
       },
