@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T21:40:08.303Z",
+  "generated_at": "2026-08-24T22:20:05.050Z",
   "source_count": 1074,
   "sources": [
     {
@@ -12583,7 +12583,7 @@
     },
     {
       "path": "vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md",
-      "sha256": "f14f09dbd4c711b1260df8fc6c029c7ca174a7ad3788b3e33b67e5ae2e842138",
+      "sha256": "84cb53ab74e6a008de1fedc201aa1c726fbbe942dd7b5129c0d5b439184981d6",
       "type": "medium-term-episodic",
       "areas": [
         "deploy",
