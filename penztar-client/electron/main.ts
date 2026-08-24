@@ -15,6 +15,7 @@ import {
   Menu,
 } from 'electron';
 import { initSuiteUpdate } from './suite-update';
+import { migrateLocalBackendConfigOnStartup } from './local-backend-config-migration';
 import { createBeforeInputHandler } from './input-guard';
 import { release as getOsRelease } from 'node:os';
 
@@ -1100,6 +1101,13 @@ app.whenReady().then(async () => {
     missingEnvMessage:
       '[App] userData/.env nem letezik — Google OAuth lehet sikertelen amig a SetupWizard be nem allitja.',
   });
+
+  // FK-091: meglévő pénztár gépek — automatikus lokális backend config patch induláskor.
+  try {
+    await migrateLocalBackendConfigOnStartup(log);
+  } catch (migrationErr) {
+    log.warn('[App] FK-091 local backend config migration warning (nem kritikus):', migrationErr);
+  }
 
   if (isDev) {
     const devCsp = [

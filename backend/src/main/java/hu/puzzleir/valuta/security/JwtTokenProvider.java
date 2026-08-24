@@ -50,7 +50,8 @@ public class JwtTokenProvider {
 
     @PostConstruct
     public void validateSecret() {
-        boolean isProduction = java.util.Arrays.asList(environment.getActiveProfiles()).contains("production");
+        boolean isProduction = java.util.Arrays.asList(environment.getActiveProfiles()).stream()
+                .anyMatch(profile -> "production".equals(profile) || "prod".equals(profile));
         if (isProduction && (secretKey == null
                 || secretKey.startsWith("CHANGE-ME")
                 || secretKey.startsWith("valutavalto-dev-secret")
