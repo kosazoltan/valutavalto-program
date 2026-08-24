@@ -1755,10 +1755,11 @@ export const shipmentRequestApi = {
   },
   createVatSupply: async (
     payload: ShipmentVatSupplyCreatePayload,
-  ): Promise<{ shipment: ShipmentRequest; vatSupplyItem: ShipmentVatSupplyDto }> => {
+  ): Promise<{ shipment: ShipmentRequest; vatSupply: ShipmentVatSupplyDto }> => {
+    // Backend ShipmentVatSupplyCreateResponseDto mező: vatSupply (nem vatSupplyItem)
     const response = await api.post<{
       shipment: Record<string, unknown>
-      vatSupplyItem: ShipmentVatSupplyDto
+      vatSupply: ShipmentVatSupplyDto
     }>('/shipments/vat-supply', {
       ...payload,
       notes: payload.notes?.trim() || undefined,
@@ -1768,7 +1769,7 @@ export const shipmentRequestApi = {
     })
     return {
       shipment: normalizeShipmentRequest(response.data.shipment),
-      vatSupplyItem: response.data.vatSupplyItem,
+      vatSupply: response.data.vatSupply,
     }
   },
   submit: async (requestId: string): Promise<ShipmentRequest> => {
