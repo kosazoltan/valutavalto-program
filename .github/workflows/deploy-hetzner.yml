@@ -492,6 +492,89 @@ jobs:
           echo "${{ secrets.SCALEWAY_SSH_PRIVATE_KEY }}" > ~/.ssh/scaleway_key
           chmod 600 ~/.ssh/scaleway_key
           ssh-keyscan -H ${{ secrets.SCALEWAY_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          # A primary kulcs a .env-kulcsszinkronhoz kell (lasd a kovetkezo lepest).
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      # 2026-08-24: a standby backend INDULASKOR OSSZEOMLOTT, mert a sajat .env-jebol
+      # hianyzott az APP_SUPERVISOR_PASSWORD_HASH:
+      #   IllegalStateException: FATAL: app.supervisor.password-hash nincs konfiguralva
+      #   systemd: valuta-backend.service: Main process exited, code=exited, status=1/FAILURE
+      # Ez korabban NEM latszott: a 80s-os health-ablak elobb jart le, mint a crash-ciklus,
+      # ezert idozitesi hibanak tunt. A deploy job eddig CSAK a JAR-t masolta at, a
+      # konfiguraciot nem — a JAR verziozott, a .env kezzel karbantartott, igy a ket gep
+      # elcsuszott egymastol (konfiguracios drift).
+      #
+      # MERGE-ONLY, NEM felulir: a standby .env-je SZANDEKOSAN eltero (SPRING_FLYWAY_ENABLED
+      # =false a read-only replikan, sajat DATABASE_URL). A teljes atmasolas Flyway-t
+      # inditana egy read-only replikan — ezert csak a HIANYZO kulcsokat potoljuk, meglevot
+      # SOHA nem irunk felul, es a topologia-fuggo kulcsokat blocklist zarja ki.
+      #
+      # Miert kell a JWT_SECRET is: ha a ket gepen elter, failover utan MINDEN kliens
+      # tokenje ervenytelenne valik — a tartalek atvenne a szolgalatot, de senki nem tudna
+      # bejelentkezni.
+      #
+      # Titokkezeles: ertek SOHA nem kerul logba. A .env base64-kent, stdin-en utazik,
+      # es a lepes kizarolag a hozzaadott kulcsNEVEKET irja ki.
+      - name: Sync missing env keys (primary -> standby, merge-only)
+        run: |
+          set -euo pipefail
+
+          PRIMARY_ENV_B64=$(ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+              -o BatchMode=yes -o ConnectTimeout=15 \
+              "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
+              "base64 -w0 /opt/valutavalto/backend/.env")
+
+          if [ -z "$PRIMARY_ENV_B64" ]; then
+            echo "::error::A primary .env nem olvashato — a kulcsszinkron fail-closed leall."
+            exit 1
+          fi
+
+          cat > /tmp/standby-env-merge.sh <<'MERGESCRIPT'
+          set -euo pipefail
+          ENV_FILE=/opt/valutavalto/backend/.env
+          PRIMARY_ENV=$(mktemp); trap 'rm -f "$PRIMARY_ENV"' EXIT
+          base64 -d > "$PRIMARY_ENV"
+
+          # Topologia-fuggo kulcsok: ezek a ket gepen SZANDEKOSAN elternek.
+          BLOCKLIST="DATABASE_URL SPRING_FLYWAY_ENABLED NEON_DATABASE_URL NEON_SYNC_ENABLED MANAGEMENT_SERVER_ADDRESS"
+
+          ADDED=""
+          while IFS= read -r line; do
+            case "$line" in ''|'#'*) continue ;; esac
+            KEY="${line%%=*}"
+            case "$KEY" in *[!A-Za-z0-9_]*|'') continue ;; esac
+            SKIP=0
+            for b in $BLOCKLIST; do [ "$KEY" = "$b" ] && SKIP=1; done
+            [ "$SKIP" = 1 ] && continue
+            grep -q "^${KEY}=" "$ENV_FILE" && continue
+            ADDED="$ADDED $KEY"
+          done < "$PRIMARY_ENV"
+
+          if [ -z "$ADDED" ]; then
+            echo "env-szinkron: nincs hianyzo kulcs — a standby konfiguracioja teljes."
+            exit 0
+          fi
+
+          cp -a "$ENV_FILE" "${ENV_FILE}.bak-$(date +%Y%m%d-%H%M%S)"
+          for KEY in $ADDED; do
+            grep -m1 "^${KEY}=" "$PRIMARY_ENV" >> "$ENV_FILE"
+          done
+          chmod 600 "$ENV_FILE"
+
+          echo "env-szinkron: hozzaadott kulcsok (ertek nelkul):"
+          for KEY in $ADDED; do echo "  + $KEY"; done
+          MERGESCRIPT
+
+          # A merge-scriptet base64-kent adjuk at a parancssorban, az ADATOT (primary .env)
+          # pedig a stdin-en — igy a heredoc-behuzas es a stdin-utkozes egyarant elkerulve.
+          SCRIPT_B64=$(base64 -w0 /tmp/standby-env-merge.sh)
+          printf '%s' "$PRIMARY_ENV_B64" | ssh -i ~/.ssh/scaleway_key \
+              -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=15 \
+              "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
+              "echo $SCRIPT_B64 | base64 -d > /tmp/m.sh && bash /tmp/m.sh; rc=\$?; rm -f /tmp/m.sh; exit \$rc"
+          rm -f /tmp/standby-env-merge.sh
 
       # 2026-07-11 (run 29158727601): a standby diskje betelt, ezert az scp
       # "write remote: Failure" hibaval leallt. Az upload elotti preflight csak
