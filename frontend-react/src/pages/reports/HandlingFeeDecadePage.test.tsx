@@ -249,7 +249,7 @@ describe('HandlingFeeDecadePage — FK-053', () => {
     expect(within(table).getAllByText('2026. 07. 01.')).toHaveLength(2)
     const blankBankRow = within(table).getByText('2026. 07. 02.').closest('tr')!
     const cells = within(blankBankRow).getAllByRole('cell')
-    expect(cells[1].textContent).toBe('')
+    expect(cells[1]!.textContent).toBe('')
     expect(cells[2]).toHaveTextContent('003')
     expect(consoleError.mock.calls.flat().join(' ')).not.toContain('Encountered two children')
     consoleError.mockRestore()
