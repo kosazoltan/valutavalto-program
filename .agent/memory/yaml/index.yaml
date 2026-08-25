@@ -1,4 +1,4 @@
-generated_at: 2026-08-24T22:20:05.050Z
+generated_at: 2026-08-24T23:49:46.900Z
 schema_version: 1
 source_count: 1074
 short_term:
@@ -1700,9 +1700,9 @@ medium_term:
     title: "Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás"
     type: medium-term-episodic
     path: vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md
-    sha256: 84cb53ab74e6a008de1fedc201aa1c726fbbe942dd7b5129c0d5b439184981d6
-    summary: "# Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (5 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi"
-    areas: [deploy, installer, penztar, specifikacio]
+    sha256: 7b0aa2983a59f8d988c3d584f89f1b9d7f3831d5cd0b746b55c42ef1cd09a252
+    summary: "# Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (6 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi"
+    areas: [deploy, installer, napzaras, penztar, specifikacio]
     keywords: [handoff, 2026, verzio, gate, kiadas, standby, helyreallitas, volt, feladat, fkh039, fk093, felbehagyott]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
