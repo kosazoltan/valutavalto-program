@@ -95,15 +95,15 @@ jobs:
           # build-bemenetekre szűkíti a working tree-t (~35 MB), és a sparse-checkout
           # miatt a fetch implicit blob:none részleges klónként fut — az excluded
           # blobok le sem töltődnek. Új build-bemenetnél a kúpot BŐVÍTENI kell.
-          sparse-checkout:
-            - backend
-            - config
-            - frontend-react
-            - installer
-            - kozponti-client
-            - packages
-            - penztar-client
-            - scripts
+          sparse-checkout: |
+            backend
+            config
+            frontend-react
+            installer
+            kozponti-client
+            packages
+            penztar-client
+            scripts
 
       - name: Build-integritasi kapu (KOTELEZO — Kosa Zoltan direktiva 2026-06-29)
         shell: bash
@@ -292,15 +292,15 @@ jobs:
         uses: actions/checkout@v7
         with:
           # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
-          sparse-checkout:
-            - backend
-            - config
-            - frontend-react
-            - installer
-            - kozponti-client
-            - packages
-            - penztar-client
-            - scripts
+          sparse-checkout: |
+            backend
+            config
+            frontend-react
+            installer
+            kozponti-client
+            packages
+            penztar-client
+            scripts
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -348,15 +348,15 @@ jobs:
         uses: actions/checkout@v7
         with:
           # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
-          sparse-checkout:
-            - backend
-            - config
-            - frontend-react
-            - installer
-            - kozponti-client
-            - packages
-            - penztar-client
-            - scripts
+          sparse-checkout: |
+            backend
+            config
+            frontend-react
+            installer
+            kozponti-client
+            packages
+            penztar-client
+            scripts
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -565,15 +565,15 @@ jobs:
         uses: actions/checkout@v7
         with:
           # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
-          sparse-checkout:
-            - backend
-            - config
-            - frontend-react
-            - installer
-            - kozponti-client
-            - packages
-            - penztar-client
-            - scripts
+          sparse-checkout: |
+            backend
+            config
+            frontend-react
+            installer
+            kozponti-client
+            packages
+            penztar-client
+            scripts
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -751,15 +751,15 @@ jobs:
         uses: actions/checkout@v7
         with:
           # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
-          sparse-checkout:
-            - backend
-            - config
-            - frontend-react
-            - installer
-            - kozponti-client
-            - packages
-            - penztar-client
-            - scripts
+          sparse-checkout: |
+            backend
+            config
+            frontend-react
+            installer
+            kozponti-client
+            packages
+            penztar-client
+            scripts
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -949,15 +949,15 @@ jobs:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
           # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
-          sparse-checkout:
-            - backend
-            - config
-            - frontend-react
-            - installer
-            - kozponti-client
-            - packages
-            - penztar-client
-            - scripts
+          sparse-checkout: |
+            backend
+            config
+            frontend-react
+            installer
+            kozponti-client
+            packages
+            penztar-client
+            scripts
 
       - name: Apply the exact released version (NO gate re-run)
         shell: pwsh
