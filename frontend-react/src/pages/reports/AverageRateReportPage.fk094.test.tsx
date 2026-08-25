@@ -51,9 +51,7 @@ describe('AverageRateReportPage — FK-094', () => {
 
     renderPage()
 
-    await waitFor(() =>
-      expect(screen.getByRole('option', { name: /001/ })).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByRole('option', { name: /001/ })).toBeInTheDocument())
     expect(screen.queryByRole('option', { name: /Központi értéktár/ })).not.toBeInTheDocument()
     // Hiányzó isVault (= nem értéktár) → listázva marad.
     expect(screen.getByRole('option', { name: /003/ })).toBeInTheDocument()

@@ -145,7 +145,13 @@ async function mockApis(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify([
           { id: 'branch-123', code: 'SZEGED', name: 'Szeged Iroda', active: true, isVault: false },
-          { id: 'branch-999', code: 'VAULT', name: 'Központi értéktár', active: true, isVault: true },
+          {
+            id: 'branch-999',
+            code: 'VAULT',
+            name: 'Központi értéktár',
+            active: true,
+            isVault: true,
+          },
         ]),
       })
     }
@@ -207,18 +213,14 @@ test('FK-094 átlag árfolyam sticky VALUTA oszlop és fejléc görgetés közbe
     document.querySelector('.app-print-content')!.scrollLeft = 200
   })
   await expect
-    .poll(async () =>
-      page.evaluate(() => document.querySelector('.app-print-content')!.scrollLeft),
-    )
+    .poll(async () => page.evaluate(() => document.querySelector('.app-print-content')!.scrollLeft))
     .toBeGreaterThan(0)
   const xAt200 = (await valutaTh.boundingBox())!.x
   await page.evaluate(() => {
     document.querySelector('.app-print-content')!.scrollLeft = 800
   })
   await expect
-    .poll(async () =>
-      page.evaluate(() => document.querySelector('.app-print-content')!.scrollLeft),
-    )
+    .poll(async () => page.evaluate(() => document.querySelector('.app-print-content')!.scrollLeft))
     .toBe(800)
   const xAt800 = (await valutaTh.boundingBox())!.x
   expect(Math.abs(xAt800 - xAt200)).toBeLessThanOrEqual(1)
@@ -232,9 +234,7 @@ test('FK-094 átlag árfolyam sticky VALUTA oszlop és fejléc görgetés közbe
     container.scrollTop = 400
   })
   await expect
-    .poll(async () =>
-      page.evaluate(() => document.querySelector('.app-print-content')!.scrollTop),
-    )
+    .poll(async () => page.evaluate(() => document.querySelector('.app-print-content')!.scrollTop))
     .toBeGreaterThan(0)
   const theadTop = (await page.getByTestId('pivot-table').locator('thead').boundingBox())!.y
   const containerTopInfo = await page.evaluate(() => {
@@ -242,7 +242,9 @@ test('FK-094 átlag árfolyam sticky VALUTA oszlop és fejléc görgetés közbe
     const rect = container.getBoundingClientRect()
     return { top: rect.top, paddingTop: parseFloat(getComputedStyle(container).paddingTop) }
   })
-  expect(Math.abs(theadTop - (containerTopInfo.top + containerTopInfo.paddingTop))).toBeLessThanOrEqual(2)
+  expect(
+    Math.abs(theadTop - (containerTopInfo.top + containerTopInfo.paddingTop)),
+  ).toBeLessThanOrEqual(2)
 
   // Nincs oldal-szintű vízszintes túlcsordulás (a görgetés a konténeren belül marad).
   const overflow = await page.evaluate(
