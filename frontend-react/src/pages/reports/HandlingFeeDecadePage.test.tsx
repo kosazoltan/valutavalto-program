@@ -19,6 +19,8 @@ const translations: Record<string, string> = vi.hoisted(() => ({
   'reports.handlingFeeDecade.summary.grandTotal': 'Mindösszesen',
   'reports.handlingFeeDecade.dailyBreakdown': 'Naponkénti bontás',
   'reports.handlingFeeDecade.table.date': 'Dátum',
+  'reports.handlingFeeDecade.table.bankCode': 'Banki kód',
+  'reports.handlingFeeDecade.table.branchCode': 'Pénztárszám',
   'reports.handlingFeeDecade.table.buyFee': 'Vétel kezelési díj',
   'reports.handlingFeeDecade.table.sellFee': 'Eladás kezelési díj',
   'reports.handlingFeeDecade.table.totalRow': 'Összesen',
@@ -58,8 +60,8 @@ const SUMMARY = {
   totalBuyFee: 1500,
   totalSellFee: 700,
   rows: [
-    { date: '2026-07-01', buyFee: 1000, sellFee: 0 },
-    { date: '2026-07-02', buyFee: 500, sellFee: 700 },
+    { date: '2026-07-01', bankCode: 'K&H', code: '001', buyFee: 1000, sellFee: 0 },
+    { date: '2026-07-02', bankCode: '', code: '002', buyFee: 500, sellFee: 700 },
   ],
 }
 
@@ -123,6 +125,8 @@ describe('HandlingFeeDecadePage — FK-053', () => {
     expect(await screen.findByRole('option', { name: '001 – K&H – Fő utca' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: '002 – Mellék' })).toBeInTheDocument()
     expect(huJson.reports.handlingFeeDecade.table.date).toBe('Dátum')
+    expect(huJson.reports.handlingFeeDecade.table.bankCode).toBe('Banki kód')
+    expect(huJson.reports.handlingFeeDecade.table.branchCode).toBe('Pénztárszám')
   })
 
   it('FR-5: a CSV export a napi CSV végpontot és a kiválasztott branchId-t használja', async () => {
@@ -221,5 +225,33 @@ describe('HandlingFeeDecadePage — FK-053', () => {
     await waitFor(() =>
       expect(screen.getByRole('option', { name: '001 – K&H – Fő utca' })).toBeInTheDocument(),
     )
+  })
+
+  it('FK-095: azonos dátum két irodája két sort jelenít meg Banki kód és Pénztárszám oszlopokkal', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockGet.mockResolvedValue({
+      data: {
+        ...SUMMARY,
+        rows: [
+          { date: '2026-07-01', bankCode: 'K&H', code: '001', buyFee: 1000, sellFee: 0 },
+          { date: '2026-07-01', bankCode: 'OTP', code: '002', buyFee: 25, sellFee: 0 },
+          { date: '2026-07-02', bankCode: '', code: '003', buyFee: 500, sellFee: 700 },
+        ],
+      },
+    })
+    render(<HandlingFeeDecadePage />)
+
+    await querySummary()
+
+    expect(screen.getByRole('columnheader', { name: 'Banki kód' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Pénztárszám' })).toBeInTheDocument()
+    const table = screen.getByRole('table')
+    expect(within(table).getAllByText('2026. 07. 01.')).toHaveLength(2)
+    const blankBankRow = within(table).getByText('2026. 07. 02.').closest('tr')!
+    const cells = within(blankBankRow).getAllByRole('cell')
+    expect(cells[1].textContent).toBe('')
+    expect(cells[2]).toHaveTextContent('003')
+    expect(consoleError.mock.calls.flat().join(' ')).not.toContain('Encountered two children')
+    consoleError.mockRestore()
   })
 })

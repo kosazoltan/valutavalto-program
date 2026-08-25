@@ -10,6 +10,8 @@ import { downloadBlob } from '../../utils/downloadBlob'
 
 interface DailyRow {
   date: string
+  bankCode?: string
+  code?: string
   buyFee: number | string
   sellFee: number | string
 }
@@ -258,6 +260,8 @@ export default function HandlingFeeDecadePage() {
                 <thead>
                   <tr>
                     <th>{t('reports.handlingFeeDecade.table.date')}</th>
+                    <th>{t('reports.handlingFeeDecade.table.bankCode')}</th>
+                    <th>{t('reports.handlingFeeDecade.table.branchCode')}</th>
                     <th className="text-right">{t('reports.handlingFeeDecade.table.buyFee')}</th>
                     <th className="text-right">{t('reports.handlingFeeDecade.table.sellFee')}</th>
                   </tr>
@@ -265,14 +269,16 @@ export default function HandlingFeeDecadePage() {
                 <tbody>
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="text-center text-gray-500">
+                      <td colSpan={5} className="text-center text-gray-500">
                         {t('reports.handlingFeeDecade.table.noData')}
                       </td>
                     </tr>
                   )}
                   {rows.map((row) => (
-                    <tr key={row.date}>
+                    <tr key={`${row.date}|${row.bankCode ?? ''}|${row.code ?? ''}`}>
                       <td>{new Date(row.date).toLocaleDateString('hu-HU')}</td>
+                      <td>{row.bankCode ?? ''}</td>
+                      <td>{row.code ?? ''}</td>
                       <td className="text-right font-mono whitespace-nowrap">
                         {formatHuf(Math.round(toNum(row.buyFee)))}
                       </td>
@@ -283,6 +289,8 @@ export default function HandlingFeeDecadePage() {
                   ))}
                   <tr className="font-semibold">
                     <td>{t('reports.handlingFeeDecade.table.totalRow')}</td>
+                    <td />
+                    <td />
                     <td className="text-right font-mono whitespace-nowrap">
                       {formatHuf(totalBuyFee)}
                     </td>
