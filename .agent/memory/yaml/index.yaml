@@ -1,6 +1,6 @@
-generated_at: 2026-08-25T17:23:35.264Z
+generated_at: 2026-08-25T21:49:24.974Z
 schema_version: 1
-source_count: 1074
+source_count: 1075
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,14 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 8bf53d382ff5e3d9
-    title: "2026-04-29 Multi-track A+B+C execution + AI review fix cycle"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-multi-track-execution-A-B-C.md
-    sha256: c3e178f0e8157784479ea31c786bd73636586972cb1b8df11b7d69833c210b61
-    summary: "--- date: 2026-04-29 session_type: multi-track-execution + AI-review-fix-cycle duration: ~5 hours (00:00 - 04:00 CEST) main_head_start: 0949a656 main_head_end: <pending mergelés> prs_opened: 4 (#254, #255, #256, #257) context: User direktíva \"tetszőleges sorrendben A+B+C\", ezalatt új feladat AI bot review olvasás + fix --- # 2026-04-29 Multi-track A+B+C execution + AI review fix cycle ## User-direktívák ezzel a sessi"
-    areas: [database, deploy, frontend, napzaras, penztar]
-    keywords: [2026, multi, track, execution, review, fix, cycle, date, session_type, duration, hours, cest]
   - id: 5db67f64f6dd8ce2
     title: "2026-04-29 — SetupWizard-stale-.env root-cause + manuális fix + v2.3.9 terv"
     type: medium-term-episodic
@@ -1704,6 +1696,14 @@ medium_term:
     summary: "# Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (6 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi"
     areas: [deploy, installer, napzaras, penztar, specifikacio]
     keywords: [handoff, 2026, verzio, gate, kiadas, standby, helyreallitas, volt, feladat, fkh039, fk093, felbehagyott]
+  - id: 233bcee3ee2d42d9
+    title: "Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md
+    sha256: a842dbd8299e83bde6dfdec99a1a5264abadddd98d1d92957c4d5d26fa590894
+    summary: "# Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás Dátum: 2026-08-25 · Repo: valutavalto-program · Fő ág: main @ a6b1d15a ## Mi történt 1. **FK-094 + FK-095 + CORS jegy** hatcsatornás pipeline-nal (Planner → plan-gate ×2 → Coder 10 unit → full review ×2 → Judge PASS) elkészült, PR #1659 → merge `a6b1d15a` → éles deploy. Prod: **2.28.88**, health ok. 2. **Aláírt release v2.28.88** (run 3288671"
+    areas: [deploy, frontend, installer, penztar, specifikacio]
+    keywords: [handoff, 094, 095, release, checkout, hang, gyokerok, javitas, datum, 2026, repo, valutavalto]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

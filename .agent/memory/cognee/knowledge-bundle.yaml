@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-25T17:23:35.264Z
+generated_at: 2026-08-25T21:49:24.974Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7506,6 +7506,13 @@ nodes:
     summary: "# Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (6 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi"
     tags: [handoff, 2026, verzio, gate, kiadas, standby, helyreallitas, volt, feladat, fkh039]
     areas: [deploy, installer, napzaras, penztar, specifikacio]
+  - id: 233bcee3ee2d42d9
+    type: medium-term-episodic
+    title: "Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás"
+    source_path: vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md
+    summary: "# Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás Dátum: 2026-08-25 · Repo: valutavalto-program · Fő ág: main @ a6b1d15a ## Mi történt 1. **FK-094 + FK-095 + CORS jegy** hatcsatornás pipeline-nal (Planner → plan-gate ×2 → Coder 10 unit → full review ×2 → Judge PASS) elkészült, PR #1659 → merge `a6b1d15a` → éles deploy. Prod: **2.28.88**, health ok. 2. **Aláírt release v2.28.88** (run 3288671"
+    tags: [handoff, 094, 095, release, checkout, hang, gyokerok, javitas, datum, 2026]
+    areas: [deploy, frontend, installer, penztar, specifikacio]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22842,6 +22849,21 @@ edges:
   - from: f5e96d18f0ff5f8a
     to: area_specifikacio
     relation: belongs_to_area
+  - from: 233bcee3ee2d42d9
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 233bcee3ee2d42d9
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 233bcee3ee2d42d9
+    to: area_installer
+    relation: belongs_to_area
+  - from: 233bcee3ee2d42d9
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 233bcee3ee2d42d9
+    to: area_specifikacio
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -22899,9 +22921,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 41bd75b51913a86b
-    to: repo_project_state
-    relation: informs
   - from: 8ab5d6135d4c5efc
     to: repo_project_state
     relation: informs
@@ -23131,6 +23150,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: f5e96d18f0ff5f8a
+    to: repo_project_state
+    relation: informs
+  - from: 233bcee3ee2d42d9
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

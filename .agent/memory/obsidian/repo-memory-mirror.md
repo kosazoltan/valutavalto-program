@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-25T17:23:35.264Z
+generated: 2026-08-25T21:49:24.974Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-25T17:23:35.264Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1074
-- generated: 2026-08-25T17:23:35.264Z
+- sources: 1075
+- generated: 2026-08-25T21:49:24.974Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1084,5 +1084,6 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089]] — `vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md` (medium-term-episodic)
 - [[FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP]] — `vault/sessions/handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` (medium-term-episodic)
 - [[Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás]] — `vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md` (medium-term-episodic)
+- [[Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás]] — `vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)

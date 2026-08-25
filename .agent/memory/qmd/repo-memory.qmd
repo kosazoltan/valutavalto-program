@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-25T17:23:35.264Z
+generated: 2026-08-25T21:49:24.974Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **HANDOFF — 2026-07-10 éjjel: INVSTOCK + FE-hygiene + FK-028 teljes** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-10-fk028-complete.md`
-  - summary: # HANDOFF — 2026-07-10 éjjel: INVSTOCK + FE-hygiene + FK-028 teljes ## Ma merged (mind: teljes pipeline + dual review + holdout + CI + deploy) | PR | SHA | Mi | |---|---|---| | #1385 | 2735737a | INVSTOCK-SHIPMENT-ROLLBACK-ONLY: ON CONFLICT insertIfAbsent + relock (3 hely), valós-PG repro IT (RED→GREEN), suite 2755/0 | | #1386 | 3377f3fb | LOGGER-RAW-ERR residual: 3 console.warn bypass → sanitizáló logger.warn (osztá
 
 - **HANDOFF — 2026-07-10 teljes session (10 PR + legacy-elemzés + FS-VISUAL batch)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-10-full-session.md`
@@ -243,6 +239,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md`
   - summary: # Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (6 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi
+
+- **Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md`
+  - summary: # Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás Dátum: 2026-08-25 · Repo: valutavalto-program · Fő ág: main @ a6b1d15a ## Mi történt 1. **FK-094 + FK-095 + CORS jegy** hatcsatornás pipeline-nal (Planner → plan-gate ×2 → Coder 10 unit → full review ×2 → Judge PASS) elkészült, PR #1659 → merge `a6b1d15a` → éles deploy. Prod: **2.28.88**, health ok. 2. **Aláírt release v2.28.88** (run 3288671
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
