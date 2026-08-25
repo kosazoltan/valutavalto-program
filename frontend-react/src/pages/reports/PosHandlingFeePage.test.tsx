@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { downloadBlob } from '../../utils/downloadBlob'
 import PosHandlingFeePage from './PosHandlingFeePage'
@@ -18,6 +18,8 @@ const translations: Record<string, string> = vi.hoisted(() => ({
   'reports.posHandlingFee.summary.feeTotal': 'POS KK összesen',
   'reports.posHandlingFee.dailyBreakdown': 'Naponkénti bontás',
   'reports.posHandlingFee.table.date': 'Dátum',
+  'reports.posHandlingFee.table.bankCode': 'Banki kód',
+  'reports.posHandlingFee.table.branchCode': 'Pénztárszám',
   'reports.posHandlingFee.table.netAmount': 'POS nettó (Ft)',
   'reports.posHandlingFee.table.feeAmount': 'POS KK (Ft)',
   'reports.posHandlingFee.table.totalRow': 'Összesen',
@@ -57,8 +59,8 @@ const SUMMARY = {
   totalNetAmount: 93000,
   totalFeeAmount: 3800,
   rows: [
-    { date: '2026-07-01', netAmount: 73000, feeAmount: 3000 },
-    { date: '2026-07-02', netAmount: 20000, feeAmount: 800 },
+    { date: '2026-07-01', bankCode: 'K&H', code: '001', netAmount: 73000, feeAmount: 3000 },
+    { date: '2026-07-02', bankCode: '', code: '002', netAmount: 20000, feeAmount: 800 },
   ],
 }
 
@@ -182,5 +184,29 @@ describe('PosHandlingFeePage — FK-059', () => {
     await queryBranch()
 
     expect(await screen.findByRole('table')).toHaveClass('data-grid')
+  })
+
+  it('FK-095: azonos dátum két irodája két sort jelenít meg Banki kód és Pénztárszám oszlopokkal', async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        ...SUMMARY,
+        rows: [
+          { date: '2026-07-01', bankCode: 'K&H', code: '001', netAmount: 73000, feeAmount: 3000 },
+          { date: '2026-07-01', bankCode: 'OTP', code: '002', netAmount: 20000, feeAmount: 800 },
+          { date: '2026-07-02', bankCode: '', code: '003', netAmount: 0, feeAmount: 0 },
+        ],
+      },
+    })
+    render(<PosHandlingFeePage />)
+
+    await queryBranch()
+
+    expect(screen.getByRole('columnheader', { name: 'Banki kód' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Pénztárszám' })).toBeInTheDocument()
+    expect(screen.getAllByText('2026. 07. 01.')).toHaveLength(2)
+    const blankBankRow = screen.getByText('2026. 07. 02.').closest('tr')!
+    const cells = within(blankBankRow).getAllByRole('cell')
+    expect(cells[1]!.textContent).toBe('')
+    expect(cells[2]).toHaveTextContent('003')
   })
 })

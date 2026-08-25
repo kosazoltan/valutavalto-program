@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T23:49:46.900Z",
+  "generated_at": "2026-08-25T17:23:35.264Z",
   "source_count": 1074,
   "sources": [
     {
@@ -8093,7 +8093,7 @@
     },
     {
       "path": "docs/specs/fk059-pos-handling-fee.md",
-      "sha256": "6c37938f81392007c62cd7c2f24ce29b4211ff991da686ba5f1e018308dc0324",
+      "sha256": "60ff0a2cb15eb58a075cafca1aa17b91dec77111a936f4087340ebb990c1e940",
       "type": "semantic-reference",
       "areas": [
         "deploy",

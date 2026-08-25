@@ -105,6 +105,9 @@ export default function AverageRateReportPage() {
 
   const groups = data?.columnGroups ?? []
   const currencyRows = data?.currencyRows ?? []
+  // FK-094: az értéktári (isVault === true) fiókok sosem adnak riport-adatot —
+  // a lenyíló csak a nem-értéktári fiókokat listázza; a hiányzó/undefined isVault látszik.
+  const visibleBranches = useMemo(() => branches.filter((b) => b.isVault !== true), [branches])
 
   return (
     <div className="form-panel space-y-4">
@@ -115,6 +118,13 @@ export default function AverageRateReportPage() {
         </h1>
         <p className="text-xs text-gray-500 mt-1">
           HUF-súlyozott átlagárfolyam, területenkénti és összesített Vétel/Eladás bontásban.
+        </p>
+        <p
+          className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1"
+          data-testid="average-rate-export-notice"
+        >
+          Az Excel export mindig a teljes, minden irodát tartalmazó struktúrát (8 terület +
+          összesítő) tölti le — az „Iroda” szűrő csak a képernyőn látható táblázatra hat.
         </p>
       </div>
 
@@ -162,7 +172,7 @@ export default function AverageRateReportPage() {
             aria-label="Iroda szűrő"
           >
             <option value="">Összes iroda</option>
-            {branches.map((b) => (
+            {visibleBranches.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.code} - {b.name}
               </option>

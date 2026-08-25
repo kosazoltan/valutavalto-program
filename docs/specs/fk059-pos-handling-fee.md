@@ -61,9 +61,13 @@ filters, a branch selector including “— Minden iroda —”, and a query but
 
 ### FR-6 — Daily table
 
-Given a selected date range and branch scope, when the query is submitted, then
-the table shows one row per returned day with columns Dátum, POS nettó, and POS
-KK. It has no Vétel column.
+Given a selected date range and branch scope, when the query is submitted, then the
+table shows one row per (day, Banki kód, Pénztárszám) combination with columns Dátum,
+Banki kód, Pénztárszám, POS nettó, and POS KK. In all-office scope a single day
+therefore yields one row per contributing office; the period summary cards and the
+table footer keep summing every row, so the totals are unchanged. A branch with a
+blank bank code renders an empty Banki kód cell; Pénztárszám (`branch.code`) is always
+populated. It has no Vétel column.
 
 ### FR-7 — CSV parity
 
@@ -113,10 +117,11 @@ written, and no report repository query runs.
   query. All-office scope obtains company ID from `SecurityUtils` and includes
   only active, non-vault, non-`VAULT_COUNTERPARTY` branches.
 - JSON fields are `startDate`, `endDate`, `totalNetAmount`, `totalFeeAmount`, and
-  daily `rows` containing `date`, `netAmount`, and `feeAmount`.
-- CSV columns are `Dátum`, `POS nettó (Ft)`, `POS KK (Ft)`, followed by an
-  `Összesen` row, UTF-8 BOM, and filename
-  `kezelesi-dij-pos-napi-<start>-<end>.csv`.
+  daily `rows` containing `date`, `bankCode` (Banki kód, empty string when blank),
+  `code` (Pénztárszám, always populated), `netAmount`, and `feeAmount`.
+- CSV columns are `Dátum`, `Banki kód`, `Pénztárszám`, `POS nettó (Ft)`, `POS KK (Ft)`,
+  followed by an `Összesen` row (with the two identity columns empty), UTF-8 BOM, and
+  filename `kezelesi-dij-pos-napi-<start>-<end>.csv`.
 
 ## Approved design decisions
 
@@ -124,7 +129,9 @@ written, and no report repository query runs.
    refactor the cash report.
 2. Use the net formula stated above because `hufAmount` is rounded payable HUF.
 3. Do not filter on positive handling fee.
-4. Pin `SELL` in the query and group only by transaction date.
+4. Pin `SELL` in the query and group by transaction date and branch identity
+   (`bankCode`, `code`) so all-office scope yields one row per office per day
+   (FK-095; supersedes the earlier date-only grouping).
 5. Match `CARD` strictly; do not treat null payment method as card.
 6. Enforce the six-role allowlist in the service, fail closed, audit denied
    access with entity type `POS_HANDLING_FEE_DAILY_SUMMARY`.

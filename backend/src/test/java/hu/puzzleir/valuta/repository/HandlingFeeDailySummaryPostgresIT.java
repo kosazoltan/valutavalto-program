@@ -74,18 +74,18 @@ class HandlingFeeDailySummaryPostgresIT {
                 seed.branchA().getId(), D1, D2);
 
         assertThat(branchARows).hasSize(3);
-        assertRow(branchARows.get(0), D1, TransactionType.BUY, "180.00");
-        assertRow(branchARows.get(1), D1, TransactionType.SELL, "70.00");
-        assertRow(branchARows.get(2), D2, TransactionType.SELL, "40.00");
+        assertRow(branchARows.get(0), D1, "FK053BANK", seed.branchA().getCode(), TransactionType.BUY, "180.00");
+        assertRow(branchARows.get(1), D1, "FK053BANK", seed.branchA().getCode(), TransactionType.SELL, "70.00");
+        assertRow(branchARows.get(2), D2, "FK053BANK", seed.branchA().getCode(), TransactionType.SELL, "40.00");
         assertThat(branchARows)
-                .allSatisfy(row -> assertThat((BigDecimal) row[2])
+                .allSatisfy(row -> assertThat((BigDecimal) row[4])
                         .isNotEqualByComparingTo("777.00")
                         .isNotEqualByComparingTo("999.00"));
 
         List<Object[]> branchBRows = transactionRepository.findDailyCashHandlingFeeByType(
                 seed.branchB().getId(), D1, D2);
         assertThat(branchBRows).hasSize(1);
-        assertRow(branchBRows.get(0), D1, TransactionType.BUY, "777.00");
+        assertRow(branchBRows.get(0), D1, "FK053BANK", seed.branchB().getCode(), TransactionType.BUY, "777.00");
     }
 
     @Test
@@ -97,12 +97,13 @@ class HandlingFeeDailySummaryPostgresIT {
         List<Object[]> companyRows = transactionRepository.findDailyCashHandlingFeeByTypeForCompany(
                 seed.companyA().getId(), D1, D2);
 
-        assertThat(companyRows).hasSize(3);
-        assertRow(companyRows.get(0), D1, TransactionType.BUY, "205.00");
-        assertRow(companyRows.get(1), D1, TransactionType.SELL, "70.00");
-        assertRow(companyRows.get(2), D2, TransactionType.SELL, "40.00");
+        assertThat(companyRows).hasSize(4);
+        assertRow(companyRows.get(0), D1, "FK053BANK", seed.branchA().getCode(), TransactionType.BUY, "180.00");
+        assertRow(companyRows.get(1), D1, "FK053BANK", seed.branchA().getCode(), TransactionType.SELL, "70.00");
+        assertRow(companyRows.get(2), D1, "FK055BANK", seed.branchA2().getCode(), TransactionType.BUY, "25.00");
+        assertRow(companyRows.get(3), D2, "FK053BANK", seed.branchA().getCode(), TransactionType.SELL, "40.00");
         assertThat(companyRows)
-                .allSatisfy(row -> assertThat((BigDecimal) row[2])
+                .allSatisfy(row -> assertThat((BigDecimal) row[4])
                         .isNotEqualByComparingTo("444.00")
                         .isNotEqualByComparingTo("555.00")
                         .isNotEqualByComparingTo("666.00")
@@ -192,7 +193,7 @@ class HandlingFeeDailySummaryPostgresIT {
         saveTransaction(tenantB, huf, D1, TransactionType.BUY, PaymentMethod.CASH,
                 TransactionStatus.COMPLETED, "777.00", "B1-" + suffix);
         transactionRepository.flush();
-        return new Seed(tenantA.company(), tenantA.branch(), tenantB.branch());
+        return new Seed(tenantA.company(), tenantA.branch(), tenantASecondBranch.branch(), tenantB.branch());
     }
 
     private Tenant seedTenant(
@@ -304,13 +305,16 @@ class HandlingFeeDailySummaryPostgresIT {
         transactionRepository.save(transaction);
     }
 
-    private void assertRow(Object[] row, LocalDate date, TransactionType type, String amount) {
+    private void assertRow(
+            Object[] row, LocalDate date, String bankCode, String code, TransactionType type, String amount) {
         assertThat(row[0]).isEqualTo(date);
-        assertThat(row[1]).isEqualTo(type);
-        assertThat((BigDecimal) row[2]).isEqualByComparingTo(amount);
+        assertThat(row[1]).isEqualTo(bankCode);
+        assertThat(row[2]).isEqualTo(code);
+        assertThat(row[3]).isEqualTo(type);
+        assertThat((BigDecimal) row[4]).isEqualByComparingTo(amount);
     }
 
     private record Tenant(Company company, Branch branch, Worker worker) {}
 
-    private record Seed(Company companyA, Branch branchA, Branch branchB) {}
+    private record Seed(Company companyA, Branch branchA, Branch branchA2, Branch branchB) {}
 }

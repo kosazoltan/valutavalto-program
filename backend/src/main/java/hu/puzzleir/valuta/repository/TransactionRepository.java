@@ -1454,18 +1454,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /**
      * FK-053: napi KÉSZPÉNZES kezelési díj vétel/eladás bontásban.
      * NULL payment_method = legacy CASH sor (FS-15 konvenció) — beszámít.
-     * Visszaad: [transactionDate, transactionType, SUM(handlingFee)]
+     * Visszaad: [transactionDate, b.bankCode, b.code, transactionType, SUM(handlingFee)]
      */
-    @Query("SELECT t.transactionDate, t.transactionType, SUM(t.handlingFee) " +
+    @Query("SELECT t.transactionDate, b.bankCode, b.code, t.transactionType, SUM(t.handlingFee) " +
            "FROM Transaction t " +
-           "WHERE t.branch.id = :branchId " +
+           "JOIN t.branch b " +
+           "WHERE b.id = :branchId " +
            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
            "AND t.status = 'COMPLETED' " +
            "AND (t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CASH " +
            "     OR t.paymentMethod IS NULL) " +
            "AND t.handlingFee > 0 " +
-           "GROUP BY t.transactionDate, t.transactionType " +
-           "ORDER BY t.transactionDate ASC")
+           "GROUP BY t.transactionDate, b.bankCode, b.code, t.transactionType " +
+           "ORDER BY t.transactionDate ASC, b.code ASC, t.transactionType ASC")
     List<Object[]> findDailyCashHandlingFeeByType(
         @Param("branchId") UUID branchId,
         @Param("startDate") LocalDate startDate,
@@ -1479,9 +1480,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * FK-056: a VAULT_COUNTERPARTY virtuális partner-fiókok kanonikus, null-safe
      * branchType-kizárása. Az isVault = false defense-in-depth marad, mert az
      * értéktár-kizárás külön dimenzió.
-     * Visszaad: [transactionDate, transactionType, SUM(handlingFee)]
+     * Visszaad: [transactionDate, b.bankCode, b.code, transactionType, SUM(handlingFee)]
      */
-    @Query("SELECT t.transactionDate, t.transactionType, SUM(t.handlingFee) " +
+    @Query("SELECT t.transactionDate, b.bankCode, b.code, t.transactionType, SUM(t.handlingFee) " +
            "FROM Transaction t " +
            "JOIN t.branch b " +
            "LEFT JOIN b.branchType bt " +
@@ -1494,8 +1495,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CASH " +
            "     OR t.paymentMethod IS NULL) " +
            "AND t.handlingFee > 0 " +
-           "GROUP BY t.transactionDate, t.transactionType " +
-           "ORDER BY t.transactionDate ASC")
+           "GROUP BY t.transactionDate, b.bankCode, b.code, t.transactionType " +
+           "ORDER BY t.transactionDate ASC, b.code ASC, t.transactionType ASC")
     List<Object[]> findDailyCashHandlingFeeByTypeForCompany(
         @Param("companyId") UUID companyId,
         @Param("startDate") LocalDate startDate,
@@ -1506,18 +1507,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * FK-059: napi POS (bankkártyás) kezelési díj + nettó, egy fiókra.
      * CARD + SELL + COMPLETED only (FR-3: CARD+BUY kizárva — A1 anomália).
      * Nettó = hufAmount - handlingFee - roundingAmount (D2). Nincs fee>0 szűrés (D3).
-     * Visszaad: [transactionDate, SUM(net), SUM(fee)]
+     * Visszaad: [transactionDate, b.bankCode, b.code, SUM(net), SUM(fee)]
      */
-    @Query("SELECT t.transactionDate, " +
+    @Query("SELECT t.transactionDate, b.bankCode, b.code, " +
            "SUM(t.hufAmount - COALESCE(t.handlingFee, 0) - COALESCE(t.roundingAmount, 0)), " +
            "SUM(COALESCE(t.handlingFee, 0)) " +
            "FROM Transaction t " +
-           "WHERE t.branch.id = :branchId " +
+           "JOIN t.branch b " +
+           "WHERE b.id = :branchId " +
            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
            "AND t.status = 'COMPLETED' " +
            "AND t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL " +
            "AND t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CARD " +
-           "GROUP BY t.transactionDate ORDER BY t.transactionDate ASC")
+           "GROUP BY t.transactionDate, b.bankCode, b.code " +
+           "ORDER BY t.transactionDate ASC, b.code ASC")
     List<Object[]> findDailyPosHandlingFee(
         @Param("branchId") UUID branchId,
         @Param("startDate") LocalDate startDate,
@@ -1528,8 +1531,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * FK-059 (FR-4): cég-szintű "Minden iroda" POS napi összesítő — a FK-056 kanonikus,
      * null-safe VAULT_COUNTERPARTY-kizárással. NEM a sumCardSalesByCurrencyAndBranchAndDate
      * kiterjesztése (annak nincs kizárása).
+     * Visszaad: [transactionDate, b.bankCode, b.code, SUM(net), SUM(fee)]
      */
-    @Query("SELECT t.transactionDate, " +
+    @Query("SELECT t.transactionDate, b.bankCode, b.code, " +
            "SUM(t.hufAmount - COALESCE(t.handlingFee, 0) - COALESCE(t.roundingAmount, 0)), " +
            "SUM(COALESCE(t.handlingFee, 0)) " +
            "FROM Transaction t " +
@@ -1543,7 +1547,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND t.status = 'COMPLETED' " +
            "AND t.transactionType = hu.puzzleir.valuta.entity.TransactionType.SELL " +
            "AND t.paymentMethod = hu.puzzleir.valuta.entity.PaymentMethod.CARD " +
-           "GROUP BY t.transactionDate ORDER BY t.transactionDate ASC")
+           "GROUP BY t.transactionDate, b.bankCode, b.code " +
+           "ORDER BY t.transactionDate ASC, b.code ASC")
     List<Object[]> findDailyPosHandlingFeeForCompany(
         @Param("companyId") UUID companyId,
         @Param("startDate") LocalDate startDate,
