@@ -1597,6 +1597,8 @@
       "dailyBreakdown": "Naponkénti bontás",
       "table": {
         "date": "Dátum",
+        "bankCode": "Banki kód",
+        "branchCode": "Pénztárszám",
         "buyFee": "Vétel kezelési díj",
         "sellFee": "Eladás kezelési díj",
         "totalRow": "Összesen",
@@ -1626,6 +1628,8 @@
       "dailyBreakdown": "Naponkénti bontás",
       "table": {
         "date": "Dátum",
+        "bankCode": "Banki kód",
+        "branchCode": "Pénztárszám",
         "netAmount": "POS nettó (Ft)",
         "feeAmount": "POS KK (Ft)",
         "totalRow": "Összesen",
