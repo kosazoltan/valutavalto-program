@@ -62,8 +62,10 @@ public class PosHandlingFeeDailySummaryService {
         List<PosHandlingFeeDailySummaryDto.DailyRow> rows = sourceRows.stream()
                 .map(sourceRow -> PosHandlingFeeDailySummaryDto.DailyRow.builder()
                         .date((LocalDate) sourceRow[0])
-                        .netAmount(amountOrZero(sourceRow[1]))
-                        .feeAmount(amountOrZero(sourceRow[2]))
+                        .bankCode(nullToEmpty(sourceRow[1]))
+                        .code(nullToEmpty(sourceRow[2]))
+                        .netAmount(amountOrZero(sourceRow[3]))
+                        .feeAmount(amountOrZero(sourceRow[4]))
                         .build())
                 .toList();
         BigDecimal totalNetAmount = rows.stream()
@@ -80,6 +82,10 @@ public class PosHandlingFeeDailySummaryService {
                 .totalFeeAmount(totalFeeAmount)
                 .rows(rows)
                 .build();
+    }
+
+    private static String nullToEmpty(Object value) {
+        return value == null ? "" : (String) value;
     }
 
     private BigDecimal amountOrZero(Object value) {

@@ -71,10 +71,10 @@ class HandlingFeeDailySummaryServiceTest {
         authenticate("FOERTEKTAR");
         when(transactionRepository.findDailyCashHandlingFeeByType(BRANCH_ID, D1, D2))
                 .thenReturn(List.of(
-                        new Object[]{D1, TransactionType.BUY, new BigDecimal("150")},
-                        new Object[]{D1, TransactionType.SELL, new BigDecimal("70")},
-                        new Object[]{D2, TransactionType.SELL, new BigDecimal("40")},
-                        new Object[]{D1, TransactionType.CONVERSION, new BigDecimal("999")}));
+                        new Object[]{D1, "K&H", "001", TransactionType.BUY, new BigDecimal("150")},
+                        new Object[]{D1, "K&H", "001", TransactionType.SELL, new BigDecimal("70")},
+                        new Object[]{D2, "K&H", "001", TransactionType.SELL, new BigDecimal("40")},
+                        new Object[]{D1, "K&H", "001", TransactionType.CONVERSION, new BigDecimal("999")}));
 
         var result = service.getDailySummary(BRANCH_ID, D1, D2);
 
@@ -98,9 +98,9 @@ class HandlingFeeDailySummaryServiceTest {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(transactionRepository.findDailyCashHandlingFeeByTypeForCompany(COMPANY_ID, D1, D2))
                     .thenReturn(List.of(
-                            new Object[]{D1, TransactionType.BUY, new BigDecimal("205")},
-                            new Object[]{D1, TransactionType.SELL, new BigDecimal("70")},
-                            new Object[]{D2, TransactionType.SELL, new BigDecimal("40")}));
+                            new Object[]{D1, "K&H", "001", TransactionType.BUY, new BigDecimal("205")},
+                            new Object[]{D1, "K&H", "001", TransactionType.SELL, new BigDecimal("70")},
+                            new Object[]{D2, "K&H", "001", TransactionType.SELL, new BigDecimal("40")}));
 
             var result = service.getDailySummary(null, D1, D2);
 
@@ -120,6 +120,50 @@ class HandlingFeeDailySummaryServiceTest {
         verify(branchService, never()).findById(any());
         verify(transactionRepository, never()).findDailyCashHandlingFeeByType(any(), any(), any());
         verify(transactionRepository).findDailyCashHandlingFeeByTypeForCompany(COMPANY_ID, D1, D2);
+    }
+
+    @Test
+    @DisplayName("FK-095: két iroda azonos napon két külön sort ad, az összegük változatlan")
+    void twoOfficesOnTheSameDateProduceTwoRows() {
+        authenticate("FOERTEKTAR");
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transactionRepository.findDailyCashHandlingFeeByTypeForCompany(COMPANY_ID, D1, D2))
+                    .thenReturn(List.of(
+                            new Object[]{D1, "K&H", "001", TransactionType.BUY, new BigDecimal("205")},
+                            new Object[]{D1, "OTP", "002", TransactionType.BUY, new BigDecimal("25")},
+                            new Object[]{D1, "K&H", "001", TransactionType.SELL, new BigDecimal("70")}));
+
+            var result = service.getDailySummary(null, D1, D2);
+
+            assertThat(result.getRows()).hasSize(2);
+            assertThat(result.getRows().get(0).getBankCode()).isEqualTo("K&H");
+            assertThat(result.getRows().get(0).getCode()).isEqualTo("001");
+            assertThat(result.getRows().get(0).getBuyFee()).isEqualByComparingTo("205");
+            assertThat(result.getRows().get(0).getSellFee()).isEqualByComparingTo("70");
+            assertThat(result.getRows().get(1).getBankCode()).isEqualTo("OTP");
+            assertThat(result.getRows().get(1).getCode()).isEqualTo("002");
+            assertThat(result.getRows().get(1).getBuyFee()).isEqualByComparingTo("25");
+            assertThat(result.getRows().get(1).getSellFee()).isEqualByComparingTo("0");
+            assertThat(result.getTotalBuyFee()).isEqualByComparingTo("230");
+            assertThat(result.getTotalSellFee()).isEqualByComparingTo("70");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-095: null bankCode üres stringre normalizálódik, a code megmarad")
+    void blankBankCodeIsNormalisedToEmptyString() {
+        authenticate("FOERTEKTAR");
+        when(transactionRepository.findDailyCashHandlingFeeByType(BRANCH_ID, D1, D2))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{D1, null, "003", TransactionType.BUY, new BigDecimal("10")}));
+
+        var result = service.getDailySummary(BRANCH_ID, D1, D2);
+
+        assertThat(result.getRows()).hasSize(1);
+        assertThat(result.getRows().get(0).getBankCode()).isEqualTo("");
+        assertThat(result.getRows().get(0).getCode()).isEqualTo("003");
+        assertThat(result.getRows().get(0).getBuyFee()).isEqualByComparingTo("10");
     }
 
     @ParameterizedTest(name = "engedélyezett szerep: {0}")

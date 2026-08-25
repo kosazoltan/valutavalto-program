@@ -63,24 +63,30 @@ public class HandlingFeeDailySummaryService {
             sourceRows = transactionRepository
                     .findDailyCashHandlingFeeByTypeForCompany(companyId, startDate, endDate);
         }
-        Map<LocalDate, HandlingFeeDailySummaryDto.DailyRow> rowsByDate = new LinkedHashMap<>();
+        Map<RowKey, HandlingFeeDailySummaryDto.DailyRow> rowsByKey = new LinkedHashMap<>();
 
         for (Object[] sourceRow : sourceRows) {
             LocalDate date = (LocalDate) sourceRow[0];
-            TransactionType transactionType = (TransactionType) sourceRow[1];
-            BigDecimal fee = (BigDecimal) sourceRow[2];
+            String bankCode = nullToEmpty(sourceRow[1]);
+            String code = nullToEmpty(sourceRow[2]);
+            TransactionType transactionType = (TransactionType) sourceRow[3];
+            BigDecimal fee = (BigDecimal) sourceRow[4];
             if (transactionType != TransactionType.BUY && transactionType != TransactionType.SELL) {
                 log.debug(
-                        "FK-053 napi riport: nem BUY/SELL tranzakciótípus eldobva: date={}, type={}",
+                        "FK-053 napi riport: nem BUY/SELL tranzakciótípus eldobva: date={}, bankCode={}, code={}, type={}",
                         date,
+                        bankCode,
+                        code,
                         transactionType);
                 continue;
             }
 
-            HandlingFeeDailySummaryDto.DailyRow dailyRow = rowsByDate.computeIfAbsent(
-                    date,
-                    ignored -> HandlingFeeDailySummaryDto.DailyRow.builder()
-                            .date(date)
+            HandlingFeeDailySummaryDto.DailyRow dailyRow = rowsByKey.computeIfAbsent(
+                    new RowKey(date, bankCode, code),
+                    key -> HandlingFeeDailySummaryDto.DailyRow.builder()
+                            .date(key.date())
+                            .bankCode(key.bankCode())
+                            .code(key.code())
                             .buyFee(BigDecimal.ZERO)
                             .sellFee(BigDecimal.ZERO)
                             .build());
@@ -91,7 +97,7 @@ public class HandlingFeeDailySummaryService {
             }
         }
 
-        List<HandlingFeeDailySummaryDto.DailyRow> rows = List.copyOf(rowsByDate.values());
+        List<HandlingFeeDailySummaryDto.DailyRow> rows = List.copyOf(rowsByKey.values());
         BigDecimal totalBuyFee = rows.stream()
                 .map(HandlingFeeDailySummaryDto.DailyRow::getBuyFee)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -106,6 +112,13 @@ public class HandlingFeeDailySummaryService {
                 .totalSellFee(totalSellFee)
                 .rows(rows)
                 .build();
+    }
+
+    /** FK-095 fold key: one row per (date, bankCode, code) — records give equals/hashCode. */
+    private record RowKey(LocalDate date, String bankCode, String code) {}
+
+    private static String nullToEmpty(Object value) {
+        return value == null ? "" : (String) value;
     }
 
     /**

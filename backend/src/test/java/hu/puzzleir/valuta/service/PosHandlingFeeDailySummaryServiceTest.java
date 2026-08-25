@@ -73,8 +73,8 @@ class PosHandlingFeeDailySummaryServiceTest {
         authenticate("FOERTEKTAR");
         when(transactionRepository.findDailyPosHandlingFee(BRANCH_ID, D1, D2))
                 .thenReturn(List.of(
-                        new Object[]{D1, new BigDecimal("73000"), new BigDecimal("3000")},
-                        new Object[]{D2, null, null}));
+                        new Object[]{D1, "K&H", "001", new BigDecimal("73000"), new BigDecimal("3000")},
+                        new Object[]{D2, "K&H", "001", null, null}));
 
         PosHandlingFeeDailySummaryDto result = service.getDailySummary(BRANCH_ID, D1, D2);
 
@@ -98,7 +98,7 @@ class PosHandlingFeeDailySummaryServiceTest {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             when(transactionRepository.findDailyPosHandlingFeeForCompany(COMPANY_ID, D1, D2))
                     .thenReturn(List.<Object[]>of(
-                            new Object[]{D1, new BigDecimal("93000"), new BigDecimal("3800")}));
+                            new Object[]{D1, "K&H", "001", new BigDecimal("93000"), new BigDecimal("3800")}));
 
             PosHandlingFeeDailySummaryDto result = service.getDailySummary(null, D1, D2);
 
@@ -110,6 +110,48 @@ class PosHandlingFeeDailySummaryServiceTest {
         verify(branchService, never()).findById(any());
         verify(transactionRepository, never()).findDailyPosHandlingFee(any(), any(), any());
         verify(transactionRepository).findDailyPosHandlingFeeForCompany(COMPANY_ID, D1, D2);
+    }
+
+    @Test
+    @DisplayName("FK-095: two offices on the same date produce two rows, totals unchanged")
+    void twoOfficesOnTheSameDateProduceTwoRows() {
+        authenticate("FOERTEKTAR");
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(transactionRepository.findDailyPosHandlingFeeForCompany(COMPANY_ID, D1, D2))
+                    .thenReturn(List.of(
+                            new Object[]{D1, "K&H", "001", new BigDecimal("73000"), new BigDecimal("3000")},
+                            new Object[]{D1, "OTP", "002", new BigDecimal("20000"), new BigDecimal("800")}));
+
+            PosHandlingFeeDailySummaryDto result = service.getDailySummary(null, D1, D2);
+
+            assertThat(result.getRows()).hasSize(2);
+            assertThat(result.getRows().get(0).getBankCode()).isEqualTo("K&H");
+            assertThat(result.getRows().get(0).getCode()).isEqualTo("001");
+            assertThat(result.getRows().get(0).getNetAmount()).isEqualByComparingTo("73000");
+            assertThat(result.getRows().get(1).getBankCode()).isEqualTo("OTP");
+            assertThat(result.getRows().get(1).getCode()).isEqualTo("002");
+            assertThat(result.getRows().get(1).getNetAmount()).isEqualByComparingTo("20000");
+            assertThat(result.getTotalNetAmount()).isEqualByComparingTo("93000");
+            assertThat(result.getTotalFeeAmount()).isEqualByComparingTo("3800");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-095: null bankCode is normalised to empty string, code kept, null amounts to zero")
+    void blankBankCodeIsNormalisedToEmptyString() {
+        authenticate("FOERTEKTAR");
+        when(transactionRepository.findDailyPosHandlingFee(BRANCH_ID, D1, D2))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{D2, null, "002", null, null}));
+
+        PosHandlingFeeDailySummaryDto result = service.getDailySummary(BRANCH_ID, D1, D2);
+
+        assertThat(result.getRows()).hasSize(1);
+        assertThat(result.getRows().get(0).getBankCode()).isEqualTo("");
+        assertThat(result.getRows().get(0).getCode()).isEqualTo("002");
+        assertThat(result.getRows().get(0).getNetAmount()).isEqualByComparingTo("0");
+        assertThat(result.getRows().get(0).getFeeAmount()).isEqualByComparingTo("0");
     }
 
     @ParameterizedTest(name = "allowed report role: {0}")

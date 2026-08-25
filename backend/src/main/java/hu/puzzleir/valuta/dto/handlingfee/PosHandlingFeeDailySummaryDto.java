@@ -28,6 +28,10 @@ public class PosHandlingFeeDailySummaryDto {
     @AllArgsConstructor
     public static class DailyRow {
         private LocalDate date;
+        /** Banki kód (branch.bankCode) — "" when blank. */
+        private String bankCode;
+        /** Pénztárszám (branch.code) — always populated. */
+        private String code;
         private BigDecimal netAmount;
         private BigDecimal feeAmount;
     }
