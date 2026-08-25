@@ -37,6 +37,7 @@ jobs:
           sparse-checkout: |
             backend
             config
+            deploy
             frontend-react
             installer
             kozponti-client

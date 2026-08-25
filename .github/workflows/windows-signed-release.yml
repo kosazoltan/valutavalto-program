@@ -98,6 +98,7 @@ jobs:
           sparse-checkout: |
             backend
             config
+            deploy
             frontend-react
             installer
             kozponti-client
@@ -295,6 +296,7 @@ jobs:
           sparse-checkout: |
             backend
             config
+            deploy
             frontend-react
             installer
             kozponti-client
@@ -351,6 +353,7 @@ jobs:
           sparse-checkout: |
             backend
             config
+            deploy
             frontend-react
             installer
             kozponti-client
@@ -568,6 +571,7 @@ jobs:
           sparse-checkout: |
             backend
             config
+            deploy
             frontend-react
             installer
             kozponti-client
@@ -754,6 +758,7 @@ jobs:
           sparse-checkout: |
             backend
             config
+            deploy
             frontend-react
             installer
             kozponti-client
@@ -952,6 +957,7 @@ jobs:
           sparse-checkout: |
             backend
             config
+            deploy
             frontend-react
             installer
             kozponti-client
