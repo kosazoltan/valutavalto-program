@@ -278,18 +278,29 @@ class HandlingFeeDailySummaryServiceTest {
                 .endDate(D2)
                 .totalBuyFee(new BigDecimal("150"))
                 .totalSellFee(new BigDecimal("70"))
-                .rows(List.of(HandlingFeeDailySummaryDto.DailyRow.builder()
-                        .date(D1)
-                        .buyFee(new BigDecimal("150"))
-                        .sellFee(new BigDecimal("70"))
-                        .build()))
+                .rows(List.of(
+                        HandlingFeeDailySummaryDto.DailyRow.builder()
+                                .date(D1)
+                                .bankCode("K&H")
+                                .code("001")
+                                .buyFee(new BigDecimal("150"))
+                                .sellFee(new BigDecimal("70"))
+                                .build(),
+                        HandlingFeeDailySummaryDto.DailyRow.builder()
+                                .date(D2)
+                                .bankCode("")
+                                .code("002")
+                                .buyFee(BigDecimal.ZERO)
+                                .sellFee(BigDecimal.ZERO)
+                                .build()))
                 .build();
 
         String csv = new ReportExportService().exportHandlingFeeDailySummaryCsv(report);
 
-        assertThat(csv).contains("Dátum", "Vétel kezelési díj (Ft)", "Eladás kezelési díj (Ft)");
-        assertThat(csv).contains("2026-07-01,150,70");
-        assertThat(csv).contains("Összesen,150,70");
+        assertThat(csv).contains("Dátum,Banki kód,Pénztárszám,Vétel kezelési díj (Ft),Eladás kezelési díj (Ft)");
+        assertThat(csv).contains("2026-07-01,K&H,001,150,70");
+        assertThat(csv).contains("2026-07-02,,002,");
+        assertThat(csv).contains("Összesen,,,150,70");
     }
 
     @Test

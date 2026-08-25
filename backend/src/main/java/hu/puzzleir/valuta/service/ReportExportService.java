@@ -96,16 +96,18 @@ public class ReportExportService {
     public String exportHandlingFeeDailySummaryCsv(HandlingFeeDailySummaryDto report) {
         StringWriter sw = new StringWriter();
         try (CSVPrinter printer = new CSVPrinter(sw, CSVFormat.DEFAULT.withHeader(
-                "Dátum", "Vétel kezelési díj (Ft)", "Eladás kezelési díj (Ft)"))) {
+                "Dátum", "Banki kód", "Pénztárszám", "Vétel kezelési díj (Ft)", "Eladás kezelési díj (Ft)"))) {
             if (report.getRows() != null) {
                 for (HandlingFeeDailySummaryDto.DailyRow row : report.getRows()) {
                     printer.printRecord(
                             row.getDate() != null ? row.getDate().format(DATE_FMT) : "",
+                            row.getBankCode() != null ? row.getBankCode() : "",
+                            row.getCode() != null ? row.getCode() : "",
                             row.getBuyFee(),
                             row.getSellFee());
                 }
             }
-            printer.printRecord("Összesen", report.getTotalBuyFee(), report.getTotalSellFee());
+            printer.printRecord("Összesen", "", "", report.getTotalBuyFee(), report.getTotalSellFee());
         } catch (IOException e) {
             log.error("HandlingFeeDailySummary CSV export hiba", e);
             throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
@@ -117,16 +119,18 @@ public class ReportExportService {
     public String exportPosHandlingFeeDailySummaryCsv(PosHandlingFeeDailySummaryDto report) {
         StringWriter sw = new StringWriter();
         try (CSVPrinter printer = new CSVPrinter(sw, CSVFormat.DEFAULT.withHeader(
-                "Dátum", "POS nettó (Ft)", "POS KK (Ft)"))) {
+                "Dátum", "Banki kód", "Pénztárszám", "POS nettó (Ft)", "POS KK (Ft)"))) {
             if (report.getRows() != null) {
                 for (PosHandlingFeeDailySummaryDto.DailyRow row : report.getRows()) {
                     printer.printRecord(
                             row.getDate() != null ? row.getDate().format(DATE_FMT) : "",
+                            row.getBankCode() != null ? row.getBankCode() : "",
+                            row.getCode() != null ? row.getCode() : "",
                             row.getNetAmount(),
                             row.getFeeAmount());
                 }
             }
-            printer.printRecord("Összesen", report.getTotalNetAmount(), report.getTotalFeeAmount());
+            printer.printRecord("Összesen", "", "", report.getTotalNetAmount(), report.getTotalFeeAmount());
         } catch (IOException e) {
             log.error("PosHandlingFeeDailySummary CSV export hiba", e);
             throw new BusinessException("CSV export meghiúsult", "CSV_EXPORT_FAILED");
