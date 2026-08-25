@@ -68,6 +68,7 @@ jobs:
   preflight:
     name: Preflight — secret + workspace check
     runs-on: windows-latest
+    timeout-minutes: 15
     outputs:
       version: ${{ steps.resolve.outputs.version }}
       build_date: ${{ steps.resolve.outputs.build_date }}
@@ -83,6 +84,26 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          # GYÖKÉROK-JAVÍTÁS (2026-08-25): a repo HEAD-fája 1973 MB / 17 546 fájl,
+          # amiből 1639 MB legacy-transfer + 212 MB Felmérés + 68 MB frontend_deployment —
+          # egyik sem bemenete egyetlen build-lépésnek sem (build-installer.ps1,
+          # electron-builder.json, pom.xml nem hivatkozik rájuk). A sima checkout@v7
+          # mind a ~2 GB-ot letöltötte, és a git fetch terhelt időszakban 20+ percre
+          # néma maradt, majd cancelled lett (bizonyíték: run 32886717924 job
+          # 97930509578 naplója: 19:02:17 fetch → 19:23:09 cancelled, közte 0 kimenet;
+          # ugyanez 8+ esetben 2026-08-24/25-én). A sparse-kúp a tényleges
+          # build-bemenetekre szűkíti a working tree-t (~35 MB), és a sparse-checkout
+          # miatt a fetch implicit blob:none részleges klónként fut — az excluded
+          # blobok le sem töltődnek. Új build-bemenetnél a kúpot BŐVÍTENI kell.
+          sparse-checkout: &sparse-cone
+            - backend
+            - config
+            - frontend-react
+            - installer
+            - kozponti-client
+            - packages
+            - penztar-client
+            - scripts
 
       - name: Build-integritasi kapu (KOTELEZO — Kosa Zoltan direktiva 2026-06-29)
         shell: bash
@@ -258,6 +279,7 @@ jobs:
   build-backend:
     name: Build Backend JAR (Maven)
     runs-on: windows-latest
+    timeout-minutes: 30
     needs: preflight
     outputs:
       jar_name: ${{ steps.mvn.outputs.jar_name }}
@@ -268,6 +290,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          sparse-checkout: *sparse-cone
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -313,6 +337,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          sparse-checkout: *sparse-cone
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -519,6 +545,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          sparse-checkout: *sparse-cone
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -684,6 +712,7 @@ jobs:
   publish-release:
     name: Publish GitHub Release + SHA-256 manifest
     runs-on: windows-latest
+    timeout-minutes: 20
     needs: [preflight, build-penztar, build-kozponti]
     if: github.event.inputs.publish_release == 'true'
     steps:
@@ -693,6 +722,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          sparse-checkout: *sparse-cone
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -869,6 +900,7 @@ jobs:
   commit-version-bump:
     name: Commit 9-way version bump to main
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [preflight, publish-release]
     if: >-
       success() &&
@@ -880,6 +912,7 @@ jobs:
         with:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
+          sparse-checkout: *sparse-cone
 
       - name: Apply the exact released version (NO gate re-run)
         shell: pwsh
