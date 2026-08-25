@@ -28,6 +28,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          # sparse-kúp = build-bemenetek (checkout-hang gyökérok: ~2 GB HEAD-fa;
+          # lásd a windows-signed-release.yml preflight kommentjét). A sparse-checkout
+          # implicit blob:none részleges klónt ad: az excluded ~1.9 GB le sem töltődik.
+          # Új build-bemenetnél a kúpot BŐVÍTENI kell. STRING forma — a lista-forma
+          # dispatch-parser hibát okozott (PR #1662).
+          sparse-checkout: |
+            backend
+            config
+            frontend-react
+            installer
+            kozponti-client
+            packages
+            penztar-client
+            scripts
 
       - name: Node beállítása (verzió-szinkron gate stabil futtatásához)
         uses: actions/setup-node@v7
