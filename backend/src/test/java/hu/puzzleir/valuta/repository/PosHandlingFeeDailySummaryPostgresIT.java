@@ -73,8 +73,8 @@ class PosHandlingFeeDailySummaryPostgresIT {
         List<Object[]> rows = transactionRepository.findDailyPosHandlingFee(seed.branchA1().getId(), D1, D2);
 
         assertThat(rows).hasSize(2);
-        assertRow(rows.get(0), D1, "73000.00", "3000.00");
-        assertRow(rows.get(1), D2, "10000.00", "0.00");
+        assertRow(rows.get(0), D1, "FK059BANK", seed.branchA1().getCode(), "73000.00", "3000.00");
+        assertRow(rows.get(1), D2, "FK059BANK", seed.branchA1().getCode(), "10000.00", "0.00");
     }
 
     @Test
@@ -86,7 +86,7 @@ class PosHandlingFeeDailySummaryPostgresIT {
         List<Object[]> rows = transactionRepository.findDailyPosHandlingFee(seed.branchA1().getId(), D2, D2);
 
         assertThat(rows).hasSize(1);
-        assertRow(rows.get(0), D2, "10000.00", "0.00");
+        assertRow(rows.get(0), D2, "FK059BANK", seed.branchA1().getCode(), "10000.00", "0.00");
     }
 
     @Test
@@ -97,9 +97,10 @@ class PosHandlingFeeDailySummaryPostgresIT {
         assertThat(seed).isNotNull();
         List<Object[]> rows = transactionRepository.findDailyPosHandlingFeeForCompany(seed.companyA().getId(), D1, D2);
 
-        assertThat(rows).hasSize(2);
-        assertRow(rows.get(0), D1, "93000.00", "3800.00");
-        assertRow(rows.get(1), D2, "10000.00", "0.00");
+        assertThat(rows).hasSize(3);
+        assertRow(rows.get(0), D1, "FK059BANK", seed.branchA1().getCode(), "73000.00", "3000.00");
+        assertRow(rows.get(1), D1, "FK059BANK", seed.branchA2().getCode(), "20000.00", "800.00");
+        assertRow(rows.get(2), D2, "FK059BANK", seed.branchA1().getCode(), "10000.00", "0.00");
     }
 
     private Seed seed() {
@@ -183,7 +184,7 @@ class PosHandlingFeeDailySummaryPostgresIT {
                 TransactionStatus.COMPLETED, "10005", "0", "5", "E11-" + suffix);
 
         transactionRepository.flush();
-        return new Seed(companyA, a1.branch());
+        return new Seed(companyA, a1.branch(), a2.branch());
     }
 
     private Company seedCompany(String suffix, LocalDateTime now) {
@@ -268,13 +269,16 @@ class PosHandlingFeeDailySummaryPostgresIT {
         return transactionRepository.save(transaction);
     }
 
-    private void assertRow(Object[] row, LocalDate date, String netAmount, String feeAmount) {
+    private void assertRow(
+            Object[] row, LocalDate date, String bankCode, String code, String netAmount, String feeAmount) {
         assertThat(row[0]).isEqualTo(date);
-        assertThat((BigDecimal) row[1]).isEqualByComparingTo(netAmount);
-        assertThat((BigDecimal) row[2]).isEqualByComparingTo(feeAmount);
+        assertThat(row[1]).isEqualTo(bankCode);
+        assertThat(row[2]).isEqualTo(code);
+        assertThat((BigDecimal) row[3]).isEqualByComparingTo(netAmount);
+        assertThat((BigDecimal) row[4]).isEqualByComparingTo(feeAmount);
     }
 
     private record BranchWorker(Branch branch, Worker worker) {}
 
-    private record Seed(Company companyA, Branch branchA1) {}
+    private record Seed(Company companyA, Branch branchA1, Branch branchA2) {}
 }
