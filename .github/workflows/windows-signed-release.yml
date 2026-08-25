@@ -95,7 +95,7 @@ jobs:
           # build-bemenetekre szűkíti a working tree-t (~35 MB), és a sparse-checkout
           # miatt a fetch implicit blob:none részleges klónként fut — az excluded
           # blobok le sem töltődnek. Új build-bemenetnél a kúpot BŐVÍTENI kell.
-          sparse-checkout: &sparse-cone
+          sparse-checkout:
             - backend
             - config
             - frontend-react
@@ -291,7 +291,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          sparse-checkout: *sparse-cone
+          # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
+          sparse-checkout:
+            - backend
+            - config
+            - frontend-react
+            - installer
+            - kozponti-client
+            - packages
+            - penztar-client
+            - scripts
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -338,7 +347,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          sparse-checkout: *sparse-cone
+          # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
+          sparse-checkout:
+            - backend
+            - config
+            - frontend-react
+            - installer
+            - kozponti-client
+            - packages
+            - penztar-client
+            - scripts
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -546,7 +564,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          sparse-checkout: *sparse-cone
+          # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
+          sparse-checkout:
+            - backend
+            - config
+            - frontend-react
+            - installer
+            - kozponti-client
+            - packages
+            - penztar-client
+            - scripts
 
       - name: Version bump gate (AUTO-PATCH)
         if: github.event.inputs.version == ''
@@ -723,7 +750,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          sparse-checkout: *sparse-cone
+          # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
+          sparse-checkout:
+            - backend
+            - config
+            - frontend-react
+            - installer
+            - kozponti-client
+            - packages
+            - penztar-client
+            - scripts
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -912,7 +948,16 @@ jobs:
         with:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
-          sparse-checkout: *sparse-cone
+          # sparse-kúp = build-bemenetek; lásd a preflight checkout kommentjét
+          sparse-checkout:
+            - backend
+            - config
+            - frontend-react
+            - installer
+            - kozponti-client
+            - packages
+            - penztar-client
+            - scripts
 
       - name: Apply the exact released version (NO gate re-run)
         shell: pwsh
