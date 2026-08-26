@@ -930,6 +930,32 @@ export async function initDatabase(): Promise<void> {
       }
     }
 
+    // FK-097 WU-12 (FR-1): a kezelési díj konfiguráció offline tükre — a szinkron
+    // (syncHandlingFeeConfig) írja, a renderer cache-first olvasása (IPC) fogyasztja.
+    db.run(`
+      CREATE TABLE IF NOT EXISTS cached_handling_fee_config (
+        branch_id TEXT PRIMARY KEY,
+        branch_code TEXT,
+        company_id TEXT,
+        fee_mode TEXT NOT NULL,
+        per_mille_rate REAL,
+        per_mille_cap REAL,
+        bracket_json TEXT,
+        valid_from TEXT,
+        synced_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Migrate (FK-097): a később hozzáadott oszlopok meglévő telepítéseken is
+    // megjelennek — a védekező ALTER-minta (cached_rates/cached_cash_desks paritás).
+    for (const col of ['branch_code', 'company_id', 'bracket_json', 'valid_from']) {
+      try {
+        db.run(`ALTER TABLE cached_handling_fee_config ADD COLUMN ${col} TEXT`);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
+
     db.run(`
       CREATE TABLE IF NOT EXISTS cached_workers (
         id INTEGER PRIMARY KEY,
@@ -3751,6 +3777,76 @@ export function getCachedRates(): CachedRateRow[] {
   }
   stmt.free();
   return results;
+}
+
+// --- FK-097 WU-12: cached_handling_fee_config accessorok (FR-1) ---
+
+export interface CachedHandlingFeeConfigRow {
+  branch_id: string;
+  branch_code: string | null;
+  company_id: string | null;
+  fee_mode: 'NONE' | 'BRACKET' | 'PER_MILLE';
+  per_mille_rate: number | null;
+  per_mille_cap: number | null;
+  bracket_json: string | null;
+  valid_from: string | null;
+  synced_at: string;
+}
+
+/**
+ * FK-097: a szinkron-válasz tükrözése a lokális SQLite-ba.
+ * INSERT ... ON CONFLICT(branch_id) DO UPDATE (upsert), majd saveDatabase() —
+ * a sql.js írás memóriában marad a perzisztálásig (pitfall #19).
+ */
+export function saveCachedHandlingFeeConfig(row: {
+  branch_id: string;
+  branch_code: string | null;
+  company_id: string | null;
+  fee_mode: 'NONE' | 'BRACKET' | 'PER_MILLE';
+  per_mille_rate: number | null;
+  per_mille_cap: number | null;
+  bracket_json: string | null;
+  valid_from: string | null;
+}): void {
+  if (!db) return;
+  db.run(
+    `INSERT INTO cached_handling_fee_config
+       (branch_id, branch_code, company_id, fee_mode, per_mille_rate, per_mille_cap,
+        bracket_json, valid_from, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(branch_id) DO UPDATE SET
+       branch_code = excluded.branch_code,
+       company_id = excluded.company_id,
+       fee_mode = excluded.fee_mode,
+       per_mille_rate = excluded.per_mille_rate,
+       per_mille_cap = excluded.per_mille_cap,
+       bracket_json = excluded.bracket_json,
+       valid_from = excluded.valid_from,
+       synced_at = excluded.synced_at`,
+    [
+      row.branch_id,
+      row.branch_code,
+      row.company_id,
+      row.fee_mode,
+      row.per_mille_rate,
+      row.per_mille_cap,
+      row.bracket_json,
+      row.valid_from,
+    ],
+  );
+  saveDatabase();
+}
+
+/** A legfrissebb (synced_at) cache-sor; üres táblán null. */
+export function getCachedHandlingFeeConfig(): CachedHandlingFeeConfigRow | null {
+  if (!db) return null;
+  const stmt = db.prepare(
+    'SELECT * FROM cached_handling_fee_config ORDER BY synced_at DESC LIMIT 1',
+  );
+  const has = stmt.step();
+  const row = has ? (stmt.getAsObject() as unknown as CachedHandlingFeeConfigRow) : null;
+  stmt.free();
+  return row;
 }
 
 // --- Local-first: Tombstone API ---

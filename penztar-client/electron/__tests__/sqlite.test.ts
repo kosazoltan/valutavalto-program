@@ -9,12 +9,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import initSqlJs, { type Database } from 'sql.js';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
+
+// FK-097 WU-12: az initDatabase()-t hívó tesztek egyedi temp-home-ot kapnak
+// (az sqlite-save-return-id.test.ts mintája).
+const mockState = vi.hoisted(() => ({
+  tempHome: '',
+}));
 
 // We need to mock electron before importing sqlite
 vi.mock('electron', () => ({
   app: {
-    getPath: vi.fn(() => '/tmp/test-valuta'),
-    getAppPath: vi.fn(() => '/tmp/test-valuta-app'),
+    getPath: vi.fn(() => mockState.tempHome || '/tmp/test-valuta'),
+    getAppPath: vi.fn(() => mockState.tempHome || '/tmp/test-valuta-app'),
     isPackaged: false,
   },
 }));
@@ -628,5 +635,80 @@ describe('sqlite — strict receipt sequence atomicity (withTransaction)', () =>
       return `V039${String(seq).padStart(6, '0')}`;
     });
     expect(ref).toBe('V039000001');
+  });
+});
+
+// ============================================================================
+// FK-097 WU-12 — cached_handling_fee_config tábla + accessorok (FR-1)
+// Az initDatabase()-t hívó minta az sqlite-save-return-id.test.ts-ből.
+// ============================================================================
+import { afterAll, beforeAll } from 'vitest';
+import {
+  initDatabase,
+  getDb,
+  saveCachedHandlingFeeConfig,
+  getCachedHandlingFeeConfig,
+} from '../sqlite';
+
+describe('sqlite — cached_handling_fee_config (FK-097)', () => {
+  beforeAll(async () => {
+    mockState.tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'valuta-fee-cache-'));
+    await initDatabase();
+  });
+
+  afterAll(() => {
+    fs.rmSync(mockState.tempHome, { recursive: true, force: true });
+  });
+
+  function clearFeeRows(): void {
+    const db = getDb();
+    db!.run("DELETE FROM cached_handling_fee_config WHERE branch_id != '' OR branch_id = ''");
+  }
+
+  it('a tábla létrejön az initDatabase során', () => {
+    const db = getDb();
+    expect(db).not.toBeNull();
+    const stmt = db!.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'cached_handling_fee_config'",
+    );
+    const has = stmt.step();
+    stmt.free();
+    expect(has).toBe(true);
+  });
+
+  it('üres táblán a getCachedHandlingFeeConfig null-t ad', () => {
+    clearFeeRows();
+    expect(getCachedHandlingFeeConfig()).toBeNull();
+  });
+
+  it('az upsert idempotens: ugyanaz a sor kétszer mentve EGY sort eredményez', () => {
+    clearFeeRows();
+    const row = {
+      branch_id: 'branch-1',
+      branch_code: '105',
+      company_id: 'company-1',
+      fee_mode: 'PER_MILLE' as const,
+      per_mille_rate: 3.5,
+      per_mille_cap: 2000,
+      bracket_json: null,
+      valid_from: '2026-08-26',
+    };
+    saveCachedHandlingFeeConfig(row);
+    saveCachedHandlingFeeConfig(row);
+
+    const db = getDb();
+    const stmt = db!.prepare('SELECT COUNT(*) AS c FROM cached_handling_fee_config');
+    stmt.step();
+    const count = Number(stmt.getAsObject()['c']);
+    stmt.free();
+    expect(count).toBe(1);
+
+    const cached = getCachedHandlingFeeConfig();
+    expect(cached).not.toBeNull();
+    expect(cached!.branch_id).toBe('branch-1');
+    expect(cached!.fee_mode).toBe('PER_MILLE');
+    expect(cached!.per_mille_rate).toBe(3.5);
+    expect(cached!.per_mille_cap).toBe(2000);
+    expect(cached!.valid_from).toBe('2026-08-26');
   });
 });
