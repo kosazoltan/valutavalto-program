@@ -258,6 +258,31 @@ export async function getElectronCachedRates(): Promise<ElectronCachedRate[]> {
   return electronAPI.getCachedRates()
 }
 
+// FK-097 WU-15 (FR-3/FR-4): az iroda-szintu kezelesi dij konfiguracio offline tukre.
+export interface ElectronCachedHandlingFeeConfig {
+  branch_id: string
+  branch_code: string | null
+  company_id: string | null
+  fee_mode: 'NONE' | 'BRACKET' | 'PER_MILLE'
+  per_mille_rate: number | null
+  per_mille_cap: number | null
+  bracket_json: string | null
+  valid_from: string | null
+  synced_at: string
+}
+
+export async function getElectronCachedHandlingFeeConfig(): Promise<ElectronCachedHandlingFeeConfig | null> {
+  const electronAPI = getElectronAPI()
+  if (!electronAPI?.getCachedHandlingFeeConfig) {
+    return null
+  }
+  try {
+    return await electronAPI.getCachedHandlingFeeConfig()
+  } catch {
+    return null
+  }
+}
+
 export function buildFallbackCurrenciesFromCachedRates(
   cachedRates: ElectronCachedRate[],
 ): Currency[] {

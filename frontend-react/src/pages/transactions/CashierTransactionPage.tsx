@@ -11,12 +11,11 @@ import {
   dailySessionApi,
   cashBalanceApi,
   receiptApi,
-  handlingFeeConfigApi,
   discountThresholdApi,
   incomeSourceDocApi,
 } from '../../services/api/index'
 import type { HandlingFeeConfig } from '../../services/api/index'
-import { computeHandlingFee } from '../../utils/handlingFee'
+import { computeHandlingFee, loadHandlingFeeConfig } from '../../utils/handlingFee'
 import { api } from '../../services/api/client'
 import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 import SuspicionReportModal from '../../components/SuspicionReportModal'
@@ -315,13 +314,15 @@ export default function CashierTransactionPage() {
   const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } =
     useIdentificationLevel(String(total))
 
-  // FK-KEZDIJ B.1 (2026-06-12): a kezelési díj konfig betöltése (read-only — a backend
-  // GET /handling-fee-config a pénztárosnak is engedélyezett). Régi backend (403) vagy
-  // hálózati hiba → null konfig, a viselkedés a korábbi marad (a szerver sync-kor számol).
+  // FK-097 WU-15 (FR-4/FR-5/FR-6): a kezelési díj konfig CACHE-FIRST betöltése —
+  // először a helyi SQLite tükör (az iroda saját, LIVE díj-konfigurációja, amit a
+  // SyncEngine 30 mp-enként lehúz), csak üres cache esetén HTTP-fallback a
+  // /branch-fee-config/own végzontra. Offline pénztárnál a config NEM esik null-ra,
+  // a díjmező nem nyílik ki kézi beírásra. Mindkét forrás hibája esetén marad a régi
+  // null-viselkedés (a szerver tranzakció-rögzítéskor autoritatívan számol).
   useEffect(() => {
     let cancelled = false
-    handlingFeeConfigApi
-      .get()
+    loadHandlingFeeConfig()
       .then((cfg) => {
         if (!cancelled) setFeeConfig(cfg)
       })

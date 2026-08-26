@@ -21,8 +21,9 @@ const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
   apiPost: vi.fn(),
   printReceipt: vi.fn(),
-  // FK-KEZDIJ PR #1103: konfig-lekérés — elutasítva (offline ág, nincs auto-díj).
-  handlingFeeConfigGet: vi.fn().mockRejectedValue(new Error('not mocked')),
+  // FK-097 WU-15 (W5): a dij-konfigot a cache-first loadHandlingFeeConfig adja —
+  // alapertelmezesben elutasitva (offline ag, nincs auto-dij).
+  loadHandlingFeeConfig: vi.fn().mockRejectedValue(new Error('not mocked')),
   discountThresholdApply: vi.fn(),
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
 }))
@@ -42,15 +43,20 @@ vi.mock('../../services/api/index', () => ({
   dailySessionApi: { isOpen: mocks.dailySessionIsOpen },
   cashBalanceApi: { list: mocks.cashBalanceList },
   receiptApi: { createCancelledTransaction: mocks.createCancelledTransaction },
-  // FK-KEZDIJ PR #1103: a konfig-lekérés mockja — elutasítva = offline viselkedés
-  // (nincs auto-díj); a print-tesztek viselkedését nem érinti.
-  handlingFeeConfigApi: { get: mocks.handlingFeeConfigGet },
   discountThresholdApi: { apply: mocks.discountThresholdApply },
 }))
 
 vi.mock('../../services/api/client', () => ({
   api: { get: mocks.apiGet, post: mocks.apiPost },
 }))
+
+// FK-097 WU-15 (W5): mock-felulet-migracio — az oldal a dij-konfigot a cache-first
+// loadHandlingFeeConfigon at olvassa (utils/handlingFee), nem handlingFeeConfigApi.get-en.
+// A tiszta computeHandlingFee valtozatlanul az igazi marad.
+vi.mock('../../utils/handlingFee', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/handlingFee')>()
+  return { ...actual, loadHandlingFeeConfig: mocks.loadHandlingFeeConfig }
+})
 
 vi.mock('../../stores/authStore', () => {
   const state = {
@@ -292,7 +298,7 @@ describe('CashierTransactionPage — sikertelen nyomtatásnál a bizonylat-modal
   })
 
   it('automatikus kezelési díj után a backend discount-threshold apply eredményét mutatja', async () => {
-    mocks.handlingFeeConfigGet.mockResolvedValueOnce({
+    mocks.loadHandlingFeeConfig.mockResolvedValueOnce({
       feeType: 'BRACKET',
       perMilleRate: 0,
       perMilleMaxAmount: null,
