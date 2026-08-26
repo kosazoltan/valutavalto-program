@@ -993,6 +993,90 @@ export const handlingFeeConfigApi = {
     (await api.post<HandlingFeeBracketConfig[]>('/handling-fee-config/brackets', data)).data,
 }
 
+// ============================================================================
+// FK-096 — iroda-szintű kezelési díj konfiguráció (branch-fee-config)
+// A legacy handlingFeeConfigApi kompatibilitásból megmaradt; a díjszámítás
+// az új, iroda-szintű végpontokból oldódik fel (fail-closed, FR-5).
+// ============================================================================
+
+export interface BranchFeeConfigRow {
+  branchId: string
+  branchCode: string
+  branchName: string
+  region: string | null
+  liveFeeMode: 'NONE' | 'BRACKET' | 'PER_MILLE' | null
+  livePerMilleRate: number | null
+  livePerMilleCap: number | null
+  hasDraft: boolean
+  draftFeeMode: 'BRACKET' | 'PER_MILLE' | null
+  draftPerMilleRate: number | null
+  draftPerMilleCap: number | null
+  /** A DRAFT sor verziója (publish expectedVersion); DRAFT nélkül a LIVE verziója. */
+  version: number
+}
+
+export interface BranchFeeSummary {
+  totalBranches: number
+  configuredBranches: number
+  bracketBranches: number
+  perMilleBranches: number
+}
+
+export interface BranchFeeConfigList {
+  summary: BranchFeeSummary
+  rows: BranchFeeConfigRow[]
+}
+
+export interface BranchFeeConfigLive {
+  branchId: string
+  branchCode: string
+  feeMode: 'NONE' | 'BRACKET' | 'PER_MILLE'
+  perMilleRate: number | null
+  perMilleCap: number | null
+  validFrom: string
+  brackets: HandlingFeeBracketConfig[]
+}
+
+export interface BranchFeeConfigDraftBody {
+  feeMode: 'BRACKET' | 'PER_MILLE'
+  perMilleRate: number | null
+  perMilleCap: number | null
+}
+
+export const branchFeeConfigApi = {
+  list: async (): Promise<BranchFeeConfigList> =>
+    (await api.get<BranchFeeConfigList>('/branch-fee-config')).data,
+  saveDraft: async (
+    branchId: string,
+    body: BranchFeeConfigDraftBody,
+  ): Promise<BranchFeeConfigRow> =>
+    (await api.post<BranchFeeConfigRow>(`/branch-fee-config/${branchId}/draft`, body)).data,
+  // N11: expectedVersion a TÖRZSBEN utazik; 0 legitim első-publikálás érték (B2).
+  publish: async (branchId: string, expectedVersion: number): Promise<BranchFeeConfigRow> =>
+    (
+      await api.post<BranchFeeConfigRow>(`/branch-fee-config/${branchId}/publish`, {
+        expectedVersion,
+      })
+    ).data,
+  own: async (): Promise<BranchFeeConfigLive> =>
+    (await api.get<BranchFeeConfigLive>('/branch-fee-config/own')).data,
+  live: async (branchId: string): Promise<BranchFeeConfigLive> =>
+    (await api.get<BranchFeeConfigLive>(`/branch-fee-config/${branchId}/live`)).data,
+}
+
+export interface BracketSet {
+  live: HandlingFeeBracketConfig[]
+  draft: HandlingFeeBracketConfig[]
+}
+
+export const handlingFeeBracketApi = {
+  get: async (): Promise<BracketSet> => (await api.get<BracketSet>('/handling-fee-bracket')).data,
+  saveDraft: async (rows: HandlingFeeBracketConfig[]): Promise<BracketSet> =>
+    (await api.post<BracketSet>('/handling-fee-bracket/draft', rows)).data,
+  publish: async (): Promise<BracketSet> =>
+    (await api.post<BracketSet>('/handling-fee-bracket/publish')).data,
+}
+
 export const handlingFeeTransactionApi = {
   calculate: async (data: HandlingFeeCalculationRequest): Promise<HandlingFeeTransactionResult> =>
     (await api.post<HandlingFeeTransactionResult>('/handling-fees/calculate', data)).data,

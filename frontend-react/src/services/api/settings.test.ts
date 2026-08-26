@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   adminCompanyApi,
   branchApi,
+  branchFeeConfigApi,
   cameraExportApi,
   commissionCalculationApi,
   documentScannerApi,
+  handlingFeeBracketApi,
   handlingFeeConfigApi,
   handlingFeeTransactionApi,
   mfaAdminApi,
@@ -645,5 +647,70 @@ describe('systemParameterApi management backend contract', () => {
         RATE_SPREAD_USD: '4',
       },
     })
+  })
+})
+
+// FK-096 WU-9: iroda-szintu kezelesi dij konfiguracio API-ugyfel path-assertjei (D11).
+describe('branchFeeConfigApi backend contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('list calls GET /branch-fee-config', async () => {
+    mockApi.get.mockResolvedValue({ data: { summary: {}, rows: [] } })
+    await branchFeeConfigApi.list()
+    expect(mockApi.get).toHaveBeenCalledWith('/branch-fee-config')
+  })
+
+  it('saveDraft calls POST /branch-fee-config/{branchId}/draft with the draft body', async () => {
+    mockApi.post.mockResolvedValue({ data: { branchId: 'b1', hasDraft: true } })
+    const body = { feeMode: 'PER_MILLE' as const, perMilleRate: 3.5, perMilleCap: 2000 }
+    await branchFeeConfigApi.saveDraft('b1', body)
+    expect(mockApi.post).toHaveBeenCalledWith('/branch-fee-config/b1/draft', body)
+  })
+
+  it('publish posts expectedVersion IN THE BODY (N11) — 0 is a legitimate first publish (B2)', async () => {
+    mockApi.post.mockResolvedValue({ data: { branchId: 'b1', status: 'LIVE' } })
+    await branchFeeConfigApi.publish('b1', 0)
+    expect(mockApi.post).toHaveBeenCalledWith('/branch-fee-config/b1/publish', {
+      expectedVersion: 0,
+    })
+  })
+
+  it('own calls GET /branch-fee-config/own', async () => {
+    mockApi.get.mockResolvedValue({ data: { branchId: 'b1', feeMode: 'BRACKET' } })
+    await branchFeeConfigApi.own()
+    expect(mockApi.get).toHaveBeenCalledWith('/branch-fee-config/own')
+  })
+
+  it('live calls GET /branch-fee-config/{branchId}/live', async () => {
+    mockApi.get.mockResolvedValue({ data: { branchId: 'b1', feeMode: 'BRACKET' } })
+    await branchFeeConfigApi.live('b1')
+    expect(mockApi.get).toHaveBeenCalledWith('/branch-fee-config/b1/live')
+  })
+})
+
+describe('handlingFeeBracketApi backend contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('get calls GET /handling-fee-bracket', async () => {
+    mockApi.get.mockResolvedValue({ data: { live: [], draft: [] } })
+    await handlingFeeBracketApi.get()
+    expect(mockApi.get).toHaveBeenCalledWith('/handling-fee-bracket')
+  })
+
+  it('saveDraft calls POST /handling-fee-bracket/draft with the row list', async () => {
+    const rows = [{ bracketOrder: 1, upperLimit: 100000, feeAmount: 500, active: true }]
+    mockApi.post.mockResolvedValue({ data: { live: [], draft: rows } })
+    await handlingFeeBracketApi.saveDraft(rows)
+    expect(mockApi.post).toHaveBeenCalledWith('/handling-fee-bracket/draft', rows)
+  })
+
+  it('publish calls POST /handling-fee-bracket/publish', async () => {
+    mockApi.post.mockResolvedValue({ data: { live: [], draft: [] } })
+    await handlingFeeBracketApi.publish()
+    expect(mockApi.post).toHaveBeenCalledWith('/handling-fee-bracket/publish')
   })
 })
