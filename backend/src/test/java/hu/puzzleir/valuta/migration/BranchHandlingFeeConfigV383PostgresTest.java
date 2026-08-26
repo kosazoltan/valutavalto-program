@@ -113,12 +113,12 @@ class BranchHandlingFeeConfigV383PostgresTest {
             UUID branchId = seedBranch(connection, companyId, "B1", true, null);
 
             insertConfig(connection, companyId, branchId, "LIVE", "BRACKET");
-            assertThatThrownBy(() -> insertConfig(connection, companyId, branchId, "LIVE", "PER_MILLE"))
+            assertThatThrownBy(() -> insertConfig(connection, companyId, branchId, "LIVE", "BRACKET"))
                     .as("FR-1: a masodik aktiv LIVE sor unique-utkozik")
                     .isInstanceOf(SQLException.class)
                     .hasMessageContaining("uk_bhfc_branch_live");
 
-            assertThatCode(() -> insertConfig(connection, companyId, branchId, "DRAFT", "PER_MILLE"))
+            assertThatCode(() -> insertConfig(connection, companyId, branchId, "DRAFT", "BRACKET"))
                     .as("FR-1: egy LIVE es egy DRAFT sor egyutt elfer")
                     .doesNotThrowAnyException();
 
@@ -218,6 +218,9 @@ class BranchHandlingFeeConfigV383PostgresTest {
         try (Connection connection = openConnection()) {
             UUID companyId = seedCompany(connection, "DF");
             UUID branchId = seedBranch(connection, companyId, "DF1", true, null);
+            // V46 globalis HANDLING_FEE_* seed-sorait toroljuk: a "parameter nelkul"
+            // agnak TENYLEGESEN parameter-mentes DB-rol kell indulnia.
+            deleteHandlingFeeParameters(connection);
 
             migrateToLatest();
 
@@ -331,8 +334,9 @@ class BranchHandlingFeeConfigV383PostgresTest {
         migrateToVersion(previousExistingVersion(V383_FILE_PATTERN));
 
         UUID counterpartyTypeId;
+        UUID companyId;
         try (Connection connection = openConnection()) {
-            UUID companyId = seedCompany(connection, "VP");
+            companyId = seedCompany(connection, "VP");
             execute(connection,
                     "INSERT INTO dictionary (id, category, code, name, name_hu, sort_order, is_active, created_at)"
                             + " VALUES (gen_random_uuid(), 'BRANCH_TYPE', 'VAULT_COUNTERPARTY',"
@@ -347,11 +351,14 @@ class BranchHandlingFeeConfigV383PostgresTest {
         migrateToLatest();
 
         try (Connection connection = openConnection()) {
+            // A V277 seed 10 counterparty irodaja is kap sort (szandek, D7) — itt CSAK
+            // a sajat teszt-cegunk ellenorzott counterparty-irodajat szamoljuk.
             assertThat(queryForLong(connection,
                     "SELECT COUNT(*) FROM branch_handling_fee_config bhfc"
                             + " JOIN branch b ON b.id = bhfc.branch_id"
-                            + " WHERE b.branch_type_did = ? AND bhfc.status = 'LIVE' AND bhfc.is_active",
-                    counterpartyTypeId))
+                            + " WHERE b.branch_type_did = ? AND bhfc.company_id = ?"
+                            + " AND bhfc.status = 'LIVE' AND bhfc.is_active",
+                    counterpartyTypeId, companyId))
                     .as("D7: a counterparty iroda is kap seed-sort — nem marad fail-closed lyuk")
                     .isEqualTo(1);
         }
@@ -430,6 +437,7 @@ class BranchHandlingFeeConfigV383PostgresTest {
 
     private static void seedGlobalParameter(Connection connection, String key, String value)
             throws Exception {
+        deleteParameter(connection, key);
         execute(connection,
                 "INSERT INTO system_parameter (parameter_key, parameter_value, company_id)"
                         + " VALUES (?, ?, NULL)",
@@ -439,9 +447,26 @@ class BranchHandlingFeeConfigV383PostgresTest {
     private static void seedCompanyParameter(Connection connection, UUID companyId,
                                              String key, String value) throws Exception {
         execute(connection,
+                "DELETE FROM system_parameter WHERE parameter_key = ? AND company_id = ?",
+                key, companyId);
+        execute(connection,
                 "INSERT INTO system_parameter (parameter_key, parameter_value, company_id)"
                         + " VALUES (?, ?, ?)",
                 key, value, companyId);
+    }
+
+    /**
+     * A V46 globalis HANDLING_FEE_* seed-sorainak eltakaritasa, hogy a teszt
+     * altal beallitott ertekek legyenek az egyetlenek (D6 precedencia tisztan tesztelheto).
+     */
+    private static void deleteHandlingFeeParameters(Connection connection) throws Exception {
+        execute(connection,
+                "DELETE FROM system_parameter WHERE parameter_key IN"
+                        + " ('HANDLING_FEE_TYPE','HANDLING_FEE_PER_MILLE','HANDLING_FEE_PER_MILLE_MAX')");
+    }
+
+    private static void deleteParameter(Connection connection, String key) throws Exception {
+        execute(connection, "DELETE FROM system_parameter WHERE parameter_key = ?", key);
     }
 
     private static void insertConfig(Connection connection, UUID companyId, UUID branchId,
