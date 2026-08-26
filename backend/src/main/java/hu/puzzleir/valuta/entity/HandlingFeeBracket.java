@@ -59,4 +59,14 @@ public class HandlingFeeBracket {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean active = true;
+
+    /**
+     * FK-096/FR-3: közzétételi állapot — ORTOGONÁLIS az active-re (a V227
+     * trg_sync_active_columns trigger az active/is_active párosért felel).
+     * DRAFT = még nem publikált piszkozat-készlet; LIVE = éles sávok.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 10)
+    @Builder.Default
+    private FeeConfigStatus status = FeeConfigStatus.LIVE;
 }
