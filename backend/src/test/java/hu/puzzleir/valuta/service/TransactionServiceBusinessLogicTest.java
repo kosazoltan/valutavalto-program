@@ -140,7 +140,7 @@ class TransactionServiceBusinessLogicTest {
         when(calculationService.applySellDiscount(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(calculationService.calculateDiscountAmount(any(), any())).thenReturn(BigDecimal.ZERO);
 
-        when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(handlingFeeCalculator.calculateSellGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(handlingFeeCalculator.calculateBuyGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
 

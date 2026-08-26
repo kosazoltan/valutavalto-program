@@ -26,6 +26,7 @@ import hu.puzzleir.valuta.service.ShipmentHandlingFeeService;
 import hu.puzzleir.valuta.service.ShipmentHandlingFeeSyncService;
 import hu.puzzleir.valuta.service.ShipmentService;
 import hu.puzzleir.valuta.service.ShipmentStockBookingService;
+import hu.puzzleir.valuta.service.ShipmentVatSupplySyncService;
 import hu.puzzleir.valuta.service.SystemParameterService;
 import hu.puzzleir.valuta.service.TransferSerialSequenceService;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,6 +81,10 @@ import static org.mockito.Mockito.mockStatic;
         TransferSerialSequenceService.class,
         ShipmentStockBookingService.class,
         ShipmentHandlingFeeSyncService.class,
+        // FK-096 WU-5 + meglévő hiba javítása: a ShipmentService az FKH-039 (#1647) óta
+        // függ a ShipmentVatSupplySyncService-től, ami hiányzott az @Import listából —
+        // a kontextus már a base commiton sem töltött be.
+        ShipmentVatSupplySyncService.class,
         SystemParameterService.class,
         DiscountThresholdService.class,
         AuditLogService.class
@@ -112,6 +117,7 @@ class ShipmentHandlingFeeIsolationPostgresIT {
     @Autowired private WorkerRepository workerRepository;
     @Autowired private CurrencyRepository currencyRepository;
     @Autowired private HandlingFeeBracketRepository bracketRepository;
+    @Autowired private BranchHandlingFeeConfigRepository branchConfigRepository;
     @Autowired private SystemParameterRepository systemParameterRepository;
     @Autowired private TransactionTemplate txTemplate;
 
@@ -263,6 +269,33 @@ class ShipmentHandlingFeeIsolationPostgresIT {
                     .feeAmount(new BigDecimal("2000"))
                     .active(true)
                     .build());
+
+            // --- FK-096: LIVE iroda-szintu dijkonfig az A-ceg irodaihoz (a seed-ido V383
+            // elott jott letre, ezert a @BeforeEach fixture adja a V383 seed helyett).
+            // A bit-egyenlosegi assert tovabbra is a MEGLVO HandlingFeeService kimenetet
+            // hasonlitja — a feloldas most iroda-szintu, fail-closed.
+            branchConfigRepository.saveAndFlush(hu.puzzleir.valuta.entity.BranchHandlingFeeConfig.builder()
+                    .companyId(companyA.getId())
+                    .branchId(cashierBranchA.getId())
+                    .feeMode(hu.puzzleir.valuta.entity.HandlingFeeType.BRACKET)
+                    .status(hu.puzzleir.valuta.entity.FeeConfigStatus.LIVE)
+                    .active(true)
+                    .createdBy("FKH-018-IT")
+                    .createdAt(now)
+                    .publishedBy("FKH-018-IT")
+                    .publishedAt(now)
+                    .build());
+            branchConfigRepository.saveAndFlush(hu.puzzleir.valuta.entity.BranchHandlingFeeConfig.builder()
+                    .companyId(companyA.getId())
+                    .branchId(vaultBranchA.getId())
+                    .feeMode(hu.puzzleir.valuta.entity.HandlingFeeType.BRACKET)
+                    .status(hu.puzzleir.valuta.entity.FeeConfigStatus.LIVE)
+                    .active(true)
+                    .createdBy("FKH-018-IT")
+                    .createdAt(now)
+                    .publishedBy("FKH-018-IT")
+                    .publishedAt(now)
+                    .build());
         });
     }
 
@@ -285,7 +318,7 @@ class ShipmentHandlingFeeIsolationPostgresIT {
             sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn(workerA.getCode());
             sec.when(SecurityUtils::getCurrentBranchIdOrNull).thenReturn(cashierBranchA.getId());
 
-            BigDecimal expected = handlingFeeService.calculateHandlingFee(huf);
+            BigDecimal expected = handlingFeeService.calculateHandlingFee(huf, cashierBranchA.getId());
             assertThat(expected).isGreaterThan(BigDecimal.ZERO); // seed-szanity: a bracket él
 
             var response = feeService.create(ShipmentHandlingFeeCreateRequest.builder()
@@ -313,7 +346,7 @@ class ShipmentHandlingFeeIsolationPostgresIT {
             // hufAmount=125003-mal hívva a tárolt hufAmount 125005 ÉS a calculatedFee ==
             // handlingFeeService.calculateHandlingFee(new BigDecimal("125005"))
             BigDecimal hufRounded = new BigDecimal("125003");
-            BigDecimal expectedRounded = handlingFeeService.calculateHandlingFee(new BigDecimal("125005"));
+            BigDecimal expectedRounded = handlingFeeService.calculateHandlingFee(new BigDecimal("125005"), cashierBranchA.getId());
 
             var response2 = feeService.create(ShipmentHandlingFeeCreateRequest.builder()
                     .fromBranchId(cashierBranchA.getId())

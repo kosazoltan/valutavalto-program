@@ -69,7 +69,7 @@ class CurrencyCalculatorServiceTest {
             when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
             when(exchangeRateRepository.findLatestRate(COMPANY_ID, 1L, BRANCH_ID))
                     .thenReturn(Optional.of(rate));
-            when(handlingFeeService.calculateHandlingFee(any(BigDecimal.class)))
+            when(handlingFeeService.calculateHandlingFee(any(BigDecimal.class), any()))
                     .thenReturn(BigDecimal.ZERO);
 
             // BUY direction: customer sells EUR, gets HUF → buy rate
@@ -101,7 +101,7 @@ class CurrencyCalculatorServiceTest {
                     .thenReturn(Optional.of(rate));
             when(roundingRuleService.roundAmount(eq("USD"), any(BigDecimal.class), eq("SELL")))
                     .thenAnswer(inv -> inv.getArgument(1));
-            when(handlingFeeService.calculateHandlingFee(any(BigDecimal.class)))
+            when(handlingFeeService.calculateHandlingFee(any(BigDecimal.class), any()))
                     .thenReturn(BigDecimal.ZERO);
 
             // SELL direction: customer buys USD with HUF → sell rate

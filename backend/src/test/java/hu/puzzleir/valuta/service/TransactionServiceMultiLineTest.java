@@ -176,7 +176,7 @@ class TransactionServiceMultiLineTest {
         when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(usdRate);
         when(dailySessionService.hasOpenSession()).thenReturn(true);
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("V00001");
-        when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(handlingFeeCalculator.calculateBuyGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(handlingFeeCalculator.calculateSellGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         // FK-KEZDÍJ (2026-06-02): override pass-through (NONE) — a base díjat adja vissza.

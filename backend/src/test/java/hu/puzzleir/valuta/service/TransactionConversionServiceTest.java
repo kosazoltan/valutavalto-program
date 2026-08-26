@@ -151,7 +151,7 @@ class TransactionConversionServiceTest {
 
             when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
                     .thenReturn("R001", "R002", "R003");
-            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
 
             // Save returns the transaction passed to it
             when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -207,7 +207,7 @@ class TransactionConversionServiceTest {
 
             when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
                     .thenReturn("R201", "R202", "R203");
-            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
             when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
             // Override AML mock to simulate BIGCTRL-flagged suspicious + annual-limit scenario
@@ -272,7 +272,7 @@ class TransactionConversionServiceTest {
 
             when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
                     .thenReturn("R101", "R102", "R103");
-            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
             when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
             ConversionRequest req = new ConversionRequest();
@@ -332,7 +332,7 @@ class TransactionConversionServiceTest {
 
             when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
                     .thenReturn("R401", "R402", "R403");
-            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
             when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
             when(helper.getHufCurrencyId()).thenReturn(1L);
 
@@ -392,7 +392,7 @@ class TransactionConversionServiceTest {
 
             when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
                     .thenReturn("R501", "R502", "R503");
-            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
             when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
             ConversionRequest req = new ConversionRequest();
@@ -450,7 +450,7 @@ class TransactionConversionServiceTest {
 
             when(receiptSequenceService.generateReceiptNumber(eq(BRANCH_ID), any()))
                     .thenReturn("R301", "R302", "R303");
-            when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+            when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
             when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
             ConversionRequest req = new ConversionRequest();

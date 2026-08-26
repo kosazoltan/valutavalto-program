@@ -101,7 +101,7 @@ class TransactionServiceCameraLinkingTest {
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(huf));
         when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(rate);
         when(receiptSequenceService.generateReceiptNumber(BRANCH_ID, TransactionType.BUY)).thenReturn("V00001");
-        when(handlingFeeCalculator.calculate(any(), eq(TransactionType.BUY), any())).thenReturn(BigDecimal.ZERO);
+        when(handlingFeeCalculator.calculate(any(), eq(TransactionType.BUY), any(), any())).thenReturn(BigDecimal.ZERO);
         when(handlingFeeCalculator.calculateBuyGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
         when(calculationService.resolveBuyRate(any(), any(), any()))
                 .thenAnswer(inv -> {

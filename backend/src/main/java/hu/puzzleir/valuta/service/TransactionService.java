@@ -286,7 +286,7 @@ public class TransactionService {
 
         // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
         BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
-                hufAmount, TransactionType.BUY, request.getHandlingFee());
+                hufAmount, TransactionType.BUY, request.getHandlingFee(), branchId);
         // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) AUTORITATÍV szerver-oldali
         // validálása az engedély-mátrix szerint. NONE → a számolt alap díj marad.
         BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
@@ -533,7 +533,7 @@ public class TransactionService {
 
         // Kezelési díj szerver oldali számítás (kliens értékét felülírjuk)
         BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
-                hufAmount, TransactionType.SELL, request.getHandlingFee());
+                hufAmount, TransactionType.SELL, request.getHandlingFee(), branchId);
         // FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) AUTORITATÍV validálása.
         BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
                 && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)

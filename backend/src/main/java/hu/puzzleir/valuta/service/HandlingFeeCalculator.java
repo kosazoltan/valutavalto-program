@@ -43,15 +43,17 @@ public class HandlingFeeCalculator {
     private static final int DAILY_CUSTOM_FEE_LIMIT = 5;
 
     /**
-     * Kezelési díj számítása és validálása.
+     * Kezelési díj számítása és validálása — IRODA-TUDATOS (FK-096).
      *
      * @param hufAmount tranzakció HUF összege (nettó, díj nélkül)
      * @param transactionType tranzakció típusa
      * @param clientHandlingFee kliens által küldött kezelési díj (lehet null)
+     * @param branchId a díjat viselő iroda azonosítója — a hívó adja át EXPLICITEN
+     *                 (DIP: a kalkulator SecurityContext nélkül tesztelhető)
      * @return szerver által számított kezelési díj
      */
     public BigDecimal calculate(BigDecimal hufAmount, TransactionType transactionType,
-                                BigDecimal clientHandlingFee) {
+                                BigDecimal clientHandlingFee, UUID branchId) {
         if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
         }
@@ -61,8 +63,8 @@ public class HandlingFeeCalculator {
             return BigDecimal.ZERO;
         }
 
-        // Szerver oldali számítás
-        BigDecimal serverFee = handlingFeeService.calculateHandlingFee(hufAmount);
+        // Szerver oldali számítás — iroda-szintű, fail-closed (FR-5)
+        BigDecimal serverFee = handlingFeeService.calculateHandlingFee(hufAmount, branchId);
 
         // 5 Ft-ra kerekítés
         serverFee = HungarianRounding.roundToFive(serverFee);
