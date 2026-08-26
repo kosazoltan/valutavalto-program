@@ -1,6 +1,6 @@
-generated_at: 2026-08-25T21:49:24.974Z
+generated_at: 2026-08-26T20:03:08.511Z
 schema_version: 1
-source_count: 1075
+source_count: 1076
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -7413,6 +7413,14 @@ long_term:
     summary: "# Spec: FK-091 HQ vészkijárat + bridged jelzés, FK-092 transzfer-riasztás idempotencia > Dátum: 2026-08-20 · Forrás: jóváhagyott hibajegyek (Downloads FK-091, FK-092) · Állapot: JÓVÁHAGYVA (a jegyek) ## 1. Cél A napzárás HQ-küldése üres URL mellett ne blokkoljon: a meglévő artifact-vészkijárat élesben bekapcsolva, `evening_sync_log.is_bridged` megkülönbözteti a helyi fájlba írást a valódi HQ 2xx-től. A transzfer-egye"
     areas: [database, ertektar, installer, legacy, napzaras, penztar, specifikacio]
     keywords: [spec, 091, veszkijarat, bridged, jelzes, 092, transzfer, riasztas, idempotencia, datum, 2026, forras]
+  - id: 28344bad41075248
+    title: "FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv)"
+    type: semantic-reference
+    path: docs/specs/fk096-fk097-branch-handling-fee.md
+    sha256: e364d0cbde837ffae0c0a0a0d3f4434c97143f8513cc18063acbbeb3eb07ccfc
+    summary: "# FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv) > Pipeline job: `20260826-fk096-fk097-branch-fee`, base `76bb1188`, branch `pipeline/20260826-fk096-fk097-branch-fee`. > Spec-ek: FK-096 (14 FR), FK-097 (8 FR). Terv: `.hermes/pipeline/20260826-fk096-fk097-branch-fee/round-1/10-plan.md`. > Ebben a batchben a frontend-változás a közös `frontend-react` bundle-t érinti, ezért **MINDKÉT t"
+    areas: [database, ertektar, frontend, installer, legacy, penztar, security, specifikacio, sync, tenant]
+    keywords: [096, 097, iroda, szintu, kezelesi, dij, dontesnaplo, uzemeltetoi, kezikonyv, pipeline, job, 20260826]
   - id: 4871f5cc21beda82
     title: "Spec: FKH-019 / FKH-020 / FKH-021 / FKH-022 Értéktári hiányok lezárása"
     type: semantic-reference

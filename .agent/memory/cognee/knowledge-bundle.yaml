@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-25T21:49:24.974Z
+generated_at: 2026-08-26T20:03:08.511Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -4832,6 +4832,13 @@ nodes:
     summary: "# Spec: FK-091 HQ vészkijárat + bridged jelzés, FK-092 transzfer-riasztás idempotencia > Dátum: 2026-08-20 · Forrás: jóváhagyott hibajegyek (Downloads FK-091, FK-092) · Állapot: JÓVÁHAGYVA (a jegyek) ## 1. Cél A napzárás HQ-küldése üres URL mellett ne blokkoljon: a meglévő artifact-vészkijárat élesben bekapcsolva, `evening_sync_log.is_bridged` megkülönbözteti a helyi fájlba írást a valódi HQ 2xx-től. A transzfer-egye"
     tags: [spec, 091, veszkijarat, bridged, jelzes, 092, transzfer, riasztas, idempotencia, datum]
     areas: [database, ertektar, installer, legacy, napzaras, penztar, specifikacio]
+  - id: 28344bad41075248
+    type: semantic-reference
+    title: "FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv)"
+    source_path: docs/specs/fk096-fk097-branch-handling-fee.md
+    summary: "# FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv) > Pipeline job: `20260826-fk096-fk097-branch-fee`, base `76bb1188`, branch `pipeline/20260826-fk096-fk097-branch-fee`. > Spec-ek: FK-096 (14 FR), FK-097 (8 FR). Terv: `.hermes/pipeline/20260826-fk096-fk097-branch-fee/round-1/10-plan.md`. > Ebben a batchben a frontend-változás a közös `frontend-react` bundle-t érinti, ezért **MINDKÉT t"
+    tags: [096, 097, iroda, szintu, kezelesi, dij, dontesnaplo, uzemeltetoi, kezikonyv, pipeline]
+    areas: [database, ertektar, frontend, installer, legacy, penztar, security, specifikacio, sync, tenant]
   - id: 4871f5cc21beda82
     type: semantic-reference
     title: "Spec: FKH-019 / FKH-020 / FKH-021 / FKH-022 Értéktári hiányok lezárása"
@@ -17427,6 +17434,36 @@ edges:
     relation: belongs_to_area
   - from: 2a723cf64900ffb7
     to: area_specifikacio
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_database
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_installer
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_legacy
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_security
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_specifikacio
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_sync
+    relation: belongs_to_area
+  - from: 28344bad41075248
+    to: area_tenant
     relation: belongs_to_area
   - from: 4871f5cc21beda82
     to: area_cimletezes
