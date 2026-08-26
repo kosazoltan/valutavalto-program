@@ -3,6 +3,7 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeBracketDto;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeConfigDto;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.FeeConfigStatus;
 import hu.puzzleir.valuta.entity.HandlingFeeBracket;
 import hu.puzzleir.valuta.entity.HandlingFeeType;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -74,7 +75,7 @@ public class HandlingFeeConfigController {
         }
 
         List<HandlingFeeBracket> brackets = bracketRepository
-                .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
+                .findByCompanyIdAndStatusAndActiveOrderByBracketOrder(companyId, FeeConfigStatus.LIVE, true);
 
         List<HandlingFeeBracketDto> bracketDtos = brackets.stream()
                 .map(b -> HandlingFeeBracketDto.builder()
@@ -96,7 +97,13 @@ public class HandlingFeeConfigController {
 
     @PutMapping
     @Transactional
+    @Deprecated
     public ResponseEntity<HandlingFeeConfigDto> updateConfig(@Valid @RequestBody HandlingFeeConfigDto dto) {
+        // FK-096/W8/D16: a legacy PUT továbbra is írja a HANDLING_FEE_* system_parametereket
+        // és 200-at ad, DE a díjszámítás azokat NEM olvassa többé (iroda-szintű feloldás).
+        // Nyilvánvalóvá tesszük a logban, hogy az operátor itt hiába "javít".
+        log.warn("FK-096: a legacy PUT /handling-fee-config írás NEM befolyásolja a díjszámítást"
+                + " — használd a /branch-fee-config végpontokat");
         if (dto.getFeeType() == null || dto.getFeeType().isBlank()) {
             return ResponseEntity.badRequest().build();
         }
