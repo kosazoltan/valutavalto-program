@@ -2,7 +2,6 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.handlingfee.BracketSetDto;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDraftRequest;
-import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDto;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigListDto;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigLiveDto;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigRowDto;
@@ -113,21 +112,7 @@ public class BranchHandlingFeeConfigService {
                 }
             }
 
-            rows.add(BranchFeeConfigRowDto.builder()
-                    .branchId(branch.getId())
-                    .branchCode(branch.getCode())
-                    .branchName(branch.getName())
-                    .region(branch.getRegionCode())
-                    .liveFeeMode(live != null ? live.getFeeMode().name() : null)
-                    .livePerMilleRate(live != null ? live.getPerMilleRate() : null)
-                    .livePerMilleCap(live != null ? live.getPerMilleCap() : null)
-                    .hasDraft(draft != null)
-                    .draftFeeMode(draft != null ? draft.getFeeMode().name() : null)
-                    .draftPerMilleRate(draft != null ? draft.getPerMilleRate() : null)
-                    .draftPerMilleCap(draft != null ? draft.getPerMilleCap() : null)
-                    .version(draft != null ? draft.getVersion()
-                            : (live != null ? live.getVersion() : null))
-                    .build());
+            rows.add(buildRow(branch, live, draft));
         }
 
         BranchFeeSummaryDto summary = BranchFeeSummaryDto.builder()
@@ -144,7 +129,7 @@ public class BranchHandlingFeeConfigService {
     // =====================================================================
 
     @Transactional(rollbackFor = Exception.class)
-    public BranchFeeConfigDto saveDraft(UUID branchId, BranchFeeConfigDraftRequest request) {
+    public BranchFeeConfigRowDto saveDraft(UUID branchId, BranchFeeConfigDraftRequest request) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         String workerCode = SecurityUtils.getCurrentWorkerCode();
         Branch branch = findBranchInCompany(branchId, companyId);
@@ -177,7 +162,9 @@ public class BranchHandlingFeeConfigService {
         configRepository.saveAndFlush(draft);
 
         log.info("FK-096: kezelési díj DRAFT mentve — iroda={}, mód={}", branch.getCode(), draft.getFeeMode());
-        return toDto(branchId, draft);
+        // ITEM 5 (R2-D8): a válasz SOR-alakú — a LIVE oszlopok érintetlen értékei +
+        // az új DRAFT értékek pontosan azok, amit az admin tábla renderel. Nincs refetch.
+        return currentRow(companyId, branch);
     }
 
     // =====================================================================
@@ -185,7 +172,7 @@ public class BranchHandlingFeeConfigService {
     // =====================================================================
 
     @Transactional(rollbackFor = Exception.class)
-    public BranchFeeConfigDto publish(UUID branchId, Long expectedVersion) {
+    public BranchFeeConfigRowDto publish(UUID branchId, Long expectedVersion) {
         if (expectedVersion == null) {
             throw new ValidationException("Az expectedVersion kötelező (0 legitim első publikálás).");
         }
@@ -235,7 +222,10 @@ public class BranchHandlingFeeConfigService {
                 null);
         log.info("FK-096: kezelési díj konfiguráció publikálva — iroda={}, mód={}",
                 branch.getCode(), draft.getFeeMode());
-        return toDto(branchId, draft);
+        // ITEM 5 (R2-D8): a válasz SOR-alakú — a LIVE oszlopok a publikált értéket hordozzák.
+        // A D17 sorrend ÉRINTETLEN: currentRow a második flush ÉS az audit UTÁN fut
+        // (pitfall #6 — korábban futtatva a swap előtti LIVE sort olvasná vissza).
+        return currentRow(companyId, branch);
     }
 
     // =====================================================================
@@ -412,6 +402,45 @@ public class BranchHandlingFeeConfigService {
     // ============================ SEGÉDMETÓDUSOK ============================
 
     /**
+     * ITEM 5 (R2-D8): SOR-alakú DTO — a listForCompany sor-mappingjével bit-azonos
+     * (15 mező-értékadás, R2-WU-8 egyetlen megengedett kivonása), így a draft/publish
+     * válasz és az admin lista egy alakot kódol.
+     */
+    private static BranchFeeConfigRowDto buildRow(Branch branch,
+                                                  BranchHandlingFeeConfig live,
+                                                  BranchHandlingFeeConfig draft) {
+        return BranchFeeConfigRowDto.builder()
+                .branchId(branch.getId())
+                .branchCode(branch.getCode())
+                .branchName(branch.getName())
+                .region(branch.getRegionCode())
+                .liveFeeMode(live != null ? live.getFeeMode().name() : null)
+                .livePerMilleRate(live != null ? live.getPerMilleRate() : null)
+                .livePerMilleCap(live != null ? live.getPerMilleCap() : null)
+                .hasDraft(draft != null)
+                .draftFeeMode(draft != null ? draft.getFeeMode().name() : null)
+                .draftPerMilleRate(draft != null ? draft.getPerMilleRate() : null)
+                .draftPerMilleCap(draft != null ? draft.getPerMilleCap() : null)
+                .version(draft != null ? draft.getVersion()
+                        : (live != null ? live.getVersion() : null))
+                .build();
+    }
+
+    /**
+     * ITEM 5: az iroda aktuális LIVE+DRAFT képe — a saveDraft/publish válasz forrása.
+     * A companyId a hívó tranzakciójából jön (multi-tenant invariáns, pitfall #14).
+     */
+    private BranchFeeConfigRowDto currentRow(UUID companyId, Branch branch) {
+        BranchHandlingFeeConfig live = configRepository
+                .findByCompanyIdAndBranchIdAndStatusAndActiveTrue(companyId, branch.getId(), FeeConfigStatus.LIVE)
+                .orElse(null);
+        BranchHandlingFeeConfig draft = configRepository
+                .findByCompanyIdAndBranchIdAndStatusAndActiveTrue(companyId, branch.getId(), FeeConfigStatus.DRAFT)
+                .orElse(null);
+        return buildRow(branch, live, draft);
+    }
+
+    /**
      * ITEM 3 (round 2): batch-validáció — a hívó egyszerre látja az összes hibás sort
      * (API-doktrína: a validációs hibákat kötegeljük, nem az elsőnél állunk meg).
      * A dobott entitások eldobhatóak — soha nem kerülnek save-be (R2 pitfall #2:
@@ -477,18 +506,6 @@ public class BranchHandlingFeeConfigService {
         } catch (RuntimeException e) {
             return null;
         }
-    }
-
-    private static BranchFeeConfigDto toDto(UUID branchId, BranchHandlingFeeConfig config) {
-        return BranchFeeConfigDto.builder()
-                .branchId(branchId)
-                .feeMode(config.getFeeMode() != null ? config.getFeeMode().name() : null)
-                .perMilleRate(config.getPerMilleRate())
-                .perMilleCap(config.getPerMilleCap())
-                .hasDraft(config.getStatus() == FeeConfigStatus.DRAFT)
-                .status(config.getStatus() != null ? config.getStatus().name() : null)
-                .version(config.getVersion())
-                .build();
     }
 
     private HandlingFeeBracketDto toBracketDto(HandlingFeeBracket bracket) {

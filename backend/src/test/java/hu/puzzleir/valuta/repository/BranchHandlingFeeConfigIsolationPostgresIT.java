@@ -2,7 +2,7 @@ package hu.puzzleir.valuta.repository;
 
 import hu.puzzleir.valuta.TestApplication;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDraftRequest;
-import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDto;
+import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigRowDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.BranchHandlingFeeConfig;
 import hu.puzzleir.valuta.entity.Company;
@@ -52,7 +52,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -193,6 +196,13 @@ class BranchHandlingFeeConfigIsolationPostgresIT {
             assertThat(configRepository.findByCompanyIdAndActiveTrue(companyB.getId()))
                     .as("Cross-tenant publish nem írhat sort")
                     .isEmpty();
+
+            // ITEM 2 (round 2): a megtagadás forenzikus auditja REQUIRES_NEW-ben íródik
+            // a HÍVÓ tenantjába (companyA) — valós kontextusban, a rollback ellenére.
+            verify(auditLogService).logInNewTransaction(
+                    eq("BRANCH_FEE_CONFIG_ACCESS_DENIED"), any(), any(),
+                    any(), any(), any(), any(),
+                    contains("CROSS_TENANT_BRANCH"), eq(companyA.getId()));
         }
     }
 
@@ -308,9 +318,12 @@ class BranchHandlingFeeConfigIsolationPostgresIT {
 
             // DRAFT mentése, majd publikálás expectedVersion=0-val (B2: első publikálás)
             branchConfigService.saveDraft(branchA.getId(), draftRequest("PER_MILLE", "5", null));
-            BranchFeeConfigDto published = branchConfigService.publish(branchA.getId(), 0L);
-            assertThat(published.getStatus()).isEqualTo("LIVE");
-            assertThat(published.getPerMilleRate()).isEqualByComparingTo("5");
+            // ITEM 5 (R2-WU-8): a publish válasza SOR-alakú DTO — a valós sémán bizonyítjuk,
+            // hogy a LIVE oszlopok a publikált értéket hordozzák (nincs refetch a kliensben).
+            BranchFeeConfigRowDto published = branchConfigService.publish(branchA.getId(), 0L);
+            assertThat(published.getLiveFeeMode()).isEqualTo("PER_MILLE");
+            assertThat(published.getLivePerMilleRate()).isEqualByComparingTo("5");
+            assertThat(published.isHasDraft()).isFalse();
 
             // (a) nincs constraint-sértés (eddig sem dobtunk); (b) pontosan 1 LIVE+aktív sor
             List<BranchHandlingFeeConfig> liveRows = configRepository.findByCompanyIdAndActiveTrue(companyA.getId())
