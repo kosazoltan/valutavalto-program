@@ -3,7 +3,6 @@ package hu.puzzleir.valuta.controller;
 import hu.puzzleir.valuta.dto.handlingfee.BracketSetDto;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeBracketDto;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeConfigDto;
-import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.BranchHandlingFeeConfigService;
@@ -214,11 +213,6 @@ class HandlingFeeConfigControllerSecurityTest {
         }
 
         @Bean
-        CompanyRepository companyRepository() {
-            return mock(CompanyRepository.class);
-        }
-
-        @Bean
         BranchHandlingFeeConfigService branchHandlingFeeConfigService() {
             return mock(BranchHandlingFeeConfigService.class);
         }
@@ -227,9 +221,9 @@ class HandlingFeeConfigControllerSecurityTest {
         HandlingFeeConfigController handlingFeeConfigController(
                 SystemParameterService systemParameterService,
                 HandlingFeeBracketRepository handlingFeeBracketRepository,
-                CompanyRepository companyRepository) {
+                BranchHandlingFeeConfigService branchHandlingFeeConfigService) {
             return new HandlingFeeConfigController(
-                    systemParameterService, handlingFeeBracketRepository, companyRepository);
+                    systemParameterService, handlingFeeBracketRepository, branchHandlingFeeConfigService);
         }
     }
 }
