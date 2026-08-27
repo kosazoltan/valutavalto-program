@@ -1,9 +1,9 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDraftRequest;
-import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDto;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigListDto;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigLiveDto;
+import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigRowDto;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeePublishRequest;
 import hu.puzzleir.valuta.service.BranchHandlingFeeConfigService;
 import org.junit.jupiter.api.BeforeEach;
@@ -150,11 +150,16 @@ class BranchFeeConfigControllerSecurityTest {
     @WithMockUser(roles = "UGYVEZETO")
     @DisplayName("UGYVEZETO publikálhat és delegál (B2: expectedVersion=0 a törzsben)")
     void publish_allowedForUgyvezeto() {
-        BranchFeeConfigDto dto = BranchFeeConfigDto.builder().branchId(BRANCH_ID).version(1L).build();
-        when(service.publish(eq(BRANCH_ID), eq(0L))).thenReturn(dto);
+        // ITEM 5 (R2-WU-7): a publish válasza SOR-alakú DTO (live* oszlopokkal).
+        BranchFeeConfigRowDto row = BranchFeeConfigRowDto.builder()
+                .branchId(BRANCH_ID)
+                .liveFeeMode("PER_MILLE")
+                .version(1L)
+                .build();
+        when(service.publish(eq(BRANCH_ID), eq(0L))).thenReturn(row);
 
         assertThat(controller.publish(BRANCH_ID, new BranchFeePublishRequest(0L)).getBody())
-                .isSameAs(dto);
+                .isSameAs(row);
         verify(service).publish(BRANCH_ID, 0L);
     }
 
@@ -163,10 +168,13 @@ class BranchFeeConfigControllerSecurityTest {
     @DisplayName("FOERTEKTAR draft-ot menthet és delegál")
     void saveDraft_allowedForFoertektar() {
         BranchFeeConfigDraftRequest request = validDraft();
-        BranchFeeConfigDto dto = BranchFeeConfigDto.builder().branchId(BRANCH_ID).build();
-        when(service.saveDraft(eq(BRANCH_ID), eq(request))).thenReturn(dto);
+        BranchFeeConfigRowDto row = BranchFeeConfigRowDto.builder()
+                .branchId(BRANCH_ID)
+                .liveFeeMode("PER_MILLE")
+                .build();
+        when(service.saveDraft(eq(BRANCH_ID), eq(request))).thenReturn(row);
 
-        assertThat(controller.saveDraft(BRANCH_ID, request).getBody()).isSameAs(dto);
+        assertThat(controller.saveDraft(BRANCH_ID, request).getBody()).isSameAs(row);
         verify(service).saveDraft(BRANCH_ID, request);
     }
 

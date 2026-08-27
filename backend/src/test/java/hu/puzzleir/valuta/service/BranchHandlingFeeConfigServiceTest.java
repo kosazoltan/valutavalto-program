@@ -1,7 +1,7 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDraftRequest;
-import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDto;
+import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigRowDto;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeBracketDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.BranchHandlingFeeConfig;
@@ -32,6 +32,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -76,13 +77,102 @@ class BranchHandlingFeeConfigServiceTest {
     private static final UUID BRANCH_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     // =====================================================================
-    // FR-8 — saveDraft nem nyúl a LIVE sorhoz
+    // FR-8 + ITEM 5 (round 2) — saveDraft válasz sor-alaku, a LIVE oszlop ÉRINTETLEN
     // =====================================================================
     @Test
-    @DisplayName("FR-8: saveDraft csak a DRAFT sort írja, a LIVE sértetlen marad")
-    void saveDraftNemNyulALiveSorhoz() {
+    @DisplayName("FR-8 + ITEM 5: saveDraft válasza sor-alakú — a LIVE értékek érintetlenek, a DRAFT oszlopok az újak")
+    void saveDraft_ValaszaSorAlaku_LiveErintetlen() {
         BranchHandlingFeeConfig live = liveConfig(HandlingFeeType.PER_MILLE,
                 new BigDecimal("3"), null, 0L);
+        AtomicReference<BranchHandlingFeeConfig> savedDraft = new AtomicReference<>();
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(branch()));
+            when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
+                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.LIVE))
+                    .thenReturn(Optional.of(live));
+            // 1. lookup (meglévő draft): nincs; 2. lookup (currentRow): a mentett draft.
+            when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
+                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.DRAFT))
+                    .thenReturn(Optional.empty())
+                    .thenAnswer(inv -> Optional.ofNullable(savedDraft.get()));
+            when(configRepository.saveAndFlush(any(BranchHandlingFeeConfig.class)))
+                    .thenAnswer(inv -> {
+                        savedDraft.set(inv.getArgument(0));
+                        return inv.getArgument(0);
+                    });
+
+            BranchFeeConfigRowDto result = service.saveDraft(BRANCH_ID,
+                    draftRequest("PER_MILLE", new BigDecimal("5"), new BigDecimal("1000")));
+
+            // ITEM 5: a válasz SOR-alakú — LIVE oszlopok + új DRAFT oszlopok.
+            assertThat(result.getLiveFeeMode()).isEqualTo("PER_MILLE");
+            assertThat(result.getLivePerMilleRate()).isEqualByComparingTo("3");
+            assertThat(result.getLivePerMilleCap()).isNull();
+            assertThat(result.isHasDraft()).isTrue();
+            assertThat(result.getDraftFeeMode()).isEqualTo("PER_MILLE");
+            assertThat(result.getDraftPerMilleRate()).isEqualByComparingTo("5");
+            assertThat(result.getDraftPerMilleCap()).isEqualByComparingTo("1000");
+            assertThat(result.getBranchCode()).isEqualTo("B01");
+            assertThat(result.getBranchName()).isEqualTo("Test branch");
+
+            // FR-8 bizonyíték (write-side, SZIGORÚBB a korábbi read-side never()-findnél):
+            // a saveDraft a LIVE sort SEMMILYEN írással nem érinti; a fixture sértetlen.
+            verify(configRepository, never()).save(live);
+            verify(configRepository, never()).saveAndFlush(live);
+            assertThat(live.getFeeMode()).isEqualTo(HandlingFeeType.PER_MILLE);
+            assertThat(live.getPerMilleRate()).isEqualByComparingTo("3");
+            assertThat(live.getActive()).isTrue();
+            assertThat(live.getStatus()).isEqualTo(FeeConfigStatus.LIVE);
+        }
+    }
+
+    @Test
+    @DisplayName("ITEM 5: publish válasza sor-alakú — a LIVE oszlopok a publikált értéket hordozzák, DRAFT nincs")
+    void publish_ValaszaSorAlaku_LiveOszlopokkal() {
+        BranchHandlingFeeConfig live = liveConfig(HandlingFeeType.PER_MILLE,
+                new BigDecimal("3"), null, 7L);
+        BranchHandlingFeeConfig draft = draftConfig(HandlingFeeType.PER_MILLE,
+                new BigDecimal("5"), new BigDecimal("1000"), 2L);
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(branch()));
+            // Állapotfüggő finderek: előléptetés ELŐTT a régi LIVE / a DRAFT; UTÁNA az
+            // előléptetett sor (ez a valós DB-t modellezi: ugyanaz a sor vált státuszt).
+            when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
+                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.LIVE))
+                    .thenAnswer(inv -> draft.getStatus() == FeeConfigStatus.LIVE
+                            ? Optional.of(draft) : Optional.of(live));
+            when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
+                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.DRAFT))
+                    .thenAnswer(inv -> draft.getStatus() == FeeConfigStatus.DRAFT
+                            ? Optional.of(draft) : Optional.empty());
+            when(configRepository.save(any(BranchHandlingFeeConfig.class)))
+                    .thenAnswer(inv -> inv.getArgument(0));
+
+            BranchFeeConfigRowDto result = service.publish(BRANCH_ID, 2L);
+
+            assertThat(result.getLiveFeeMode()).isEqualTo("PER_MILLE");
+            assertThat(result.getLivePerMilleRate()).isEqualByComparingTo("5");
+            assertThat(result.getLivePerMilleCap()).isEqualByComparingTo("1000");
+            assertThat(result.isHasDraft()).isFalse();
+            assertThat(result.getDraftFeeMode()).isNull();
+            assertThat(result.getBranchCode()).isEqualTo("B01");
+            assertThat(result.getBranchName()).isEqualTo("Test branch");
+            assertThat(result.getVersion()).isNotNull();
+        }
+    }
+
+    @Test
+    @DisplayName("R2-D9: saveDraft válasza a flush által kiosztott @Version-t hordja (nem null)")
+    void saveDraft_UjPiszkozatVerzioja_NemNull() {
+        AtomicReference<BranchHandlingFeeConfig> savedDraft = new AtomicReference<>();
 
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
             sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
@@ -91,23 +181,25 @@ class BranchHandlingFeeConfigServiceTest {
                     .thenReturn(Optional.of(branch()));
             when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
                     COMPANY_ID, BRANCH_ID, FeeConfigStatus.DRAFT))
-                    .thenReturn(Optional.empty());
+                    .thenReturn(Optional.empty())
+                    .thenAnswer(inv -> Optional.ofNullable(savedDraft.get()));
+            // R2-D9: a @Version flush-kor áll be — a mock a JPA-viselkedést modellezi.
             when(configRepository.saveAndFlush(any(BranchHandlingFeeConfig.class)))
-                    .thenAnswer(inv -> inv.getArgument(0));
+                    .thenAnswer(inv -> {
+                        BranchHandlingFeeConfig entity = inv.getArgument(0);
+                        entity.setVersion(0L);
+                        savedDraft.set(entity);
+                        return entity;
+                    });
 
-            BranchFeeConfigDto result = service.saveDraft(BRANCH_ID,
-                    draftRequest("PER_MILLE", new BigDecimal("5"), new BigDecimal("1000")));
+            BranchFeeConfigRowDto result = service.saveDraft(BRANCH_ID,
+                    draftRequest("PER_MILLE", new BigDecimal("5"), null));
 
-            assertThat(result.isHasDraft()).isTrue();
-            // FR-8 bizonyíték: a LIVE sort a draft-mentés kódútja SEM lekérdezésben,
-            // SEM írásban nem érinti; a lokálisan felépített LIVE fixture sértetlen.
-            verify(configRepository, never()).findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
-                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.LIVE);
-            verify(configRepository, never()).save(live);
-            assertThat(live.getFeeMode()).isEqualTo(HandlingFeeType.PER_MILLE);
-            assertThat(live.getPerMilleRate()).isEqualByComparingTo("3");
-            assertThat(live.getActive()).isTrue();
-            assertThat(live.getStatus()).isEqualTo(FeeConfigStatus.LIVE);
+            assertThat(result.getVersion())
+                    .as("R2-D9: saveAndFlush nélkül az új draft versionje null lenne,"
+                            + " és a modal expectedVersion: null-lal publikálna → 400")
+                    .isNotNull()
+                    .isEqualTo(0L);
         }
     }
 
