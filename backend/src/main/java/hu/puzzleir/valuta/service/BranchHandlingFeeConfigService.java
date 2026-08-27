@@ -167,7 +167,14 @@ public class BranchHandlingFeeConfigService {
         draft.setPerMilleCap(request.getPerMilleCap() != null
                 ? HungarianRounding.roundToFive(request.getPerMilleCap())
                 : null);
-        configRepository.save(draft);
+        // ITEM 4 (round 2): draft-time = publish-time szabály (R2-D5) — a PER_MILLE
+        // null/negatív mérték itt 400 ValidationException, így a ck_bhfc_per_mille
+        // CHECK-hez vezető DataIntegrityViolationException-út elérhetetlen.
+        draft.assertPublishable();
+        // R2-D9: a @Version csak flush-kor áll be — saveAndFlush nélkül egy ÚJ draft
+        // versionje null lenne a válaszon belül, és a modal expectedVersion: null-lal
+        // publikálna → 400 az első szerkesztésnél.
+        configRepository.saveAndFlush(draft);
 
         log.info("FK-096: kezelési díj DRAFT mentve — iroda={}, mód={}", branch.getCode(), draft.getFeeMode());
         return toDto(branchId, draft);

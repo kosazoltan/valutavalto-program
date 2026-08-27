@@ -92,7 +92,7 @@ class BranchHandlingFeeConfigServiceTest {
             when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
                     COMPANY_ID, BRANCH_ID, FeeConfigStatus.DRAFT))
                     .thenReturn(Optional.empty());
-            when(configRepository.save(any(BranchHandlingFeeConfig.class)))
+            when(configRepository.saveAndFlush(any(BranchHandlingFeeConfig.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
             BranchFeeConfigDto result = service.saveDraft(BRANCH_ID,
@@ -310,7 +310,7 @@ class BranchHandlingFeeConfigServiceTest {
             when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
                     COMPANY_ID, BRANCH_ID, FeeConfigStatus.DRAFT))
                     .thenReturn(Optional.empty());
-            when(configRepository.save(any(BranchHandlingFeeConfig.class)))
+            when(configRepository.saveAndFlush(any(BranchHandlingFeeConfig.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
             service.saveDraft(BRANCH_ID,
@@ -318,7 +318,8 @@ class BranchHandlingFeeConfigServiceTest {
 
             ArgumentCaptor<BranchHandlingFeeConfig> captor =
                     ArgumentCaptor.forClass(BranchHandlingFeeConfig.class);
-            verify(configRepository).save(captor.capture());
+            // R2-WU-3: save → saveAndFlush mechanikus átnevezés (R2-D9, nem gyengítés).
+            verify(configRepository).saveAndFlush(captor.capture());
             assertThat(captor.getValue().getPerMilleCap())
                     .as("D5: az írási út 5 Ft-ra kerekíti a cap-et")
                     .isEqualByComparingTo("2005");
