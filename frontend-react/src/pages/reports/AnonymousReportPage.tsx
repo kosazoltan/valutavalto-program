@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function AnonymousReportPage() {
   const { t } = useTranslation()
@@ -286,7 +287,7 @@ export default function AnonymousReportPage() {
       {/* Table */}
       <div className="form-panel">
         {loading ? (
-          <div>Betöltés...</div>
+          <div>{i18n.t('literals.betoltes')}</div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-gray-500 py-4">{t('reports.nincsBejelentes')}</div>
         ) : (

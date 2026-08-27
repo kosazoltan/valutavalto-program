@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface Branch {
   id: string
@@ -285,7 +286,7 @@ export default function BranchPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Betöltés...</div>
+        <div className="text-gray-500">{i18n.t('literals.betoltes')}</div>
       </div>
     )
   }
@@ -295,9 +296,11 @@ export default function BranchPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800">
           <Building2 />
-          Pénztár Törzs Adatbázis
+          {i18n.t('literals.penztar-torzs-adatbazis')}
           <span className="text-sm font-normal text-gray-500" data-testid="branch-count">
-            ({filtered.length} pénztár)
+            {i18n.t('literals.lit-19')}
+            {filtered.length}
+            {i18n.t('literals.penztar-3')}
           </span>
         </h1>
         <button
@@ -305,7 +308,7 @@ export default function BranchPage() {
           className="form-button-primary flex min-h-10 items-center justify-center gap-2"
         >
           <Plus size={16} />
-          Új pénztár
+          {i18n.t('literals.uj-penztar')}
         </button>
       </div>
 
@@ -337,7 +340,7 @@ export default function BranchPage() {
             onChange={(e) => setTerritoryFilter(e.target.value)}
             aria-label="Területi szűrő"
           >
-            <option value="">Minden terület</option>
+            <option value="">{i18n.t('literals.minden-terulet')}</option>
             {territories.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -351,7 +354,7 @@ export default function BranchPage() {
               checked={showInactive}
               onChange={(e) => setShowInactive(e.target.checked)}
             />
-            <span className="text-sm">Inaktívak is</span>
+            <span className="text-sm">{i18n.t('literals.inaktivak-is')}</span>
           </label>
           <div className="flex min-w-[220px] flex-1 gap-2 sm:flex-none">
             <div className="relative flex-1">
@@ -434,11 +437,11 @@ export default function BranchPage() {
           <thead>
             <tr>
               <th>{t('common.code')}</th>
-              <th>Pénztár neve</th>
-              <th>Terület</th>
-              <th>Szolgáltatások</th>
-              <th>Kontakt</th>
-              <th>Admin stat</th>
+              <th>{i18n.t('literals.penztar-neve')}</th>
+              <th>{i18n.t('literals.terulet')}</th>
+              <th>{i18n.t('literals.szolgaltatasok')}</th>
+              <th>{i18n.t('literals.kontakt')}</th>
+              <th>{i18n.t('literals.admin-stat')}</th>
               <th>{t('common.status')}</th>
               <th>{t('branches.ertektar')}</th>
               <th>{t('common.actions')}</th>
@@ -458,7 +461,11 @@ export default function BranchPage() {
                   <td>
                     {b.name}
                     {b.shortName ? (
-                      <span className="text-gray-400 text-xs ml-1">({b.shortName})</span>
+                      <span className="text-gray-400 text-xs ml-1">
+                        {i18n.t('literals.lit-19')}
+                        {b.shortName}
+                        {i18n.t('literals.lit-2')}
+                      </span>
                     ) : null}
                   </td>
                   <td className="text-sm">{b.region ?? '-'}</td>
@@ -477,7 +484,9 @@ export default function BranchPage() {
                       </div>
                     ) : null}
                     {b.phone ? <div className="text-gray-500">{b.phone}</div> : null}
-                    {!b.email && !b.phone ? <span className="text-gray-400">-</span> : null}
+                    {!b.email && !b.phone ? (
+                      <span className="text-gray-400">{i18n.t('literals.lit-15')}</span>
+                    ) : null}
                   </td>
                   <td>{renderStats(b)}</td>
                   <td>
@@ -547,18 +556,26 @@ export default function BranchPage() {
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Terület</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    {i18n.t('literals.terulet')}
+                  </div>
                   <div>{b.region ?? '-'}</div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Admin stat</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    {i18n.t('literals.admin-stat')}
+                  </div>
                   {renderStats(b)}
                 </div>
                 <div className="col-span-2">
-                  <div className="text-xs font-semibold uppercase text-gray-500">Kontakt</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    {i18n.t('literals.kontakt')}
+                  </div>
                   {b.email ? <div className="break-all">{b.email}</div> : null}
                   {b.phone ? <div className="text-gray-500">{b.phone}</div> : null}
-                  {!b.email && !b.phone ? <span className="text-gray-400">-</span> : null}
+                  {!b.email && !b.phone ? (
+                    <span className="text-gray-400">{i18n.t('literals.lit-15')}</span>
+                  ) : null}
                 </div>
               </div>
 
@@ -582,7 +599,8 @@ export default function BranchPage() {
                 <span
                   className={`text-xs font-semibold ${b.isVault ? 'text-blue-700' : 'text-gray-400'}`}
                 >
-                  Értéktár: {b.isVault ? 'IGEN' : 'nem'}
+                  {i18n.t('literals.ertektar-2')}
+                  {b.isVault ? 'IGEN' : 'nem'}
                 </span>
               </label>
 

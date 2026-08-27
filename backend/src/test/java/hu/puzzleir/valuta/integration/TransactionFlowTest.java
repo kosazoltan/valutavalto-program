@@ -164,7 +164,7 @@ class TransactionFlowTest {
         // For excessive discount, we override in the specific test
 
         // Default mock: HandlingFeeCalculator returns 0 (no fee)
-        when(handlingFeeCalculator.calculate(any(), any(), any()))
+        when(handlingFeeCalculator.calculate(any(), any(), any(), any()))
             .thenReturn(java.math.BigDecimal.ZERO);
         // FK-KEZDÍJ (2026-06-02): override pass-through (NONE) — a base díjat adja vissza.
         when(handlingFeeOverrideService.resolveOverride(any(), any(), any(), any(), any(), any()))

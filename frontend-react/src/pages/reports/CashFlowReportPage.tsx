@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { cashFlowReportApi, type CashFlowReport } from '../../services/api/settings'
+import i18n from '../../i18n'
 
 /**
  * FKH-030: Pénzforgalom riport.
@@ -82,28 +83,33 @@ export default function CashFlowReportPage() {
       {/* Nyomtatási fejléc — képernyőn rejtve, nyomtatásban látszik */}
       <div className="hidden print:block text-center mb-4">
         <h1 className="text-lg font-bold">{COMPANY_HEADER}</h1>
-        <h2 className="text-base">Pénzforgalom riport</h2>
+        <h2 className="text-base">{i18n.t('literals.penzforgalom-riport')}</h2>
         <p className="text-sm">
-          Időszak: {data?.from ?? from} – {data?.to ?? to}
+          {i18n.t('literals.idoszak-2')}
+          {data?.from ?? from}
+          {i18n.t('literals.lit-32')}
+          {data?.to ?? to}
         </p>
       </div>
 
       <div className="no-print flex flex-wrap items-end gap-3">
-        <h1 className="text-xl font-semibold mr-auto">Pénzforgalom riport</h1>
+        <h1 className="text-xl font-semibold mr-auto">{i18n.t('literals.penzforgalom-riport')}</h1>
         <button
           type="button"
           onClick={() => window.print()}
           disabled={rows.length === 0}
           className="flex items-center gap-2 rounded bg-gray-100 px-3 py-2 hover:bg-gray-200 disabled:opacity-50"
         >
-          <Printer size={16} /> Nyomtatás
+          <Printer size={16} />
+          {i18n.t('literals.nyomtatas-2')}
         </button>
       </div>
 
       <div className="no-print flex flex-wrap items-end gap-3 rounded-lg border bg-white p-3 dark:bg-gray-800">
         <label className="flex flex-col text-sm">
           <span className="mb-1 flex items-center gap-1 text-gray-600">
-            <Calendar size={14} /> Tól
+            <Calendar size={14} />
+            {i18n.t('literals.tol-2')}
           </span>
           <input
             type="date"
@@ -114,7 +120,8 @@ export default function CashFlowReportPage() {
         </label>
         <label className="flex flex-col text-sm">
           <span className="mb-1 flex items-center gap-1 text-gray-600">
-            <Calendar size={14} /> Ig
+            <Calendar size={14} />
+            {i18n.t('literals.ig-2')}
           </span>
           <input
             type="date"
@@ -129,14 +136,15 @@ export default function CashFlowReportPage() {
           disabled={loading || rangeInverted}
           className="flex items-center gap-2 rounded bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Lekérdezés
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          {i18n.t('literals.lekerdezes-2')}
         </button>
       </div>
 
       {rangeTooLong && (
         <div className="no-print flex items-center gap-2 rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-800">
           <AlertTriangle size={16} />
-          Az időszak hosszabb 1 évnél — a lekérdezés lassú lehet, vagy a szerver elutasítja.
+          {i18n.t('literals.az-idoszak-hosszabb-1-evnel-a-lekerdezes')}
         </div>
       )}
 
@@ -150,19 +158,19 @@ export default function CashFlowReportPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left dark:bg-gray-700">
             <tr>
-              <th className="px-2 py-2">Dátum</th>
-              <th className="px-2 py-2">Bizonylatszám</th>
-              <th className="px-2 py-2">Partner</th>
-              <th className="px-2 py-2">Valuta</th>
-              <th className="px-2 py-2 text-right">Átvett összeg</th>
-              <th className="px-2 py-2 text-right">Átadott összeg</th>
+              <th className="px-2 py-2">{i18n.t('literals.datum-2')}</th>
+              <th className="px-2 py-2">{i18n.t('literals.bizonylatszam-2')}</th>
+              <th className="px-2 py-2">{i18n.t('literals.partner')}</th>
+              <th className="px-2 py-2">{i18n.t('literals.valuta')}</th>
+              <th className="px-2 py-2 text-right">{i18n.t('literals.atvett-osszeg')}</th>
+              <th className="px-2 py-2 text-right">{i18n.t('literals.atadott-osszeg')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && !loading && (
               <tr>
                 <td colSpan={6} className="px-2 py-4 text-center text-gray-500">
-                  Nincs tétel a megadott időszakban.
+                  {i18n.t('literals.nincs-tetel-a-megadott-idoszakban')}
                 </td>
               </tr>
             )}
@@ -175,7 +183,11 @@ export default function CashFlowReportPage() {
                 <td className="px-2 py-1">{row.receiptNumber}</td>
                 <td className="px-2 py-1">
                   {row.partnerCode ?? '—'}
-                  <span className="ml-1 text-xs text-gray-500">({row.partnerCategory})</span>
+                  <span className="ml-1 text-xs text-gray-500">
+                    {i18n.t('literals.lit-19')}
+                    {row.partnerCategory}
+                    {i18n.t('literals.lit-2')}
+                  </span>
                 </td>
                 <td className="px-2 py-1">{row.currency ?? ''}</td>
                 <td className="px-2 py-1 text-right">{formatAmount(row.receivedAmount)}</td>
@@ -187,7 +199,8 @@ export default function CashFlowReportPage() {
       </div>
 
       <p className="no-print text-xs text-gray-500">
-        {rows.length} tétel · a lista a saját körzetéhez tartozó pénzmozgásokat tartalmazza.
+        {rows.length}
+        {i18n.t('literals.tetel-a-lista-a-sajat-korzetehez-tartozo')}
       </p>
     </div>
   )

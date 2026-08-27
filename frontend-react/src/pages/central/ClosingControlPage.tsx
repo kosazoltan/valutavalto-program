@@ -24,6 +24,7 @@ import {
 } from './closingControlView'
 import { excludeBankPartners } from '../../utils/bankPartners'
 import { localIsoDate } from '../../utils/dateFormat'
+import i18n from '../../i18n'
 
 // Codex P2 #560 fix: NEM toISOString().slice(0, 10), mert az UTC zónát ad vissza.
 // A lokális dátumot a közös localIsoDate util adja (utils/dateFormat).
@@ -109,9 +110,11 @@ export default function ClosingControlPage() {
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-slate-700" />
             <div>
-              <h1 className="text-lg font-semibold text-slate-900">Zárás beérkezés felügyelet</h1>
+              <h1 className="text-lg font-semibold text-slate-900">
+                {i18n.t('literals.zaras-beerkezes-felugyelet')}
+              </h1>
               <div className="text-xs text-slate-500">
-                Napi zárások és nyitások beérkezésének valós idejű állapota
+                {i18n.t('literals.napi-zarasok-es-nyitasok-beerkezesenek-v')}
               </div>
             </div>
           </div>
@@ -122,7 +125,7 @@ export default function ClosingControlPage() {
             className="inline-flex items-center gap-2 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Frissítés
+            {i18n.t('literals.frissites')}
           </button>
         </div>
       </div>
@@ -131,15 +134,15 @@ export default function ClosingControlPage() {
         {/* FK-003 1. pont: 3 kocka — Iroda / Rendben / Hiányzó rekord */}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div className="rounded-md border border-slate-200 bg-white p-3">
-            <div className="text-xs text-slate-500">Iroda</div>
+            <div className="text-xs text-slate-500">{i18n.t('literals.iroda')}</div>
             <div className="text-2xl font-semibold text-slate-900">{summary.total}</div>
           </div>
           <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
-            <div className="text-xs text-emerald-700">Rendben</div>
+            <div className="text-xs text-emerald-700">{i18n.t('literals.rendben')}</div>
             <div className="text-2xl font-semibold text-emerald-800">{summary.done}</div>
           </div>
           <div className="rounded-md border border-red-200 bg-red-50 p-3">
-            <div className="text-xs text-red-700">Hiányzó rekord</div>
+            <div className="text-xs text-red-700">{i18n.t('literals.hianyzo-rekord')}</div>
             <div className="text-2xl font-semibold text-red-800">{summary.notArrived}</div>
           </div>
         </div>
@@ -148,7 +151,9 @@ export default function ClosingControlPage() {
         <div className="rounded-md border border-slate-200 bg-white p-3">
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Dátum</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {i18n.t('literals.datum-2')}
+              </label>
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-slate-400" />
                 <input
@@ -160,7 +165,9 @@ export default function ClosingControlPage() {
               </div>
             </div>
             <div className="min-w-[240px] flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-600">Keresés</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {i18n.t('literals.kereses-2')}
+              </label>
               <div className="flex items-center gap-2 rounded border border-slate-300 bg-white px-2">
                 <Search size={16} className="text-slate-400" />
                 <input
@@ -172,15 +179,17 @@ export default function ClosingControlPage() {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Szűrő</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {i18n.t('literals.szuro')}
+              </label>
               <select
                 value={filter}
                 onChange={(event) => setFilter(event.target.value as ClosingViewFilter)}
                 className="rounded border border-slate-300 bg-white px-2 py-2 text-sm"
               >
-                <option value="all">Összes</option>
-                <option value="done">Rendben</option>
-                <option value="notArrived">Hiányzó rekord</option>
+                <option value="all">{i18n.t('literals.osszes')}</option>
+                <option value="done">{i18n.t('literals.rendben')}</option>
+                <option value="notArrived">{i18n.t('literals.hianyzo-rekord')}</option>
               </select>
             </div>
           </div>
@@ -210,30 +219,34 @@ export default function ClosingControlPage() {
               <div
                 className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.dailyClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}
               >
-                Napi zárás: {selectedBranchStatus.dailyClosingDone ? 'rendben' : 'hiányzik'}
+                {i18n.t('literals.napi-zaras')}
+                {selectedBranchStatus.dailyClosingDone ? 'rendben' : 'hiányzik'}
               </div>
               <div
                 className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.eveningClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}
               >
-                Esti zárás: {selectedBranchStatus.eveningClosingDone ? 'rendben' : 'hiányzik'}
+                {i18n.t('literals.esti-zaras')}
+                {selectedBranchStatus.eveningClosingDone ? 'rendben' : 'hiányzik'}
               </div>
               <div
                 className={`rounded px-2 py-1.5 font-semibold ${selectedBranchStatus.navClosingDone ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}
               >
-                NAV zárás: {selectedBranchStatus.navClosingDone ? 'rendben' : 'hiányzik'}
+                {i18n.t('literals.nav-zaras')}
+                {selectedBranchStatus.navClosingDone ? 'rendben' : 'hiányzik'}
               </div>
             </div>
             {(selectedBranchStatus.lastTransactionAt || selectedBranchStatus.notes) && (
               <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
                 {selectedBranchStatus.lastTransactionAt && (
                   <div>
-                    <span className="font-semibold">Utolsó tranzakció:</span>{' '}
+                    <span className="font-semibold">{i18n.t('literals.utolso-tranzakcio')}</span>{' '}
                     {selectedBranchStatus.lastTransactionAt}
                   </div>
                 )}
                 {selectedBranchStatus.notes && (
                   <div>
-                    <span className="font-semibold">Megjegyzés:</span> {selectedBranchStatus.notes}
+                    <span className="font-semibold">{i18n.t('literals.megjegyzes-2')}</span>{' '}
+                    {selectedBranchStatus.notes}
                   </div>
                 )}
               </div>
@@ -244,7 +257,7 @@ export default function ClosingControlPage() {
         {/* FK-003 2. pont: kártyás/rácsos nézet — pénztárszám + név + összesített státusz */}
         {!loading && cards.length === 0 ? (
           <div className="rounded-md border border-slate-200 bg-white px-3 py-8 text-center text-sm text-slate-500">
-            Nincs megjeleníthető iroda.
+            {i18n.t('literals.nincs-megjelenitheto-iroda')}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
@@ -320,7 +333,7 @@ export default function ClosingControlPage() {
 
         {loading && (
           <div className="rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-slate-500">
-            Betöltés...
+            {i18n.t('literals.betoltes')}
           </div>
         )}
       </div>

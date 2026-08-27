@@ -29,6 +29,7 @@ import { useFeatureFlags } from '../hooks/useFeatureFlags'
 import TransitBadge from '../components/TransitBadge'
 import SuiteUpdateBadge from '../components/SuiteUpdateBadge'
 import { useSuiteUpdate } from '../hooks/useSuiteUpdate'
+import i18n from '../i18n'
 
 export function shouldRequireDailySession(appMode: AppMode): boolean {
   return appMode === CASHIER_APP_MODE
@@ -289,7 +290,8 @@ export default function MainLayout() {
               <span className="font-bold text-sm">{t('layout.appName')}</span>
               {/* FR-FM-01 (b5-fomenu hibalista): verziószám a fejlécen. */}
               <span className="text-[10px] text-secondary-300 font-mono">
-                v{import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
+                {i18n.t('literals.v')}
+                {import.meta.env.VITE_APP_VERSION ?? __APP_VERSION__}
               </span>
             </div>
           </div>
@@ -451,10 +453,11 @@ export default function MainLayout() {
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
             <div className="flex flex-wrap items-center gap-2">
               <ShieldAlert size={14} className="shrink-0 text-amber-700" />
-              <span className="font-semibold">Tartalék webes szerverfelület</span>
+              <span className="font-semibold">
+                {i18n.t('literals.tartalek-webes-szerverfelulet')}
+              </span>
               <span className="text-amber-800">
-                Elsődleges napi munkára a telepített pénztár, értéktár, RFM készítő és központi
-                kliens használandó.
+                {i18n.t('literals.elsodleges-napi-munkara-a-telepitett-pen')}
               </span>
             </div>
           </div>
@@ -474,7 +477,7 @@ export default function MainLayout() {
               <span className="w-2 h-2 bg-success-500 rounded-full animate-pulse"></span>
               <span className="text-success-700 font-medium">{t('layout.online')}</span>
             </span>
-            <span className="text-secondary-500">|</span>
+            <span className="text-secondary-500">{i18n.t('literals.lit-11')}</span>
             <span className="text-secondary-600">
               {t('layout.lastSync', { time: new Date().toLocaleTimeString('hu-HU') })}
             </span>

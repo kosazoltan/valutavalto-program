@@ -3,6 +3,7 @@ import { Loader2, RefreshCw, AlertCircle, CheckCircle2, Play, Save } from 'lucid
 import { api } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 interface MnbStatus {
   rateCount: number
@@ -199,7 +200,7 @@ export default function BankIntegrationStatusPage() {
     return (
       <div className="flex items-center gap-2 text-gray-500 p-4">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Bank integráció állapot betöltése...</span>
+        <span>{i18n.t('literals.bank-integracio-allapot-betoltese')}</span>
       </div>
     )
   }
@@ -207,35 +208,41 @@ export default function BankIntegrationStatusPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="section-title">Bank API integráció állapota</h2>
+        <h2 className="section-title">{i18n.t('literals.bank-api-integracio-allapota')}</h2>
         <button
           className="form-button flex items-center gap-1"
           onClick={() => void handleRefresh()}
           disabled={refreshing}
         >
           {refreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          Frissítés
+          {i18n.t('literals.frissites')}
         </button>
       </div>
 
       <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-        <strong>Forrás:</strong> A `Felmérés/Valuta/Kósa Tervezés és fejlesztés/Bank
-        API/API_bank.docx` két publikus URL-t hivatkozott: <code>mnb.hu</code> árfolyam webservice +{' '}
-        <code>api.rbinternational.com</code>. Az MNB és Raiffeisen árfolyam-letöltés AUTOMATIKUS. A
-        Darius napi jelentés outbox-fájl-alapú (manuálisan továbbítandó a banki rendszerbe egy
-        compliance kolléga által).
+        <strong>{i18n.t('literals.forras-3')}</strong>
+        {i18n.t('literals.a-felmeres-valuta-kosa-tervezes-es-fejle')}
+        <code>{i18n.t('literals.mnb-hu')}</code>
+        {i18n.t('literals.arfolyam-webservice')}{' '}
+        <code>{i18n.t('literals.api-rbinternational-com')}</code>
+        {i18n.t('literals.az-mnb-es-raiffeisen-arfolyam-letoltes-a')}
       </div>
 
       {status && (
         <>
           {/* MNB */}
           <div className="p-3 rounded border border-gray-200 bg-white">
-            <h3 className="font-medium text-gray-800 mb-2">MNB (Magyar Nemzeti Bank)</h3>
+            <h3 className="font-medium text-gray-800 mb-2">
+              {i18n.t('literals.mnb-magyar-nemzeti-bank')}
+            </h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>Cache valuta:</div>
-              <div className="font-mono">{status.mnb.rateCount} db</div>
+              <div>{i18n.t('literals.cache-valuta')}</div>
+              <div className="font-mono">
+                {status.mnb.rateCount}
+                {i18n.t('literals.db')}
+              </div>
 
-              <div>Utolsó sikeres letöltés:</div>
+              <div>{i18n.t('literals.utolso-sikeres-letoltes')}</div>
               <div className="flex items-center gap-1">
                 {status.mnb.lastFetchSuccess ? (
                   <CheckCircle2 size={14} className="text-green-600" />
@@ -245,28 +252,28 @@ export default function BankIntegrationStatusPage() {
                 {status.mnb.lastFetchDate ?? '—'}
               </div>
 
-              <div>Scheduler:</div>
+              <div>{i18n.t('literals.scheduler')}</div>
               <div>{status.mnb.schedulerActive ? '✅ aktív' : '❌ inaktív'}</div>
             </div>
           </div>
 
           {/* Raiffeisen */}
           <div className="p-3 rounded border border-gray-200 bg-white">
-            <h3 className="font-medium text-gray-800 mb-2">Raiffeisen Bank</h3>
+            <h3 className="font-medium text-gray-800 mb-2">{i18n.t('literals.raiffeisen-bank')}</h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>Scheduler:</div>
+              <div>{i18n.t('literals.scheduler')}</div>
               <div>{status.raiffeisen.schedulerActive ? '✅ aktív' : '❌ inaktív'}</div>
 
-              <div>Ütemezés:</div>
+              <div>{i18n.t('literals.utemezes')}</div>
               <div className="font-mono">{status.raiffeisen.scheduledTime}</div>
 
-              <div>Integráció:</div>
+              <div>{i18n.t('literals.integracio')}</div>
               <div>{status.raiffeisen.enabled ? '✅ engedélyezve' : '❌ tiltva'}</div>
 
-              <div>Endpoint:</div>
+              <div>{i18n.t('literals.endpoint')}</div>
               <div>{status.raiffeisen.endpointConfigured ? 'beállítva' : 'hiányzik'}</div>
 
-              <div>Utolsó futás:</div>
+              <div>{i18n.t('literals.utolso-futas')}</div>
               <div className="font-mono">{status.raiffeisen.lastRunStatus ?? '—'}</div>
             </div>
           </div>
@@ -274,51 +281,64 @@ export default function BankIntegrationStatusPage() {
           {/* Darius */}
           <div className="p-3 rounded border border-amber-200 bg-amber-50">
             <h3 className="font-medium text-gray-800 mb-2">
-              Darius napi jelentés ({status.darius.currentMonth})
+              {i18n.t('literals.darius-napi-jelentes')}
+              {status.darius.currentMonth}
+              {i18n.t('literals.lit-2')}
             </h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>Időszak:</div>
+              <div>{i18n.t('literals.idoszak-3')}</div>
               <div className="font-mono">
-                {status.darius.periodStart} → {status.darius.periodEnd}
+                {status.darius.periodStart}
+                {i18n.t('literals.lit-56')}
+                {status.darius.periodEnd}
               </div>
 
-              <div>Beküldve:</div>
+              <div>{i18n.t('literals.bekuldve')}</div>
               <div className="font-mono text-green-700">
-                {status.darius.submittedReportsCount} db
+                {status.darius.submittedReportsCount}
+                {i18n.t('literals.db')}
               </div>
 
-              <div>Folyamatban (GENERATED):</div>
+              <div>{i18n.t('literals.folyamatban-generated')}</div>
               <div className="font-mono text-yellow-700">
-                {status.darius.pendingReportsCount} db
+                {status.darius.pendingReportsCount}
+                {i18n.t('literals.db')}
               </div>
 
-              <div>Sikertelen (FAILED):</div>
-              <div className="font-mono text-red-700">{status.darius.failedReportsCount} db</div>
+              <div>{i18n.t('literals.sikertelen-failed')}</div>
+              <div className="font-mono text-red-700">
+                {status.darius.failedReportsCount}
+                {i18n.t('literals.db')}
+              </div>
 
-              <div>Utolsó beküldés:</div>
+              <div>{i18n.t('literals.utolso-bekuldes')}</div>
               <div className="font-mono">{status.darius.lastSubmittedAt ?? '—'}</div>
 
-              <div>Transport:</div>
+              <div>{i18n.t('literals.transport')}</div>
               <div className="font-mono">{status.darius.transportMode}</div>
             </div>
             {status.darius.failedReportsCount > 0 && (
               <div className="mt-2 text-sm text-red-700">
-                ⚠️ Sikertelen jelentések — kérjük, lépj a Darius riport admin oldalra a retry
-                futtatáshoz.
+                {i18n.t('literals.sikertelen-jelentesek-kerjuk-lepj-a-dari')}
               </div>
             )}
           </div>
 
-          <div className="text-xs text-gray-500">Ellenőrizve: {status.checkedAt}</div>
+          <div className="text-xs text-gray-500">
+            {i18n.t('literals.ellenorizve')}
+            {status.checkedAt}
+          </div>
         </>
       )}
 
       <div className="p-3 rounded border border-gray-200 bg-white">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="font-medium text-gray-800">Bank API konfiguráció</h3>
+            <h3 className="font-medium text-gray-800">
+              {i18n.t('literals.bank-api-konfiguracio')}
+            </h3>
             <p className="text-xs text-gray-500">
-              Secret érték nem jelenik meg; a mező üresen hagyva nem írja felül a meglévő titkot.
+              {i18n.t('literals.secret-ertek-nem-jelenik-meg-a-mezo-ures')}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -333,7 +353,7 @@ export default function BankIntegrationStatusPage() {
               ) : (
                 <Play size={14} />
               )}
-              Raiffeisen kézi fetch
+              {i18n.t('literals.raiffeisen-kezi-fetch')}
             </button>
             <button
               type="button"
@@ -342,7 +362,7 @@ export default function BankIntegrationStatusPage() {
               disabled={savingConfig || configLoading}
             >
               {savingConfig ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              Mentés
+              {i18n.t('literals.mentes-2')}
             </button>
           </div>
         </div>
@@ -350,14 +370,14 @@ export default function BankIntegrationStatusPage() {
         {configLoading && !raiffeisenConfig ? (
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Bank API konfiguráció betöltése...
+            {i18n.t('literals.bank-api-konfiguracio-betoltese')}
           </div>
         ) : (
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="form-label" htmlFor="bank-api-mode">
-                  Mód
+                  {i18n.t('literals.mod-2')}
                 </label>
                 <select
                   id="bank-api-mode"
@@ -367,16 +387,18 @@ export default function BankIntegrationStatusPage() {
                     setConfigForm((prev) => ({ ...prev, mode: event.target.value }))
                   }
                 >
-                  <option value="HTML_SCRAPING_FALLBACK">HTML scraping fallback</option>
-                  <option value="REST_PRIMARY_WITH_HTML_FALLBACK">
-                    REST elsődleges + HTML fallback
+                  <option value="HTML_SCRAPING_FALLBACK">
+                    {i18n.t('literals.html-scraping-fallback')}
                   </option>
-                  <option value="DISABLED">Tiltva</option>
+                  <option value="REST_PRIMARY_WITH_HTML_FALLBACK">
+                    {i18n.t('literals.rest-elsodleges-html-fallback')}
+                  </option>
+                  <option value="DISABLED">{i18n.t('literals.tiltva')}</option>
                 </select>
               </div>
               <div>
                 <label className="form-label" htmlFor="bank-api-auth-type">
-                  Auth típus
+                  {i18n.t('literals.auth-tipus')}
                 </label>
                 <select
                   id="bank-api-auth-type"
@@ -386,14 +408,16 @@ export default function BankIntegrationStatusPage() {
                     setConfigForm((prev) => ({ ...prev, authType: event.target.value }))
                   }
                 >
-                  <option value="NONE">Nincs</option>
-                  <option value="OAUTH2_CLIENT_CREDENTIALS">OAuth2 client credentials</option>
-                  <option value="OAUTH2_MTLS">OAuth2 + mTLS</option>
+                  <option value="NONE">{i18n.t('literals.nincs')}</option>
+                  <option value="OAUTH2_CLIENT_CREDENTIALS">
+                    {i18n.t('literals.oauth2-client-credentials')}
+                  </option>
+                  <option value="OAUTH2_MTLS">{i18n.t('literals.oauth2-mtls')}</option>
                 </select>
               </div>
               <div className="sm:col-span-2">
                 <label className="form-label" htmlFor="bank-api-endpoint">
-                  Endpoint URL
+                  {i18n.t('literals.endpoint-url')}
                 </label>
                 <input
                   id="bank-api-endpoint"
@@ -407,7 +431,7 @@ export default function BankIntegrationStatusPage() {
               </div>
               <div>
                 <label className="form-label" htmlFor="bank-api-client-id">
-                  Client ID
+                  {i18n.t('literals.client-id')}
                 </label>
                 <input
                   id="bank-api-client-id"
@@ -420,7 +444,7 @@ export default function BankIntegrationStatusPage() {
               </div>
               <div>
                 <label className="form-label" htmlFor="bank-api-client-secret">
-                  Client secret
+                  {i18n.t('literals.client-secret')}
                 </label>
                 <input
                   id="bank-api-client-secret"
@@ -438,7 +462,7 @@ export default function BankIntegrationStatusPage() {
               </div>
               <div>
                 <label className="form-label" htmlFor="bank-api-mtls-alias">
-                  mTLS certificate alias
+                  {i18n.t('literals.mtls-certificate-alias')}
                 </label>
                 <input
                   id="bank-api-mtls-alias"
@@ -451,7 +475,7 @@ export default function BankIntegrationStatusPage() {
               </div>
               <div>
                 <label className="form-label" htmlFor="bank-api-frequency">
-                  Ütemezés
+                  {i18n.t('literals.utemezes-2')}
                 </label>
                 <input
                   id="bank-api-frequency"
@@ -470,26 +494,28 @@ export default function BankIntegrationStatusPage() {
                     setConfigForm((prev) => ({ ...prev, enabled: event.target.checked }))
                   }
                 />
-                Raiffeisen integráció engedélyezve
+                {i18n.t('literals.raiffeisen-integracio-engedelyezve')}
               </label>
             </div>
 
             <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm">
-              <div className="font-semibold text-gray-800">Konfigurációs státusz</div>
+              <div className="font-semibold text-gray-800">
+                {i18n.t('literals.konfiguracios-statusz')}
+              </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <span>Provider</span>
+                <span>{i18n.t('literals.provider')}</span>
                 <span className="font-mono">
                   {raiffeisenConfig?.providerName ?? RAIFFEISEN_PROVIDER}
                 </span>
-                <span>Listaelemek</span>
+                <span>{i18n.t('literals.listaelemek')}</span>
                 <span className="font-mono">{configs.length}</span>
-                <span>Secret</span>
+                <span>{i18n.t('literals.secret')}</span>
                 <span>{raiffeisenConfig?.clientSecretConfigured ? 'beállítva' : 'nincs'}</span>
-                <span>Utolsó futás</span>
+                <span>{i18n.t('literals.utolso-futas-2')}</span>
                 <span className="break-words font-mono">
                   {raiffeisenConfig?.lastRunStatus ?? '—'}
                 </span>
-                <span>Frissítve</span>
+                <span>{i18n.t('literals.frissitve-3')}</span>
                 <span className="break-words font-mono">{raiffeisenConfig?.updatedAt ?? '—'}</span>
               </div>
               {raiffeisenConfig?.lastRunMessage && (

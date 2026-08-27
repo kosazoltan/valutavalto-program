@@ -78,7 +78,6 @@ describe('isBranchSelectableForAppMode', () => {
       'KORUT',
       'LEGACY',
     ])
-
   })
 
   it('filter: ertektar fallback — ha nincs vault branch, mindent mutat', () => {

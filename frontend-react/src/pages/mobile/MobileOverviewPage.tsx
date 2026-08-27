@@ -59,6 +59,7 @@ import { diagnosticsApi, type ErrorSummary } from '../../services/api/diagnostic
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { formatMillions } from '../treasury/treasuryUtils'
+import i18n from '../../i18n'
 
 interface DashboardSummary {
   todayVolume?: number
@@ -1200,7 +1201,9 @@ export default function MobileOverviewPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Smartphone size={18} className="shrink-0" />
-              <h1 className="text-base font-bold leading-tight">Mobil felügyelet</h1>
+              <h1 className="text-base font-bold leading-tight">
+                {i18n.t('literals.mobil-felugyelet')}
+              </h1>
             </div>
             <p className="mt-1 text-xs leading-5">
               {criticalCount > 0
@@ -1229,7 +1232,7 @@ export default function MobileOverviewPage() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-lg border bg-white p-6 text-sm text-gray-500">
           <Loader2 size={18} className="animate-spin" />
-          Mobil nézet betöltése...
+          {i18n.t('literals.mobil-nezet-betoltese')}
         </div>
       ) : (
         <>
@@ -1316,10 +1319,15 @@ export default function MobileOverviewPage() {
           >
             <div className="mb-3 flex items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-bold text-gray-900">Mobil munkanézet</h2>
+                <h2 className="text-sm font-bold text-gray-900">
+                  {i18n.t('literals.mobil-munkanezet')}
+                </h2>
                 <p className="mt-0.5 text-xs text-gray-500">
-                  Nyitott ügy: {criticalCount}, offline iroda: {offlineBranchCount}, sync sor:{' '}
-                  {syncPendingCount}
+                  {i18n.t('literals.nyitott-ugy')}
+                  {criticalCount}
+                  {i18n.t('literals.offline-iroda')}
+                  {offlineBranchCount}
+                  {i18n.t('literals.sync-sor')} {syncPendingCount}
                 </p>
               </div>
               <span
@@ -1436,7 +1444,7 @@ export default function MobileOverviewPage() {
                   >
                     {cashPositionItems.length === 0 ? (
                       <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                        Nincs valutánkénti készletadat a mobil nézethez.
+                        {i18n.t('literals.nincs-valutankenti-keszletadat-a-mobil-n')}
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -1454,7 +1462,10 @@ export default function MobileOverviewPage() {
                       >
                         <span className="font-bold">{rate.currencyCode}</span>
                         <span className="font-mono text-xs">
-                          V {rate.baseBuyRate.toFixed(2)} / E {rate.baseSellRate.toFixed(2)}
+                          {i18n.t('literals.v-2')}
+                          {rate.baseBuyRate.toFixed(2)}
+                          {i18n.t('literals.e')}
+                          {rate.baseSellRate.toFixed(2)}
                         </span>
                       </div>
                     ))}
@@ -1500,7 +1511,7 @@ export default function MobileOverviewPage() {
                   >
                     {transferDocuments.length === 0 ? (
                       <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                        Nincs aktív mobil átadási bizonylat.
+                        {i18n.t('literals.nincs-aktiv-mobil-atadasi-bizonylat')}
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -1520,7 +1531,7 @@ export default function MobileOverviewPage() {
                   <div className="space-y-2">
                     {offlineBranches.length === 0 ? (
                       <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                        Nincs offline iroda a mobil kontrollban.
+                        {i18n.t('literals.nincs-offline-iroda-a-mobil-kontrollban')}
                       </p>
                     ) : (
                       offlineBranches.slice(0, 3).map((branch) => (
@@ -1532,7 +1543,8 @@ export default function MobileOverviewPage() {
                             {compactBranchId(branch.branchId)}
                           </div>
                           <div className="text-xs text-amber-800">
-                            Utolsó életjel: {formatLocalDateTime(branch.lastHeartbeat)}
+                            {i18n.t('literals.utolso-eletjel')}
+                            {formatLocalDateTime(branch.lastHeartbeat)}
                           </div>
                         </div>
                       ))
@@ -1573,7 +1585,7 @@ export default function MobileOverviewPage() {
                   <MobilePanel title="Kamera mobil státusz" icon={Camera} status={panel('camera')}>
                     {cameraStatuses.length === 0 ? (
                       <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                        Nincs betöltött kamera státusz a mobil nézethez.
+                        {i18n.t('literals.nincs-betoltott-kamera-statusz-a-mobil-n')}
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -1610,13 +1622,18 @@ export default function MobileOverviewPage() {
                       </div>
                     )}
                     <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                      <div>Felvétel: {cameraStorageStats?.totalRecordings ?? 0}</div>
                       <div>
-                        Időszak: {cameraStorageStats?.oldestDate ?? '-'} -{' '}
-                        {cameraStorageStats?.newestDate ?? '-'}
+                        {i18n.t('literals.felvetel')}
+                        {cameraStorageStats?.totalRecordings ?? 0}
                       </div>
                       <div>
-                        Szabad tárhely: {formatBytes(cameraStorageStats?.availableSpaceBytes)}
+                        {i18n.t('literals.idoszak-2')}
+                        {cameraStorageStats?.oldestDate ?? '-'}
+                        {i18n.t('literals.lit-39')} {cameraStorageStats?.newestDate ?? '-'}
+                      </div>
+                      <div>
+                        {i18n.t('literals.szabad-tarhely')}
+                        {formatBytes(cameraStorageStats?.availableSpaceBytes)}
                       </div>
                     </div>
                   </MobilePanel>
@@ -1668,7 +1685,7 @@ export default function MobileOverviewPage() {
                         ) : (
                           <CheckCircle size={14} />
                         )}
-                        Mobil engedélyezés
+                        {i18n.t('literals.mobil-engedelyezes')}
                       </button>
                     </div>
                   ))}
@@ -1683,9 +1700,9 @@ export default function MobileOverviewPage() {
                             {approval.currencyCode ?? 'Árfolyam'}
                           </div>
                           <div className="text-xs text-amber-800">
-                            {approval.branchName ?? 'Nincs iroda'} - V{' '}
-                            {fmt(Math.round(num(approval.newBuyRate)))} / E{' '}
-                            {fmt(Math.round(num(approval.newSellRate)))}
+                            {approval.branchName ?? 'Nincs iroda'}
+                            {i18n.t('literals.v-3')} {fmt(Math.round(num(approval.newBuyRate)))}
+                            {i18n.t('literals.e-2')} {fmt(Math.round(num(approval.newSellRate)))}
                           </div>
                         </div>
                         <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-800">
@@ -1704,7 +1721,7 @@ export default function MobileOverviewPage() {
                           {actingRateApprovalId === `${approval.id}:approve` && (
                             <Loader2 size={13} className="animate-spin" />
                           )}
-                          Árfolyam engedélyezés
+                          {i18n.t('literals.arfolyam-engedelyezes')}
                         </button>
                         <button
                           type="button"
@@ -1717,7 +1734,7 @@ export default function MobileOverviewPage() {
                           {actingRateApprovalId === `${approval.id}:reject` && (
                             <Loader2 size={13} className="animate-spin" />
                           )}
-                          Árfolyam elutasítás
+                          {i18n.t('literals.arfolyam-elutasitas')}
                         </button>
                       </div>
                     </div>
@@ -1762,7 +1779,7 @@ export default function MobileOverviewPage() {
                   >
                     {openErtektarStatusCount === 0 ? (
                       <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                        Nincs mobilon kezelendő értéktári státusz.
+                        {i18n.t('literals.nincs-mobilon-kezelendo-ertektari-status')}
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -1896,7 +1913,7 @@ export default function MobileOverviewPage() {
                           onClick={() => setMobileDocumentCustomerId(String(customer.id))}
                           className="mt-2 inline-flex min-h-9 w-full items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-800"
                         >
-                          Okmány célpont
+                          {i18n.t('literals.okmany-celpont')}
                         </button>
                       </div>
                     ))}
@@ -1920,10 +1937,10 @@ export default function MobileOverviewPage() {
                         }
                         aria-label="Mobil okmány típusa"
                       >
-                        <option value="ID_CARD">Személyi igazolvány</option>
-                        <option value="PASSPORT">Útlevél</option>
-                        <option value="DRIVERS_LICENSE">Jogosítvány</option>
-                        <option value="OTHER">Egyéb</option>
+                        <option value="ID_CARD">{i18n.t('literals.szemelyi-igazolvany')}</option>
+                        <option value="PASSPORT">{i18n.t('literals.utlevel')}</option>
+                        <option value="DRIVERS_LICENSE">{i18n.t('literals.jogositvany')}</option>
+                        <option value="OTHER">{i18n.t('literals.egyeb')}</option>
                       </select>
                     </div>
                     <input
@@ -1945,7 +1962,7 @@ export default function MobileOverviewPage() {
                         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-800"
                       >
                         <FileText size={15} />
-                        Lista
+                        {i18n.t('literals.lista')}
                       </button>
                       <label className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-primary-600 px-3 text-sm font-semibold text-white">
                         {mobileDocumentUploading ? (
@@ -1953,7 +1970,7 @@ export default function MobileOverviewPage() {
                         ) : (
                           <Upload size={15} />
                         )}
-                        Feltöltés
+                        {i18n.t('literals.feltoltes')}
                         <input
                           type="file"
                           accept="image/*,application/pdf"
@@ -1968,7 +1985,7 @@ export default function MobileOverviewPage() {
                     <div className="mt-3 space-y-2">
                       {mobileScannedDocuments.length === 0 ? (
                         <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                          Nincs betöltött okmány ehhez az ügyfélhez.
+                          {i18n.t('literals.nincs-betoltott-okmany-ehhez-az-ugyfelhe')}
                         </p>
                       ) : (
                         mobileScannedDocuments.slice(0, 3).map((document) => (
@@ -1980,7 +1997,9 @@ export default function MobileOverviewPage() {
                               {document.fileName}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {document.documentType} - {formatLocalDateTime(document.scannedAt)}
+                              {document.documentType}
+                              {i18n.t('literals.lit-17')}
+                              {formatLocalDateTime(document.scannedAt)}
                             </div>
                           </div>
                         ))
@@ -2039,7 +2058,7 @@ export default function MobileOverviewPage() {
                         />
                       </div>
                       <label className="grid gap-1 text-xs font-semibold text-gray-600">
-                        Sync iroda ID
+                        {i18n.t('literals.sync-iroda-id')}
                         <input
                           value={mobileSyncBranchId}
                           onChange={(event) => setMobileSyncBranchId(event.target.value)}
@@ -2085,7 +2104,7 @@ export default function MobileOverviewPage() {
                   >
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="text-sm font-semibold text-red-900">
-                        Évnyitás admin workflow
+                        {i18n.t('literals.evnyitas-admin-workflow')}
                       </div>
                       <span className="rounded bg-white px-2 py-1 text-xs font-semibold text-red-800">
                         {yearOpeningStatus?.status ??
@@ -2094,7 +2113,7 @@ export default function MobileOverviewPage() {
                     </div>
                     <div className="grid grid-cols-[1fr_auto] gap-2">
                       <label className="grid gap-1 text-xs font-semibold text-red-900">
-                        Cél év
+                        {i18n.t('literals.cel-ev')}
                         <input
                           inputMode="numeric"
                           value={yearOpeningTargetYear}
@@ -2113,7 +2132,7 @@ export default function MobileOverviewPage() {
                         ) : (
                           <AlertTriangle size={15} />
                         )}
-                        Futtatás
+                        {i18n.t('literals.futtatas')}
                       </button>
                     </div>
                   </div>
@@ -2127,7 +2146,9 @@ export default function MobileOverviewPage() {
                           row.branchName ||
                           compactBranchId(String(row.branchId ?? 'Ismeretlen iroda'))}
                       </div>
-                      <div className="text-xs text-amber-800">Napi jelentés nincs leadva.</div>
+                      <div className="text-xs text-amber-800">
+                        {i18n.t('literals.napi-jelentes-nincs-leadva')}
+                      </div>
                     </div>
                   ))}
                   <MobilePanel
@@ -2146,7 +2167,7 @@ export default function MobileOverviewPage() {
                           className="text-xs font-semibold text-gray-600"
                           htmlFor="mobile-supervisor-password"
                         >
-                          Supervisor jelszó
+                          {i18n.t('literals.supervisor-jelszo')}
                         </label>
                         <input
                           id="mobile-supervisor-password"
@@ -2167,16 +2188,16 @@ export default function MobileOverviewPage() {
                           ) : (
                             <CheckCircle size={15} />
                           )}
-                          Supervisor ellenőrzés
+                          {i18n.t('literals.supervisor-ellenorzes')}
                         </button>
                       </div>
                       <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
                         <div className="mb-2 text-sm font-semibold text-gray-900">
-                          Árfolyam felülbírálás
+                          {i18n.t('literals.arfolyam-felulbiralas')}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <label className="col-span-2 grid gap-1 text-xs font-semibold text-gray-600">
-                            Iroda ID
+                            {i18n.t('literals.iroda-id')}
                             <input
                               value={supervisorBranchId}
                               onChange={(event) => setSupervisorBranchId(event.target.value)}
@@ -2184,7 +2205,7 @@ export default function MobileOverviewPage() {
                             />
                           </label>
                           <label className="grid gap-1 text-xs font-semibold text-gray-600">
-                            Valuta
+                            {i18n.t('literals.valuta')}
                             <input
                               value={supervisorCurrency}
                               onChange={(event) =>
@@ -2194,7 +2215,7 @@ export default function MobileOverviewPage() {
                             />
                           </label>
                           <label className="grid gap-1 text-xs font-semibold text-gray-600">
-                            Vételi
+                            {i18n.t('literals.veteli')}
                             <input
                               inputMode="decimal"
                               value={supervisorBuyRate}
@@ -2203,7 +2224,7 @@ export default function MobileOverviewPage() {
                             />
                           </label>
                           <label className="grid gap-1 text-xs font-semibold text-gray-600">
-                            Eladási
+                            {i18n.t('literals.eladasi')}
                             <input
                               inputMode="decimal"
                               value={supervisorSellRate}
@@ -2212,7 +2233,7 @@ export default function MobileOverviewPage() {
                             />
                           </label>
                           <label className="col-span-2 grid gap-1 text-xs font-semibold text-gray-600">
-                            Indoklás
+                            {i18n.t('literals.indoklas')}
                             <input
                               value={supervisorRateReason}
                               onChange={(event) => setSupervisorRateReason(event.target.value)}
@@ -2231,16 +2252,16 @@ export default function MobileOverviewPage() {
                           ) : (
                             <ShieldAlert size={15} />
                           )}
-                          Árfolyam felülbírálás küldése
+                          {i18n.t('literals.arfolyam-felulbiralas-kuldese')}
                         </button>
                       </div>
                       <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
                         <div className="mb-2 text-sm font-semibold text-gray-900">
-                          Kezelési díj felülbírálás
+                          {i18n.t('literals.kezelesi-dij-felulbiralas')}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <label className="grid gap-1 text-xs font-semibold text-gray-600">
-                            Tranzakció ID
+                            {i18n.t('literals.tranzakcio-id')}
                             <input
                               inputMode="numeric"
                               value={supervisorTransactionId}
@@ -2249,7 +2270,7 @@ export default function MobileOverviewPage() {
                             />
                           </label>
                           <label className="grid gap-1 text-xs font-semibold text-gray-600">
-                            Új díj
+                            {i18n.t('literals.uj-dij')}
                             <input
                               inputMode="decimal"
                               value={supervisorFee}
@@ -2258,7 +2279,7 @@ export default function MobileOverviewPage() {
                             />
                           </label>
                           <label className="col-span-2 grid gap-1 text-xs font-semibold text-gray-600">
-                            Díj indoklás
+                            {i18n.t('literals.dij-indoklas')}
                             <input
                               value={supervisorFeeReason}
                               onChange={(event) => setSupervisorFeeReason(event.target.value)}
@@ -2277,7 +2298,7 @@ export default function MobileOverviewPage() {
                           ) : (
                             <ShieldAlert size={15} />
                           )}
-                          Díj felülbírálás küldése
+                          {i18n.t('literals.dij-felulbiralas-kuldese')}
                         </button>
                       </div>
                     </div>
@@ -2306,12 +2327,12 @@ export default function MobileOverviewPage() {
                       ) : (
                         <CheckCircle size={15} />
                       )}
-                      Mind olvasott
+                      {i18n.t('literals.mind-olvasott')}
                     </button>
                     <div className="space-y-2">
                       {notifications.length === 0 ? (
                         <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                          Nincs olvasatlan mobil értesítés.
+                          {i18n.t('literals.nincs-olvasatlan-mobil-ertesites')}
                         </p>
                       ) : (
                         notifications.slice(0, 4).map((notification) => (
@@ -2343,7 +2364,7 @@ export default function MobileOverviewPage() {
                               ) : (
                                 <CheckCircle size={14} />
                               )}
-                              Olvasott
+                              {i18n.t('literals.olvasott')}
                             </button>
                           </div>
                         ))
@@ -2392,7 +2413,7 @@ export default function MobileOverviewPage() {
                   >
                     {posTerminals.length === 0 ? (
                       <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                        Nincs konfigurált POS terminál a mobil nézethez.
+                        {i18n.t('literals.nincs-konfiguralt-pos-terminal-a-mobil-n')}
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -2447,7 +2468,7 @@ export default function MobileOverviewPage() {
                     <div className="space-y-2">
                       {cashRegisterDevices.length === 0 ? (
                         <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                          Nincs regisztrált pénztárgép eszköz.
+                          {i18n.t('literals.nincs-regisztralt-penztargep-eszkoz')}
                         </p>
                       ) : (
                         cashRegisterDevices.slice(0, 4).map((device) => {
@@ -2499,7 +2520,9 @@ export default function MobileOverviewPage() {
                             className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2"
                           >
                             <div className="text-sm font-semibold text-gray-900">
-                              {event.eventType ?? 'Esemény'} - {event.status ?? '-'}
+                              {event.eventType ?? 'Esemény'}
+                              {i18n.t('literals.lit-17')}
+                              {event.status ?? '-'}
                             </div>
                             <div className="text-xs text-gray-500">
                               {formatLocalDateTime(event.occurredAt ?? event.createdAt)}
@@ -2517,7 +2540,7 @@ export default function MobileOverviewPage() {
                   >
                     {navClosings.length === 0 ? (
                       <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                        Nincs mai NAV zárás találat.
+                        {i18n.t('literals.nincs-mai-nav-zaras-talalat')}
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -2532,7 +2555,9 @@ export default function MobileOverviewPage() {
                                   {closing.closingDate ?? '-'}
                                 </div>
                                 <div className="mt-1 text-xs text-gray-600">
-                                  Bevétel: {fmt(Math.round(num(closing.totalRevenue)))} Ft
+                                  {i18n.t('literals.bevetel')}
+                                  {fmt(Math.round(num(closing.totalRevenue)))}
+                                  {i18n.t('literals.ft')}
                                 </div>
                               </div>
                               <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-gray-700">
@@ -2553,7 +2578,7 @@ export default function MobileOverviewPage() {
                     <div className="space-y-2">
                       {wuStubRates.length === 0 ? (
                         <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                          Nincs WU adapter árfolyam adat.
+                          {i18n.t('literals.nincs-wu-adapter-arfolyam-adat')}
                         </p>
                       ) : (
                         wuStubRates.slice(0, 3).map((rate, index) => (
@@ -2562,7 +2587,8 @@ export default function MobileOverviewPage() {
                             className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
                           >
                             <span className="font-semibold">
-                              {rate.sourceCurrency ?? 'USD'} /{' '}
+                              {rate.sourceCurrency ?? 'USD'}
+                              {i18n.t('literals.lit-40')}{' '}
                               {rate.targetCurrency ?? rate.currency ?? '-'}
                             </span>
                             <span className="font-mono">{num(rate.rate).toFixed(4)}</span>
@@ -2592,13 +2618,15 @@ export default function MobileOverviewPage() {
                         ) : (
                           <Search size={14} />
                         )}
-                        Státusz
+                        {i18n.t('literals.statusz')}
                       </button>
                     </div>
                     {wuStubStatus && (
                       <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
                         <div className="font-semibold">
-                          {wuStubStatus.mtcn ?? wuStubMtcn} - {wuStubStatus.status ?? '-'}
+                          {wuStubStatus.mtcn ?? wuStubMtcn}
+                          {i18n.t('literals.lit-17')}
+                          {wuStubStatus.status ?? '-'}
                         </div>
                         <div className="mt-1 text-xs">
                           {wuStubStatus.message ??
@@ -2819,13 +2847,15 @@ export default function MobileOverviewPage() {
                 to="/reports/live-cash-position"
                 className="mt-3 inline-flex text-sm font-semibold text-primary-700"
               >
-                Pillanatnyi pénztárállás megnyitása
+                {i18n.t('literals.pillanatnyi-penztarallas-megnyitasa')}
               </Link>
             </MobilePanel>
 
             <MobilePanel title="Jóváhagyások" icon={ClipboardCheck} status={panel('approvals')}>
               {approvals.length === 0 ? (
-                <p className="text-sm text-gray-500">Nincs függő sztornó-jóváhagyás.</p>
+                <p className="text-sm text-gray-500">
+                  {i18n.t('literals.nincs-fuggo-sztorno-jovahagyas')}
+                </p>
               ) : (
                 <div className="space-y-2">
                   {approvals.slice(0, 3).map((approval) => (
@@ -2851,13 +2881,13 @@ export default function MobileOverviewPage() {
                           ) : (
                             <CheckCircle size={14} />
                           )}
-                          Engedélyezés
+                          {i18n.t('literals.engedelyezes')}
                         </button>
                         <Link
                           to="/stornos/approvals"
                           className="inline-flex min-h-9 flex-1 items-center justify-center rounded-md border border-amber-300 bg-white px-3 text-sm font-semibold text-amber-900"
                         >
-                          Részletek
+                          {i18n.t('literals.reszletek-2')}
                         </Link>
                       </div>
                     </div>
@@ -2882,7 +2912,7 @@ export default function MobileOverviewPage() {
               <div className="mt-3 space-y-2">
                 {pendingRateApprovals.length === 0 ? (
                   <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                    Nincs függő árfolyam-módosítás.
+                    {i18n.t('literals.nincs-fuggo-arfolyam-modositas')}
                   </p>
                 ) : (
                   pendingRateApprovals.slice(0, 3).map((approval) => (
@@ -2899,9 +2929,9 @@ export default function MobileOverviewPage() {
                         </div>
                       </div>
                       <div className="mt-1 text-xs text-amber-800">
-                        {approval.branchName ?? 'Nincs iroda'} - V{' '}
-                        {fmt(Math.round(num(approval.newBuyRate)))} / E{' '}
-                        {fmt(Math.round(num(approval.newSellRate)))}
+                        {approval.branchName ?? 'Nincs iroda'}
+                        {i18n.t('literals.v-3')} {fmt(Math.round(num(approval.newBuyRate)))}
+                        {i18n.t('literals.e-2')} {fmt(Math.round(num(approval.newSellRate)))}
                       </div>
                       {approval.reason && (
                         <div className="mt-1 break-words text-xs text-amber-800">
@@ -2920,7 +2950,7 @@ export default function MobileOverviewPage() {
                           {actingRateApprovalId === `${approval.id}:approve` && (
                             <Loader2 size={13} className="animate-spin" />
                           )}
-                          Árfolyam engedélyezés
+                          {i18n.t('literals.arfolyam-engedelyezes')}
                         </button>
                         <button
                           type="button"
@@ -2933,7 +2963,7 @@ export default function MobileOverviewPage() {
                           {actingRateApprovalId === `${approval.id}:reject` && (
                             <Loader2 size={13} className="animate-spin" />
                           )}
-                          Árfolyam elutasítás
+                          {i18n.t('literals.arfolyam-elutasitas')}
                         </button>
                       </div>
                     </div>
@@ -2942,9 +2972,10 @@ export default function MobileOverviewPage() {
               </div>
               {latestRateApproval && (
                 <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                  Utolsó döntés: {latestRateApproval.currencyCode ?? '-'} /{' '}
-                  {latestRateApproval.status ?? '-'} /{' '}
-                  {formatLocalDateTime(latestRateApproval.requestedAt)}
+                  {i18n.t('literals.utolso-dontes')}
+                  {latestRateApproval.currencyCode ?? '-'}
+                  {i18n.t('literals.lit-40')} {latestRateApproval.status ?? '-'}
+                  {i18n.t('literals.lit-40')} {formatLocalDateTime(latestRateApproval.requestedAt)}
                 </div>
               )}
             </MobilePanel>
@@ -2969,13 +3000,13 @@ export default function MobileOverviewPage() {
                   to="/synchronization"
                   className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700"
                 >
-                  Sync
+                  {i18n.t('literals.sync')}
                 </Link>
                 <Link
                   to="/admin/error-monitor"
                   className="rounded-md border px-3 py-2 text-sm font-semibold text-gray-700"
                 >
-                  Hiba-monitor
+                  {i18n.t('literals.hiba-monitor')}
                 </Link>
               </div>
             </MobilePanel>
@@ -3019,7 +3050,7 @@ export default function MobileOverviewPage() {
                 to="/synchronization"
                 className="mt-3 inline-flex text-sm font-semibold text-primary-700"
               >
-                Adatgyűjtés kezelése
+                {i18n.t('literals.adatgyujtes-kezelese')}
               </Link>
             </MobilePanel>
 
@@ -3052,7 +3083,7 @@ export default function MobileOverviewPage() {
               <div className="mt-3 space-y-2">
                 {offlineBranches.length === 0 ? (
                   <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                    Minden monitorozott iroda online.
+                    {i18n.t('literals.minden-monitorozott-iroda-online')}
                   </p>
                 ) : (
                   offlineBranches.slice(0, 3).map((branch) => (
@@ -3064,7 +3095,8 @@ export default function MobileOverviewPage() {
                         {compactBranchId(branch.branchId)}
                       </div>
                       <div className="text-xs text-amber-800">
-                        Utolsó életjel: {formatLocalDateTime(branch.lastHeartbeat)}
+                        {i18n.t('literals.utolso-eletjel')}
+                        {formatLocalDateTime(branch.lastHeartbeat)}
                       </div>
                     </div>
                   ))
@@ -3074,7 +3106,7 @@ export default function MobileOverviewPage() {
                 to="/foertektar"
                 className="mt-3 inline-flex text-sm font-semibold text-primary-700"
               >
-                Főértéktár dashboard megnyitása
+                {i18n.t('literals.foertektar-dashboard-megnyitasa')}
               </Link>
             </MobilePanel>
 
@@ -3090,14 +3122,20 @@ export default function MobileOverviewPage() {
                       <div className="text-xs text-gray-500">{rate.currencyName}</div>
                     </div>
                     <div className="text-right font-mono text-xs">
-                      <div>V {rate.baseBuyRate.toFixed(2)}</div>
-                      <div>E {rate.baseSellRate.toFixed(2)}</div>
+                      <div>
+                        {i18n.t('literals.v-2')}
+                        {rate.baseBuyRate.toFixed(2)}
+                      </div>
+                      <div>
+                        {i18n.t('literals.e-3')}
+                        {rate.baseSellRate.toFixed(2)}
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
               <Link to="/rates" className="mt-3 inline-flex text-sm font-semibold text-primary-700">
-                Árfolyamok megnyitása
+                {i18n.t('literals.arfolyamok-megnyitasa')}
               </Link>
             </MobilePanel>
 
@@ -3140,10 +3178,15 @@ export default function MobileOverviewPage() {
               </div>
               <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
                 <div>
-                  Restore időszak: {syncRestoreStatus?.earliestDate ?? '-'} -{' '}
-                  {syncRestoreStatus?.latestDate ?? '-'}
+                  {i18n.t('literals.restore-idoszak')}
+                  {syncRestoreStatus?.earliestDate ?? '-'}
+                  {i18n.t('literals.lit-39')} {syncRestoreStatus?.latestDate ?? '-'}
                 </div>
-                <div>WU díj ma: {fmt(Math.round(num(wuDailyReport?.totalFees)))} Ft</div>
+                <div>
+                  {i18n.t('literals.wu-dij-ma')}
+                  {fmt(Math.round(num(wuDailyReport?.totalFees)))}
+                  {i18n.t('literals.ft')}
+                </div>
               </div>
               {missingDailyReports.length > 0 && (
                 <div className="mt-3 space-y-2">
@@ -3158,7 +3201,8 @@ export default function MobileOverviewPage() {
                           compactBranchId(String(row.branchId ?? 'Ismeretlen iroda'))}
                       </div>
                       <div className="text-xs text-amber-800">
-                        {row.branchName || 'Nincs irodanév'} - napi jelentés nincs leadva.
+                        {row.branchName || 'Nincs irodanév'}
+                        {i18n.t('literals.napi-jelentes-nincs-leadva-2')}
                       </div>
                     </div>
                   ))}
@@ -3388,8 +3432,12 @@ function TransferDocumentMobileCard({
             {document.documentNumber ?? document.id}
           </div>
           <div className="mt-1 break-words text-xs text-gray-600">
-            {document.sourceType ?? '-'}:{document.sourceId ?? '-'} -{' '}
-            {document.destinationType ?? '-'}:{document.destinationId ?? '-'}
+            {document.sourceType ?? '-'}
+            {i18n.t('literals.lit-7')}
+            {document.sourceId ?? '-'}
+            {i18n.t('literals.lit-39')} {document.destinationType ?? '-'}
+            {i18n.t('literals.lit-7')}
+            {document.destinationId ?? '-'}
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-gray-700">
@@ -3422,7 +3470,7 @@ function TransferDocumentMobileCard({
             data-testid={`mobile-transfer-pickup-${document.id}`}
           >
             {actingId === `${document.id}:pickup` && <Loader2 size={13} className="animate-spin" />}
-            Átvétel
+            {i18n.t('literals.atvetel')}
           </button>
         </div>
       )}
@@ -3435,7 +3483,7 @@ function TransferDocumentMobileCard({
           data-testid={`mobile-transfer-deliver-${document.id}`}
         >
           {actingId === `${document.id}:deliver` && <Loader2 size={13} className="animate-spin" />}
-          Leadás
+          {i18n.t('literals.leadas')}
         </button>
       )}
       {status === 'DELIVERED' && (
@@ -3447,7 +3495,7 @@ function TransferDocumentMobileCard({
           data-testid={`mobile-transfer-confirm-${document.id}`}
         >
           {actingId === `${document.id}:confirm` && <Loader2 size={13} className="animate-spin" />}
-          Igazolás
+          {i18n.t('literals.igazolas')}
         </button>
       )}
     </div>
@@ -3483,7 +3531,9 @@ function MobileErtektarStatusCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="break-words text-sm font-bold text-gray-900">
-            {title} #{id}
+            {title}
+            {i18n.t('literals.lit-41')}
+            {id}
           </div>
           <div className="mt-1 break-words text-xs text-gray-600">{primary}</div>
           <div className="mt-1 break-words text-xs text-gray-500">{secondary}</div>
@@ -3557,7 +3607,8 @@ function CashPositionMobileCard({ item }: { item: CashPositionItem }) {
         />
       </div>
       <div className="mt-2 text-xs text-gray-500">
-        Utolsó mozgás: {formatLocalDateTime(item.lastTransactionAt)}
+        {i18n.t('literals.utolso-mozgas')}
+        {formatLocalDateTime(item.lastTransactionAt)}
       </div>
     </div>
   )
@@ -3659,13 +3710,13 @@ function MobilePanel({
         {status === 'loading' && <Loader2 size={14} className="animate-spin text-gray-400" />}
         {status === 'unavailable' && (
           <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
-            Nem elérhető
+            {i18n.t('literals.nem-elerheto')}
           </span>
         )}
       </div>
       {status === 'unavailable' ? (
         <p className="text-sm text-gray-500">
-          Ehhez a panelhez nincs jogosultság vagy a backend nem válaszolt.
+          {i18n.t('literals.ehhez-a-panelhez-nincs-jogosultsag-vagy')}
         </p>
       ) : (
         children

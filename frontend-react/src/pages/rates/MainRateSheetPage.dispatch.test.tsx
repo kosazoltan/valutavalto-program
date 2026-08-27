@@ -46,7 +46,10 @@ const mocks = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
 vi.mock('../../utils/logger', () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }))

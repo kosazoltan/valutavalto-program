@@ -9,6 +9,7 @@ import {
   type StaticAuditCheck,
 } from '../../services/api/diagnostics'
 import { vvLogger } from '../../utils/vvLogger'
+import i18n from '../../i18n'
 
 /**
  * Admin Audit-Diagnosztika Dashboard (V234 belso log+audit modul).
@@ -127,15 +128,16 @@ export default function AuditDiagnosticsPage() {
   }
 
   if (loading) {
-    return <div className="p-6">Audit-diagnosztikai adatok betoltese...</div>
+    return <div className="p-6">{i18n.t('literals.audit-diagnosztikai-adatok-betoltese')}</div>
   }
 
   if (error) {
     return (
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-4">Audit Diagnosztika</h1>
+        <h1 className="text-2xl font-bold mb-4">{i18n.t('literals.audit-diagnosztika')}</h1>
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          Hiba: {error}
+          {i18n.t('literals.hiba')}
+          {error}
         </div>
       </div>
     )
@@ -144,9 +146,9 @@ export default function AuditDiagnosticsPage() {
   return (
     <div className="p-6 space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">Audit Diagnosztika (V234)</h1>
+        <h1 className="text-2xl font-bold">{i18n.t('literals.audit-diagnosztika-v234')}</h1>
         <p className="text-sm text-gray-600">
-          AI-olvashato belso log+audit modul - utolso 100 esemeny + hash-chain integritas-check
+          {i18n.t('literals.ai-olvashato-belso-log-audit-modul-utols')}
         </p>
       </header>
 
@@ -154,17 +156,19 @@ export default function AuditDiagnosticsPage() {
         <div
           className={`rounded border p-4 ${health?.ok ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}
         >
-          <div className="text-sm font-semibold">Diagnostics ingest</div>
+          <div className="text-sm font-semibold">{i18n.t('literals.diagnostics-ingest')}</div>
           <div className="mt-2 text-2xl font-bold">{health?.ok ? 'OK' : 'Nincs adat'}</div>
         </div>
         <div className="rounded border border-gray-200 bg-white p-4">
-          <div className="text-sm font-semibold text-gray-700">DB-ben rögzített klienshibák</div>
+          <div className="text-sm font-semibold text-gray-700">
+            {i18n.t('literals.db-ben-rogzitett-klienshibak')}
+          </div>
           <div className="mt-2 text-2xl font-bold text-gray-900">
             {health?.totalReportedErrors ?? 0}
           </div>
         </div>
         <div className="rounded border border-gray-200 bg-white p-4">
-          <div className="text-sm font-semibold text-gray-700">Katalógus</div>
+          <div className="text-sm font-semibold text-gray-700">{i18n.t('literals.katalogus')}</div>
           <div className="mt-2 text-2xl font-bold text-gray-900">{catalog?.totalCodes ?? 0}</div>
         </div>
       </section>
@@ -173,14 +177,14 @@ export default function AuditDiagnosticsPage() {
       <section className="bg-white shadow rounded p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold">Static audit</h2>
+            <h2 className="text-lg font-semibold">{i18n.t('literals.static-audit')}</h2>
             <p className="mt-1 text-sm text-gray-600">
-              DB kapcsolat, kotelezo kornyezeti valtozok es mail konfiguracio gyors ellenorzese.
+              {i18n.t('literals.db-kapcsolat-kotelezo-kornyezeti-valtozo')}
             </p>
           </div>
           <div className="grid w-full gap-2 md:w-auto md:min-w-[24rem] md:grid-cols-[minmax(0,1fr)_auto]">
             <label className="min-w-0">
-              <span className="sr-only">Static audit admin token</span>
+              <span className="sr-only">{i18n.t('literals.static-audit-admin-token')}</span>
               <input
                 type="password"
                 value={staticAuditToken}
@@ -203,7 +207,8 @@ export default function AuditDiagnosticsPage() {
 
         {staticAuditError && (
           <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            Static audit hiba: {staticAuditError}
+            {i18n.t('literals.static-audit-hiba')}
+            {staticAuditError}
           </div>
         )}
 
@@ -237,14 +242,15 @@ export default function AuditDiagnosticsPage() {
       {/* Utolso hibas audit-bejegyzesek */}
       <section className="bg-white shadow rounded p-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-semibold">Hibas audit-esemenyek</h2>
+          <h2 className="text-lg font-semibold">{i18n.t('literals.hibas-audit-esemenyek')}</h2>
           <span className="text-sm text-gray-600">
-            {errorEntries.length} ERROR / WARN / FATAL sor
+            {errorEntries.length}
+            {i18n.t('literals.error-warn-fatal-sor')}
           </span>
         </div>
         {errorEntries.length === 0 ? (
           <p className="mt-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-            Nincs friss hibas audit-bejegyzes.
+            {i18n.t('literals.nincs-friss-hibas-audit-bejegyzes')}
           </p>
         ) : (
           <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -270,13 +276,13 @@ export default function AuditDiagnosticsPage() {
       {/* Hash-chain integritas check */}
       <section className="bg-white shadow rounded p-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold">Hash-chain integritas</h2>
+          <h2 className="text-lg font-semibold">{i18n.t('literals.hash-chain-integritas')}</h2>
           <button
             type="button"
             onClick={onVerifyHashChain}
             className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
           >
-            Ellenorzes (utolso 200)
+            {i18n.t('literals.ellenorzes-utolso-200')}
           </button>
         </div>
         {integrity && (
@@ -293,7 +299,8 @@ export default function AuditDiagnosticsPage() {
             <div className="text-sm">{integrity.message}</div>
             {integrity.firstBrokenEntryId && (
               <div className="text-xs mt-1">
-                Elso problemás sor ID: <code>{integrity.firstBrokenEntryId}</code>
+                {i18n.t('literals.elso-problemas-sor-id')}
+                <code>{integrity.firstBrokenEntryId}</code>
               </div>
             )}
           </div>
@@ -302,7 +309,9 @@ export default function AuditDiagnosticsPage() {
 
       {/* Trace-ID korrelacios kereses */}
       <section className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-semibold mb-2">Trace-ID korrelacio (kliens-backend lanc)</h2>
+        <h2 className="text-lg font-semibold mb-2">
+          {i18n.t('literals.trace-id-korrelacio-kliens-backend-lanc')}
+        </h2>
         <div className="flex gap-2">
           <input
             type="text"
@@ -316,19 +325,22 @@ export default function AuditDiagnosticsPage() {
             onClick={onTraceSearch}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
           >
-            Kereses
+            {i18n.t('literals.kereses')}
           </button>
         </div>
         {traceResults !== null && (
           <div className="mt-3 text-sm">
-            <strong>{traceResults.length}</strong> esemeny ehhez a trace-hez.
+            <strong>{traceResults.length}</strong>
+            {i18n.t('literals.esemeny-ehhez-a-trace-hez')}
             <ul className="mt-2 space-y-1">
               {traceResults.map((e) => (
                 <li key={e.id} className="border-b py-1">
                   <span className="font-mono text-xs text-gray-500">{e.ts}</span>{' '}
                   <span className="font-semibold">{e.eventType ?? e.action}</span>{' '}
                   <span className="text-gray-600">
-                    {e.entityType}#{e.entityId}
+                    {e.entityType}
+                    {i18n.t('literals.lit-12')}
+                    {e.entityId}
                   </span>
                 </li>
               ))}
@@ -339,7 +351,7 @@ export default function AuditDiagnosticsPage() {
 
       {/* Entity audit-lanc kereses */}
       <section className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-semibold mb-2">Entity audit-lanc</h2>
+        <h2 className="text-lg font-semibold mb-2">{i18n.t('literals.entity-audit-lanc')}</h2>
         <div className="grid gap-2 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]">
           <input
             type="text"
@@ -360,19 +372,22 @@ export default function AuditDiagnosticsPage() {
             onClick={onEntitySearch}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
           >
-            Audit-lanc
+            {i18n.t('literals.audit-lanc')}
           </button>
         </div>
         {entityResults !== null && (
           <div className="mt-3 text-sm" data-testid="entity-chain-results">
-            <strong>{entityResults.length}</strong> esemeny ehhez az entityhez.
+            <strong>{entityResults.length}</strong>
+            {i18n.t('literals.esemeny-ehhez-az-entityhez')}
             <ul className="mt-2 space-y-1">
               {entityResults.map((e) => (
                 <li key={e.id} className="border-b py-1">
                   <span className="font-mono text-xs text-gray-500">{e.ts}</span>{' '}
                   <span className="font-semibold">{e.eventType ?? e.action}</span>{' '}
                   <span className="text-gray-600">
-                    {e.entityType}#{e.entityId}
+                    {e.entityType}
+                    {i18n.t('literals.lit-12')}
+                    {e.entityId}
                   </span>
                 </li>
               ))}
@@ -383,17 +398,19 @@ export default function AuditDiagnosticsPage() {
 
       {/* Utolso 100 esemeny */}
       <section className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-semibold mb-2">Utolso 100 audit-esemeny</h2>
+        <h2 className="text-lg font-semibold mb-2">
+          {i18n.t('literals.utolso-100-audit-esemeny')}
+        </h2>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left font-medium">Ido</th>
-                <th className="px-3 py-2 text-left font-medium">Event type</th>
-                <th className="px-3 py-2 text-left font-medium">Entity</th>
-                <th className="px-3 py-2 text-left font-medium">Worker</th>
-                <th className="px-3 py-2 text-left font-medium">Amount</th>
-                <th className="px-3 py-2 text-left font-medium">Trace</th>
+                <th className="px-3 py-2 text-left font-medium">{i18n.t('literals.ido')}</th>
+                <th className="px-3 py-2 text-left font-medium">{i18n.t('literals.event-type')}</th>
+                <th className="px-3 py-2 text-left font-medium">{i18n.t('literals.entity')}</th>
+                <th className="px-3 py-2 text-left font-medium">{i18n.t('literals.worker')}</th>
+                <th className="px-3 py-2 text-left font-medium">{i18n.t('literals.amount')}</th>
+                <th className="px-3 py-2 text-left font-medium">{i18n.t('literals.trace')}</th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -405,7 +422,10 @@ export default function AuditDiagnosticsPage() {
                   <td className="px-3 py-2 text-xs">
                     {e.entityType}
                     {e.entityId && (
-                      <span className="text-gray-500">#{e.entityId.substring(0, 8)}</span>
+                      <span className="text-gray-500">
+                        {i18n.t('literals.lit-12')}
+                        {e.entityId.substring(0, 8)}
+                      </span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs">{e.userName}</td>
@@ -425,7 +445,7 @@ export default function AuditDiagnosticsPage() {
                       onClick={() => setSelectedEntry(e)}
                       className="text-blue-600 hover:underline text-xs"
                     >
-                      Reszletek
+                      {i18n.t('literals.reszletek')}
                     </button>
                   </td>
                 </tr>
@@ -439,16 +459,24 @@ export default function AuditDiagnosticsPage() {
       {catalog && (
         <section className="bg-white shadow rounded p-4">
           <h2 className="text-lg font-semibold mb-2">
-            AI-olvashato hibakod-katalogus (v{catalog.version}, {catalog.totalCodes} kod)
+            {i18n.t('literals.ai-olvashato-hibakod-katalogus-v')}
+            {catalog.version}
+            {i18n.t('literals.lit-13')}
+            {catalog.totalCodes}
+            {i18n.t('literals.kod')}
           </h2>
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">Kod</th>
-                  <th className="px-3 py-2 text-left font-medium">Kategoria</th>
-                  <th className="px-3 py-2 text-left font-medium">Szint</th>
-                  <th className="px-3 py-2 text-left font-medium">Felhasznaloi hatas</th>
+                  <th className="px-3 py-2 text-left font-medium">{i18n.t('literals.kod-2')}</th>
+                  <th className="px-3 py-2 text-left font-medium">
+                    {i18n.t('literals.kategoria')}
+                  </th>
+                  <th className="px-3 py-2 text-left font-medium">{i18n.t('literals.szint')}</th>
+                  <th className="px-3 py-2 text-left font-medium">
+                    {i18n.t('literals.felhasznaloi-hatas')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -501,7 +529,7 @@ function AuditEntryModal({ entry, onClose }: { entry: AuditLogEntry; onClose: ()
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="audit-modal-title" className="text-lg font-bold mb-2">
-          Audit-esemeny reszletei
+          {i18n.t('literals.audit-esemeny-reszletei')}
         </h3>
         <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
           {JSON.stringify(entry, null, 2)}
@@ -513,7 +541,7 @@ function AuditEntryModal({ entry, onClose }: { entry: AuditLogEntry; onClose: ()
             onClick={onClose}
             className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
           >
-            Bezaras (Esc)
+            {i18n.t('literals.bezaras-esc')}
           </button>
         </div>
       </div>

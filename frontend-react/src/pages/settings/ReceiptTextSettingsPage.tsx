@@ -3,6 +3,7 @@ import { Save, Loader2, RotateCcw, FileText } from 'lucide-react'
 import { systemParameterApi, type SystemParameter } from '../../services/api/settings'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 interface ReceiptTextField {
   key: string
@@ -157,7 +158,7 @@ export default function ReceiptTextSettingsPage() {
     return (
       <div className="flex items-center gap-2 text-gray-500 p-4">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Bizonylat szövegek betöltése...</span>
+        <span>{i18n.t('literals.bizonylat-szovegek-betoltese')}</span>
       </div>
     )
   }
@@ -167,7 +168,7 @@ export default function ReceiptTextSettingsPage() {
       <div className="flex items-center justify-between">
         <h2 className="section-title flex items-center gap-2">
           <FileText size={18} />
-          Bizonylat szövegek szerkesztése
+          {i18n.t('literals.bizonylat-szovegek-szerkesztese')}
         </h2>
         <div className="flex gap-2">
           <button
@@ -176,7 +177,7 @@ export default function ReceiptTextSettingsPage() {
             disabled={!dirty || saving}
           >
             <RotateCcw size={14} />
-            Visszaállítás
+            {i18n.t('literals.visszaallitas')}
           </button>
           <button
             className="form-button-primary flex items-center gap-1"
@@ -190,9 +191,7 @@ export default function ReceiptTextSettingsPage() {
       </div>
 
       <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-        Az itt módosított szövegek a következő bizonylat nyomtatásnál lépnek érvénybe. A 300.000 Ft
-        feletti tranzakcióknál megjelenő bankpartner és marketing szövegek, valamint az
-        ÁFA-mentességi és lábléc szövegek szerkeszthetők.
+        {i18n.t('literals.az-itt-modositott-szovegek-a-kovetkezo-b')}
       </div>
 
       <div className="space-y-4">
@@ -207,11 +206,18 @@ export default function ReceiptTextSettingsPage() {
             >
               <div className="flex items-start justify-between mb-1">
                 <label className="form-label font-medium text-gray-800">{field.label}</label>
-                {isChanged && <span className="text-xs text-amber-600 font-medium">Módosítva</span>}
+                {isChanged && (
+                  <span className="text-xs text-amber-600 font-medium">
+                    {i18n.t('literals.modositva-2')}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-500 mb-2">{field.description}</p>
               {!param ? (
-                <div className="text-sm text-red-600">Hiányzó rendszerparaméter: {field.key}</div>
+                <div className="text-sm text-red-600">
+                  {i18n.t('literals.hianyzo-rendszerparameter')}
+                  {field.key}
+                </div>
               ) : field.multiline ? (
                 <textarea
                   className="form-input w-full font-mono text-sm"
@@ -242,7 +248,7 @@ export default function ReceiptTextSettingsPage() {
             disabled={saving}
           >
             <RotateCcw size={14} />
-            Visszaállítás
+            {i18n.t('literals.visszaallitas')}
           </button>
           <button
             className="form-button-primary flex items-center gap-1"

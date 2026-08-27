@@ -192,7 +192,7 @@ public class CurrencyCalculatorService {
                 .appliedRate(appliedRate)
                 .spread(spread)
                 .commission(handlingFeeService.calculateHandlingFee(
-                    "HUF".equals(fromCurrency) ? fromAmount : toAmount))
+                    "HUF".equals(fromCurrency) ? fromAmount : toAmount, branchId))
                 .direction(direction)
                 .roundingInfo("Kerekítés: " + foreignCode + " szabály alkalmazva")
                 .build();

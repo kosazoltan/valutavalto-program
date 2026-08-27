@@ -4,6 +4,7 @@ import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface Publication {
   id: string
@@ -56,7 +57,7 @@ export default function RatePublishHistory() {
       </div>
 
       {loading ? (
-        <p>Betöltés...</p>
+        <p>{i18n.t('literals.betoltes')}</p>
       ) : publications.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {t('ratemanagement.nincsPublikalasiElozmeny')}
@@ -83,7 +84,10 @@ export default function RatePublishHistory() {
                     {t('ratemanagement.publikalta')}
                     {pub.publishedByName ?? pub.publishedBy}
                   </p>
-                  <p className="text-xs">{pub.id.substring(0, 8)}...</p>
+                  <p className="text-xs">
+                    {pub.id.substring(0, 8)}
+                    {i18n.t('literals.lit-16')}
+                  </p>
                 </div>
               </div>
             </div>

@@ -97,12 +97,54 @@ const vaultWorker = { ...cashierWorker, role: 'ERTEKTAR' }
 
 /** Címlettörzs: HUF egész sorok + EUR-ban tört (0,5) ÉS egész (50/2/1) sorok. */
 const DENOMINATION_MASTER = [
-  { id: 1, currencyId: 2, currencyCode: 'HUF', faceValue: 20000, denominationType: 'BANKNOTE', active: true },
-  { id: 2, currencyId: 2, currencyCode: 'HUF', faceValue: 1000, denominationType: 'BANKNOTE', active: true },
-  { id: 3, currencyId: 4, currencyCode: 'EUR', faceValue: 50, denominationType: 'BANKNOTE', active: true },
-  { id: 4, currencyId: 4, currencyCode: 'EUR', faceValue: 2, denominationType: 'COIN', active: true },
-  { id: 5, currencyId: 4, currencyCode: 'EUR', faceValue: 1, denominationType: 'COIN', active: true },
-  { id: 6, currencyId: 4, currencyCode: 'EUR', faceValue: 0.5, denominationType: 'COIN', active: true },
+  {
+    id: 1,
+    currencyId: 2,
+    currencyCode: 'HUF',
+    faceValue: 20000,
+    denominationType: 'BANKNOTE',
+    active: true,
+  },
+  {
+    id: 2,
+    currencyId: 2,
+    currencyCode: 'HUF',
+    faceValue: 1000,
+    denominationType: 'BANKNOTE',
+    active: true,
+  },
+  {
+    id: 3,
+    currencyId: 4,
+    currencyCode: 'EUR',
+    faceValue: 50,
+    denominationType: 'BANKNOTE',
+    active: true,
+  },
+  {
+    id: 4,
+    currencyId: 4,
+    currencyCode: 'EUR',
+    faceValue: 2,
+    denominationType: 'COIN',
+    active: true,
+  },
+  {
+    id: 5,
+    currencyId: 4,
+    currencyCode: 'EUR',
+    faceValue: 1,
+    denominationType: 'COIN',
+    active: true,
+  },
+  {
+    id: 6,
+    currencyId: 4,
+    currencyCode: 'EUR',
+    faceValue: 0.5,
+    denominationType: 'COIN',
+    active: true,
+  },
 ]
 
 function renderPage(worker: typeof cashierWorker) {

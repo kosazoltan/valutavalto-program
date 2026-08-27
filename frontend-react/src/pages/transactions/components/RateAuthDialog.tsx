@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { ShieldCheck, X } from 'lucide-react'
 import { generateChallenge, validateResponse } from '../../../utils/rateAuthCode'
+import i18n from '../../../i18n'
 
 interface RateAuthDialogProps {
   isOpen: boolean
@@ -73,7 +74,7 @@ export default function RateAuthDialog({
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <ShieldCheck size={22} className="text-amber-500" />
-            Egyedi árfolyam engedélyezés
+            {i18n.t('literals.egyedi-arfolyam-engedelyezes')}
           </h3>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
@@ -82,17 +83,20 @@ export default function RateAuthDialog({
 
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
           <p className="font-semibold text-amber-800 dark:text-amber-200">
-            {mode === 'buy' ? 'Vételi' : 'Eladási'} árfolyam: {customRate.toFixed(2)} HUF/
+            {mode === 'buy' ? 'Vételi' : 'Eladási'}
+            {i18n.t('literals.arfolyam-4')}
+            {customRate.toFixed(2)}
+            {i18n.t('literals.huf-4')}
             {currencyCode}
           </p>
           <p className="text-amber-700 dark:text-amber-300 mt-1">
-            A sávon kívüli árfolyamhoz értéktárosi/főértéktárosi engedély szükséges.
+            {i18n.t('literals.a-savon-kivuli-arfolyamhoz-ertektarosi-f')}
           </p>
         </div>
 
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Olvassa fel az alábbi kódot az értéktárosnak:
+            {i18n.t('literals.olvassa-fel-az-alabbi-kodot-az-ertektaro')}
           </p>
           <div className="text-4xl font-mono font-black tracking-[0.3em] text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 rounded-lg py-3 select-all">
             {challenge}
@@ -101,7 +105,7 @@ export default function RateAuthDialog({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Értéktáros válaszkódja:
+            {i18n.t('literals.ertektaros-valaszkodja')}
           </label>
           <input
             ref={inputRef}
@@ -132,13 +136,13 @@ export default function RateAuthDialog({
             className="flex-1 py-2.5 rounded-lg text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: 'var(--primary)' }}
           >
-            Ellenőrzés
+            {i18n.t('literals.ellenorzes')}
           </button>
           <button
             onClick={onCancel}
             className="flex-1 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
-            Mégse
+            {i18n.t('literals.megse')}
           </button>
         </div>
       </div>

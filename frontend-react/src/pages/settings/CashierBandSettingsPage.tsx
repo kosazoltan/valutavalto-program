@@ -3,6 +3,7 @@ import { Save, Loader2, RotateCcw, AlertTriangle } from 'lucide-react'
 import { systemParameterApi, type SystemParameter } from '../../services/api/settings'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 interface CashierBandField {
   key: string
@@ -162,7 +163,7 @@ export default function CashierBandSettingsPage() {
     return (
       <div className="flex items-center gap-2 text-gray-500 p-4">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Pénztárosi sáv beállítások betöltése...</span>
+        <span>{i18n.t('literals.penztarosi-sav-beallitasok-betoltese')}</span>
       </div>
     )
   }
@@ -172,7 +173,7 @@ export default function CashierBandSettingsPage() {
       <div className="flex items-center justify-between">
         <h2 className="section-title flex items-center gap-2">
           <AlertTriangle size={18} className="text-amber-600" />
-          Pénztárosi sáv (egyedi árfolyam) napi kvóta
+          {i18n.t('literals.penztarosi-sav-egyedi-arfolyam-napi-kvot')}
         </h2>
         <div className="flex gap-2">
           <button
@@ -181,7 +182,7 @@ export default function CashierBandSettingsPage() {
             disabled={!dirty || saving}
           >
             <RotateCcw size={14} />
-            Visszaállítás
+            {i18n.t('literals.visszaallitas')}
           </button>
           <button
             className="form-button-primary flex items-center gap-1"
@@ -195,10 +196,8 @@ export default function CashierBandSettingsPage() {
       </div>
 
       <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-        <strong>Üzleti szabály:</strong> A pénztáros maximum a napi limitig alkalmazhat egyedi
-        árfolyamot a minimum összeg feletti tranzakciókhoz. A backend (v2.5.50 / PR #564 óta) élesen
-        enforce-olja: a kvóta felett a tranzakció elutasítva HTTP 400 hibával. Vezetői jóváhagyás
-        (supervisor PIN) felüljárhatja a limitet egy adott tranzakcióhoz.
+        <strong>{i18n.t('literals.uzleti-szabaly')}</strong>
+        {i18n.t('literals.a-penztaros-maximum-a-napi-limitig-alkal')}
       </div>
 
       <div className="space-y-4">
@@ -215,13 +214,18 @@ export default function CashierBandSettingsPage() {
             >
               <div className="flex items-start justify-between mb-1">
                 <label className="form-label font-medium text-gray-800">{field.label}</label>
-                {isChanged && <span className="text-xs text-amber-600 font-medium">Módosítva</span>}
+                {isChanged && (
+                  <span className="text-xs text-amber-600 font-medium">
+                    {i18n.t('literals.modositva-2')}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-500 mb-2">{field.description}</p>
               {!param ? (
                 <div className="text-sm text-red-600">
-                  Hiányzó rendszerparaméter: {field.key} (V213 migráció szükséges — V211 hibás volt,
-                  V213 javítja)
+                  {i18n.t('literals.hianyzo-rendszerparameter')}
+                  {field.key}
+                  {i18n.t('literals.v213-migracio-szukseges-v211-hibas-volt')}
                 </div>
               ) : (
                 <>
@@ -241,8 +245,9 @@ export default function CashierBandSettingsPage() {
                     <p className="text-xs text-red-600 mt-1">{validationError}</p>
                   )}
                   <p className="text-xs text-gray-400 mt-1">
-                    Tartomány: {field.min.toLocaleString('hu-HU')} –{' '}
-                    {field.max.toLocaleString('hu-HU')} {field.unit}
+                    {i18n.t('literals.tartomany')}
+                    {field.min.toLocaleString('hu-HU')}
+                    {i18n.t('literals.lit-57')} {field.max.toLocaleString('hu-HU')} {field.unit}
                   </p>
                 </>
               )}
@@ -259,7 +264,7 @@ export default function CashierBandSettingsPage() {
             disabled={saving}
           >
             <RotateCcw size={14} />
-            Visszaállítás
+            {i18n.t('literals.visszaallitas')}
           </button>
           <button
             className="form-button-primary flex items-center gap-1"

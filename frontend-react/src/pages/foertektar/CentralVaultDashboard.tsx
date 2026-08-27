@@ -3,6 +3,7 @@ import { Activity, AlertTriangle, CheckCircle2, MapPin, XCircle } from 'lucide-r
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 // ============================================================================
 // Foertektar kozponti dashboard - orszagos penztar-allapot + keszlet egy helyen.
@@ -269,9 +270,8 @@ export default function CentralVaultDashboard() {
       {stockUnavailable && (
         <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
           <p className="text-orange-800 font-medium flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />A készletadatok betöltése sikertelen — a
-            Készlet-riasztás és a KÉSZLET oszlop értékei most nem megbízhatóak. Próbáld újra a
-            „Frissítés most” gombbal.
+            <AlertTriangle className="w-5 h-5" />
+            {i18n.t('literals.a-keszletadatok-betoltese-sikertelen-a-k')}
           </p>
         </div>
       )}
@@ -281,9 +281,8 @@ export default function CentralVaultDashboard() {
       {devicesUnavailable && (
         <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
           <p className="text-orange-800 font-medium flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />A pénztárgép-állapot betöltése sikertelen — a
-            Státusz és az Utolsó heartbeat oszlop, valamint az Offline összesítő értékei most nem
-            megbízhatóak. Próbáld újra a „Frissítés most” gombbal.
+            <AlertTriangle className="w-5 h-5" />
+            {i18n.t('literals.a-penztargep-allapot-betoltese-sikertele')}
           </p>
         </div>
       )}
@@ -314,7 +313,7 @@ export default function CentralVaultDashboard() {
 
       {/* Regions */}
       {loading && rows.length === 0 && (
-        <div className="text-center text-slate-500 py-12">Betöltés...</div>
+        <div className="text-center text-slate-500 py-12">{i18n.t('literals.betoltes')}</div>
       )}
       {Object.entries(byRegion).map(([region, brs]) => (
         <div key={region} className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -322,7 +321,8 @@ export default function CentralVaultDashboard() {
             <h2 className="font-bold text-slate-800 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-slate-500" /> {region}
               <span className="text-sm font-normal text-slate-500">
-                ({brs.length} {t('foertektar.penztar')}
+                {i18n.t('literals.lit-19')}
+                {brs.length} {t('foertektar.penztar')}
               </span>
             </h2>
           </div>
@@ -347,7 +347,9 @@ export default function CentralVaultDashboard() {
                   <td className="px-4 py-2">{r.branch.city || r.branch.name}</td>
                   <td className="px-4 py-2">
                     {devicesUnavailable ? (
-                      <span className="inline-flex items-center gap-1 text-slate-500">—</span>
+                      <span className="inline-flex items-center gap-1 text-slate-500">
+                        {i18n.t('literals.lit-8')}
+                      </span>
                     ) : r.online ? (
                       <span className="inline-flex items-center gap-1 text-green-700">
                         <CheckCircle2 className="w-4 h-4" />
@@ -403,7 +405,9 @@ export default function CentralVaultDashboard() {
                         />
                       </div>
                     ) : (
-                      <span className="text-slate-400 text-xs italic">nincs adat</span>
+                      <span className="text-slate-400 text-xs italic">
+                        {i18n.t('literals.nincs-adat-2')}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-2">
@@ -413,9 +417,11 @@ export default function CentralVaultDashboard() {
                         <AlertTriangle className="w-4 h-4" /> {r.stockAlert.join(', ')}
                       </span>
                     ) : !r.hasStockData ? (
-                      <span className="text-slate-400 text-xs italic">nincs készletadat</span>
+                      <span className="text-slate-400 text-xs italic">
+                        {i18n.t('literals.nincs-keszletadat')}
+                      </span>
                     ) : (
-                      <span className="text-green-700 text-xs">OK</span>
+                      <span className="text-green-700 text-xs">{i18n.t('literals.ok')}</span>
                     )}
                   </td>
                 </tr>

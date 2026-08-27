@@ -11,6 +11,7 @@ import type {
 } from '../../services/api/vaultClosingChecklist'
 import VaultClosingAuditorDialog from './VaultClosingAuditorDialog'
 import type { CompleteChecklistRequest } from '../../services/api/vaultClosingChecklist'
+import i18n from '../../i18n'
 
 /**
  * Értéktári zárás-előtti ellenőrzőlista panel.
@@ -182,17 +183,22 @@ export default function VaultClosingChecklistPanel({ date }: Props) {
         >
           <div className="flex items-center gap-2">
             <ClipboardList size={18} className="text-blue-600" />
-            <span className="font-semibold text-blue-800">Zárás-előtti ellenőrzőlista</span>
+            <span className="font-semibold text-blue-800">
+              {i18n.t('literals.zaras-elotti-ellenorzolista')}
+            </span>
             {!loading && checklist && (
               <span className="ml-2 rounded-full bg-blue-200 px-2 py-0.5 text-xs font-medium text-blue-800">
-                {checkedCount}/{CHECKLIST_ITEMS.length}
+                {checkedCount}
+                {i18n.t('literals.lit-4')}
+                {CHECKLIST_ITEMS.length}
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
             {isCompleted && (
               <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
-                <CheckCircle size={14} /> Lezárva
+                <CheckCircle size={14} />
+                {i18n.t('literals.lezarva')}
               </span>
             )}
             {saving && <Loader2 size={14} className="animate-spin text-blue-500" />}
@@ -205,18 +211,19 @@ export default function VaultClosingChecklistPanel({ date }: Props) {
             {/* Fejléc: dátum + zárást végző pénztáros */}
             <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
               <span>
-                <span className="font-medium">Dátum:</span> {date}
+                <span className="font-medium">{i18n.t('literals.datum')}</span> {date}
               </span>
               {workerName && (
                 <span>
-                  <span className="font-medium">Pénztáros:</span> {workerName}
+                  <span className="font-medium">{i18n.t('literals.penztaros')}</span> {workerName}
                 </span>
               )}
             </div>
 
             {loading && (
               <div className="flex items-center gap-2 py-2 text-sm text-gray-500">
-                <Loader2 size={14} className="animate-spin" /> Betöltés...
+                <Loader2 size={14} className="animate-spin" />
+                {i18n.t('literals.betoltes-2')}
               </div>
             )}
 
@@ -254,7 +261,10 @@ export default function VaultClosingChecklistPanel({ date }: Props) {
                           <span
                             className={`text-sm leading-snug ${checked ? 'text-gray-700' : 'text-gray-800'}`}
                           >
-                            <span className="mr-1 font-medium text-gray-500">{idx + 1}.</span>
+                            <span className="mr-1 font-medium text-gray-500">
+                              {idx + 1}
+                              {i18n.t('literals.lit-5')}
+                            </span>
                             {item.label}
                           </span>
                         </button>
@@ -268,11 +278,13 @@ export default function VaultClosingChecklistPanel({ date }: Props) {
                   {isCompleted ? (
                     <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
                       <div className="flex items-center gap-1 font-semibold">
-                        <CheckCircle size={14} /> Zárás véglegesítve
+                        <CheckCircle size={14} />
+                        {i18n.t('literals.zaras-veglegesitve')}
                       </div>
                       {checklist.auditorName && (
                         <div className="mt-1 text-xs">
-                          Ellenőrző: {checklist.auditorName}
+                          {i18n.t('literals.ellenorzo')}
+                          {checklist.auditorName}
                           {checklist.auditorRole && ` (${checklist.auditorRole})`}
                         </div>
                       )}
@@ -291,7 +303,8 @@ export default function VaultClosingChecklistPanel({ date }: Props) {
                     >
                       {completing ? (
                         <span className="flex items-center justify-center gap-2">
-                          <Loader2 size={14} className="animate-spin" /> Mentés...
+                          <Loader2 size={14} className="animate-spin" />
+                          {i18n.t('literals.mentes')}
                         </span>
                       ) : (
                         'Zárás véglegesítése'

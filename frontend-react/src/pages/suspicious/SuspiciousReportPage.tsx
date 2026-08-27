@@ -3,6 +3,7 @@ import { AlertTriangle, FileWarning, Loader2, Plus, RefreshCw, Save } from 'luci
 import { amlApi, type AmlReportDto, type CreateAmlReportRequest } from '../../services/api/aml'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 type FormState = {
   customerId: string
@@ -131,9 +132,11 @@ export default function SuspiciousReportPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <FileWarning />
-          Gyanús ügyletek
+          {i18n.t('literals.gyanus-ugyletek')}
           <span className="text-sm font-normal text-gray-500">
-            ({reports.length} nyitott AML bejelentés)
+            {i18n.t('literals.lit-19')}
+            {reports.length}
+            {i18n.t('literals.nyitott-aml-bejelentes')}
           </span>
         </h1>
         <div className="flex items-center gap-2">
@@ -144,7 +147,7 @@ export default function SuspiciousReportPage() {
             disabled={loading || saving}
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Frissítés
+            {i18n.t('literals.frissites')}
           </button>
           <button
             type="button"
@@ -153,7 +156,7 @@ export default function SuspiciousReportPage() {
             disabled={saving}
           >
             <Plus size={16} />
-            Új bejelentés
+            {i18n.t('literals.uj-bejelentes')}
           </button>
         </div>
       </div>
@@ -169,36 +172,36 @@ export default function SuspiciousReportPage() {
 
       {showForm && (
         <form onSubmit={(event) => void submit(event)} className="form-panel space-y-3">
-          <h2 className="section-title">AML bejelentés rögzítése</h2>
+          <h2 className="section-title">{i18n.t('literals.aml-bejelentes-rogzitese')}</h2>
           <div className="grid grid-cols-3 gap-3">
             <label className="block">
-              <span className="form-label">Típus</span>
+              <span className="form-label">{i18n.t('literals.tipus')}</span>
               <select
                 className="form-input"
                 value={form.reportType}
                 onChange={(e) => patch({ reportType: e.target.value as FormState['reportType'] })}
               >
-                <option value="SUSPICIOUS">Gyanús</option>
-                <option value="THRESHOLD">Küszöb</option>
-                <option value="ENHANCED">Megerősített</option>
-                <option value="STANDARD">Standard</option>
+                <option value="SUSPICIOUS">{i18n.t('literals.gyanus')}</option>
+                <option value="THRESHOLD">{i18n.t('literals.kuszob')}</option>
+                <option value="ENHANCED">{i18n.t('literals.megerositett')}</option>
+                <option value="STANDARD">{i18n.t('literals.standard-2')}</option>
               </select>
             </label>
             <label className="block">
-              <span className="form-label">Kockázat</span>
+              <span className="form-label">{i18n.t('literals.kockazat')}</span>
               <select
                 className="form-input"
                 value={form.riskLevel}
                 onChange={(e) => patch({ riskLevel: e.target.value as FormState['riskLevel'] })}
               >
-                <option value="LOW">Alacsony</option>
-                <option value="MEDIUM">Közepes</option>
-                <option value="HIGH">Magas</option>
-                <option value="CRITICAL">Kritikus</option>
+                <option value="LOW">{i18n.t('literals.alacsony-2')}</option>
+                <option value="MEDIUM">{i18n.t('literals.kozepes')}</option>
+                <option value="HIGH">{i18n.t('literals.magas-2')}</option>
+                <option value="CRITICAL">{i18n.t('literals.kritikus')}</option>
               </select>
             </label>
             <label className="block">
-              <span className="form-label required">HUF összeg</span>
+              <span className="form-label required">{i18n.t('literals.huf-osszeg')}</span>
               <input
                 className="form-input text-right"
                 inputMode="decimal"
@@ -208,7 +211,7 @@ export default function SuspiciousReportPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Ügyfél ID</span>
+              <span className="form-label">{i18n.t('literals.ugyfel-id-2')}</span>
               <input
                 className="form-input"
                 value={form.customerId}
@@ -216,7 +219,7 @@ export default function SuspiciousReportPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Ügyfél neve</span>
+              <span className="form-label">{i18n.t('literals.ugyfel-neve')}</span>
               <input
                 className="form-input"
                 value={form.customerName}
@@ -224,7 +227,7 @@ export default function SuspiciousReportPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Tranzakció ID</span>
+              <span className="form-label">{i18n.t('literals.tranzakcio-id')}</span>
               <input
                 className="form-input text-right"
                 inputMode="numeric"
@@ -233,7 +236,7 @@ export default function SuspiciousReportPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Valuta</span>
+              <span className="form-label">{i18n.t('literals.valuta')}</span>
               <input
                 className="form-input font-mono uppercase"
                 value={form.currencyCode}
@@ -241,7 +244,7 @@ export default function SuspiciousReportPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Eredeti összeg</span>
+              <span className="form-label">{i18n.t('literals.eredeti-osszeg')}</span>
               <input
                 className="form-input text-right"
                 inputMode="decimal"
@@ -250,7 +253,7 @@ export default function SuspiciousReportPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Okmányszám</span>
+              <span className="form-label">{i18n.t('literals.okmanyszam')}</span>
               <input
                 className="form-input font-mono"
                 value={form.documentNumber}
@@ -258,7 +261,7 @@ export default function SuspiciousReportPage() {
               />
             </label>
             <label className="block col-span-3">
-              <span className="form-label">Megjegyzés</span>
+              <span className="form-label">{i18n.t('literals.megjegyzes')}</span>
               <textarea
                 className="form-input min-h-24"
                 value={form.workerNotes}
@@ -283,13 +286,13 @@ export default function SuspiciousReportPage() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Ügyfél</th>
-              <th>Típus</th>
-              <th>Kockázat</th>
-              <th className="text-right">Összeg</th>
-              <th>Státusz</th>
-              <th>Határidő</th>
-              <th>Létrehozva</th>
+              <th>{i18n.t('literals.ugyfel-2')}</th>
+              <th>{i18n.t('literals.tipus')}</th>
+              <th>{i18n.t('literals.kockazat')}</th>
+              <th className="text-right">{i18n.t('literals.osszeg')}</th>
+              <th>{i18n.t('literals.statusz')}</th>
+              <th>{i18n.t('literals.hatarido')}</th>
+              <th>{i18n.t('literals.letrehozva-2')}</th>
             </tr>
           </thead>
           <tbody>
@@ -297,13 +300,13 @@ export default function SuspiciousReportPage() {
               <tr>
                 <td colSpan={7} className="text-center py-8 text-gray-500">
                   <Loader2 size={18} className="inline animate-spin mr-2" />
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : reports.length === 0 ? (
               <tr>
                 <td colSpan={7} className="text-center py-8 text-gray-500">
-                  Nincs nyitott AML bejelentés.
+                  {i18n.t('literals.nincs-nyitott-aml-bejelentes')}
                 </td>
               </tr>
             ) : (

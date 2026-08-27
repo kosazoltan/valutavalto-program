@@ -41,6 +41,7 @@ import { useTranslation } from 'react-i18next'
 import { useAppMode } from '../../hooks/useAppMode'
 import { useAuthStore } from '../../stores/authStore'
 import { CENTRAL_VAULT_ROLES } from './TreasuryLayout'
+import i18n from '../../i18n'
 
 interface BranchRanking {
   id: string
@@ -854,10 +855,12 @@ export default function TreasuryDashboard() {
 
           <div className="form-panel" data-testid="ertektar-status-control">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-base font-bold text-secondary-900">Értéktári státusz kontroll</h2>
+              <h2 className="text-base font-bold text-secondary-900">
+                {i18n.t('literals.ertektari-statusz-kontroll')}
+              </h2>
               <span className="text-xs text-secondary-500">
                 {openCollections.length + openDistributions.length + openBankTransactions.length}{' '}
-                nyitott tétel
+                {i18n.t('literals.nyitott-tetel')}
               </span>
             </div>
             {statusActionError && (
@@ -883,7 +886,7 @@ export default function TreasuryDashboard() {
                   className="grid grid-cols-1 gap-2 sm:grid-cols-2"
                 >
                   <label className="text-xs font-medium text-secondary-700">
-                    Forrás iroda
+                    {i18n.t('literals.forras-iroda')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newCollection.branchCode}
@@ -895,7 +898,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Begyűjtés valuta
+                    {i18n.t('literals.begyujtes-valuta')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
                       value={newCollection.currencyCode}
@@ -910,7 +913,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Begyűjtés összeg
+                    {i18n.t('literals.begyujtes-osszeg')}
                     <input
                       type="number"
                       min="0.01"
@@ -925,7 +928,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Begyűjtés megjegyzés
+                    {i18n.t('literals.begyujtes-megjegyzes')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newCollection.note}
@@ -966,7 +969,7 @@ export default function TreasuryDashboard() {
                   className="grid grid-cols-1 gap-2 sm:grid-cols-2"
                 >
                   <label className="text-xs font-medium text-secondary-700">
-                    Cél iroda
+                    {i18n.t('literals.cel-iroda')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newDistribution.branchCode}
@@ -981,7 +984,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Szétosztás valuta
+                    {i18n.t('literals.szetosztas-valuta')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
                       value={newDistribution.currencyCode}
@@ -996,7 +999,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Szétosztás összeg
+                    {i18n.t('literals.szetosztas-osszeg')}
                     <input
                       type="number"
                       min="0.01"
@@ -1011,7 +1014,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Szétosztás megjegyzés
+                    {i18n.t('literals.szetosztas-megjegyzes')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newDistribution.note}
@@ -1050,13 +1053,13 @@ export default function TreasuryDashboard() {
           <div className="form-panel" data-testid="ertektar-readonly-ledger">
             <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-base font-bold text-secondary-900">
-                Értéktári bizonylat és korrekció áttekintés
+                {i18n.t('literals.ertektari-bizonylat-es-korrekcio-attekin')}
               </h2>
               <span className="text-xs text-secondary-500">
                 {formatInteger(
                   ertektarTransfers.length + materialReceipts.length + stockCorrections.length,
                 )}{' '}
-                listázott tétel
+                {i18n.t('literals.listazott-tetel')}
               </span>
             </div>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
@@ -1112,7 +1115,7 @@ export default function TreasuryDashboard() {
                   className="grid grid-cols-1 gap-2 sm:grid-cols-2"
                 >
                   <label className="text-xs font-medium text-secondary-700">
-                    Áttétel forrás iroda
+                    {i18n.t('literals.attetel-forras-iroda')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newTransfer.sourceBranchCode}
@@ -1127,7 +1130,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Áttétel cél iroda
+                    {i18n.t('literals.attetel-cel-iroda')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newTransfer.targetBranchCode}
@@ -1142,7 +1145,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Áttétel valuta
+                    {i18n.t('literals.attetel-valuta')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
                       value={newTransfer.currencyCode}
@@ -1154,7 +1157,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Áttétel összeg
+                    {i18n.t('literals.attetel-osszeg')}
                     <input
                       type="number"
                       min="0.01"
@@ -1169,7 +1172,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700 sm:col-span-2">
-                    Áttétel megjegyzés
+                    {i18n.t('literals.attetel-megjegyzes')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newTransfer.note}
@@ -1218,7 +1221,7 @@ export default function TreasuryDashboard() {
                   className="grid grid-cols-1 gap-2 sm:grid-cols-2"
                 >
                   <label className="text-xs font-medium text-secondary-700">
-                    Bizonylat típus
+                    {i18n.t('literals.bizonylat-tipus')}
                     <select
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newReceipt.receiptType}
@@ -1230,12 +1233,12 @@ export default function TreasuryDashboard() {
                       }
                       disabled={createReceiptSubmitting}
                     >
-                      <option value="B">Bevét</option>
-                      <option value="K">Kiadás</option>
+                      <option value="B">{i18n.t('literals.bevet')}</option>
+                      <option value="K">{i18n.t('literals.kiadas-2')}</option>
                     </select>
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Bizonylat iroda
+                    {i18n.t('literals.bizonylat-iroda')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newReceipt.branchCode}
@@ -1247,7 +1250,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Bizonylat valuta
+                    {i18n.t('literals.bizonylat-valuta')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm uppercase"
                       value={newReceipt.currencyCode}
@@ -1259,7 +1262,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Bizonylat összeg
+                    {i18n.t('literals.bizonylat-osszeg')}
                     <input
                       type="number"
                       min="0.01"
@@ -1274,7 +1277,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Partner
+                    {i18n.t('literals.partner')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newReceipt.counterpartName}
@@ -1289,7 +1292,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-medium text-secondary-700">
-                    Bizonylat megjegyzés
+                    {i18n.t('literals.bizonylat-megjegyzes')}
                     <input
                       className="mt-1 w-full rounded border border-secondary-200 px-2 py-1 text-sm"
                       value={newReceipt.note}
@@ -1344,7 +1347,7 @@ export default function TreasuryDashboard() {
                   className="grid grid-cols-1 gap-2 sm:grid-cols-2"
                 >
                   <label className="text-xs font-semibold text-secondary-600">
-                    Típus
+                    {i18n.t('literals.tipus')}
                     <select
                       className="form-input mt-1 h-8 w-full text-xs"
                       value={newCorrection.entityType}
@@ -1356,12 +1359,12 @@ export default function TreasuryDashboard() {
                       }
                       disabled={createCorrectionSubmitting}
                     >
-                      <option value="VAULT">VAULT</option>
-                      <option value="CASHIER">CASHIER</option>
+                      <option value="VAULT">{i18n.t('literals.vault')}</option>
+                      <option value="CASHIER">{i18n.t('literals.cashier')}</option>
                     </select>
                   </label>
                   <label className="text-xs font-semibold text-secondary-600">
-                    Azonosító
+                    {i18n.t('literals.azonosito')}
                     <input
                       className="form-input mt-1 h-8 w-full text-xs"
                       value={newCorrection.entityId}
@@ -1373,7 +1376,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-semibold text-secondary-600">
-                    Valuta
+                    {i18n.t('literals.valuta')}
                     <input
                       className="form-input mt-1 h-8 w-full text-xs font-mono uppercase"
                       value={newCorrection.currencyCode}
@@ -1388,7 +1391,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-semibold text-secondary-600">
-                    Új mennyiség
+                    {i18n.t('literals.uj-mennyiseg')}
                     <input
                       type="number"
                       min="0"
@@ -1403,7 +1406,7 @@ export default function TreasuryDashboard() {
                     />
                   </label>
                   <label className="text-xs font-semibold text-secondary-600 sm:col-span-2">
-                    Indok
+                    {i18n.t('literals.indok')}
                     <input
                       className="form-input mt-1 h-8 w-full text-xs"
                       value={newCorrection.reason}
@@ -1464,13 +1467,17 @@ export default function TreasuryDashboard() {
               <tbody>
                 {topBranches.map((branch, index) => (
                   <tr key={branch.id} className="border-b border-secondary-100 last:border-0">
-                    <td className="py-1.5 pr-2 w-8 text-secondary-500 font-mono">{index + 1}.</td>
+                    <td className="py-1.5 pr-2 w-8 text-secondary-500 font-mono">
+                      {index + 1}
+                      {i18n.t('literals.lit-5')}
+                    </td>
                     <td className="py-1.5 pr-2 font-medium text-secondary-900">{branch.name}</td>
                     <td className="py-1.5 text-right font-mono text-secondary-700">
                       {formatMillions(branch.revenue)}
                     </td>
                     <td className="py-1.5 pl-2 text-right text-xs text-secondary-500 w-12">
-                      {branch.percentage}%
+                      {branch.percentage}
+                      {i18n.t('literals.lit-30')}
                     </td>
                   </tr>
                 ))}
@@ -1511,17 +1518,21 @@ export default function TreasuryDashboard() {
           {closingStatuses.length > 0 && (
             <div className="text-xs text-secondary-600">
               <strong>
-                {closedCount}/{closingStatuses.length}
+                {closedCount}
+                {i18n.t('literals.lit-4')}
+                {closingStatuses.length}
               </strong>
               {t('treasury.zarva')}
               {inProgressCount > 0 && (
                 <>
-                  , <strong>{inProgressCount}</strong> {t('treasury.folyamatban')}
+                  {i18n.t('literals.lit-13')}
+                  <strong>{inProgressCount}</strong> {t('treasury.folyamatban')}
                 </>
               )}
               {notClosedCount > 0 && (
                 <>
-                  , <strong>{notClosedCount}</strong> {t('treasury.hianyzik')}
+                  {i18n.t('literals.lit-13')}
+                  <strong>{notClosedCount}</strong> {t('treasury.hianyzik')}
                 </>
               )}
             </div>
@@ -1569,7 +1580,10 @@ function StatusQueue({
     <section className="rounded-lg border border-secondary-100 bg-white p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-secondary-900">{title}</h3>
-        <span className="text-xs text-secondary-500">{rows.length} nyitott</span>
+        <span className="text-xs text-secondary-500">
+          {rows.length}
+          {i18n.t('literals.nyitott-2')}
+        </span>
       </div>
       {children && (
         <div className="mb-3 rounded border border-secondary-100 bg-secondary-50 p-2">
@@ -1578,7 +1592,7 @@ function StatusQueue({
       )}
       {rows.length === 0 ? (
         <p className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          Nincs nyitott tétel.
+          {i18n.t('literals.nincs-nyitott-tetel')}
         </p>
       ) : (
         <div className="space-y-2">
@@ -1663,7 +1677,7 @@ function ReadOnlyQueue({
       )}
       {rows.length === 0 ? (
         <p className="rounded border border-secondary-200 bg-secondary-50 px-3 py-2 text-sm text-secondary-600">
-          Nincs listázható tétel.
+          {i18n.t('literals.nincs-listazhato-tetel')}
         </p>
       ) : (
         <div className="space-y-2">

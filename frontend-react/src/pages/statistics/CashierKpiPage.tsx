@@ -12,6 +12,7 @@ import {
 import { cashierKpiApi, type CashierKpiSummary } from '../../services/api/cashierKpi'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 type QuickRange = 'today' | 'week' | 'month' | 'custom'
 
@@ -179,7 +180,7 @@ export default function CashierKpiPage() {
             }}
             aria-label="Kezdo datum"
           />
-          <span className="text-secondary-400 text-xs">-</span>
+          <span className="text-secondary-400 text-xs">{i18n.t('literals.lit-15')}</span>
           <input
             type="date"
             className="form-input h-9 text-xs"
@@ -246,8 +247,10 @@ export default function CashierKpiPage() {
               {topWorkerByTurnover.workerName}
             </div>
             <div className="text-sm text-secondary-600">
-              {formatHuf(topWorkerByTurnover.totalHuf)} - {formatInt(topWorkerByTurnover.txCount)}{' '}
-              {t('statistics.tranzakcioAtlag')} {formatHuf(topWorkerByTurnover.avgTxHuf)}
+              {formatHuf(topWorkerByTurnover.totalHuf)}
+              {i18n.t('literals.lit-17')}
+              {formatInt(topWorkerByTurnover.txCount)} {t('statistics.tranzakcioAtlag')}{' '}
+              {formatHuf(topWorkerByTurnover.avgTxHuf)}
             </div>
           </div>
         </div>
@@ -290,7 +293,7 @@ export default function CashierKpiPage() {
             {loading && (
               <tr>
                 <td colSpan={10} className="text-center text-sm text-secondary-400 py-8">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             )}

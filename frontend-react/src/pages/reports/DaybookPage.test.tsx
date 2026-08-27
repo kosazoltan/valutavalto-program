@@ -34,6 +34,7 @@ vi.mock('../../utils/logger', () => ({
 }))
 
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
@@ -81,9 +82,7 @@ describe('DaybookPage — FKH-022 FR-K3 partner oszlop (RED)', () => {
     expect(await screen.findByText('FF-000002')).toBeInTheDocument()
 
     // RED: a jelenlegi táblázatban nincs Partner oszlop és partner-cella.
-    expect(
-      screen.getByRole('columnheader', { name: 'Partner' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Partner' })).toBeInTheDocument()
     expect(screen.getByText('076')).toBeInTheDocument()
     expect(screen.getByText('PRB')).toBeInTheDocument()
   })

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-25T21:49:24.974Z",
-  "source_count": 1075,
+  "generated_at": "2026-08-27T02:02:59.760Z",
+  "source_count": 1076,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -8118,6 +8118,23 @@
         "napzaras",
         "penztar",
         "specifikacio"
+      ]
+    },
+    {
+      "path": "docs/specs/fk096-fk097-branch-handling-fee.md",
+      "sha256": "7e44d055a179edf8d380630bfc6ea4f2db9e7bad5e4499033f2a37e343f8c727",
+      "type": "semantic-reference",
+      "areas": [
+        "database",
+        "ertektar",
+        "frontend",
+        "installer",
+        "legacy",
+        "penztar",
+        "security",
+        "specifikacio",
+        "sync",
+        "tenant"
       ]
     },
     {

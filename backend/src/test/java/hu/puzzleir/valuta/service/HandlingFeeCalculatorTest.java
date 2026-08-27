@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,6 +41,9 @@ class HandlingFeeCalculatorTest {
     @InjectMocks
     private HandlingFeeCalculator calculator;
 
+    /** FK-096: a kalkulator mostantol explicit branchId-t kap (DIP) — a tesztek fix id-val hivjak. */
+    private static final UUID BRANCH_ID = UUID.randomUUID();
+
     // =========================================================
     // TC-01: CONVERSION típusnál kezelési díj = 0
     // =========================================================
@@ -54,7 +58,8 @@ class HandlingFeeCalculatorTest {
             BigDecimal fee = calculator.calculate(
                     new BigDecimal("100000"),
                     TransactionType.CONVERSION,
-                    null
+                    null,
+                    BRANCH_ID
             );
             assertThat(fee).isEqualByComparingTo(BigDecimal.ZERO);
             // CONVERSION ágban handlingFeeService.calculateHandlingFee() soha nem hívódik
@@ -67,7 +72,8 @@ class HandlingFeeCalculatorTest {
             BigDecimal fee = calculator.calculate(
                     new BigDecimal("1000000"),
                     TransactionType.CONVERSION,
-                    null
+                    null,
+                    BRANCH_ID
             );
             assertThat(fee).isEqualByComparingTo(BigDecimal.ZERO);
             verifyNoInteractions(handlingFeeService);
@@ -79,7 +85,8 @@ class HandlingFeeCalculatorTest {
             BigDecimal fee = calculator.calculate(
                     new BigDecimal("500000"),
                     TransactionType.CONVERSION,
-                    new BigDecimal("500") // kliens ezt küldte, de ignorálni kell
+                    new BigDecimal("500"), // kliens ezt küldte, de ignorálni kell
+                    BRANCH_ID
             );
             assertThat(fee)
                     .as("CONVERSION esetén a kliens díj sem érvényesülhet")
@@ -99,7 +106,7 @@ class HandlingFeeCalculatorTest {
         @BeforeEach
         void setup() {
             // Szerver oldali díjszámítás visszaad valós értéket
-            when(handlingFeeService.calculateHandlingFee(any()))
+            when(handlingFeeService.calculateHandlingFee(any(), any()))
                     .thenReturn(new BigDecimal("500"));
         }
 
@@ -109,13 +116,14 @@ class HandlingFeeCalculatorTest {
             BigDecimal fee = calculator.calculate(
                     new BigDecimal("100000"),
                     TransactionType.BUY,
-                    null
+                    null,
+                    BRANCH_ID
             );
             assertThat(fee)
                     .as("BUY tranzakciónál kezelési díj NEM lehet 0")
                     .isGreaterThan(BigDecimal.ZERO)
                     .isEqualByComparingTo("500");
-            verify(handlingFeeService).calculateHandlingFee(new BigDecimal("100000"));
+            verify(handlingFeeService).calculateHandlingFee(new BigDecimal("100000"), BRANCH_ID);
         }
 
         @Test
@@ -124,13 +132,14 @@ class HandlingFeeCalculatorTest {
             BigDecimal fee = calculator.calculate(
                     new BigDecimal("200000"),
                     TransactionType.SELL,
-                    null
+                    null,
+                    BRANCH_ID
             );
             assertThat(fee)
                     .as("SELL tranzakciónál kezelési díj NEM lehet 0")
                     .isGreaterThan(BigDecimal.ZERO)
                     .isEqualByComparingTo("500");
-            verify(handlingFeeService).calculateHandlingFee(new BigDecimal("200000"));
+            verify(handlingFeeService).calculateHandlingFee(new BigDecimal("200000"), BRANCH_ID);
         }
     }
 
@@ -221,7 +230,7 @@ class HandlingFeeCalculatorTest {
         @Test
         @DisplayName("NULL hufAmount → 0 Ft (minden típusnál)")
         void nullAmount_returnsZero() {
-            BigDecimal fee = calculator.calculate(null, TransactionType.BUY, null);
+            BigDecimal fee = calculator.calculate(null, TransactionType.BUY, null, BRANCH_ID);
             assertThat(fee).isEqualByComparingTo(BigDecimal.ZERO);
             verifyNoInteractions(handlingFeeService);
         }
@@ -232,7 +241,8 @@ class HandlingFeeCalculatorTest {
             BigDecimal fee = calculator.calculate(
                     new BigDecimal("-50000"),
                     TransactionType.SELL,
-                    null
+                    null,
+                    BRANCH_ID
             );
             assertThat(fee).isEqualByComparingTo(BigDecimal.ZERO);
             verifyNoInteractions(handlingFeeService);
@@ -244,7 +254,8 @@ class HandlingFeeCalculatorTest {
             BigDecimal fee = calculator.calculate(
                     BigDecimal.ZERO,
                     TransactionType.BUY,
-                    null
+                    null,
+                    BRANCH_ID
             );
             assertThat(fee).isEqualByComparingTo(BigDecimal.ZERO);
             verifyNoInteractions(handlingFeeService);

@@ -19,6 +19,7 @@ import {
 import { workerMasterApi, type WorkerMaster } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 type Tab = 'my' | 'team'
 
@@ -91,7 +92,7 @@ export default function AttendancePage() {
           onChange={(e) => setDateFrom(e.target.value)}
           aria-label="Kezdo datum"
         />
-        <span className="text-secondary-400 text-xs">-</span>
+        <span className="text-secondary-400 text-xs">{i18n.t('literals.lit-15')}</span>
         <input
           type="date"
           className="form-input h-9 text-xs"
@@ -177,7 +178,9 @@ function MyAttendanceTab({ from, to }: { from: string; to: string }) {
     <div className="space-y-3">
       <div className="form-panel p-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-secondary-900">Jelenléti állapot</div>
+          <div className="text-sm font-semibold text-secondary-900">
+            {i18n.t('literals.jelenleti-allapot')}
+          </div>
           <div className="text-xs text-secondary-500">
             {activeEntry
               ? `Nyitott session: ${formatDateTime(activeEntry.loginAt)}`
@@ -192,7 +195,7 @@ function MyAttendanceTab({ from, to }: { from: string; to: string }) {
             disabled={saving || loading || Boolean(activeEntry)}
           >
             <LogIn size={14} />
-            Bejelentkezés rögzítése
+            {i18n.t('literals.bejelentkezes-rogzitese')}
           </button>
           <button
             type="button"
@@ -201,7 +204,7 @@ function MyAttendanceTab({ from, to }: { from: string; to: string }) {
             disabled={saving || loading || !activeEntry}
           >
             <LogOut size={14} />
-            Kijelentkezés rögzítése
+            {i18n.t('literals.kijelentkezes-rogzitese')}
           </button>
         </div>
       </div>
@@ -276,7 +279,10 @@ function TeamAttendanceTab({ from, to }: { from: string; to: string }) {
           <option value="">{t('attendance.valasszCsapattagot')}</option>
           {workers.map((w) => (
             <option key={w.id} value={w.id}>
-              {w.fullName} ({w.workerCode ?? `#${w.id}`})
+              {w.fullName}
+              {i18n.t('literals.lit')}
+              {w.workerCode ?? `#${w.id}`}
+              {i18n.t('literals.lit-2')}
             </option>
           ))}
         </select>
@@ -364,7 +370,7 @@ function AttendanceList({
               <th>{t('auth.logout')}</th>
               <th className="text-right">{t('attendance.idotartam')}</th>
               <th>{t('branch.branchName')}</th>
-              <th>IP</th>
+              <th>{i18n.t('literals.ip')}</th>
             </tr>
           </thead>
           <tbody>
@@ -374,7 +380,7 @@ function AttendanceList({
                   colSpan={showWorkerName ? 6 : 5}
                   className="text-center py-8 text-secondary-400"
                 >
-                  Betoltes...
+                  {i18n.t('literals.betoltes-4')}
                 </td>
               </tr>
             )}
@@ -402,7 +408,9 @@ function AttendanceList({
                       {e.logoutAt ? (
                         formatDateTime(e.logoutAt)
                       ) : (
-                        <span className="badge badge-green text-xs">AKTIV</span>
+                        <span className="badge badge-green text-xs">
+                          {i18n.t('literals.aktiv')}
+                        </span>
                       )}
                     </td>
                     <td className="text-right text-sm">{formatDuration(duration)}</td>

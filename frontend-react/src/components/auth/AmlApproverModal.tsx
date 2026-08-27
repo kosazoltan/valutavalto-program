@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 /**
  * AML felsővezetői jóváhagyás modal (2026-06-04).
@@ -213,7 +214,7 @@ export default function AmlApproverModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="aml-approver-title" className="mb-2 text-lg font-bold text-amber-800">
-          AML felsővezetői jóváhagyás szükséges
+          {i18n.t('literals.aml-felsovezetoi-jovahagyas-szukseges')}
         </h2>
         {reason && (
           <p className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -224,22 +225,27 @@ export default function AmlApproverModal({
         {/* EXCMD b3 FR-AUTH-01..05: engedélykérő adatlap — a döntéshez szükséges teljes kontextus */}
         {details && (
           <div className="mb-3 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-            <div className="mb-1 font-semibold text-gray-700">Engedélykérő adatlap</div>
+            <div className="mb-1 font-semibold text-gray-700">
+              {i18n.t('literals.engedelykero-adatlap')}
+            </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
               {(details.branchCode || details.branchName) && (
                 <>
-                  <span className="text-gray-500">Pénztár:</span>
+                  <span className="text-gray-500">{i18n.t('literals.penztar')}</span>
                   <span>
                     {[details.branchCode, details.branchName].filter(Boolean).join(' — ')}
                   </span>
                 </>
               )}
-              <span className="text-gray-500">Bizonylatszám:</span>
+              <span className="text-gray-500">{i18n.t('literals.bizonylatszam')}</span>
               <span>{details.receiptReference || 'a rögzítéskor keletkezik'}</span>
               {typeof details.totalHuf === 'number' && Number.isFinite(details.totalHuf) && (
                 <>
-                  <span className="text-gray-500">Tranz. összege:</span>
-                  <span className="font-mono">{HUF_FMT.format(details.totalHuf)} Ft</span>
+                  <span className="text-gray-500">{i18n.t('literals.tranz-osszege')}</span>
+                  <span className="font-mono">
+                    {HUF_FMT.format(details.totalHuf)}
+                    {i18n.t('literals.ft')}
+                  </span>
                 </>
               )}
             </div>
@@ -247,10 +253,10 @@ export default function AmlApproverModal({
               <table className="mt-1 w-full text-xs">
                 <thead>
                   <tr className="text-gray-500">
-                    <th className="text-left font-normal">Valuta</th>
-                    <th className="text-right font-normal">Összeg</th>
-                    <th className="text-right font-normal">Árfolyam</th>
-                    <th className="text-right font-normal">Forintérték</th>
+                    <th className="text-left font-normal">{i18n.t('literals.valuta')}</th>
+                    <th className="text-right font-normal">{i18n.t('literals.osszeg')}</th>
+                    <th className="text-right font-normal">{i18n.t('literals.arfolyam')}</th>
+                    <th className="text-right font-normal">{i18n.t('literals.forintertek')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -259,7 +265,10 @@ export default function AmlApproverModal({
                       <td>{l.currencyCode}</td>
                       <td className="text-right font-mono">{HUF_FMT.format(l.amount)}</td>
                       <td className="text-right font-mono">{l.rate}</td>
-                      <td className="text-right font-mono">{HUF_FMT.format(l.hufValue)} Ft</td>
+                      <td className="text-right font-mono">
+                        {HUF_FMT.format(l.hufValue)}
+                        {i18n.t('literals.ft')}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -267,7 +276,7 @@ export default function AmlApproverModal({
             )}
             {details.customer && (
               <div className="mt-1 border-t pt-1 text-xs text-gray-700">
-                <span className="font-semibold">Ügyfél:</span>{' '}
+                <span className="font-semibold">{i18n.t('literals.ugyfel')}</span>{' '}
                 {[
                   details.customer.name,
                   details.customer.motherName && `anyja neve: ${details.customer.motherName}`,
@@ -289,15 +298,18 @@ export default function AmlApproverModal({
           </div>
         )}
         <p className="mb-3 text-sm text-gray-600">
-          A tranzakció rögzítéséhez egy supervisor / vezető jóváhagyása kell (4-szem-elv). Válassza
-          ki az engedélyezőt, és kérje a PIN-jét.
+          {i18n.t('literals.a-tranzakcio-rogzitesehez-egy-supervisor')}
         </p>
 
         {loading ? (
-          <p className="py-4 text-center text-gray-500">Engedélyezők betöltése…</p>
+          <p className="py-4 text-center text-gray-500">
+            {i18n.t('literals.engedelyezok-betoltese')}
+          </p>
         ) : (
           <>
-            <label className="mb-1 block text-sm font-semibold text-gray-700">Engedélyező</label>
+            <label className="mb-1 block text-sm font-semibold text-gray-700">
+              {i18n.t('literals.engedelyezo')}
+            </label>
             <select
               value={selectedId ?? ''}
               onChange={(e) => {
@@ -308,21 +320,24 @@ export default function AmlApproverModal({
               disabled={submitting}
               className="mb-3 w-full rounded border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none disabled:opacity-50"
             >
-              <option value="">— válasszon engedélyezőt —</option>
+              <option value="">{i18n.t('literals.valasszon-engedelyezot')}</option>
               {approvers.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {approverLabel(a)} ({a.role})
+                  {approverLabel(a)}
+                  {i18n.t('literals.lit')}
+                  {a.role}
+                  {i18n.t('literals.lit-2')}
                 </option>
               ))}
             </select>
             {approvers.length === 0 && (
               <p className="mb-3 text-sm text-amber-700">
-                Nincs elérhető jogosult engedélyező (supervisor/manager/admin) a cégben.
+                {i18n.t('literals.nincs-elerheto-jogosult-engedelyezo-supe')}
               </p>
             )}
 
             <label className="mb-1 block text-sm font-semibold text-gray-700">
-              Engedélyező PIN-je
+              {i18n.t('literals.engedelyezo-pin-je')}
             </label>
             <input
               ref={pinRef}
@@ -355,7 +370,7 @@ export default function AmlApproverModal({
             disabled={submitting}
             className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
-            Mégse
+            {i18n.t('literals.megse')}
           </button>
           <button
             onClick={() => void handleSubmit()}
@@ -367,7 +382,7 @@ export default function AmlApproverModal({
         </div>
 
         <p className="mt-4 text-xs text-gray-500">
-          Az engedélyező nem lehet a tranzakciót rögzítő pénztáros. 3 hibás PIN után 5 perc lockout.
+          {i18n.t('literals.az-engedelyezo-nem-lehet-a-tranzakciot-r')}
         </p>
       </div>
     </div>

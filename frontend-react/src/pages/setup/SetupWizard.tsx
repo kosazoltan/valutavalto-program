@@ -21,6 +21,7 @@ import { publicApi, type GoogleConfigStatus } from '../../services/api/index'
 import { humanizeError } from '../../utils/errorHandling'
 import type { ElectronAppMode } from '../../types/appMode'
 import { appModeLabel } from '../../utils/appModeRoles'
+import i18n from '../../i18n'
 
 // ---------------------------------------------------------------------------
 // Típusok
@@ -1110,7 +1111,9 @@ export default function SetupWizard() {
           </button>
 
           <div className="text-sm text-slate-500">
-            {t('setup.lepes')} {currentIndex + 1} / {STEPS.length}
+            {t('setup.lepes')} {currentIndex + 1}
+            {i18n.t('literals.lit-10')}
+            {STEPS.length}
           </div>
 
           {currentIndex < STEPS.length - 1 ? (
@@ -1132,7 +1135,8 @@ export default function SetupWizard() {
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Telepítés...
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {i18n.t('literals.telepites')}
                 </>
               ) : (
                 <>
@@ -1251,36 +1255,45 @@ function WelcomeStep(props: {
         <Rocket className="w-10 h-10" />
       </div>
       <h2 className="text-3xl font-bold text-slate-900 mb-3">
-        Üdvözöljük a Valuta Pénzváltó Rendszerben
+        {i18n.t('literals.udvozoljuk-a-valuta-penzvalto-rendszerbe')}
       </h2>
       <p className="text-slate-600 mb-6">
-        Jelentkezzen be Google fiókkal. A rendszer az email alapján azonosítja a fiókot, a
-        szerepkört és a telepítendő működési módot.
+        {i18n.t('literals.jelentkezzen-be-google-fiokkal-a-rendsze')}
       </p>
 
       <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-slate-700">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-semibold text-slate-900">Google OAuth konfiguráció</span>
+          <span className="font-semibold text-slate-900">
+            {i18n.t('literals.google-oauth-konfiguracio')}
+          </span>
           {googleConfigStatusLoading && <Loader2 className="h-4 w-4 animate-spin text-slate-500" />}
         </div>
         {googleConfigStatus ? (
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
-              Web kliens:{' '}
+              {i18n.t('literals.web-kliens')}{' '}
               <span className="font-semibold">
                 {googleConfigStatus.webConfigured ? 'beállítva' : 'nincs beállítva'}
               </span>
               {googleConfigStatus.webPrefix && (
-                <span className="ml-1 text-slate-500">({googleConfigStatus.webPrefix})</span>
+                <span className="ml-1 text-slate-500">
+                  {i18n.t('literals.lit-19')}
+                  {googleConfigStatus.webPrefix}
+                  {i18n.t('literals.lit-2')}
+                </span>
               )}
             </div>
             <div>
-              Desktop kliens:{' '}
+              {i18n.t('literals.desktop-kliens')}{' '}
               <span className="font-semibold">
                 {googleConfigStatus.desktopConfigured ? 'beállítva' : 'nincs beállítva'}
               </span>
               {googleConfigStatus.desktopPrefix && (
-                <span className="ml-1 text-slate-500">({googleConfigStatus.desktopPrefix})</span>
+                <span className="ml-1 text-slate-500">
+                  {i18n.t('literals.lit-19')}
+                  {googleConfigStatus.desktopPrefix}
+                  {i18n.t('literals.lit-2')}
+                </span>
               )}
             </div>
           </div>
@@ -1300,9 +1313,9 @@ function WelcomeStep(props: {
         {googleSetupLoading ? (
           <Loader2 className="w-5 h-5 animate-spin" />
         ) : (
-          <span className="text-lg font-bold">G</span>
+          <span className="text-lg font-bold">{i18n.t('literals.g')}</span>
         )}
-        Bejelentkezés Google-lel
+        {i18n.t('literals.bejelentkezes-google-lel')}
       </button>
 
       {googleSetupError && (
@@ -1319,17 +1332,22 @@ function WelcomeStep(props: {
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            Próbáld újra a kapcsolatot
+            {i18n.t('literals.probald-ujra-a-kapcsolatot')}
           </button>
         </div>
       )}
 
       {googleSetup?.worker && (
         <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-left text-sm text-green-800">
-          <div className="font-semibold">Azonosítva: {googleSetup.worker.name}</div>
+          <div className="font-semibold">
+            {i18n.t('literals.azonositva')}
+            {googleSetup.worker.name}
+          </div>
           <div>
-            {googleSetup.branch?.code} - {googleSetup.branch?.name} ·{' '}
-            {googleSetup.worker.roles?.[0] ?? googleSetup.worker.role}
+            {googleSetup.branch?.code}
+            {i18n.t('literals.lit-17')}
+            {googleSetup.branch?.name}
+            {i18n.t('literals.lit-29')} {googleSetup.worker.roles?.[0] ?? googleSetup.worker.role}
           </div>
         </div>
       )}
@@ -1337,17 +1355,20 @@ function WelcomeStep(props: {
       {sharedWorkerOptions.length > 0 && (
         <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-4 text-left">
           <div className="mb-3 text-sm font-semibold text-slate-800">
-            Megosztott fiók-email. Ki ön?
+            {i18n.t('literals.megosztott-fiok-email-ki-on')}
           </div>
           <select
             value={selectedSharedWorkerCode}
             onChange={(event) => onSelectedSharedWorkerCodeChange(event.target.value)}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
           >
-            <option value="">Válasszon dolgozót...</option>
+            <option value="">{i18n.t('literals.valasszon-dolgozot')}</option>
             {sharedWorkerOptions.map((worker) => (
               <option key={worker.code} value={worker.code}>
-                {worker.name} ({worker.code})
+                {worker.name}
+                {i18n.t('literals.lit')}
+                {worker.code}
+                {i18n.t('literals.lit-2')}
               </option>
             ))}
           </select>
@@ -1358,7 +1379,7 @@ function WelcomeStep(props: {
             className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
           >
             {googleSetupLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Ez vagyok, tovább
+            {i18n.t('literals.ez-vagyok-tovabb')}
           </button>
         </div>
       )}
@@ -1472,7 +1493,10 @@ function BranchStep(props: BranchStepProps) {
                   : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50',
               ].join(' ')}
             >
-              <div className="text-xs font-mono text-slate-500">#{branch.code}</div>
+              <div className="text-xs font-mono text-slate-500">
+                {i18n.t('literals.lit-12')}
+                {branch.code}
+              </div>
               <div className="text-sm font-semibold text-slate-900 truncate">{branch.name}</div>
               <div className="text-xs text-slate-500 truncate">{branch.city}</div>
             </button>
@@ -1496,7 +1520,9 @@ function BranchStep(props: BranchStepProps) {
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-sm text-slate-600 px-2">
-            {page + 1} / {totalPages} {t('common.oldal')}
+            {page + 1}
+            {i18n.t('literals.lit-10')}
+            {totalPages} {t('common.oldal')}
           </span>
           <button
             type="button"
@@ -1519,7 +1545,9 @@ function BranchStep(props: BranchStepProps) {
             </div>
             <div className="text-xs text-blue-700">
               {t('setup.kod')}
-              {selected.code} • {selected.city}
+              {selected.code}
+              {i18n.t('literals.lit-58')}
+              {selected.city}
             </div>
           </div>
         </div>
@@ -1664,7 +1692,10 @@ function ServerStep(props: ServerStepProps) {
                 <option value="">{t('auth.valasszonPenztarost')}</option>
                 {workerList.map((w) => (
                   <option key={w.code} value={w.code}>
-                    {w.name} ({w.code})
+                    {w.name}
+                    {i18n.t('literals.lit')}
+                    {w.code}
+                    {i18n.t('literals.lit-2')}
                   </option>
                 ))}
               </select>
@@ -1688,7 +1719,10 @@ function ServerStep(props: ServerStepProps) {
           <FieldLabel label="Azonosított dolgozó (Google OAuth)">
             <div className="w-full px-3 py-2 rounded-lg border border-green-200 bg-green-50 text-green-900">
               <div className="font-semibold">{googleSetupWorker.name}</div>
-              <div className="text-xs text-green-700">Kód: {googleSetupWorker.code}</div>
+              <div className="text-xs text-green-700">
+                {i18n.t('literals.kod-4')}
+                {googleSetupWorker.code}
+              </div>
             </div>
             <span className="text-xs text-slate-500 mt-1 block">
               {appMode === 'ertektar'
@@ -1701,7 +1735,7 @@ function ServerStep(props: ServerStepProps) {
           // (illetve penztar mod-ban ha valami miatt a Step 1 nem futott le).
           <FieldLabel label="Bejelentkezés">
             <div className="w-full px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-900 text-sm">
-              Térjen vissza az 1. lépésre (Üdvözöljük) és lépjen be a Google fiókjával.
+              {i18n.t('literals.terjen-vissza-az-1-lepesre-udvozoljuk-es')}
               {appMode === 'ertektar' && ' Értéktárosként ezzel azonosul.'}
             </div>
           </FieldLabel>
@@ -1718,7 +1752,8 @@ function ServerStep(props: ServerStepProps) {
         >
           {connectionTest.state === 'testing' ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" /> Tesztelés...
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {i18n.t('literals.teszteles')}
             </>
           ) : (
             <>
@@ -1825,44 +1860,52 @@ function GoogleAdminStep(props: {
   const worker = googleSetup.worker
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Google-belépés véglegesítése</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">
+        {i18n.t('literals.google-belepes-veglegesitese')}
+      </h2>
       <p className="text-slate-600 mb-6">
-        Ehhez a telepítéshez nem készítünk helyi admin jelszót. A dolgozó Google fiókja lesz a
-        vezetői belépés alapja, a pénztárosi jelszavas ág pedig változatlanul megmarad.
+        {i18n.t('literals.ehhez-a-telepiteshez-nem-keszitunk-helyi')}
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="text-xs uppercase text-slate-500 mb-1">Dolgozó</div>
+          <div className="text-xs uppercase text-slate-500 mb-1">
+            {i18n.t('literals.dolgozo-2')}
+          </div>
           <div className="font-semibold text-slate-900">{worker?.name}</div>
           <div className="text-sm text-slate-600">
-            {worker?.code} · {worker?.roles?.[0] ?? worker?.role}
+            {worker?.code}
+            {i18n.t('literals.lit-9')}
+            {worker?.roles?.[0] ?? worker?.role}
           </div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="text-xs uppercase text-slate-500 mb-1">Google email</div>
+          <div className="text-xs uppercase text-slate-500 mb-1">
+            {i18n.t('literals.google-email')}
+          </div>
           <div className="font-semibold text-slate-900 break-all">
             {googleSetup.googleIdentity.email}
           </div>
           <div className="text-sm text-slate-600">{googleSetup.matchType}</div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="text-xs uppercase text-slate-500 mb-1">Fiók</div>
+          <div className="text-xs uppercase text-slate-500 mb-1">{i18n.t('literals.fiok')}</div>
           <div className="font-semibold text-slate-900">
-            {selectedBranch?.code} - {selectedBranch?.name}
+            {selectedBranch?.code}
+            {i18n.t('literals.lit-17')}
+            {selectedBranch?.name}
           </div>
           <div className="text-sm text-slate-600">{selectedBranch?.city}</div>
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="text-xs uppercase text-slate-500 mb-1">Program</div>
+          <div className="text-xs uppercase text-slate-500 mb-1">{i18n.t('literals.program')}</div>
           <div className="font-semibold text-slate-900">{appModeLabel(appMode)}</div>
-          <div className="text-sm text-slate-600">Automatikusan beállítva</div>
+          <div className="text-sm text-slate-600">{i18n.t('literals.automatikusan-beallitva')}</div>
         </div>
       </div>
 
       <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-        A befejezéskor a telepítő egyedi JWT és SQLCipher kulcsokat generál, elmenti a Google
-        azonosítást, és a helyi kliens a szerveren keresztül fog szinkronizálni.
+        {i18n.t('literals.a-befejezeskor-a-telepito-egyedi-jwt-es')}
       </div>
     </div>
   )
@@ -1942,8 +1985,7 @@ function AdminStep(props: AdminStepProps) {
             ].join(' ')}
           />
           <span className="text-xs text-slate-500 mt-1 block">
-            Csak akkor töltse ki, ha ennek a pénztárosnak már volt beállított jelszava (pl.
-            újratelepítés esetén). Első telepítésnél hagyja üresen.
+            {i18n.t('literals.csak-akkor-toltse-ki-ha-ennek-a-penztaro')}
           </span>
         </FieldLabel>
         <FieldLabel label="Setup-token (opcionális)">
@@ -1962,8 +2004,7 @@ function AdminStep(props: AdminStepProps) {
             ].join(' ')}
           />
           <span className="text-xs text-slate-500 mt-1 block">
-            Újratelepítés/jelszó-reset esetén az adminisztrátor egyszeri setup-tokent adhat. Első
-            telepítésnél hagyja üresen.
+            {i18n.t('literals.ujratelepites-jelszo-reset-eseten-az-adm')}
           </span>
         </FieldLabel>
         <FieldLabel label="Új jelszó">
@@ -2048,7 +2089,10 @@ function AdminStep(props: AdminStepProps) {
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex">
-      <dt className="w-36 flex-shrink-0 text-slate-500">{label}:</dt>
+      <dt className="w-36 flex-shrink-0 text-slate-500">
+        {label}
+        {i18n.t('literals.lit-7')}
+      </dt>
       <dd className="font-medium text-slate-900">{value}</dd>
     </div>
   )

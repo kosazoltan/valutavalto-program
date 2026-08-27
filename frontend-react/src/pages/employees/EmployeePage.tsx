@@ -17,6 +17,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import EmployeeSubRecordsModal from './EmployeeSubRecordsModal'
+import i18n from '../../i18n'
 
 interface EmployeeItem {
   id: string | number
@@ -253,7 +254,7 @@ export default function EmployeePage() {
             className={`form-button flex cursor-pointer items-center gap-1 ${importing ? 'pointer-events-none opacity-60' : ''}`}
           >
             <Upload className="h-4 w-4" />
-            Dolgozói JSON import
+            {i18n.t('literals.dolgozoi-json-import')}
             <input
               type="file"
               accept="application/json,.json"
@@ -281,7 +282,7 @@ export default function EmployeePage() {
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
               <label htmlFor="employee-last-name" className="form-label">
-                Vezetéknév
+                {i18n.t('literals.vezeteknev')}
               </label>
               <input
                 id="employee-last-name"
@@ -296,7 +297,7 @@ export default function EmployeePage() {
             </div>
             <div>
               <label htmlFor="employee-first-name" className="form-label">
-                Keresztnév
+                {i18n.t('literals.keresztnev')}
               </label>
               <input
                 id="employee-first-name"
@@ -311,7 +312,7 @@ export default function EmployeePage() {
             </div>
             <div>
               <label htmlFor="employee-org-unit" className="form-label">
-                Szervezeti egység
+                {i18n.t('literals.szervezeti-egyseg')}
               </label>
               <input
                 id="employee-org-unit"
@@ -326,7 +327,7 @@ export default function EmployeePage() {
             </div>
             <div>
               <label htmlFor="employee-job-title" className="form-label">
-                Beosztás
+                {i18n.t('literals.beosztas-2')}
               </label>
               <input
                 id="employee-job-title"
@@ -356,14 +357,16 @@ export default function EmployeePage() {
                 <option value="">{t('employees.nincsMegadva')}</option>
                 {feorCodes.map((item) => (
                   <option key={item.id} value={item.code}>
-                    {item.code} - {item.title}
+                    {item.code}
+                    {i18n.t('literals.lit-17')}
+                    {item.title}
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <label htmlFor="employee-start-date" className="form-label">
-                Beléptetés
+                {i18n.t('literals.beleptetes')}
               </label>
               <input
                 id="employee-start-date"
@@ -379,7 +382,7 @@ export default function EmployeePage() {
             </div>
             <div>
               <label htmlFor="employee-email" className="form-label">
-                Email
+                {i18n.t('literals.email')}
               </label>
               <input
                 id="employee-email"
@@ -392,7 +395,7 @@ export default function EmployeePage() {
             </div>
             <div>
               <label htmlFor="employee-phone" className="form-label">
-                Telefon
+                {i18n.t('literals.telefon')}
               </label>
               <input
                 id="employee-phone"
@@ -413,7 +416,7 @@ export default function EmployeePage() {
                   )
                 }
               />
-              Aktív
+              {i18n.t('literals.aktiv-2')}
             </label>
           </div>
           <div className="flex gap-2">
@@ -426,7 +429,7 @@ export default function EmployeePage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -449,8 +452,8 @@ export default function EmployeePage() {
         className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
         data-testid="employee-feor-summary"
       >
-        {t('employees.feorReferenciaKodok')}:{' '}
-        <span className="font-semibold">{feorCodes.length}</span>
+        {t('employees.feorReferenciaKodok')}
+        {i18n.t('literals.lit-7')} <span className="font-semibold">{feorCodes.length}</span>
       </div>
 
       {error && (
@@ -469,7 +472,7 @@ export default function EmployeePage() {
       <div className="grid gap-3 md:hidden">
         {loading ? (
           <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
-            Betöltés...
+            {i18n.t('literals.betoltes')}
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
@@ -487,7 +490,9 @@ export default function EmployeePage() {
                   <p className="break-words font-semibold text-gray-900">{fullName(item)}</p>
                   <p className="text-xs text-gray-500">{item.jobTitle ?? '-'}</p>
                   <p className="text-xs text-gray-500">
-                    {t('employees.feorPrefix')}: {item.feorCode ?? '-'}
+                    {t('employees.feorPrefix')}
+                    {i18n.t('literals.lit-22')}
+                    {item.feorCode ?? '-'}
                   </p>
                 </div>
                 <span className={`badge ${item.active ? 'badge-green' : 'badge-gray'}`}>
@@ -570,7 +575,7 @@ export default function EmployeePage() {
             {loading ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -625,7 +630,9 @@ export default function EmployeePage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
 
       {subRecordsFor && (

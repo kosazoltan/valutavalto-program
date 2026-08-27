@@ -5,6 +5,7 @@ import CameraReviewPanel from './CameraReviewPanel'
 import { api } from '../../services/api/index'
 
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
@@ -105,8 +106,12 @@ describe('CameraReviewPanel', () => {
     expect(await screen.findByTestId('review-mark-row-mark-own')).toBeInTheDocument()
     expect(screen.getByTestId('review-mark-row-mark-foreign')).toBeInTheDocument()
 
-    expect(mockApi.get).toHaveBeenCalledWith('/camera/review/marks?branchId=branch-1&date=2026-07-10')
-    expect(mockApi.get).toHaveBeenCalledWith('/camera/review/status?branchId=branch-1&date=2026-07-10')
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/camera/review/marks?branchId=branch-1&date=2026-07-10',
+    )
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/camera/review/status?branchId=branch-1&date=2026-07-10',
+    )
     expect(mockApi.get).toHaveBeenCalledWith(
       '/camera/review/transactions?branchId=branch-1&date=2026-07-10',
     )
@@ -145,14 +150,18 @@ describe('CameraReviewPanel', () => {
     const ownRow = await screen.findByTestId('review-mark-row-mark-own')
     const foreignRow = await screen.findByTestId('review-mark-row-mark-foreign')
     expect(within(ownRow).getByTestId('review-mark-delete-mark-own')).toBeInTheDocument()
-    expect(within(foreignRow).queryByTestId('review-mark-delete-mark-foreign')).not.toBeInTheDocument()
+    expect(
+      within(foreignRow).queryByTestId('review-mark-delete-mark-foreign'),
+    ).not.toBeInTheDocument()
 
     await user.click(screen.getByTestId('review-mark-delete-mark-own'))
 
     await waitFor(() => {
       expect(mockApi.delete).toHaveBeenCalledWith('/camera/review/marks/mark-own')
     })
-    expect(mockApi.get).toHaveBeenCalledWith('/camera/review/marks?branchId=branch-1&date=2026-07-10')
+    expect(mockApi.get).toHaveBeenCalledWith(
+      '/camera/review/marks?branchId=branch-1&date=2026-07-10',
+    )
   })
 
   it('problémás badge-et jelenít meg a problémás marknál', async () => {

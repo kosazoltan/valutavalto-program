@@ -15,6 +15,7 @@ import { transferReconciliationApi, type TransferReconciliationResult } from '..
 import { logger } from '../../utils/logger'
 import { localIsoDate } from '../../utils/dateFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 const RECON_FILTERS = ['all', 'match', 'mismatch', 'pending'] as const
 type ReconFilter = (typeof RECON_FILTERS)[number]
@@ -137,10 +138,10 @@ export default function ReceivedDataOverviewPage() {
             <ClipboardList className="h-5 w-5 text-slate-700" />
             <div>
               <h1 className="text-lg font-semibold text-slate-900">
-                Beérkezett adatok áttekintése
+                {i18n.t('literals.beerkezett-adatok-attekintese')}
               </h1>
               <div className="text-xs text-slate-500">
-                Beérkezett napi adatok és pénztárak közötti pénzmozgások — egyeztetés
+                {i18n.t('literals.beerkezett-napi-adatok-es-penztarak-kozo')}
               </div>
             </div>
           </div>
@@ -151,7 +152,7 @@ export default function ReceivedDataOverviewPage() {
               disabled={filteredRows.length === 0}
               className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
             >
-              CSV
+              {i18n.t('literals.csv')}
             </button>
             {hasRun && (
               <button
@@ -161,7 +162,7 @@ export default function ReceivedDataOverviewPage() {
                 className="inline-flex items-center gap-2 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                Frissítés
+                {i18n.t('literals.frissites')}
               </button>
             )}
           </div>
@@ -188,7 +189,9 @@ export default function ReceivedDataOverviewPage() {
         <div className="rounded-md border border-slate-200 bg-white p-3">
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Dátum -tól</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {i18n.t('literals.datum-tol')}
+              </label>
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-slate-400" />
                 <input
@@ -200,7 +203,9 @@ export default function ReceivedDataOverviewPage() {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Dátum -ig</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {i18n.t('literals.datum-ig')}
+              </label>
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-slate-400" />
                 <input
@@ -212,7 +217,9 @@ export default function ReceivedDataOverviewPage() {
               </div>
             </div>
             <div className="min-w-[220px] flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-600">Keresés</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {i18n.t('literals.kereses-2')}
+              </label>
               <div className="flex items-center gap-2 rounded border border-slate-300 bg-white px-2">
                 <Search size={16} className="text-slate-400" />
                 <input
@@ -224,7 +231,9 @@ export default function ReceivedDataOverviewPage() {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">Szűrő</label>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {i18n.t('literals.szuro')}
+              </label>
               <select
                 value={filter}
                 onChange={(event) => {
@@ -245,7 +254,7 @@ export default function ReceivedDataOverviewPage() {
               className="inline-flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
             >
               <ShieldCheck size={16} />
-              Ellenőrzés
+              {i18n.t('literals.ellenorzes')}
             </button>
           </div>
         </div>
@@ -255,13 +264,13 @@ export default function ReceivedDataOverviewPage() {
             <table className="min-w-full text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-3 py-2 text-left">Dátum</th>
-                  <th className="px-3 py-2 text-left">Küldő</th>
-                  <th className="px-3 py-2 text-left">Fogadó</th>
-                  <th className="px-3 py-2 text-left">Valutanem</th>
-                  <th className="px-3 py-2 text-right">Küldött összeg</th>
-                  <th className="px-3 py-2 text-right">Fogadott összeg</th>
-                  <th className="px-3 py-2 text-left">Státusz</th>
+                  <th className="px-3 py-2 text-left">{i18n.t('literals.datum-2')}</th>
+                  <th className="px-3 py-2 text-left">{i18n.t('literals.kuldo')}</th>
+                  <th className="px-3 py-2 text-left">{i18n.t('literals.fogado')}</th>
+                  <th className="px-3 py-2 text-left">{i18n.t('literals.valutanem')}</th>
+                  <th className="px-3 py-2 text-right">{i18n.t('literals.kuldott-osszeg')}</th>
+                  <th className="px-3 py-2 text-right">{i18n.t('literals.fogadott-osszeg')}</th>
+                  <th className="px-3 py-2 text-left">{i18n.t('literals.statusz')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -346,7 +355,7 @@ export default function ReceivedDataOverviewPage() {
                 {!loading && hasRun && filteredRows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-3 py-8 text-center text-sm text-slate-500">
-                      Nincs egyeztetendő pénzmozgás a megadott intervallumban.
+                      {i18n.t('literals.nincs-egyeztetendo-penzmozgas-a-megadott')}
                     </td>
                   </tr>
                 )}
@@ -355,7 +364,7 @@ export default function ReceivedDataOverviewPage() {
                     <td colSpan={7} className="px-3 py-8 text-center text-sm text-slate-500">
                       <div className="inline-flex items-center gap-2">
                         <ArrowRight size={15} className="text-slate-400" />
-                        Válasszon intervallumot, majd nyomja meg az „Ellenőrzés" gombot.
+                        {i18n.t('literals.valasszon-intervallumot-majd-nyomja-meg')}
                       </div>
                     </td>
                   </tr>
@@ -365,7 +374,7 @@ export default function ReceivedDataOverviewPage() {
           </div>
           {loading && (
             <div className="border-t border-slate-100 px-3 py-3 text-sm text-slate-500">
-              Egyeztetés folyamatban...
+              {i18n.t('literals.egyeztetes-folyamatban')}
             </div>
           )}
         </div>

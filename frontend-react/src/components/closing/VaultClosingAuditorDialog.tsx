@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CompleteChecklistRequest } from '../../services/api/vaultClosingChecklist'
+import i18n from '../../i18n'
 
 /**
  * FR-ZARUI-26: Zárást ellenőrző személy adatai dialógus.
@@ -92,17 +93,18 @@ export default function VaultClosingAuditorDialog({
       >
         {/* Fejléc */}
         <h2 id="vault-auditor-dialog-title" className="mb-1 text-lg font-bold text-gray-800">
-          Ellenőrző személy adatai
+          {i18n.t('literals.ellenorzo-szemely-adatai')}
         </h2>
 
         {/* FR-ZARUI-26 alcím */}
         <p className="mb-4 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800">
-          A zárószalagot kérem aláírni
+          {i18n.t('literals.a-zaroszalagot-kerem-alairni')}
         </p>
 
         {/* Ellenőrző neve */}
         <label htmlFor="auditor-name" className="mb-1 block text-sm font-semibold text-gray-700">
-          Ellenőrző neve <span className="text-red-500">*</span>
+          {i18n.t('literals.ellenorzo-neve')}
+          <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
         </label>
         <input
           id="auditor-name"
@@ -127,7 +129,8 @@ export default function VaultClosingAuditorDialog({
 
         {/* Ellenőrző beosztása */}
         <label htmlFor="auditor-role" className="mb-1 block text-sm font-semibold text-gray-700">
-          Beosztás <span className="text-red-500">*</span>
+          {i18n.t('literals.beosztas')}
+          <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
         </label>
         <input
           id="auditor-role"
@@ -157,7 +160,7 @@ export default function VaultClosingAuditorDialog({
             disabled={submitting}
             className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
-            Mégsem zárom a napot
+            {i18n.t('literals.megsem-zarom-a-napot')}
           </button>
           <button
             type="button"

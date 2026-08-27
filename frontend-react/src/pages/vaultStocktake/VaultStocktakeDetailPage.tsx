@@ -11,6 +11,7 @@ import {
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { useTextReasonModal } from '../../components/TextReasonModal'
+import i18n from '../../i18n'
 
 const STATUS_LABELS: Record<StocktakeStatus, string> = {
   OPEN: 'Nyitva',
@@ -128,7 +129,7 @@ export default function VaultStocktakeDetailPage() {
   if (loading || !session) {
     return (
       <div className="max-w-5xl mx-auto">
-        <div className="text-gray-500">Toltodik...</div>
+        <div className="text-gray-500">{i18n.t('literals.toltodik')}</div>
       </div>
     )
   }
@@ -202,7 +203,9 @@ export default function VaultStocktakeDetailPage() {
           <div className="bg-blue-50 rounded p-3">
             <div className="text-xs text-blue-700">{t('vaultStocktake.felveve')}</div>
             <div className="text-lg font-bold">
-              {countedItems} / {items.length}
+              {countedItems}
+              {i18n.t('literals.lit-10')}
+              {items.length}
             </div>
           </div>
           <div className="bg-yellow-50 rounded p-3">

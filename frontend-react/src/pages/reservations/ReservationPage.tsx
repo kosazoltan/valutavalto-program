@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '../../utils/downloadBlob'
 import { useTextReasonModal } from '../../components/TextReasonModal'
 import { toast } from '../../components/ui/toaster'
+import i18n from '../../i18n'
 
 // A backend ReservationDto részleges leképezése (a UI által használt mezők) —
 // backend/.../dto/reservation/ReservationDto.java.
@@ -236,14 +237,15 @@ export default function ReservationPage() {
         // Codex P2 (#1032): retry-út a sikertelen beszámítási bizonylat-letöltéshez (a foglaló már teljesítve).
         <div className="mb-3 flex items-center justify-between rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           <span>
-            A beszámítási bizonylat letöltése nem sikerült (foglaló #{failedReceiptId}). Próbálja
-            újra.
+            {i18n.t('literals.a-beszamitasi-bizonylat-letoltese-nem-si')}
+            {failedReceiptId}
+            {i18n.t('literals.probalja-ujra')}
           </span>
           <button
             onClick={() => void handleRetryReceipt()}
             className="ml-3 rounded bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700"
           >
-            Bizonylat letöltése újra
+            {i18n.t('literals.bizonylat-letoltese-ujra')}
           </button>
         </div>
       )}
@@ -274,7 +276,9 @@ export default function ReservationPage() {
                   {stock.reservedAmount.toLocaleString('hu-HU')}
                 </div>
                 <div className="text-xs text-gray-600">
-                  {t('reservations.aktivFoglalo')}: {stock.activeCount.toLocaleString('hu-HU')}
+                  {t('reservations.aktivFoglalo')}
+                  {i18n.t('literals.lit-22')}
+                  {stock.activeCount.toLocaleString('hu-HU')}
                 </div>
               </div>
             ))}
@@ -302,7 +306,7 @@ export default function ReservationPage() {
 
       <div className="bg-white rounded border">
         {loading ? (
-          <div className="text-center py-8">Betöltés...</div>
+          <div className="text-center py-8">{i18n.t('literals.betoltes')}</div>
         ) : filteredReservations.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             {t('reservations.nincsenekFoglalokEbbenAKategoriaban')}
@@ -412,48 +416,50 @@ export default function ReservationPage() {
           data-testid="reservation-detail-panel"
         >
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-gray-800">Foglaló részletei</h2>
+            <h2 className="text-base font-semibold text-gray-800">
+              {i18n.t('literals.foglalo-reszletei')}
+            </h2>
             <button
               onClick={() => setSelectedReservation(null)}
               className="rounded bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
             >
-              Bezárás
+              {i18n.t('literals.bezaras')}
             </button>
           </div>
           <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
             <div>
-              <dt className="text-gray-500">Ügyfél</dt>
+              <dt className="text-gray-500">{i18n.t('literals.ugyfel-2')}</dt>
               <dd className="font-medium text-gray-900">
                 {selectedReservation.customerName || '-'}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Foglaló szám</dt>
+              <dt className="text-gray-500">{i18n.t('literals.foglalo-szam')}</dt>
               <dd className="font-mono text-gray-900">
                 {selectedReservation.receiptNumber || `#${selectedReservation.id}`}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Státusz</dt>
+              <dt className="text-gray-500">{i18n.t('literals.statusz')}</dt>
               <dd className="font-medium text-gray-900">
                 {statusLabels[selectedReservation.status] || selectedReservation.status}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Valutaösszeg</dt>
+              <dt className="text-gray-500">{i18n.t('literals.valutaosszeg')}</dt>
               <dd className="font-mono text-gray-900">
                 {selectedReservation.reservedAmount?.toLocaleString('hu-HU')}{' '}
                 {selectedReservation.currencyCode}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Letét</dt>
+              <dt className="text-gray-500">{i18n.t('literals.letet')}</dt>
               <dd className="font-mono text-gray-900">
                 {selectedReservation.depositAmount?.toLocaleString('hu-HU')} {t('components.ft')}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Lejárat</dt>
+              <dt className="text-gray-500">{i18n.t('literals.lejarat')}</dt>
               <dd className="font-medium text-gray-900">
                 {selectedReservation.expiresAt
                   ? new Date(selectedReservation.expiresAt).toLocaleString('hu-HU')
@@ -641,7 +647,7 @@ function CreateReservationForm({
             className="w-full p-2 border rounded"
             required
           >
-            <option value="">—</option>
+            <option value="">{i18n.t('literals.lit-8')}</option>
             {currencies.map((c) => {
               const code = c.code || c.currencyCode || ''
               return code ? (

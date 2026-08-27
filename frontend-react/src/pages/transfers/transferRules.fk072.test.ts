@@ -9,11 +9,7 @@ import { buildDenominationPayload } from './transferRules'
  */
 describe('buildDenominationPayload — FK-072_v2 tört címletek (FR-4, FR-7)', () => {
   it('FR-4: 1 alatti névérték (0,5) → hiba, nincs beküldhető payload', () => {
-    const result = buildDenominationPayload(
-      true,
-      [{ quantity: '200', faceValue: '0,5' }],
-      100,
-    )
+    const result = buildDenominationPayload(true, [{ quantity: '200', faceValue: '0,5' }], 100)
 
     expect(result.denominations).toBeUndefined()
     expect(result.error).toBeTruthy()

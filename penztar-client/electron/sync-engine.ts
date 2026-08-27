@@ -55,6 +55,7 @@ import {
   markScannedDocumentSyncError,
   saveCachedBranchStatus,
   saveCachedCashDesk,
+  saveCachedHandlingFeeConfig,
   saveCachedWorker,
   type PendingBankTransactionRow,
   type PendingConversionRow,
@@ -97,6 +98,24 @@ interface SyncStatus {
 }
 
 type RatePrintOutboxDb = Pick<Database, 'run' | 'exec'>;
+
+// FK-097 WU-13: a /branch-fee-config/own válasz-alakja (csak LIVE mezők — a DRAFT
+// sosem hagyja el a szervert; FR-8 első védelmi vonala szerver-oldali, a második a
+// syncHandlingFeeConfig kliens-oldali DRAFT-utasítása).
+interface BranchFeeConfigLiveResponse {
+  branchId: string;
+  branchCode: string;
+  feeMode: 'NONE' | 'BRACKET' | 'PER_MILLE';
+  perMilleRate: number | null;
+  perMilleCap: number | null;
+  validFrom: string;
+  brackets: Array<{
+    bracketOrder: number;
+    upperLimit: number;
+    feeAmount: number;
+    active?: boolean;
+  }>;
+}
 
 interface RateResponse {
   currencyCode: string;
@@ -977,6 +996,7 @@ export class SyncEngine {
       // 2. Árfolyamok és cache frissítése (csak ha van érvényes token)
       if (token) {
         await this.syncRates();
+        await this.syncHandlingFeeConfig();
         await this.syncRatePrintObligations();
         await this.syncCirculars();
         await this.syncCircularReplies();
@@ -2410,6 +2430,63 @@ export class SyncEngine {
         return;
       }
       log.warn('[SyncEngine] Árfolyam sync hiba:', splitSyncError(err).masked);
+    }
+  }
+
+  /**
+   * FK-097 (FR-2/FR-8): az iroda-szintű kezelési díj konfiguráció tükrözése a lokális
+   * SQLite-ba — a `syncRates`-szel azonos alak (fail-soft, 401 → token-clear).
+   * A pénztár offline tranzakciói ebből a cache-ből számítanak (FR-4/FR-5/FR-6).
+   */
+  async syncHandlingFeeConfig(): Promise<void> {
+    try {
+      const serverUrl = this.getActiveServerUrl();
+      if (!serverUrl) {
+        return;
+      }
+      const token = this.getAuthToken();
+
+      const response = await httpGet<BranchFeeConfigLiveResponse>(
+        `${serverUrl}/branch-fee-config/own`,
+        token,
+      );
+
+      const db = getDb();
+      if (!db || typeof response !== 'object' || response === null) return;
+
+      // FR-8 második védelmi vonal: a szerver sosem ad DRAFT-ot az /own-ra; ha mégis
+      // DRAFT-státuszú payload jön, a kliens VISSZAUTASÍTJA az írást (nem cache-elhetünk
+      // nem-éles díjat).
+      const status = (response as { status?: string }).status;
+      if (status === 'DRAFT') {
+        log.warn(
+          '[SyncEngine] Kezelési díj konfiguráció sync: DRAFT payload elutasítva (FR-8).',
+        );
+        return;
+      }
+
+      saveCachedHandlingFeeConfig({
+        branch_id: response.branchId,
+        branch_code: response.branchCode,
+        company_id: null,
+        fee_mode: response.feeMode,
+        per_mille_rate: response.perMilleRate,
+        per_mille_cap: response.perMilleCap,
+        bracket_json: JSON.stringify(response.brackets ?? []),
+        valid_from: response.validFrom,
+      });
+      saveDatabase();
+      log.info('[SyncEngine] Kezelési díj konfiguráció frissítve');
+    } catch (err) {
+      // Nem kritikus hiba — legközelebb újrapróbáljuk (syncRates-minta)
+      if (isAuthStatusError(err)) {
+        this.clearStoredAuthToken();
+        log.warn(
+          '[SyncEngine] Kezelési díj konfiguráció sync auth hiba (401/403), session újra-bootstrap szükséges.',
+        );
+        return;
+      }
+      log.warn('[SyncEngine] Kezelési díj konfiguráció sync hiba:', splitSyncError(err).masked);
     }
   }
 

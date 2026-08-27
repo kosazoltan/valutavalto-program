@@ -5,6 +5,7 @@ import type { PrintReceiptData } from '../../types/receipt'
 
 // A modal csak a header-címhez használ i18n-t; a valuta-tartalom literal magyar szöveg.
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 

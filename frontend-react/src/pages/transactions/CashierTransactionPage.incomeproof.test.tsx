@@ -16,8 +16,9 @@ const mocks = vi.hoisted(() => ({
   checkRequired: vi.fn(),
   sendEmail: vi.fn(),
   recordLocalAuditEvent: vi.fn(),
-  // FK-KEZDIJ PR #1103: konfig-lekérés — elutasítva (offline ág, nincs auto-díj).
-  handlingFeeConfigGet: vi.fn().mockRejectedValue(new Error('not mocked')),
+  // FK-097 WU-15 (W5): a dij-konfigot a cache-first loadHandlingFeeConfig adja —
+  // alapertelmezesben elutasitva (offline ag, nincs auto-dij).
+  loadHandlingFeeConfig: vi.fn().mockRejectedValue(new Error('not mocked')),
   discountThresholdApply: vi.fn(),
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
 }))
@@ -38,14 +39,20 @@ vi.mock('../../services/api/index', () => ({
   cashBalanceApi: { list: mocks.cashBalanceList },
   receiptApi: { createCancelledTransaction: mocks.createCancelledTransaction },
   incomeSourceDocApi: { checkRequired: mocks.checkRequired, sendEmail: mocks.sendEmail },
-  // FK-KEZDIJ PR #1103: a konfig-lekérés mockja — elutasítva = offline viselkedés.
-  handlingFeeConfigApi: { get: mocks.handlingFeeConfigGet },
   discountThresholdApi: { apply: mocks.discountThresholdApply },
 }))
 
 vi.mock('../../services/api/client', () => ({
   api: { get: mocks.apiGet, post: mocks.apiPost },
 }))
+
+// FK-097 WU-15 (W5): mock-felulet-migracio — az oldal a dij-konfigot a cache-first
+// loadHandlingFeeConfigon at olvassa (utils/handlingFee), nem handlingFeeConfigApi.get-en.
+// A tiszta computeHandlingFee valtozatlanul az igazi marad.
+vi.mock('../../utils/handlingFee', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/handlingFee')>()
+  return { ...actual, loadHandlingFeeConfig: mocks.loadHandlingFeeConfig }
+})
 
 vi.mock('../../stores/authStore', () => {
   const state = {

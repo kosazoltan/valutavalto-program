@@ -42,10 +42,7 @@ export default function TransferReceiptModal({
             )
             throw new Error('Nyomtatás sikertelen')
           }
-          toast.success(
-            'Nyomtatás elindítva',
-            `Bizonylat: ${receiptData.receiptNumber ?? '—'}`,
-          )
+          toast.success('Nyomtatás elindítva', `Bizonylat: ${receiptData.receiptNumber ?? '—'}`)
         } catch (err) {
           if (!(err instanceof Error && err.message === 'Nyomtatás sikertelen')) {
             toast.error('Nyomtatás sikertelen', 'A nyomtatási parancs nem futott le.')

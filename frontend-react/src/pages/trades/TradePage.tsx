@@ -5,6 +5,7 @@ import { tradeApi, type TradeDto } from '../../services/api/trades'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
@@ -175,7 +176,9 @@ export default function TradePage() {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="break-words text-sm font-semibold text-gray-900">
-            {trade.fromBranchName} &rarr; {trade.toBranchName}
+            {trade.fromBranchName}
+            {i18n.t('literals.lit-56')}
+            {trade.toBranchName}
           </div>
           <div className="mt-1 font-mono text-xs text-gray-500">{trade.id}</div>
         </div>
@@ -185,19 +188,19 @@ export default function TradePage() {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
         <div>
-          <span className="text-xs text-gray-500">Valuta</span>
+          <span className="text-xs text-gray-500">{i18n.t('literals.valuta')}</span>
           <div className="font-semibold">{trade.currencyCode}</div>
         </div>
         <div>
-          <span className="text-xs text-gray-500">Összeg</span>
+          <span className="text-xs text-gray-500">{i18n.t('literals.osszeg')}</span>
           <div className="font-mono font-semibold">{formatNumber(trade.amount)}</div>
         </div>
         <div>
-          <span className="text-xs text-gray-500">Árfolyam</span>
+          <span className="text-xs text-gray-500">{i18n.t('literals.arfolyam')}</span>
           <div className="font-mono">{formatNumber(trade.rate)}</div>
         </div>
         <div>
-          <span className="text-xs text-gray-500">Ajánlat ideje</span>
+          <span className="text-xs text-gray-500">{i18n.t('literals.ajanlat-ideje')}</span>
           <div>{trade.proposedAt?.slice(0, 16).replace('T', ' ')}</div>
         </div>
       </div>
@@ -211,21 +214,24 @@ export default function TradePage() {
                 onClick={() => void runAction(() => tradeApi.accept(trade.id))}
                 disabled={submitting}
               >
-                <Check size={14} /> Elfogadás
+                <Check size={14} />
+                {i18n.t('literals.elfogadas')}
               </button>
               <button
                 className="form-button h-8 text-xs"
                 onClick={() => void runAction(() => tradeApi.reject(trade.id, rejectReason))}
                 disabled={submitting}
               >
-                <CircleX size={14} /> Elutasítás
+                <CircleX size={14} />
+                {i18n.t('literals.elutasitas-2')}
               </button>
               <button
                 className="form-button h-8 text-xs"
                 onClick={() => void runAction(() => tradeApi.cancel(trade.id))}
                 disabled={submitting}
               >
-                <Trash2 size={14} /> Törlés
+                <Trash2 size={14} />
+                {i18n.t('literals.torles-2')}
               </button>
             </>
           )}
@@ -235,7 +241,8 @@ export default function TradePage() {
               onClick={() => void runAction(() => tradeApi.complete(trade.id))}
               disabled={submitting}
             >
-              <Check size={14} /> Teljesítés
+              <Check size={14} />
+              {i18n.t('literals.teljesites')}
             </button>
           )}
         </div>
@@ -255,13 +262,21 @@ export default function TradePage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Irodaközi trade</h1>
-          <p className="text-sm text-gray-500">Deviza ajánlatok kezelése irodák között.</p>
+          <h1 className="text-xl font-bold text-gray-900">{i18n.t('literals.irodakozi-trade')}</h1>
+          <p className="text-sm text-gray-500">
+            {i18n.t('literals.deviza-ajanlatok-kezelese-irodak-kozott')}
+          </p>
         </div>
         <div className="flex gap-2">
-          <span className="badge badge-blue">{pendingCount} nyitott</span>
+          <span className="badge badge-blue">
+            {pendingCount}
+            {i18n.t('literals.nyitott-2')}
+          </span>
           {acceptedCount > 0 && (
-            <span className="badge badge-green">{acceptedCount} teljesíthető</span>
+            <span className="badge badge-green">
+              {acceptedCount}
+              {i18n.t('literals.teljesitheto')}
+            </span>
           )}
           <button className="form-button h-8 text-xs" onClick={() => void loadTrades()}>
             <RefreshCw size={14} />
@@ -273,7 +288,9 @@ export default function TradePage() {
 
       <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="form-panel">
-          <h2 className="mb-3 text-sm font-semibold text-gray-800">Nyitott ajánlatok</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-800">
+            {i18n.t('literals.nyitott-ajanlatok')}
+          </h2>
           <div className="grid gap-2">
             <input
               className="form-input"
@@ -283,7 +300,7 @@ export default function TradePage() {
             />
             {pending.length === 0 ? (
               <p className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
-                Nincs nyitott trade.
+                {i18n.t('literals.nincs-nyitott-trade')}
               </p>
             ) : (
               pending.map((trade) => renderTradeCard(trade, true))
@@ -292,15 +309,17 @@ export default function TradePage() {
         </div>
 
         <div className="form-panel">
-          <h2 className="mb-3 text-sm font-semibold text-gray-800">Új ajánlat</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-800">
+            {i18n.t('literals.uj-ajanlat')}
+          </h2>
           <div className="space-y-2">
             <div>
-              <label className="form-label">Forrás iroda</label>
+              <label className="form-label">{i18n.t('literals.forras-iroda')}</label>
               <input className="form-input w-full" value={sourceBranchLabel} disabled />
             </div>
             <div>
               <label className="form-label" htmlFor="trade-to-branch">
-                Cél iroda
+                {i18n.t('literals.cel-iroda')}
               </label>
               <select
                 id="trade-to-branch"
@@ -320,17 +339,20 @@ export default function TradePage() {
               </select>
               {targetError && (
                 <p className="mt-1 text-xs text-red-600">
-                  Cél irodák betöltése sikertelen: {targetError}
+                  {i18n.t('literals.cel-irodak-betoltese-sikertelen')}
+                  {targetError}
                 </p>
               )}
               {!targetLoading && !targetError && targetBranches.length === 0 && (
-                <p className="mt-1 text-xs text-amber-700">Nincs választható cél iroda.</p>
+                <p className="mt-1 text-xs text-amber-700">
+                  {i18n.t('literals.nincs-valaszthato-cel-iroda')}
+                </p>
               )}
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="form-label" htmlFor="trade-currency">
-                  Valuta
+                  {i18n.t('literals.valuta')}
                 </label>
                 <input
                   id="trade-currency"
@@ -342,7 +364,7 @@ export default function TradePage() {
               </div>
               <div>
                 <label className="form-label" htmlFor="trade-amount">
-                  Összeg
+                  {i18n.t('literals.osszeg')}
                 </label>
                 <input
                   id="trade-amount"
@@ -356,7 +378,7 @@ export default function TradePage() {
               </div>
               <div>
                 <label className="form-label" htmlFor="trade-rate">
-                  Árfolyam
+                  {i18n.t('literals.arfolyam')}
                 </label>
                 <input
                   id="trade-rate"
@@ -371,7 +393,7 @@ export default function TradePage() {
             </div>
             <div>
               <label className="form-label" htmlFor="trade-notes">
-                Megjegyzés
+                {i18n.t('literals.megjegyzes')}
               </label>
               <textarea
                 id="trade-notes"
@@ -386,7 +408,7 @@ export default function TradePage() {
               disabled={!canCreateTrade}
             >
               {submitting ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
-              Ajánlat létrehozása
+              {i18n.t('literals.ajanlat-letrehozasa')}
             </button>
           </div>
         </div>
@@ -395,8 +417,13 @@ export default function TradePage() {
       <section className="form-panel">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">Trade történet</h2>
-            <p className="text-xs text-gray-500">{historyTotal} találat</p>
+            <h2 className="text-sm font-semibold text-gray-800">
+              {i18n.t('literals.trade-tortenet')}
+            </h2>
+            <p className="text-xs text-gray-500">
+              {historyTotal}
+              {i18n.t('literals.talalat-2')}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <input
@@ -414,14 +441,15 @@ export default function TradePage() {
               onChange={(event) => setTo(event.target.value)}
             />
             <button className="form-button h-8 text-xs" onClick={() => void loadTrades()}>
-              <Send size={14} /> Lekérés
+              <Send size={14} />
+              {i18n.t('literals.lekeres')}
             </button>
           </div>
         </div>
         <div className="grid gap-2 md:grid-cols-2">
           {history.length === 0 ? (
             <p className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
-              Nincs történeti trade.
+              {i18n.t('literals.nincs-torteneti-trade')}
             </p>
           ) : (
             history.map((trade) => renderTradeCard(trade))

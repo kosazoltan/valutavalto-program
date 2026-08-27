@@ -6,6 +6,7 @@ import { currencyApi } from '../../../services/api/exchange-rates'
 import { getErrorMessage } from '../../../utils/errorHandling'
 import type { Currency } from '../../../services/api/exchange-rates'
 import CurrencyDenominationImagesPanel from './CurrencyDenominationImagesPanel'
+import i18n from '../../../i18n'
 
 /**
  * V238 (2026-05-19) — Currency Manager modal.
@@ -226,7 +227,7 @@ export default function CurrencyManagerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold">Valutakezelő (V238)</h2>
+          <h2 className="text-lg font-semibold">{i18n.t('literals.valutakezelo-v238')}</h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
@@ -259,7 +260,7 @@ export default function CurrencyManagerModal({
               data-testid="currency-manager-search-submit"
             >
               <Search size={16} />
-              Keresés
+              {i18n.t('literals.kereses-2')}
             </button>
             <button
               type="button"
@@ -275,7 +276,7 @@ export default function CurrencyManagerModal({
               data-testid="currency-manager-toggle-add"
             >
               <Plus size={16} />
-              Új valuta
+              {i18n.t('literals.uj-valuta')}
             </button>
             <button
               type="button"
@@ -284,7 +285,7 @@ export default function CurrencyManagerModal({
               className="form-button flex items-center gap-1 disabled:opacity-50"
             >
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Frissítés
+              {i18n.t('literals.frissites')}
             </button>
           </div>
 
@@ -294,19 +295,33 @@ export default function CurrencyManagerModal({
               data-testid="currency-manager-detail"
             >
               <div className="font-semibold">
-                {selectedCurrencyDetail.code} - {selectedCurrencyDetail.name}
+                {selectedCurrencyDetail.code}
+                {i18n.t('literals.lit-17')}
+                {selectedCurrencyDetail.name}
               </div>
               <div className="mt-1 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                <span>Szimbólum: {selectedCurrencyDetail.symbol || '-'}</span>
-                <span>Tizedes: {selectedCurrencyDetail.decimals}</span>
-                <span>Sorrend: {selectedCurrencyDetail.displayOrder ?? '-'}</span>
+                <span>
+                  {i18n.t('literals.szimbolum')}
+                  {selectedCurrencyDetail.symbol || '-'}
+                </span>
+                <span>
+                  {i18n.t('literals.tizedes')}
+                  {selectedCurrencyDetail.decimals}
+                </span>
+                <span>
+                  {i18n.t('literals.sorrend-2')}
+                  {selectedCurrencyDetail.displayOrder ?? '-'}
+                </span>
               </div>
               {selectedCurrencyCodeCheck && (
                 <div
                   className="mt-2 text-xs text-blue-900"
                   data-testid="currency-manager-code-check"
                 >
-                  Kód-ellenőrzés: {selectedCurrencyCodeCheck.code} / #{selectedCurrencyCodeCheck.id}
+                  {i18n.t('literals.kod-ellenorzes')}
+                  {selectedCurrencyCodeCheck.code}
+                  {i18n.t('literals.lit-49')}
+                  {selectedCurrencyCodeCheck.id}
                 </div>
               )}
             </div>
@@ -314,10 +329,12 @@ export default function CurrencyManagerModal({
 
           {showAddForm && (
             <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20 p-3 space-y-2">
-              <div className="text-sm font-semibold">Új valuta hozzáadása</div>
+              <div className="text-sm font-semibold">{i18n.t('literals.uj-valuta-hozzaadasa')}</div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs block mb-0.5">Kód * (3-10 karakter, ISO előny)</label>
+                  <label className="text-xs block mb-0.5">
+                    {i18n.t('literals.kod-3-10-karakter-iso-elony')}
+                  </label>
                   <input
                     type="text"
                     value={newCode}
@@ -329,7 +346,7 @@ export default function CurrencyManagerModal({
                   />
                 </div>
                 <div>
-                  <label className="text-xs block mb-0.5">Név *</label>
+                  <label className="text-xs block mb-0.5">{i18n.t('literals.nev-2')}</label>
                   <input
                     type="text"
                     value={newName}
@@ -340,7 +357,9 @@ export default function CurrencyManagerModal({
                   />
                 </div>
                 <div>
-                  <label className="text-xs block mb-0.5">Szimbólum (opcionális)</label>
+                  <label className="text-xs block mb-0.5">
+                    {i18n.t('literals.szimbolum-opcionalis')}
+                  </label>
                   <input
                     type="text"
                     value={newSymbol}
@@ -350,7 +369,9 @@ export default function CurrencyManagerModal({
                   />
                 </div>
                 <div>
-                  <label className="text-xs block mb-0.5">Tizedes jegyek (default 2)</label>
+                  <label className="text-xs block mb-0.5">
+                    {i18n.t('literals.tizedes-jegyek-default-2')}
+                  </label>
                   <input
                     type="number"
                     value={newDecimals}
@@ -362,7 +383,7 @@ export default function CurrencyManagerModal({
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs block mb-0.5">
-                    Megjelenítési sorrend (kisebb = elöl)
+                    {i18n.t('literals.megjelenitesi-sorrend-kisebb-elol')}
                   </label>
                   <input
                     type="number"
@@ -381,7 +402,7 @@ export default function CurrencyManagerModal({
               </div>
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowAddForm(false)} className="form-button">
-                  Mégse
+                  {i18n.t('literals.megse')}
                 </button>
                 <button
                   type="button"
@@ -402,8 +423,11 @@ export default function CurrencyManagerModal({
               data-testid="currency-toggle-confirm"
             >
               <div className="text-sm font-semibold">
-                {pendingToggle.active ? 'Aktiválás' : 'Inaktiválás'} megerősítése —{' '}
-                {pendingToggle.currency.code} ({pendingToggle.currency.name})
+                {pendingToggle.active ? 'Aktiválás' : 'Inaktiválás'}
+                {i18n.t('literals.megerositese')} {pendingToggle.currency.code}
+                {i18n.t('literals.lit')}
+                {pendingToggle.currency.name}
+                {i18n.t('literals.lit-2')}
               </div>
               <p className="text-xs text-gray-600 dark:text-gray-400">
                 {pendingToggle.active
@@ -412,7 +436,7 @@ export default function CurrencyManagerModal({
               </p>
               <div>
                 <label className="text-xs block mb-0.5">
-                  Indoklás (opcionális, audit-log-ba kerül)
+                  {i18n.t('literals.indoklas-opcionalis-audit-log-ba-kerul')}
                 </label>
                 <input
                   type="text"
@@ -434,7 +458,7 @@ export default function CurrencyManagerModal({
                   disabled={togglingActive}
                   className="form-button disabled:opacity-50"
                 >
-                  Mégse
+                  {i18n.t('literals.megse')}
                 </button>
                 <button
                   type="button"
@@ -457,13 +481,13 @@ export default function CurrencyManagerModal({
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="text-left p-2">Kód</th>
-                  <th className="text-left p-2">Név</th>
-                  <th className="text-center p-2">Szimbólum</th>
-                  <th className="text-center p-2">Tizedes</th>
-                  <th className="text-center p-2">Sorrend</th>
-                  <th className="text-center p-2">Állapot</th>
-                  <th className="text-right p-2">Műveletek</th>
+                  <th className="text-left p-2">{i18n.t('literals.kod-3')}</th>
+                  <th className="text-left p-2">{i18n.t('literals.nev')}</th>
+                  <th className="text-center p-2">{i18n.t('literals.szimbolum-2')}</th>
+                  <th className="text-center p-2">{i18n.t('literals.tizedes-2')}</th>
+                  <th className="text-center p-2">{i18n.t('literals.sorrend')}</th>
+                  <th className="text-center p-2">{i18n.t('literals.allapot')}</th>
+                  <th className="text-right p-2">{i18n.t('literals.muveletek')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -487,11 +511,13 @@ export default function CurrencyManagerModal({
                     <td className="p-2 text-center">
                       {c.active ? (
                         <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
-                          <Check size={14} /> aktív
+                          <Check size={14} />
+                          {i18n.t('literals.aktiv-3')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-gray-500">
-                          <Ban size={14} /> inaktív
+                          <Ban size={14} />
+                          {i18n.t('literals.inaktiv-2')}
                         </span>
                       )}
                     </td>
@@ -502,7 +528,7 @@ export default function CurrencyManagerModal({
                         className="mr-2 text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
                         data-testid={`detail-${c.code}`}
                       >
-                        Részlet
+                        {i18n.t('literals.reszlet')}
                       </button>
                       {c.active ? (
                         <button
@@ -511,7 +537,7 @@ export default function CurrencyManagerModal({
                           className="text-xs px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100"
                           data-testid={`deactivate-${c.code}`}
                         >
-                          Inaktivál
+                          {i18n.t('literals.inaktival')}
                         </button>
                       ) : (
                         <button
@@ -520,7 +546,7 @@ export default function CurrencyManagerModal({
                           className="text-xs px-2 py-1 rounded bg-green-100 hover:bg-green-200 text-green-900 dark:bg-green-900 dark:text-green-100"
                           data-testid={`activate-${c.code}`}
                         >
-                          Aktivál
+                          {i18n.t('literals.aktival')}
                         </button>
                       )}
                     </td>
@@ -535,10 +561,8 @@ export default function CurrencyManagerModal({
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            <strong>Megjegyzés:</strong> Az inaktiválás NEM TÖRLI az adatbázisból a valutát
-            (Pmt./NAV 8-éves megőrzés). A historikus tranzakciók és árfolyamok érintetlenek
-            maradnak. Bármikor reaktiválható, és minden módosítás a `currency_audit_log` táblába
-            kerül (audit-trail).
+            <strong>{i18n.t('literals.megjegyzes-2')}</strong>
+            {i18n.t('literals.az-inaktivalas-nem-torli-az-adatbazisbol')}
           </p>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 type Tab = 'persons' | 'companies'
 
@@ -328,7 +329,8 @@ export default function BlacklistPage() {
         >
           <Shield size={14} className="inline mr-1" />
           {t('blacklist.szemelyek')}
-          {filteredPersons.length})
+          {filteredPersons.length}
+          {i18n.t('literals.lit-2')}
         </button>
         <button
           onClick={() => setActiveTab('companies')}
@@ -336,7 +338,8 @@ export default function BlacklistPage() {
         >
           <AlertTriangle size={14} className="inline mr-1" />
           {t('blacklist.cegek')}
-          {filteredCompanies.length})
+          {filteredCompanies.length}
+          {i18n.t('literals.lit-2')}
         </button>
       </div>
 
@@ -528,7 +531,7 @@ export default function BlacklistPage() {
 
       {/* Table */}
       {loading ? (
-        <div>Betöltés...</div>
+        <div>{i18n.t('literals.betoltes')}</div>
       ) : (
         <div className="form-panel">
           {activeTab === 'persons' ? (

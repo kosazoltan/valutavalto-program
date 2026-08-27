@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Smartphone, ChevronDown, ChevronUp } from 'lucide-react'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 /**
  * FK-041/II — „Telepítés a telefonra" segéd. A local-first NEM telepíthető telefonra, ezért az árfolyam
@@ -74,10 +75,10 @@ export default function PwaInstallHelp({ url, title }: { url?: string; title?: s
             <li>{t('pwaInstall.lepes1')}</li>
             <li>{t('pwaInstall.lepes2')}</li>
             <li>
-              <strong>Android (Chrome):</strong> {t('pwaInstall.android')}
+              <strong>{i18n.t('literals.android-chrome')}</strong> {t('pwaInstall.android')}
             </li>
             <li>
-              <strong>iPhone (Safari):</strong> {t('pwaInstall.ios')}
+              <strong>{i18n.t('literals.iphone-safari')}</strong> {t('pwaInstall.ios')}
             </li>
           </ol>
         </div>

@@ -3,6 +3,7 @@ import { Loader2, Shield, ShieldCheck, ShieldOff, CheckCircle2 } from 'lucide-re
 import { api } from '../../services/api/client'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 interface MfaStatusResponse {
   enabled: boolean
@@ -98,7 +99,7 @@ export default function MfaEnrollmentPage() {
     return (
       <div className="flex items-center gap-2 text-gray-500 p-4">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>MFA állapot betöltése...</span>
+        <span>{i18n.t('literals.mfa-allapot-betoltese')}</span>
       </div>
     )
   }
@@ -108,33 +109,32 @@ export default function MfaEnrollmentPage() {
       <div className="flex items-center justify-between">
         <h2 className="section-title flex items-center gap-2">
           <Shield size={18} />
-          Kétfaktoros hitelesítés (TOTP)
+          {i18n.t('literals.ketfaktoros-hitelesites-totp')}
         </h2>
         <div className="flex items-center gap-1 text-sm">
           {enabled ? (
             <>
               <ShieldCheck size={16} className="text-green-600" />
-              <span className="text-green-700">Aktív</span>
+              <span className="text-green-700">{i18n.t('literals.aktiv-2')}</span>
             </>
           ) : (
             <>
               <ShieldOff size={16} className="text-gray-400" />
-              <span className="text-gray-500">Inaktív</span>
+              <span className="text-gray-500">{i18n.t('literals.inaktiv-3')}</span>
             </>
           )}
         </div>
       </div>
 
       <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-        <strong>Ajánlott:</strong> kapcsold be a kétfaktoros hitelesítést, hogy a bejelentkezésnél
-        egy Google Authenticator (vagy Microsoft Authenticator / Authy) által generált 6-jegyű kód
-        is kelljen. Ez különösen fontos vezetői / admin / compliance szerepkörnél.
+        <strong>{i18n.t('literals.ajanlott')}</strong>
+        {i18n.t('literals.kapcsold-be-a-ketfaktoros-hitelesitest-h')}
       </div>
 
       {state === 'IDLE' && !enabled && (
         <div className="space-y-3">
           <p className="text-sm text-gray-700">
-            A MFA még NINCS aktiválva ehhez a fiókhoz. Kattints a gombra a folyamat elindításához.
+            {i18n.t('literals.a-mfa-meg-nincs-aktivalva-ehhez-a-fiokho')}
           </p>
           <button
             className="form-button-primary"
@@ -142,7 +142,7 @@ export default function MfaEnrollmentPage() {
             disabled={submitting}
           >
             {submitting ? <Loader2 size={14} className="animate-spin inline mr-1" /> : null}
-            Kétfaktoros hitelesítés bekapcsolása
+            {i18n.t('literals.ketfaktoros-hitelesites-bekapcsolasa')}
           </button>
         </div>
       )}
@@ -150,10 +150,11 @@ export default function MfaEnrollmentPage() {
       {state === 'ENROLLING' && enrollment && (
         <div className="space-y-4">
           <div className="p-3 rounded border border-amber-200 bg-amber-50">
-            <p className="font-medium text-amber-800 mb-2">1. lépés — QR olvasás</p>
+            <p className="font-medium text-amber-800 mb-2">
+              {i18n.t('literals.1-lepes-qr-olvasas')}
+            </p>
             <p className="text-sm text-amber-700 mb-3">
-              Nyisd meg a Google Authenticator (vagy Authy, Microsoft Authenticator) appot, és
-              olvasd be az alábbi QR kódot:
+              {i18n.t('literals.nyisd-meg-a-google-authenticator-vagy-au')}
             </p>
             <img
               src={`data:image/png;base64,${enrollment.qrCodePngBase64}`}
@@ -163,7 +164,7 @@ export default function MfaEnrollmentPage() {
             />
             <details className="mt-3 text-xs">
               <summary className="cursor-pointer text-amber-700">
-                Manuálisan beírható secret
+                {i18n.t('literals.manualisan-beirhato-secret')}
               </summary>
               <code className="block mt-1 p-2 bg-amber-100 rounded font-mono text-amber-900 break-all">
                 {enrollment.secret}
@@ -172,9 +173,11 @@ export default function MfaEnrollmentPage() {
           </div>
 
           <div className="p-3 rounded border border-blue-200 bg-blue-50">
-            <p className="font-medium text-blue-800 mb-2">2. lépés — kód megerősítés</p>
+            <p className="font-medium text-blue-800 mb-2">
+              {i18n.t('literals.2-lepes-kod-megerosites')}
+            </p>
             <p className="text-sm text-blue-700 mb-3">
-              Add meg az authenticator app által megjelenített 6-jegyű kódot:
+              {i18n.t('literals.add-meg-az-authenticator-app-altal-megje')}
             </p>
             <div className="flex gap-2">
               <input
@@ -195,7 +198,7 @@ export default function MfaEnrollmentPage() {
                 disabled={submitting || code.length !== 6}
               >
                 {submitting ? <Loader2 size={14} className="animate-spin inline mr-1" /> : null}
-                Megerősítés
+                {i18n.t('literals.megerosites')}
               </button>
             </div>
           </div>
@@ -207,19 +210,21 @@ export default function MfaEnrollmentPage() {
           <div className="p-3 rounded border border-green-200 bg-green-50">
             <p className="flex items-center gap-2 font-medium text-green-800 mb-2">
               <CheckCircle2 size={18} />
-              MFA sikeresen aktiválva!
+              {i18n.t('literals.mfa-sikeresen-aktivalva')}
             </p>
             <p className="text-sm text-green-700">
-              Mostantól bejelentkezésnél kelleni fog egy 6-jegyű TOTP kód az authenticator appodból.
+              {i18n.t('literals.mostantol-bejelentkezesnel-kelleni-fog-e')}
             </p>
           </div>
 
           <div className="p-3 rounded border border-red-200 bg-red-50">
-            <p className="font-medium text-red-800 mb-2">⚠️ Backup kódok — MENTSD EL!</p>
+            <p className="font-medium text-red-800 mb-2">
+              {i18n.t('literals.backup-kodok-mentsd-el')}
+            </p>
             <p className="text-sm text-red-700 mb-3">
-              Ezek a kódok EGYSZER használhatók, ha elveszted a telefonod.{' '}
-              <strong>Most látod őket utoljára!</strong>
-              Másold le egy biztonságos helyre (pl. jelszókezelő, papír széf, 1Password).
+              {i18n.t('literals.ezek-a-kodok-egyszer-hasznalhatok-ha-elv')}{' '}
+              <strong>{i18n.t('literals.most-latod-oket-utoljara')}</strong>
+              {i18n.t('literals.masold-le-egy-biztonsagos-helyre-pl-jels')}
             </p>
             <div className="grid grid-cols-2 gap-1 font-mono text-sm bg-white p-2 rounded border border-red-300">
               {backupCodes.map((code) => (
@@ -235,7 +240,7 @@ export default function MfaEnrollmentPage() {
                 toast.success('Vágólapra másolva', `${backupCodes.length} backup kód`)
               }}
             >
-              Vágólapra másolás
+              {i18n.t('literals.vagolapra-masolas')}
             </button>
           </div>
         </div>
@@ -244,8 +249,8 @@ export default function MfaEnrollmentPage() {
       {state === 'ENROLLED' && !backupCodes && (
         <div className="p-3 rounded border border-green-200 bg-green-50">
           <p className="flex items-center gap-2 text-green-800">
-            <ShieldCheck size={18} />A MFA aktív ezen a fiókon. Bejelentkezésnél a TOTP kód
-            kötelező.
+            <ShieldCheck size={18} />
+            {i18n.t('literals.a-mfa-aktiv-ezen-a-fiokon-bejelentkezesn')}
           </p>
         </div>
       )}

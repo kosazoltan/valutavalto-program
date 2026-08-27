@@ -13,6 +13,7 @@ import { ArrowLeft, Eye, Loader2 } from 'lucide-react'
 import { transactionApi } from '../../services/api/index'
 import type { Transaction } from '../../services/api/index'
 import { isElectron } from '../../utils/electron'
+import i18n from '../../i18n'
 
 function formatNumber(n: number | null | undefined, decimals = 2): string {
   if (n === null || n === undefined) return '—'
@@ -96,7 +97,7 @@ export default function TransactionReadOnlyView({ transactionId }: { transaction
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800">
           <Eye />
-          Tranzakció megtekintése
+          {i18n.t('literals.tranzakcio-megtekintese')}
         </h1>
         <button
           className="form-button flex items-center gap-1"
@@ -104,7 +105,7 @@ export default function TransactionReadOnlyView({ transactionId }: { transaction
           data-testid="tx-view-back"
         >
           <ArrowLeft size={16} />
-          Vissza a listához
+          {i18n.t('literals.vissza-a-listahoz')}
         </button>
       </div>
 

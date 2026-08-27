@@ -19,6 +19,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface EmailAccountItem {
   id: string
@@ -432,7 +433,8 @@ export default function EmailPage() {
         </h1>
         <div className="flex items-center gap-2">
           <span className="rounded border border-gray-200 bg-white px-3 py-2 text-sm">
-            Olvasatlan: <b>{unreadCount ?? '-'}</b>
+            {i18n.t('literals.olvasatlan')}
+            <b>{unreadCount ?? '-'}</b>
           </span>
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -468,7 +470,7 @@ export default function EmailPage() {
           <div className="grid gap-3 lg:grid-cols-5">
             <div>
               <label htmlFor="email-account-address" className="form-label">
-                Gmail cím
+                {i18n.t('literals.gmail-cim')}
               </label>
               <input
                 id="email-account-address"
@@ -483,7 +485,7 @@ export default function EmailPage() {
             </div>
             <div>
               <label htmlFor="email-account-display" className="form-label">
-                Megjelenített név
+                {i18n.t('literals.megjelenitett-nev')}
               </label>
               <input
                 id="email-account-display"
@@ -498,7 +500,7 @@ export default function EmailPage() {
             </div>
             <div>
               <label htmlFor="email-account-scope-type" className="form-label">
-                Scope
+                {i18n.t('literals.scope')}
               </label>
               <select
                 id="email-account-scope-type"
@@ -512,15 +514,15 @@ export default function EmailPage() {
                   )
                 }
               >
-                <option value="workerId">Dolgozó ID</option>
-                <option value="branchId">Fiók UUID</option>
-                <option value="ownCompanyId">Saját cég UUID</option>
-                <option value="vaultTerritoryId">Értéktár terület ID</option>
+                <option value="workerId">{i18n.t('literals.dolgozo-id')}</option>
+                <option value="branchId">{i18n.t('literals.fiok-uuid')}</option>
+                <option value="ownCompanyId">{i18n.t('literals.sajat-ceg-uuid')}</option>
+                <option value="vaultTerritoryId">{i18n.t('literals.ertektar-terulet-id')}</option>
               </select>
             </div>
             <div>
               <label htmlFor="email-account-scope-value" className="form-label">
-                Scope azonosító
+                {i18n.t('literals.scope-azonosito')}
               </label>
               <input
                 id="email-account-scope-value"
@@ -543,7 +545,7 @@ export default function EmailPage() {
                   )
                 }
               />
-              Aktív
+              {i18n.t('literals.aktiv-2')}
             </label>
           </div>
           <div className="flex gap-2">
@@ -556,7 +558,7 @@ export default function EmailPage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setAccountForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -580,10 +582,10 @@ export default function EmailPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Gmail cím
+                      {i18n.t('literals.gmail-cim')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Név
+                      {i18n.t('literals.nev')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       {t('common.active')}
@@ -597,7 +599,7 @@ export default function EmailPage() {
                   {loading ? (
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
-                        Betöltés...
+                        {i18n.t('literals.betoltes')}
                       </td>
                     </tr>
                   ) : filteredAccounts.length === 0 ? (
@@ -656,7 +658,8 @@ export default function EmailPage() {
             </div>
             {configurableAccounts.length > 0 && (
               <div className="text-xs text-gray-500">
-                Konfigurálható fiókok: {configurableAccounts.map(accountLabel).join(', ')}
+                {i18n.t('literals.konfiguralhato-fiokok')}
+                {configurableAccounts.map(accountLabel).join(', ')}
               </div>
             )}
           </div>
@@ -670,9 +673,9 @@ export default function EmailPage() {
                 onChange={(e) => setFolder(e.target.value)}
                 className="form-input w-full"
               >
-                <option value="INBOX">INBOX</option>
-                <option value="SENT">SENT</option>
-                <option value="TRASH">TRASH</option>
+                <option value="INBOX">{i18n.t('literals.inbox')}</option>
+                <option value="SENT">{i18n.t('literals.sent')}</option>
+                <option value="TRASH">{i18n.t('literals.trash')}</option>
               </select>
               <input
                 value={mailSearch}
@@ -686,7 +689,7 @@ export default function EmailPage() {
                 className="form-button flex items-center gap-1"
               >
                 <Search className="h-4 w-4" />
-                Keresés
+                {i18n.t('literals.kereses-2')}
               </button>
               <button
                 type="button"
@@ -694,7 +697,7 @@ export default function EmailPage() {
                 className="form-button-primary flex items-center gap-1"
               >
                 <Send className="h-4 w-4" />
-                Új levél
+                {i18n.t('literals.uj-level')}
               </button>
             </div>
 
@@ -703,13 +706,13 @@ export default function EmailPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Tárgy
+                      {i18n.t('literals.targy')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Feladó
+                      {i18n.t('literals.felado')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Érkezett
+                      {i18n.t('literals.erkezett')}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                       {t('common.actions')}
@@ -720,7 +723,7 @@ export default function EmailPage() {
                   {messageLoading ? (
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
-                        Betöltés...
+                        {i18n.t('literals.betoltes')}
                       </td>
                     </tr>
                   ) : messages.length === 0 ? (
@@ -778,7 +781,7 @@ export default function EmailPage() {
                     className="form-button flex items-center gap-1"
                   >
                     <Reply className="h-4 w-4" />
-                    Válasz
+                    {i18n.t('literals.valasz')}
                   </button>
                   <button
                     type="button"
@@ -786,12 +789,12 @@ export default function EmailPage() {
                     className="form-button flex items-center gap-1"
                   >
                     <Forward className="h-4 w-4" />
-                    Továbbítás
+                    {i18n.t('literals.tovabbitas')}
                   </button>
                 </div>
               </div>
               <div className="text-sm">
-                <span className="text-gray-500">Címzettek:</span>{' '}
+                <span className="text-gray-500">{i18n.t('literals.cimzettek')}</span>{' '}
                 {(selectedMessage.to ?? []).join(', ') || '-'}
               </div>
               <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-wrap">
@@ -799,7 +802,7 @@ export default function EmailPage() {
               </div>
               {(selectedMessage.attachments ?? []).length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold">Csatolmányok</h3>
+                  <h3 className="text-sm font-semibold">{i18n.t('literals.csatolmanyok')}</h3>
                   {selectedMessage.attachments?.map((attachment) => (
                     <button
                       key={attachment.attachmentId}
@@ -828,7 +831,7 @@ export default function EmailPage() {
               {composeMode !== 'reply' && (
                 <div>
                   <label htmlFor="email-compose-to" className="form-label">
-                    Címzett
+                    {i18n.t('literals.cimzett')}
                   </label>
                   <input
                     id="email-compose-to"
@@ -841,7 +844,7 @@ export default function EmailPage() {
               {composeMode === 'new' && (
                 <div>
                   <label htmlFor="email-compose-subject" className="form-label">
-                    Tárgy
+                    {i18n.t('literals.targy')}
                   </label>
                   <input
                     id="email-compose-subject"
@@ -855,7 +858,7 @@ export default function EmailPage() {
               )}
               <div>
                 <label htmlFor="email-compose-body" className="form-label">
-                  Szöveg
+                  {i18n.t('literals.szoveg')}
                 </label>
                 <textarea
                   id="email-compose-body"
@@ -874,7 +877,7 @@ export default function EmailPage() {
                   {saving ? 'Küldés...' : 'Küldés'}
                 </button>
                 <button type="button" onClick={() => setComposeMode(null)} className="form-button">
-                  Mégse
+                  {i18n.t('literals.megse')}
                 </button>
               </div>
             </div>
@@ -884,7 +887,9 @@ export default function EmailPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filteredAccounts.length} / {accounts.length}
+        {filteredAccounts.length}
+        {i18n.t('literals.lit-10')}
+        {accounts.length}
       </div>
     </div>
   )

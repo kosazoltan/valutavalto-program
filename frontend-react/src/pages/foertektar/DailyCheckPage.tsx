@@ -11,6 +11,7 @@ import {
   type BranchInfo,
   type DailyBalanceGridRow,
 } from '../../services/api/index'
+import i18n from '../../i18n'
 
 // FK-047/FK-052: Napi ellenőrző lista — valutánkénti mérleg-grid a daily_balance pénztári
 // és értéktári BANK+/BANK− adataiból. Az értéktári SZÁMZÁR továbbra is jövőbeli FK.
@@ -141,13 +142,13 @@ export default function DailyCheckPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-bold flex items-center gap-2">
         <ClipboardCheck />
-        Napi ellenőrző lista
+        {i18n.t('literals.napi-ellenorzo-lista')}
       </h1>
 
       {/* FR-5: egység + dátum szűrők (alapértelmezés: mai nap, Teljes cég) */}
       <div className="form-panel flex gap-3 items-end flex-wrap">
         <div>
-          <label className="form-label">Dátum</label>
+          <label className="form-label">{i18n.t('literals.datum-2')}</label>
           <input
             className="form-input"
             type="date"
@@ -156,26 +157,26 @@ export default function DailyCheckPage() {
           />
         </div>
         <div>
-          <label className="form-label">Egység</label>
+          <label className="form-label">{i18n.t('literals.egyseg')}</label>
           <select
             className="form-input"
             value={unitMode}
             onChange={(e) => setUnitMode(e.target.value as UnitMode)}
           >
-            <option value="company">Teljes cég</option>
-            <option value="territory">Terület</option>
-            <option value="branch">Pénztár</option>
+            <option value="company">{i18n.t('literals.teljes-ceg')}</option>
+            <option value="territory">{i18n.t('literals.terulet')}</option>
+            <option value="branch">{i18n.t('literals.penztar-2')}</option>
           </select>
         </div>
         {unitMode === 'territory' && (
           <div>
-            <label className="form-label">Terület</label>
+            <label className="form-label">{i18n.t('literals.terulet')}</label>
             <select
               className="form-input"
               value={territoryId}
               onChange={(e) => setTerritoryId(e.target.value === '' ? '' : Number(e.target.value))}
             >
-              <option value="">— válasszon —</option>
+              <option value="">{i18n.t('literals.valasszon-2')}</option>
               {territories.map((tr) => (
                 <option key={tr.id} value={tr.id}>
                   {tr.name}
@@ -186,16 +187,18 @@ export default function DailyCheckPage() {
         )}
         {unitMode === 'branch' && (
           <div>
-            <label className="form-label">Pénztár</label>
+            <label className="form-label">{i18n.t('literals.penztar-2')}</label>
             <select
               className="form-input"
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
             >
-              <option value="">— válasszon —</option>
+              <option value="">{i18n.t('literals.valasszon-2')}</option>
               {cashierBranches.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.code} — {b.name}
+                  {b.code}
+                  {i18n.t('literals.lit-18')}
+                  {b.name}
                 </option>
               ))}
             </select>
@@ -203,7 +206,7 @@ export default function DailyCheckPage() {
         )}
         <button onClick={() => void loadGrid()} disabled={loading} className="form-button-primary">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          Lekérdezés
+          {i18n.t('literals.lekerdezes')}
         </button>
       </div>
 
@@ -215,29 +218,32 @@ export default function DailyCheckPage() {
 
       {data && (
         <div className="form-panel">
-          <h2 className="font-semibold mb-2">Valutánkénti mérleg — {date}</h2>
+          <h2 className="font-semibold mb-2">
+            {i18n.t('literals.valutankenti-merleg')}
+            {date}
+          </h2>
           {data.length === 0 && activeCurrencies.length === 0 ? (
             /* NFR-5: érthető, nem-hibaüzenet jellegű tájékoztatás */
             <div className="text-center text-gray-500 py-4">
-              Nincs adat a kiválasztott időszakra
+              {i18n.t('literals.nincs-adat-a-kivalasztott-idoszakra')}
             </div>
           ) : (
             /* FR-7/NFR-1: .data-grid — a váltakozó sorszín (bg-gray-50 páratlan) az FK-050 közös CSS-ből jön */
             <table className="data-grid w-full text-sm" data-testid="daily-check-grid">
               <thead>
                 <tr>
-                  <th>DEVIZA</th>
-                  <th className="text-right">NYITÓ</th>
-                  <th className="text-right">VÉTEL</th>
-                  <th className="text-right">ELADÁS</th>
-                  <th className="text-right">PTÁR+</th>
-                  <th className="text-right">PTÁR-</th>
-                  <th className="text-right">ZÁRÓ</th>
-                  <th className="text-right">SZÁMZÁR</th>
-                  <th className="text-right">TÖBB</th>
-                  <th className="text-right">HIÁNY</th>
-                  <th className="text-right">BANK+</th>
-                  <th className="text-right">BANK-</th>
+                  <th>{i18n.t('literals.deviza')}</th>
+                  <th className="text-right">{i18n.t('literals.nyito-2')}</th>
+                  <th className="text-right">{i18n.t('literals.vetel-3')}</th>
+                  <th className="text-right">{i18n.t('literals.eladas-3')}</th>
+                  <th className="text-right">{i18n.t('literals.ptar')}</th>
+                  <th className="text-right">{i18n.t('literals.ptar-2')}</th>
+                  <th className="text-right">{i18n.t('literals.zaro')}</th>
+                  <th className="text-right">{i18n.t('literals.szamzar')}</th>
+                  <th className="text-right">{i18n.t('literals.tobb')}</th>
+                  <th className="text-right">{i18n.t('literals.hiany')}</th>
+                  <th className="text-right">{i18n.t('literals.bank')}</th>
+                  <th className="text-right">{i18n.t('literals.bank-2')}</th>
                 </tr>
               </thead>
               <tbody>

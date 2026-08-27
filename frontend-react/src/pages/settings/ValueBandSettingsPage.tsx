@@ -8,6 +8,7 @@ import {
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 const DEFAULT_FORM: ValueBandConfigRequest = {
   simplifiedIdentificationLimitHuf: 100000,
@@ -162,7 +163,7 @@ export default function ValueBandSettingsPage() {
     return (
       <div className="flex items-center gap-2 text-gray-500 p-4">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>AML értéksávok betöltése...</span>
+        <span>{i18n.t('literals.aml-erteksavok-betoltese')}</span>
       </div>
     )
   }
@@ -171,25 +172,24 @@ export default function ValueBandSettingsPage() {
     <div className="space-y-4">
       <h2 className="section-title flex items-center gap-2">
         <AlertTriangle size={18} className="text-amber-600" />
-        AML értéksávok
+        {i18n.t('literals.aml-erteksavok')}
       </h2>
 
       <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-        A 100E / 300E / 10M AML küszöbök jogszabályi, cégfüggetlen értékek. Csak jövőbeli
-        hatálybalépésű sor szerkeszthető vagy törölhető.
+        {i18n.t('literals.a-100e-300e-10m-aml-kuszobok-jogszabalyi')}
       </div>
 
       <div className="rounded border border-gray-200 overflow-hidden">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-left">
             <tr>
-              <th className="p-2">Érvényesség kezdete</th>
-              <th className="p-2">100E-sáv</th>
-              <th className="p-2">300E-sáv</th>
-              <th className="p-2">10M-sáv</th>
-              <th className="p-2">Ablak</th>
-              <th className="p-2">Státusz</th>
-              <th className="p-2">Műveletek</th>
+              <th className="p-2">{i18n.t('literals.ervenyesseg-kezdete')}</th>
+              <th className="p-2">{i18n.t('literals.100e-sav')}</th>
+              <th className="p-2">{i18n.t('literals.300e-sav')}</th>
+              <th className="p-2">{i18n.t('literals.10m-sav')}</th>
+              <th className="p-2">{i18n.t('literals.ablak')}</th>
+              <th className="p-2">{i18n.t('literals.statusz')}</th>
+              <th className="p-2">{i18n.t('literals.muveletek')}</th>
             </tr>
           </thead>
           <tbody>
@@ -202,7 +202,10 @@ export default function ValueBandSettingsPage() {
                   <td className="p-2">{formatHuf(row.simplifiedIdentificationLimitHuf)}</td>
                   <td className="p-2">{formatHuf(row.identificationLimitHuf)}</td>
                   <td className="p-2">{formatHuf(row.incomeProofLimitHuf)}</td>
-                  <td className="p-2">{row.rollingWindowDays} nap</td>
+                  <td className="p-2">
+                    {row.rollingWindowDays}
+                    {i18n.t('literals.nap-2')}
+                  </td>
                   <td className="p-2">
                     <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium">
                       {status}
@@ -217,7 +220,8 @@ export default function ValueBandSettingsPage() {
                           type="button"
                           onClick={() => handleEdit(row)}
                         >
-                          <Edit2 size={12} /> Szerkesztés
+                          <Edit2 size={12} />
+                          {i18n.t('literals.szerkesztes')}
                         </button>
                         <button
                           className="form-button text-red-600 flex items-center gap-1"
@@ -225,7 +229,8 @@ export default function ValueBandSettingsPage() {
                           type="button"
                           onClick={() => void handleDelete(row.id)}
                         >
-                          <Trash2 size={12} /> Törlés
+                          <Trash2 size={12} />
+                          {i18n.t('literals.torles-2')}
                         </button>
                       </div>
                     )}
@@ -244,7 +249,9 @@ export default function ValueBandSettingsPage() {
         </h3>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <label className="space-y-1">
-            <span className="form-label">Egyszerűsített azonosítási küszöb</span>
+            <span className="form-label">
+              {i18n.t('literals.egyszerusitett-azonositasi-kuszob')}
+            </span>
             <input
               aria-label="Egyszerűsített azonosítási küszöb"
               className="form-input"
@@ -255,7 +262,7 @@ export default function ValueBandSettingsPage() {
             />
           </label>
           <label className="space-y-1">
-            <span className="form-label">Teljes azonosítási küszöb</span>
+            <span className="form-label">{i18n.t('literals.teljes-azonositasi-kuszob')}</span>
             <input
               aria-label="Teljes azonosítási küszöb"
               className="form-input"
@@ -266,7 +273,7 @@ export default function ValueBandSettingsPage() {
             />
           </label>
           <label className="space-y-1">
-            <span className="form-label">Jövedelemforrás / fokozott küszöb</span>
+            <span className="form-label">{i18n.t('literals.jovedelemforras-fokozott-kuszob')}</span>
             <input
               aria-label="Jövedelemforrás / fokozott küszöb"
               className="form-input"
@@ -277,7 +284,7 @@ export default function ValueBandSettingsPage() {
             />
           </label>
           <label className="space-y-1">
-            <span className="form-label">Göngyölési ablak napok</span>
+            <span className="form-label">{i18n.t('literals.gongyolesi-ablak-napok')}</span>
             <input
               aria-label="Göngyölési ablak napok"
               className="form-input"
@@ -288,7 +295,7 @@ export default function ValueBandSettingsPage() {
             />
           </label>
           <label className="space-y-1">
-            <span className="form-label">Érvényesség kezdete</span>
+            <span className="form-label">{i18n.t('literals.ervenyesseg-kezdete')}</span>
             <input
               aria-label="Érvényesség kezdete"
               className="form-input"
@@ -302,7 +309,7 @@ export default function ValueBandSettingsPage() {
         <div className="flex justify-end gap-2">
           {editingId && (
             <button className="form-button" disabled={saving} onClick={resetForm} type="button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           )}
           <button

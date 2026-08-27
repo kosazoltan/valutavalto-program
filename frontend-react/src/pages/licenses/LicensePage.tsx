@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 /**
  * Fix #148 live UI re-test P1: LicenseResponse tenyleges mezonevek:
@@ -151,10 +152,10 @@ export default function LicensePage() {
       )}
 
       <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-        <h2 className="text-base font-semibold">Licenc státusz</h2>
+        <h2 className="text-base font-semibold">{i18n.t('literals.licenc-statusz')}</h2>
         <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
           <div>
-            <div className="text-gray-500">Státusz</div>
+            <div className="text-gray-500">{i18n.t('literals.statusz')}</div>
             <div className="font-semibold">{status?.status ?? '-'}</div>
           </div>
           <div>
@@ -173,11 +174,11 @@ export default function LicensePage() {
       </div>
 
       <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-        <h2 className="text-base font-semibold">Licenc aktiválás</h2>
+        <h2 className="text-base font-semibold">{i18n.t('literals.licenc-aktivalas')}</h2>
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <div>
             <label htmlFor="license-key" className="form-label">
-              Licenckulcs
+              {i18n.t('literals.licenckulcs')}
             </label>
             <input
               id="license-key"
@@ -203,7 +204,7 @@ export default function LicensePage() {
       </div>
 
       {loading ? (
-        <div className="text-center text-sm text-gray-500 py-8">Betöltés...</div>
+        <div className="text-center text-sm text-gray-500 py-8">{i18n.t('literals.betoltes')}</div>
       ) : !license ? (
         <div className="text-center text-sm text-gray-500 py-8">
           {t('licenses.nincsAktivLicenc')}
@@ -223,7 +224,11 @@ export default function LicensePage() {
               </>
             )}
             {license.status && (
-              <span className="text-sm text-gray-500 ml-2">({license.status})</span>
+              <span className="text-sm text-gray-500 ml-2">
+                {i18n.t('literals.lit-19')}
+                {license.status}
+                {i18n.t('literals.lit-2')}
+              </span>
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">

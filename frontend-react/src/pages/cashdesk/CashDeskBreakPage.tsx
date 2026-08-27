@@ -5,6 +5,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { useTextReasonModal } from '../../components/TextReasonModal'
+import i18n from '../../i18n'
 
 export default function CashDeskBreakPage() {
   const { t } = useTranslation()
@@ -96,7 +97,9 @@ export default function CashDeskBreakPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (

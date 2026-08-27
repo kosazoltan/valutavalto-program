@@ -9,6 +9,7 @@ import { safeArray } from '../../utils/safeArray'
 import type { components } from '@valuta/shared-api'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
+import i18n from '../../i18n'
 
 type WorkerDto = components['schemas']['WorkerDto']
 // Runtime-ban mindig megletszo mezok: a backend JPA entitas @NotNull-lal
@@ -164,7 +165,7 @@ export default function WorkerPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Betöltés...</div>
+        <div className="text-gray-500">{i18n.t('literals.betoltes')}</div>
       </div>
     )
   }
@@ -224,7 +225,7 @@ export default function WorkerPage() {
               onClick={() => void showAllWorkers()}
               className={`form-button min-h-10 ${listScope === 'all' ? 'border-primary-500 text-primary-700' : ''}`}
             >
-              Összes dolgozó
+              {i18n.t('literals.osszes-dolgozo')}
             </button>
             <button
               type="button"
@@ -233,7 +234,7 @@ export default function WorkerPage() {
               className={`form-button min-h-10 ${listScope === 'branch' ? 'border-primary-500 text-primary-700' : ''} disabled:opacity-60`}
               title={branchName || 'Saját fiók'}
             >
-              Saját fiók
+              {i18n.t('literals.sajat-fiok')}
             </button>
           </div>
         </div>

@@ -117,6 +117,7 @@ import {
   getCachedBranchStatuses,
   getCachedBranchStatusTimestamp,
   getCachedRates,
+  getCachedHandlingFeeConfig,
   getCachedCashDesks,
   getCachedCashDeskTimestamp,
   getCachedWorkers,
@@ -981,6 +982,11 @@ ipcMain.handle('get-cached-branch-status-timestamp', async () => {
 
 ipcMain.handle('get-cached-rates', async () => {
   return getCachedRates();
+});
+
+// FK-097 WU-14 (FR-3): az iroda-szintű kezelési díj konfiguráció offline tükre a renderernek.
+ipcMain.handle('get-cached-handling-fee-config', async () => {
+  return getCachedHandlingFeeConfig();
 });
 
 ipcMain.handle('get-cached-cash-desks', async () => {

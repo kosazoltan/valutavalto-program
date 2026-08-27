@@ -4,6 +4,7 @@ import ReceiptPreviewModal from './ReceiptPreviewModal'
 import type { PrintReceiptData } from '../../types/receipt'
 
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 

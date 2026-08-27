@@ -1,7 +1,11 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.BranchHandlingFeeConfig;
+import hu.puzzleir.valuta.entity.FeeConfigStatus;
 import hu.puzzleir.valuta.entity.HandlingFeeBracket;
 import hu.puzzleir.valuta.entity.HandlingFeeType;
+import hu.puzzleir.valuta.exception.ValidationException;
+import hu.puzzleir.valuta.repository.BranchHandlingFeeConfigRepository;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.repository.HandlingFeeTransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -21,6 +25,13 @@ import java.util.UUID;
 /**
  * Kezelési díj szolgáltatás — autoritatív díjszámítás.
  *
+ * <p>FK-096: a díj IRODA-SZINTŰ (branch_handling_fee_config, DRAFT/LIVE), nem cégszintű.
+ * A feloldás companyId + branchId alapján történik, FAIL-CLOSED: ha az irodának nincs
+ * aktív LIVE sora → ValidationException (400), SOHA nem néma 0 Ft (FR-5). A korábbi
+ * egyargumentumú, cégszintű belépőpont TÖRÖLVE — a fail-closed így fordítási idejű garancia.
+ * A díjszámítás a V383 seed révén bit-azonosan reproduálja a korábbi cégszintű
+ * system_parameter eredményt (FR-2).</p>
+ *
  * Legacy: GetKezelesidij — a Delphi rendszerben az EZRELÉK vagy SÁVOS
  * díjszámítás a _realEzrelek alapján dőlt el.
  *
@@ -28,9 +39,7 @@ import java.util.UUID;
  * - calculateHandlingFee() → szerver oldali díjszámítás
  * - getRemainingCustomFeeQuota() → napi egyedi díj limit
  *
- * System paraméterek:
- * - HANDLING_FEE_TYPE: NONE / PER_MILLE / BRACKET
- * - HANDLING_FEE_PER_MILLE: ezrelék érték (pl. "5" = 5‰)
+ * System paraméter (csak az egyedi díj limithet, a díjfeloldáshoz NEM):
  * - DAILY_CUSTOM_FEE_LIMIT: napi egyedi díj limit (default: 5)
  */
 @Service
@@ -40,6 +49,7 @@ import java.util.UUID;
 public class HandlingFeeService {
 
     private final SystemParameterService systemParameterService;
+    private final BranchHandlingFeeConfigRepository branchConfigRepository;
     private final HandlingFeeBracketRepository bracketRepository;
     private final HandlingFeeTransactionRepository feeTransactionRepository;
     private final DiscountThresholdService discountThresholdService;
@@ -49,27 +59,32 @@ public class HandlingFeeService {
     private static final int DEFAULT_DAILY_CUSTOM_FEE_LIMIT = 5;
 
     /**
-     * Kezelési díj számítása a HUF összeg alapján.
+     * Kezelési díj számítása a HUF összeg alapján — IRODA-TUDATOS (FK-096).
      *
-     * A díj típusa a system_parameter HANDLING_FEE_TYPE értékétől függ:
+     * A díj módja az iroda LIVE branch_handling_fee_config sorából jön:
      * - NONE: 0 Ft (nincs díj)
-     * - PER_MILLE: összeg × ezrelék / 1000
-     * - BRACKET: sávos díjtáblázat
+     * - PER_MILLE: összeg × ezrelék / 1000, az iroda saját mértékével/sapkájával (FR-4)
+     * - BRACKET: sávos díjtáblázat — a közös LIVE sávokkal (FR-6)
+     *
+     * <p>FAIL-CLOSED (FR-5): nincs aktív LIVE sor → ValidationException, a tranzakció
+     * nem könyvelhető; soha nem tér vissza néma 0 Ft-tal konfigurálatlan irodán.</p>
      *
      * @param hufAmount tranzakció HUF összege (nettó)
+     * @param branchId  a díjat viselő iroda azonosítója (explicit, nem statikus rejtett olvasás — DIP)
      * @return kezelési díj (Ft)
      */
-    public BigDecimal calculateHandlingFee(BigDecimal hufAmount) {
+    public BigDecimal calculateHandlingFee(BigDecimal hufAmount, UUID branchId) {
         if (hufAmount == null || hufAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
         }
 
-        HandlingFeeType feeType = resolveFeeType();
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        BranchHandlingFeeConfig config = resolveLiveConfig(companyId, branchId);
 
-        BigDecimal baseFee = switch (feeType) {
+        BigDecimal baseFee = switch (config.getFeeMode()) {
             case NONE -> BigDecimal.ZERO;
-            case PER_MILLE -> calculatePerMille(hufAmount);
-            case BRACKET -> calculateBracket(hufAmount);
+            case PER_MILLE -> calculatePerMille(hufAmount, config);
+            case BRACKET -> calculateBracket(hufAmount, companyId);
         };
 
         // Automatikus kedvezmény/felár alkalmazása (BIGARFVALT/KISARFVALT)
@@ -121,52 +136,50 @@ public class HandlingFeeService {
     // === PRIVÁT SEGÉDMETÓDUSOK ===
 
     /**
-     * Díj típus feloldása system_parameter-ből.
+     * FK-096/FR-5: az iroda ÉLŐ (LIVE, aktív) díjkonfigurációjának feloldása.
+     * DRAFT sor sosem kerül feloldásra; hiány → ValidationException (400), SOHA nem néma 0 Ft.
      */
-    private HandlingFeeType resolveFeeType() {
-        try {
-            String typeStr = systemParameterService.getValue("HANDLING_FEE_TYPE");
-            return HandlingFeeType.valueOf(typeStr.toUpperCase());
-        } catch (Exception e) {
-            log.warn("HANDLING_FEE_TYPE paraméter nem olvasható ({}), default: BRACKET", e.getMessage());
-            return HandlingFeeType.BRACKET;
-        }
+    private BranchHandlingFeeConfig resolveLiveConfig(UUID companyId, UUID branchId) {
+        return branchConfigRepository
+                .findByCompanyIdAndBranchIdAndStatusAndActiveTrue(companyId, branchId, FeeConfigStatus.LIVE)
+                .orElseThrow(() -> new ValidationException(
+                        "Nincs élő kezelési díj konfiguráció ehhez az irodához (" + branchId + ")."
+                                + " Kérj beállítást az ügyvezetőtől / főértéktárostól."));
     }
 
     /**
-     * Ezrelékes díjszámítás.
+     * Ezrelékes díjszámítás — az iroda SAJÁT mértékével és sapkájával (FR-4).
      * Legacy: _realEzrelek > 0 esetén → összeg × ezrelék / 1000
+     *
+     * <p>Sapka-paritás (pitfall #6): a {@code per_mille_cap} NULL vagy 0 értéke egyaránt
+     * „nincs sapka" (a korábbi {@code maxAmount > 0} guard reprodukálva) — különben
+     * egy 0 sapka néma 0 Ft díjat eredményezne.</p>
      */
-    private BigDecimal calculatePerMille(BigDecimal hufAmount) {
-        try {
-            String perMilleStr = systemParameterService.getValue("HANDLING_FEE_PER_MILLE");
-            BigDecimal perMille = new BigDecimal(perMilleStr);
-            BigDecimal fee = hufAmount.multiply(perMille)
-                    .divide(BigDecimal.valueOf(1000), 0, RoundingMode.HALF_UP);
+    private BigDecimal calculatePerMille(BigDecimal hufAmount, BranchHandlingFeeConfig config) {
+        BigDecimal perMille = config.getPerMilleRate() != null
+                ? config.getPerMilleRate()
+                : BigDecimal.ZERO;
+        BigDecimal fee = hufAmount.multiply(perMille)
+                .divide(BigDecimal.valueOf(1000), 0, RoundingMode.HALF_UP);
 
-            String maxStr = systemParameterService.getValue("HANDLING_FEE_PER_MILLE_MAX", "0");
-            BigDecimal maxAmount = new BigDecimal(maxStr);
-            if (maxAmount.compareTo(BigDecimal.ZERO) > 0 && fee.compareTo(maxAmount) > 0) {
-                log.debug("PER_MILLE díj {} Ft meghaladja a maximumot {} Ft — sapkázva", fee, maxAmount);
-                fee = maxAmount;
-            }
-
-            return fee;
-        } catch (Exception e) {
-            log.error("PER_MILLE díjszámítás hiba: {}", e.getMessage());
-            return BigDecimal.ZERO;
+        BigDecimal maxAmount = config.getPerMilleCap();
+        if (maxAmount != null && maxAmount.compareTo(BigDecimal.ZERO) > 0
+                && fee.compareTo(maxAmount) > 0) {
+            log.debug("PER_MILLE díj {} Ft meghaladja a maximumot {} Ft — sapkázva", fee, maxAmount);
+            fee = maxAmount;
         }
+
+        return fee;
     }
 
     /**
-     * Sávos díjszámítás.
+     * Sávos díjszámítás — a közös LIVE sávokkal (FR-6).
      * Legacy: _tranzsav[1..23] és _kdij[1..23] tömbök
      * Az összeg sávba esését a bracket tábla alapján keressük.
      */
-    private BigDecimal calculateBracket(BigDecimal hufAmount) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
+    private BigDecimal calculateBracket(BigDecimal hufAmount, UUID companyId) {
         List<HandlingFeeBracket> brackets = bracketRepository
-                .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
+                .findByCompanyIdAndStatusAndActiveOrderByBracketOrder(companyId, FeeConfigStatus.LIVE, true);
 
         if (brackets.isEmpty()) {
             log.warn("Nincs aktív kezelési díj sáv a {} céghez! Díj: 0 Ft", companyId);
@@ -189,6 +202,7 @@ public class HandlingFeeService {
 
     /**
      * Napi egyedi díj limit lekérése system_parameter-ből.
+     * (A díjfeloldás NEM használ system_paramétert — csak ez a limit maradt itt.)
      */
     private int getDailyCustomFeeLimit() {
         try {

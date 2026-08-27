@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { diagnosticsApi, ErrorSummary, ClientErrorLog } from '../../services/api/diagnostics'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 /**
  * Admin Hiba-Monitor Dashboard.
@@ -72,14 +73,15 @@ export default function ErrorMonitorPage() {
   }
 
   if (loading && !summary) {
-    return <div className="p-6">Betöltés…</div>
+    return <div className="p-6">{i18n.t('literals.betoltes-3')}</div>
   }
 
   if (error) {
     return (
       <div className="p-6">
         <div className="rounded border border-red-300 bg-red-50 p-4 text-red-800">
-          Hiba a betöltésnél: {error}
+          {i18n.t('literals.hiba-a-betoltesnel')}
+          {error}
         </div>
       </div>
     )
@@ -88,12 +90,14 @@ export default function ErrorMonitorPage() {
   return (
     <div className="p-6 space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">Hiba-monitor</h1>
+        <h1 className="text-2xl font-bold">{i18n.t('literals.hiba-monitor')}</h1>
         <p className="text-sm text-gray-600">
-          Kliens-oldali hibajelentések — automatikusan érkeznek a Pénztár klienseiről.
+          {i18n.t('literals.kliens-oldali-hibajelentesek-automatikus')}
           {summary?.generatedAt && (
             <span className="ml-2 text-gray-400">
-              (Frissítve: {new Date(summary.generatedAt).toLocaleString('hu-HU')})
+              {i18n.t('literals.frissitve')}
+              {new Date(summary.generatedAt).toLocaleString('hu-HU')}
+              {i18n.t('literals.lit-2')}
             </span>
           )}
         </p>
@@ -132,16 +136,16 @@ export default function ErrorMonitorPage() {
       )}
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Hibanapló (lapozható)</h2>
+        <h2 className="mb-3 text-lg font-semibold">{i18n.t('literals.hibanaplo-lapozhato')}</h2>
         <div className="overflow-x-auto rounded border border-gray-200">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left">
               <tr>
-                <th className="p-2">Idő</th>
-                <th className="p-2">Komponens</th>
-                <th className="p-2">Verzió</th>
-                <th className="p-2">Felhasználó</th>
-                <th className="p-2">Hibaüzenet</th>
+                <th className="p-2">{i18n.t('literals.ido-2')}</th>
+                <th className="p-2">{i18n.t('literals.komponens')}</th>
+                <th className="p-2">{i18n.t('literals.verzio')}</th>
+                <th className="p-2">{i18n.t('literals.felhasznalo-2')}</th>
+                <th className="p-2">{i18n.t('literals.hibauzenet')}</th>
                 <th className="p-2"></th>
               </tr>
             </thead>
@@ -149,7 +153,7 @@ export default function ErrorMonitorPage() {
               {errors.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-4 text-center text-gray-500">
-                    Nincs jelentett hiba. Ez jó hír.
+                    {i18n.t('literals.nincs-jelentett-hiba-ez-jo-hir')}
                   </td>
                 </tr>
               )}
@@ -169,7 +173,7 @@ export default function ErrorMonitorPage() {
                       onClick={() => void openErrorDetails(e)}
                       className="text-blue-600 hover:underline"
                     >
-                      Részletek
+                      {i18n.t('literals.reszletek-2')}
                     </button>
                   </td>
                 </tr>
@@ -180,7 +184,10 @@ export default function ErrorMonitorPage() {
 
         <div className="mt-3 flex items-center justify-between">
           <span className="text-sm text-gray-600">
-            Oldal {page + 1} / {Math.max(totalPages, 1)}
+            {i18n.t('literals.oldal')}
+            {page + 1}
+            {i18n.t('literals.lit-10')}
+            {Math.max(totalPages, 1)}
           </span>
           <div className="space-x-2">
             <button
@@ -188,14 +195,14 @@ export default function ErrorMonitorPage() {
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               className="rounded border px-3 py-1 disabled:opacity-50"
             >
-              ← Előző
+              {i18n.t('literals.elozo')}
             </button>
             <button
               disabled={page + 1 >= totalPages}
               onClick={() => setPage((p) => p + 1)}
               className="rounded border px-3 py-1 disabled:opacity-50"
             >
-              Következő →
+              {i18n.t('literals.kovetkezo')}
             </button>
           </div>
         </div>
@@ -249,7 +256,7 @@ function BreakdownTable({
           {rows.length === 0 && (
             <tr>
               <td colSpan={2} className="p-2 text-center text-gray-500">
-                Nincs adat
+                {i18n.t('literals.nincs-adat')}
               </td>
             </tr>
           )}
@@ -280,19 +287,23 @@ function ErrorDetailModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded bg-white p-6 shadow-lg">
         <div className="mb-4 flex items-start justify-between">
-          <h2 className="text-lg font-bold">Hiba #{error.id}</h2>
+          <h2 className="text-lg font-bold">
+            {i18n.t('literals.hiba-2')}
+            {error.id}
+          </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            ✕
+            {i18n.t('literals.lit-14')}
           </button>
         </div>
         {loading && (
           <div className="mb-3 rounded border border-blue-200 bg-blue-50 p-2 text-sm text-blue-800">
-            Részletek betöltése…
+            {i18n.t('literals.reszletek-betoltese')}
           </div>
         )}
         {detailError && (
           <div className="mb-3 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
-            A teljes hibarészlet nem tölthető be: {detailError}
+            {i18n.t('literals.a-teljes-hibareszlet-nem-toltheto-be')}
+            {detailError}
           </div>
         )}
         <dl className="space-y-2 text-sm">

@@ -9,6 +9,7 @@ import {
   type DariusFixingRequestStatus,
 } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 interface DariusFixingPanelProps {
   date: string
@@ -230,7 +231,10 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
     })
   }
 
-  if (loading) return <div className="py-6 text-center text-sm text-gray-500">Betöltés...</div>
+  if (loading)
+    return (
+      <div className="py-6 text-center text-sm text-gray-500">{i18n.t('literals.betoltes')}</div>
+    )
 
   return (
     <div className="space-y-4">
@@ -242,9 +246,11 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
       )}
 
       <section className="rounded border p-4">
-        <h2 className="mb-3 font-semibold">Bankfiók-törzs</h2>
+        <h2 className="mb-3 font-semibold">{i18n.t('literals.bankfiok-torzs')}</h2>
         {branches.length === 0 ? (
-          <div className="mb-3 text-sm text-gray-500">Nincs aktív bankfiók.</div>
+          <div className="mb-3 text-sm text-gray-500">
+            {i18n.t('literals.nincs-aktiv-bankfiok')}
+          </div>
         ) : (
           <div className="mb-3 space-y-1">
             {branches.map((branch) => (
@@ -253,7 +259,9 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                 className="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm"
               >
                 <span>
-                  <strong>{branch.bankBranchCode}</strong> — {branch.name}
+                  <strong>{branch.bankBranchCode}</strong>
+                  {i18n.t('literals.lit-18')}
+                  {branch.name}
                 </span>
                 <button
                   type="button"
@@ -261,7 +269,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                   disabled={mutationPending}
                   onClick={() => handleDeactivate(branch)}
                 >
-                  Deaktiválás
+                  {i18n.t('literals.deaktivalas')}
                 </button>
               </div>
             ))}
@@ -269,7 +277,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
         )}
         <form className="flex flex-wrap items-end gap-2" onSubmit={handleBranchCreate}>
           <label className="text-xs text-gray-600">
-            Bankfiók kódja
+            {i18n.t('literals.bankfiok-kodja')}
             <input
               className="input-field mt-1 block text-sm"
               value={branchCode}
@@ -277,7 +285,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
             />
           </label>
           <label className="text-xs text-gray-600">
-            Bankfiók neve
+            {i18n.t('literals.bankfiok-neve')}
             <input
               className="input-field mt-1 block text-sm"
               value={branchName}
@@ -285,7 +293,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
             />
           </label>
           <button type="submit" className="btn-primary text-sm" disabled={mutationPending}>
-            Új bankfiók
+            {i18n.t('literals.uj-bankfiok')}
           </button>
         </form>
       </section>
@@ -293,7 +301,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
       {branches.length === 0 && (
         <div className="flex items-center gap-2 rounded border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
           <AlertTriangle size={16} />
-          Nincs bankfiók-azonosító konfigurálva — fixing-igény nem rögzíthető
+          {i18n.t('literals.nincs-bankfiok-azonosito-konfiguralva-fi')}
         </div>
       )}
 
@@ -304,22 +312,24 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
         <form className="space-y-3" onSubmit={handleRequestSubmit}>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="text-xs text-gray-600">
-              Bankfiók
+              {i18n.t('literals.bankfiok')}
               <select
                 className="input-field mt-1 block w-full text-sm"
                 value={bankBranchId}
                 onChange={(event) => setBankBranchId(event.target.value)}
               >
-                <option value="">— válasszon —</option>
+                <option value="">{i18n.t('literals.valasszon-2')}</option>
                 {branches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
-                    {branch.bankBranchCode} — {branch.name}
+                    {branch.bankBranchCode}
+                    {i18n.t('literals.lit-18')}
+                    {branch.name}
                   </option>
                 ))}
               </select>
             </label>
             <label className="text-xs text-gray-600">
-              Megjegyzés
+              {i18n.t('literals.megjegyzes')}
               <input
                 className="input-field mt-1 block w-full text-sm"
                 value={note}
@@ -332,14 +342,15 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
             {lines.map((line, index) => (
               <div key={index} className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
                 <label className="text-xs text-gray-600">
-                  Valutanem {index + 1}
+                  {i18n.t('literals.valutanem-2')}
+                  {index + 1}
                   <select
                     aria-label={`Valutanem ${index + 1}`}
                     className="input-field mt-1 block w-full text-sm"
                     value={line.currencyCode}
                     onChange={(event) => updateLine(index, { currencyCode: event.target.value })}
                   >
-                    <option value="">— válasszon —</option>
+                    <option value="">{i18n.t('literals.valasszon-2')}</option>
                     {currencyCodes.map((code) => (
                       <option key={code} value={code}>
                         {code}
@@ -348,7 +359,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                   </select>
                 </label>
                 <label className="text-xs text-gray-600">
-                  Beszállított
+                  {i18n.t('literals.beszallitott')}
                   <input
                     aria-label={`Beszállított összeg ${index + 1}`}
                     type="number"
@@ -360,7 +371,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                   />
                 </label>
                 <label className="text-xs text-gray-600">
-                  Elvitt
+                  {i18n.t('literals.elvitt')}
                   <input
                     aria-label={`Elvitt összeg ${index + 1}`}
                     type="number"
@@ -393,7 +404,8 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
               className="btn-secondary text-sm"
               onClick={() => setLines((current) => [...current, emptyLine()])}
             >
-              <Plus size={14} /> Sor hozzáadása
+              <Plus size={14} />
+              {i18n.t('literals.sor-hozzaadasa')}
             </button>
             <button
               type="submit"
@@ -404,7 +416,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
             </button>
             {editingId && (
               <button type="button" className="btn-secondary text-sm" onClick={resetRequestForm}>
-                Szerkesztés megszakítása
+                {i18n.t('literals.szerkesztes-megszakitasa')}
               </button>
             )}
           </div>
@@ -412,9 +424,14 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
       </section>
 
       <section className="rounded border p-4">
-        <h2 className="mb-3 font-semibold">Fixing-igények — {date}</h2>
+        <h2 className="mb-3 font-semibold">
+          {i18n.t('literals.fixing-igenyek')}
+          {date}
+        </h2>
         {requests.length === 0 ? (
-          <div className="text-sm text-gray-500">Nincs fixing-igény a kiválasztott napra.</div>
+          <div className="text-sm text-gray-500">
+            {i18n.t('literals.nincs-fixing-igeny-a-kivalasztott-napra')}
+          </div>
         ) : (
           <div className="space-y-2">
             {requests.map((request) => {
@@ -430,7 +447,9 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <strong>{request.bankBranchCode}</strong> — {request.bankBranchName}
+                      <strong>{request.bankBranchCode}</strong>
+                      {i18n.t('literals.lit-18')}
+                      {request.bankBranchName}
                     </div>
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${status.color}`}
@@ -441,12 +460,18 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                   <div className="mt-2 space-y-1 text-xs text-gray-600">
                     {request.lines.map((line, index) => (
                       <div key={`${line.currencyCode}-${index}`}>
-                        {line.currencyCode}: beszállított{' '}
-                        {line.deliveredAmount.toLocaleString('hu-HU')}, elvitt{' '}
-                        {line.collectedAmount.toLocaleString('hu-HU')}
+                        {line.currencyCode}
+                        {i18n.t('literals.beszallitott-2')}{' '}
+                        {line.deliveredAmount.toLocaleString('hu-HU')}
+                        {i18n.t('literals.elvitt-2')} {line.collectedAmount.toLocaleString('hu-HU')}
                       </div>
                     ))}
-                    {request.note && <div>Megjegyzés: {request.note}</div>}
+                    {request.note && (
+                      <div>
+                        {i18n.t('literals.megjegyzes-3')}
+                        {request.note}
+                      </div>
+                    )}
                   </div>
                   {(request.status === 'DRAFT' || request.status === 'APPROVED') && (
                     <div className="mt-3 flex gap-2 border-t pt-2">
@@ -458,7 +483,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                             disabled={mutationPending}
                             onClick={() => handleApprove(request.id)}
                           >
-                            Jóváhagy
+                            {i18n.t('literals.jovahagy')}
                           </button>
                           <button
                             type="button"
@@ -466,7 +491,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                             disabled={mutationPending}
                             onClick={() => handleEdit(request)}
                           >
-                            Szerkeszt
+                            {i18n.t('literals.szerkeszt')}
                           </button>
                         </>
                       )}
@@ -476,7 +501,7 @@ export default function DariusFixingPanel({ date }: DariusFixingPanelProps) {
                         disabled={mutationPending}
                         onClick={() => handleCancel(request.id)}
                       >
-                        Visszavon
+                        {i18n.t('literals.visszavon')}
                       </button>
                     </div>
                   )}

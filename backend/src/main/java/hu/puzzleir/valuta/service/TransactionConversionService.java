@@ -158,7 +158,7 @@ public class TransactionConversionService {
 
         // Kezelesi dij
         BigDecimal serverHandlingFee = handlingFeeCalculator.calculate(
-                roundedHufAmount, TransactionType.CONVERSION, request.getHandlingFee());
+                roundedHufAmount, TransactionType.CONVERSION, request.getHandlingFee(), branchId);
 
         // GAP 4: konverzio = 2 bizonylat
         String buyReceiptNumber = receiptSequenceService.generateReceiptNumber(branchId, TransactionType.BUY);

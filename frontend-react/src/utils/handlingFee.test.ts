@@ -25,6 +25,140 @@ const bracket = (rows: Array<[number, number, number]>): HandlingFeeConfig => ({
   })),
 })
 
+// FK-097 WU-15 (FR-4/FR-5): cache-first loadHandlingFeeConfig — RED before implementation.
+import { loadHandlingFeeConfig, mapCachedHandlingFeeConfig } from './handlingFee'
+import type { ElectronCachedHandlingFeeConfig } from './handlingFee'
+import { vi, beforeEach } from 'vitest'
+
+// Mock the two data sources (electronTransactions for the cache, settings for the HTTP API)
+vi.mock('./electronTransactions', () => ({
+  isElectronQueueAvailable: vi.fn(() => false),
+  getElectronCachedHandlingFeeConfig: vi.fn(async () => null),
+}))
+vi.mock('../services/api/settings', async () => {
+  const actual = await vi.importActual<typeof import('../services/api/settings')>(
+    '../services/api/settings',
+  )
+  return { ...actual, branchFeeConfigApi: { own: vi.fn(async () => null) } }
+})
+import {
+  isElectronQueueAvailable,
+  getElectronCachedHandlingFeeConfig,
+} from './electronTransactions'
+import { branchFeeConfigApi } from '../services/api/settings'
+
+describe('loadHandlingFeeConfig — cache-first olvasas (FK-097 FR-4/FR-5)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('FR-4: van cache -> a helyi SQLite-bol olvas, NEM hiv HTTP-t', async () => {
+    vi.mocked(isElectronQueueAvailable).mockReturnValue(true)
+    vi.mocked(getElectronCachedHandlingFeeConfig).mockResolvedValue({
+      branch_id: 'b-1',
+      branch_code: '001',
+      company_id: 'c-1',
+      fee_mode: 'PER_MILLE',
+      per_mille_rate: 3,
+      per_mille_cap: null,
+      bracket_json: null,
+      valid_from: '2026-08-26',
+      synced_at: '2026-08-26T19:00:00Z',
+    })
+    const cfg = await loadHandlingFeeConfig()
+    expect(cfg).not.toBeNull()
+    expect(cfg?.feeType).toBe('PER_MILLE')
+    expect(cfg?.perMilleRate).toBe(3)
+    expect(branchFeeConfigApi.own).not.toHaveBeenCalled()
+  })
+
+  it('FR-5: ures cache -> HTTP-fallback a /branch-fee-config/own vegzetre', async () => {
+    vi.mocked(isElectronQueueAvailable).mockReturnValue(true)
+    vi.mocked(getElectronCachedHandlingFeeConfig).mockResolvedValue(null)
+    vi.mocked(branchFeeConfigApi.own).mockResolvedValue({
+      branchId: 'b-1',
+      branchCode: '001',
+      feeMode: 'PER_MILLE',
+      perMilleRate: 4,
+      perMilleCap: 500,
+      validFrom: '2026-08-26',
+      brackets: [],
+    })
+    const cfg = await loadHandlingFeeConfig()
+    expect(branchFeeConfigApi.own).toHaveBeenCalledTimes(1)
+    expect(cfg?.feeType).toBe('PER_MILLE')
+    expect(cfg?.perMilleRate).toBe(4)
+  })
+
+  it('mindketto hibas -> null (a regi .catch(() => setFeeConfig(null)) viselkedes)', async () => {
+    vi.mocked(isElectronQueueAvailable).mockReturnValue(true)
+    vi.mocked(getElectronCachedHandlingFeeConfig).mockRejectedValue(new Error('db'))
+    vi.mocked(branchFeeConfigApi.own).mockRejectedValue(new Error('http'))
+    const cfg = await loadHandlingFeeConfig()
+    expect(cfg).toBeNull()
+  })
+
+  it('web modban (nincs Electron) -> egyenesen HTTP', async () => {
+    vi.mocked(isElectronQueueAvailable).mockReturnValue(false)
+    vi.mocked(branchFeeConfigApi.own).mockResolvedValue({
+      branchId: 'b-1',
+      branchCode: '001',
+      feeMode: 'BRACKET',
+      perMilleRate: null,
+      perMilleCap: null,
+      validFrom: '2026-08-26',
+      brackets: [{ bracketOrder: 1, upperLimit: 100000, feeAmount: 500, active: true }],
+    })
+    const cfg = await loadHandlingFeeConfig()
+    expect(isElectronQueueAvailable).toHaveBeenCalled()
+    expect(branchFeeConfigApi.own).toHaveBeenCalledTimes(1)
+    expect(cfg?.feeType).toBe('BRACKET')
+    expect(cfg?.brackets).toHaveLength(1)
+  })
+
+  it('NFR-3 korpusz: cached PER_MILLE sor a tukor-keplet szerint szamol (hatarertekekkel)', async () => {
+    vi.mocked(isElectronQueueAvailable).mockReturnValue(true)
+    vi.mocked(getElectronCachedHandlingFeeConfig).mockResolvedValue({
+      branch_id: 'b-1',
+      branch_code: '001',
+      company_id: 'c-1',
+      fee_mode: 'PER_MILLE',
+      per_mille_rate: 18.4,
+      per_mille_cap: null,
+      bracket_json: null,
+      valid_from: '2026-08-26',
+      synced_at: '2026-08-26T19:00:00Z',
+    })
+    const cfg = await loadHandlingFeeConfig()
+    expect(cfg).not.toBeNull()
+    // Ellenor2 W7 merese: 3125 * 18.4 / 1000 double-ben 57.5 alatti -> 57 -> roundHuf 55,
+    // mig a BigDecimal-pontos szerver 57500 -> HALF_UP 58 -> 60. A tukor a SAJAT kepletet
+    // reprodukalja (dokumentalt maradvanykockazat, plan rework W7 dontes); ez a teszt a
+    // tukor-konzisztenciat rogziti, nem a BigDecimal-paritast allitja.
+    expect(computeHandlingFee(3125, cfg)).toBe(55)
+    expect(computeHandlingFee(100000, cfg)).toBe(1840)
+    expect(computeHandlingFee(5000, cfg)).toBe(90)
+  })
+
+  it('torott bracket_json nem dob hibat (ures savlista)', () => {
+    const row: ElectronCachedHandlingFeeConfig = {
+      branch_id: 'b-1',
+      branch_code: '001',
+      company_id: 'c-1',
+      fee_mode: 'BRACKET',
+      per_mille_rate: null,
+      per_mille_cap: null,
+      bracket_json: '{not json',
+      valid_from: '2026-08-26',
+      synced_at: '2026-08-26T19:00:00Z',
+    }
+    expect(() => mapCachedHandlingFeeConfig(row)).not.toThrow()
+    const cfg = mapCachedHandlingFeeConfig(row)
+    expect(cfg.feeType).toBe('BRACKET')
+    expect(cfg.brackets).toEqual([])
+  })
+})
+
 describe('computeHandlingFee — PER_MILLE (backend-paritás)', () => {
   it('összeg × ezrelék / 1000, HALF_UP egészre, majd 5 Ft-szabály', () => {
     // 123 456 × 3 / 1000 = 370.368 → HALF_UP 370 → roundToFive 370

@@ -4,6 +4,7 @@ import { documentShortageApi, type DocumentShortage } from '../../services/api/d
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import i18n from '../../i18n'
 
 /**
  * Okmányhiány-regiszter (legacy OKMANYHIANY / OKMCTRL.dll).
@@ -78,7 +79,8 @@ export default function DocumentShortagePage() {
     <div className="form-panel space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="form-title flex items-center gap-2">
-          <FileWarning className="h-6 w-6" /> Okmányhiány-regiszter
+          <FileWarning className="h-6 w-6" />
+          {i18n.t('literals.okmanyhiany-regiszter')}
         </h1>
         <div className="flex items-center gap-2">
           <label className="text-sm flex items-center gap-1">
@@ -87,7 +89,7 @@ export default function DocumentShortagePage() {
               checked={openOnly}
               onChange={(e) => setOpenOnly(e.target.checked)}
             />
-            Csak nyitott
+            {i18n.t('literals.csak-nyitott')}
           </label>
           <button onClick={() => void load(openOnly)} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -99,7 +101,7 @@ export default function DocumentShortagePage() {
 
       <div className="grid grid-cols-12 gap-2 items-end">
         <div className="col-span-3">
-          <label className="form-label required">Hiányzó okmány</label>
+          <label className="form-label required">{i18n.t('literals.hianyzo-okmany')}</label>
           <input
             className="form-input"
             value={form.missingDocument}
@@ -108,7 +110,7 @@ export default function DocumentShortagePage() {
           />
         </div>
         <div className="col-span-3">
-          <label className="form-label">Ügyfél</label>
+          <label className="form-label">{i18n.t('literals.ugyfel-2')}</label>
           <input
             className="form-input"
             value={form.customerName}
@@ -116,7 +118,7 @@ export default function DocumentShortagePage() {
           />
         </div>
         <div className="col-span-2">
-          <label className="form-label">Iroda kód</label>
+          <label className="form-label">{i18n.t('literals.iroda-kod')}</label>
           <input
             className="form-input"
             value={form.branchCode}
@@ -124,7 +126,7 @@ export default function DocumentShortagePage() {
           />
         </div>
         <div className="col-span-2">
-          <label className="form-label">Bizonylatszám</label>
+          <label className="form-label">{i18n.t('literals.bizonylatszam-2')}</label>
           <input
             className="form-input"
             value={form.receiptNumber}
@@ -136,7 +138,8 @@ export default function DocumentShortagePage() {
             onClick={() => void add()}
             className="form-button-primary flex items-center gap-1 w-full justify-center"
           >
-            <Plus className="h-4 w-4" /> Rögzít
+            <Plus className="h-4 w-4" />
+            {i18n.t('literals.rogzit')}
           </button>
         </div>
       </div>
@@ -146,22 +149,22 @@ export default function DocumentShortagePage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Rögzítve
+                {i18n.t('literals.rogzitve')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Iroda
+                {i18n.t('literals.iroda')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Ügyfél
+                {i18n.t('literals.ugyfel-2')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Bizonylat
+                {i18n.t('literals.bizonylat')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Hiányzó okmány
+                {i18n.t('literals.hianyzo-okmany')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Állapot
+                {i18n.t('literals.allapot')}
               </th>
               <th className="px-3 py-2"></th>
             </tr>
@@ -170,7 +173,7 @@ export default function DocumentShortagePage() {
             {items.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
-                  Nincs tétel.
+                  {i18n.t('literals.nincs-tetel')}
                 </td>
               </tr>
             )}
@@ -185,9 +188,13 @@ export default function DocumentShortagePage() {
                 <td className="px-3 py-2 text-sm">{it.missingDocument}</td>
                 <td className="px-3 py-2 text-sm">
                   {it.resolvedAt ? (
-                    <span className="text-green-600">Pótolva ({it.resolvedAt.slice(0, 10)})</span>
+                    <span className="text-green-600">
+                      {i18n.t('literals.potolva')}
+                      {it.resolvedAt.slice(0, 10)}
+                      {i18n.t('literals.lit-2')}
+                    </span>
                   ) : (
-                    <span className="text-orange-600">Nyitott</span>
+                    <span className="text-orange-600">{i18n.t('literals.nyitott')}</span>
                   )}
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -197,7 +204,8 @@ export default function DocumentShortagePage() {
                       className="text-green-600 hover:text-green-800 flex items-center gap-1 text-sm"
                       title="Pótolva"
                     >
-                      <Check className="h-4 w-4" /> Pótolva
+                      <Check className="h-4 w-4" />
+                      {i18n.t('literals.potolva-2')}
                     </button>
                   )}
                 </td>

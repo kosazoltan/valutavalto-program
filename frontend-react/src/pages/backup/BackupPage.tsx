@@ -7,6 +7,7 @@ import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 interface BackupItem {
   id: string | number
@@ -107,7 +108,11 @@ export default function BackupPage() {
       setBusyAction('config-export-branch')
       setError(null)
       const bundle = await configExportApi.exportBranch(branchId)
-      downloadBlob(JSON.stringify(bundle, null, 2), `config_${bundle.branchCode || branchId}.json`, 'application/json')
+      downloadBlob(
+        JSON.stringify(bundle, null, 2),
+        `config_${bundle.branchCode || branchId}.json`,
+        'application/json',
+      )
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('BackupPage', 'Konfiguráció export hiba:', err)
@@ -122,7 +127,11 @@ export default function BackupPage() {
       setBusyAction('config-export-all')
       setError(null)
       const bundles = await configExportApi.exportAll()
-      downloadBlob(JSON.stringify(bundles, null, 2), `config_all_${new Date().toISOString().slice(0, 10)}.json`, 'application/json')
+      downloadBlob(
+        JSON.stringify(bundles, null, 2),
+        `config_all_${new Date().toISOString().slice(0, 10)}.json`,
+        'application/json',
+      )
     } catch (err) {
       const msg = getErrorMessage(err)
       logger.error('BackupPage', 'Összes konfiguráció export hiba:', err)
@@ -156,7 +165,7 @@ export default function BackupPage() {
             className="form-button flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
-            Új teljes mentés
+            {i18n.t('literals.uj-teljes-mentes')}
           </button>
           <button onClick={() => void loadData()} className="form-button p-2" title="Frissítés">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -180,10 +189,11 @@ export default function BackupPage() {
       <section className="rounded border border-blue-200 bg-blue-50 p-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-blue-950">Konfiguráció export</h2>
+            <h2 className="text-sm font-semibold text-blue-950">
+              {i18n.t('literals.konfiguracio-export')}
+            </h2>
             <p className="mt-1 text-sm text-blue-800">
-              Telephelyi rendszerparaméterek, árfolyam-beállítások, kerekítés, nyomtatási sablonok
-              és LED konfiguráció JSON mentése.
+              {i18n.t('literals.telephelyi-rendszerparameterek-arfolyam')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -194,7 +204,7 @@ export default function BackupPage() {
               className="form-button flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
-              Telephely config
+              {i18n.t('literals.telephely-config')}
             </button>
             <button
               type="button"
@@ -203,7 +213,7 @@ export default function BackupPage() {
               className="form-button flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
-              Összes config
+              {i18n.t('literals.osszes-config')}
             </button>
           </div>
         </div>
@@ -244,7 +254,7 @@ export default function BackupPage() {
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -292,7 +302,9 @@ export default function BackupPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

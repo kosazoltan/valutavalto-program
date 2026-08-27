@@ -441,3 +441,59 @@ describe('FK-086 — teruleti_vezeto nem látja a /daily-check menüpontot', () 
     }
   })
 })
+
+describe('menuVisibility — FK-096 FR-12: kezelési díj konfiguráció RBAC-szűkítése', () => {
+  it('irodavezeto full modban nem latja a /handling-fee-config bejegyzest (strict least-privilege)', () => {
+    const ctx = ctxFor(['irodavezeto'], 'full')
+    const visible = menuGroups.flatMap((g) =>
+      g.items.filter((i) => i.path === '/handling-fee-config' && isMenuItemVisible(i, g, ctx)),
+    )
+    expect(visible, 'irodavezeto full modban nem lathatja').toEqual([])
+  })
+
+  it('belso_ellenor full modban nem latja a /handling-fee-config bejegyzest (strict least-privilege)', () => {
+    const ctx = ctxFor(['belso_ellenor'], 'full')
+    const visible = menuGroups.flatMap((g) =>
+      g.items.filter((i) => i.path === '/handling-fee-config' && isMenuItemVisible(i, g, ctx)),
+    )
+    expect(visible, 'belso_ellenor full modban nem lathatja').toEqual([])
+  })
+
+  it('penztar modban a felugyeleti (SZERVER_ROLES) irodavezeto az oversight-bypass miatt latja (szandekos)', () => {
+    // Or: a lokal kliensek felugyeleti userei SZANDÉKOSAN latjak a teljes menut
+    // (isSupervisoryMenuBypass, menuVisibility.ts) — a route-gate viszont bypass NELKUL,
+    // szigoruan ervenyesul, igy a config-kepernyo hozzaferese tovabbra is tiltott (FR-12).
+    const ctx = ctxFor(['irodavezeto'], 'penztar')
+    const visible = menuGroups.flatMap((g) =>
+      g.items.filter((i) => i.path === '/handling-fee-config' && isMenuItemVisible(i, g, ctx)),
+    )
+    expect(visible.length).toBeGreaterThan(0)
+  })
+
+  it('foertektar full modban latja a /handling-fee-config bejegyzest', () => {
+    const ctx = ctxFor(['foertektar'], 'full')
+    const visible = menuGroups.flatMap((g) =>
+      g.items.filter((i) => i.path === '/handling-fee-config' && isMenuItemVisible(i, g, ctx)),
+    )
+    expect(visible.length).toBeGreaterThan(0)
+  })
+
+  it('penztar modban a penztaros read-only kartya miatt tovabbra is latja a bejegyzest', () => {
+    const ctx = ctxFor(['penztar'], 'penztar')
+    const visible = menuGroups.flatMap((g) =>
+      g.items.filter((i) => i.path === '/handling-fee-config' && isMenuItemVisible(i, g, ctx)),
+    )
+    expect(visible.length).toBeGreaterThan(0)
+  })
+
+  it('a route-gate unioja (effectiveCanonicalRolesForPath) sem engedi at az irodavezetot', () => {
+    const roles = effectiveCanonicalRolesForPath(menuGroups, '/handling-fee-config')
+    expect(roles).toBeDefined()
+    expect(roles).not.toContain('irodavezeto')
+    expect(roles).not.toContain('belso_ellenor')
+    expect(roles).toContain('ugyvezeto')
+    expect(roles).toContain('foertektar')
+    // Pénztáros read-only nézet: a penztar mód továbbra is átenged (pitfall #14).
+    expect(roles).toContain('penztar')
+  })
+})

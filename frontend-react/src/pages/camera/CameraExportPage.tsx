@@ -21,6 +21,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { useTextReasonModal } from '../../components/TextReasonModal'
+import i18n from '../../i18n'
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   REQUESTED: { label: 'Jóváhagyásra vár', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
@@ -246,10 +247,12 @@ export default function CameraExportPage() {
                 }}
                 className="input-field text-sm w-full"
               >
-                <option value="">Válasszon...</option>
+                <option value="">{i18n.t('literals.valasszon')}</option>
                 {safeArray<BranchInfo>(branches).map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.code} — {b.name}
+                    {b.code}
+                    {i18n.t('literals.lit-18')}
+                    {b.name}
                   </option>
                 ))}
               </select>
@@ -318,7 +321,8 @@ export default function CameraExportPage() {
           <h3 className="font-medium text-sm flex items-center gap-1">
             <Clock size={14} />
             {t('camera.jovahagyasraVaroKerelmek')}
-            {pending.length})
+            {pending.length}
+            {i18n.t('literals.lit-2')}
           </h3>
           {pending.map((r) => (
             <div
@@ -327,7 +331,9 @@ export default function CameraExportPage() {
             >
               <div>
                 <span className="font-medium">
-                  {fmtDt(r.periodFrom)} — {fmtDt(r.periodTo)}
+                  {fmtDt(r.periodFrom)}
+                  {i18n.t('literals.lit-18')}
+                  {fmtDt(r.periodTo)}
                 </span>
                 <span className="ml-2 text-gray-500 text-xs">
                   {t('camera.kerte')}
@@ -360,7 +366,9 @@ export default function CameraExportPage() {
       <div className="grid grid-cols-3 gap-3">
         {/* Request list */}
         <div className="col-span-2 space-y-1">
-          {loading && <div className="text-center py-4 text-gray-400">Betöltés...</div>}
+          {loading && (
+            <div className="text-center py-4 text-gray-400">{i18n.t('literals.betoltes')}</div>
+          )}
           {!loading && requests.length === 0 && (
             <div className="text-gray-400 text-sm text-center py-4">
               {t('camera.valasszonIrodatAzExportKerelmek')}
@@ -385,7 +393,9 @@ export default function CameraExportPage() {
                 <div className="flex items-center gap-2">
                   <StatusBadge status={r.status} />
                   <span className="text-sm">
-                    {fmtDt(r.periodFrom)} — {fmtDt(r.periodTo)}
+                    {fmtDt(r.periodFrom)}
+                    {i18n.t('literals.lit-18')}
+                    {fmtDt(r.periodTo)}
                   </span>
                 </div>
                 <span className="text-xs text-gray-500">{fmtDt(r.createdAt)}</span>
@@ -422,7 +432,9 @@ export default function CameraExportPage() {
                   </div>
                   <div>
                     {t('camera.idoszak')}
-                    {fmtDt(selected.periodFrom)} — {fmtDt(selected.periodTo)}
+                    {fmtDt(selected.periodFrom)}
+                    {i18n.t('literals.lit-18')}
+                    {fmtDt(selected.periodTo)}
                   </div>
                   <div>
                     {t('camera.kerte')}
@@ -434,13 +446,18 @@ export default function CameraExportPage() {
                   </div>
                   {selected.approvedBy && (
                     <div>
-                      {t('camera.jovahagyta')} {selected.approvedBy} ({fmtDt(selected.approvedAt)})
+                      {t('camera.jovahagyta')} {selected.approvedBy}
+                      {i18n.t('literals.lit')}
+                      {fmtDt(selected.approvedAt)}
+                      {i18n.t('literals.lit-2')}
                     </div>
                   )}
                   {selected.secondApprovedBy && (
                     <div>
-                      {t('camera.masodikJovahagyo')} {selected.secondApprovedBy} (
-                      {fmtDt(selected.secondApprovedAt)})
+                      {t('camera.masodikJovahagyo')} {selected.secondApprovedBy}
+                      {i18n.t('literals.lit')}
+                      {fmtDt(selected.secondApprovedAt)}
+                      {i18n.t('literals.lit-2')}
                     </div>
                   )}
                   {selected.rejectionReason && (
@@ -462,7 +479,8 @@ export default function CameraExportPage() {
                     <div>
                       {t('camera.manifestHash')}{' '}
                       <code className="text-[10px] bg-gray-100 px-1">
-                        {selected.manifestHash.slice(0, 16)}...
+                        {selected.manifestHash.slice(0, 16)}
+                        {i18n.t('literals.lit-16')}
                       </code>
                     </div>
                   )}
@@ -520,7 +538,9 @@ export default function CameraExportPage() {
                           <span className="text-gray-400">{fmtDt(c.eventTimestamp)}</span>
                         </div>
                         <div className="text-gray-500">
-                          {c.actor} — {c.details}
+                          {c.actor}
+                          {i18n.t('literals.lit-18')}
+                          {c.details}
                         </div>
                       </div>
                     ))}

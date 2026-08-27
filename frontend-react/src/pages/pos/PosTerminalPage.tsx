@@ -9,6 +9,7 @@ import { safeArray } from '@/utils/safeArray'
 import { logger } from '../../utils/logger'
 import { toast } from '../../components/ui/toaster'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function PosTerminalPage() {
   const { t } = useTranslation()
@@ -79,7 +80,8 @@ export default function PosTerminalPage() {
 
   const renderRuntimeStatus = (terminal: PosTerminal) => {
     const status = terminalStatuses[terminal.terminalId]
-    if (!status) return <span className="badge badge-gray">Nincs lekérdezve</span>
+    if (!status)
+      return <span className="badge badge-gray">{i18n.t('literals.nincs-lekerdezve')}</span>
     return (
       <span className={`badge ${status.connected ? 'badge-green' : 'badge-gray'}`}>
         {status.connected ? 'Elérhető' : 'Nem elérhető'}
@@ -142,7 +144,7 @@ export default function PosTerminalPage() {
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">COM/IP</dt>
+              <dt className="text-gray-500">{i18n.t('literals.com-ip')}</dt>
               <dd className="font-medium text-gray-900">
                 {selectedTerminal.comPort || selectedTerminal.ipAddress || '-'}
               </dd>
@@ -161,7 +163,7 @@ export default function PosTerminalPage() {
 
       {/* Terminálok lista */}
       {loading ? (
-        <div>Betöltés...</div>
+        <div>{i18n.t('literals.betoltes')}</div>
       ) : (
         <div className="form-panel">
           {filtered.length === 0 ? (
@@ -203,7 +205,7 @@ export default function PosTerminalPage() {
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-gray-500">Backend állapot</dt>
+                          <dt className="text-gray-500">{i18n.t('literals.backend-allapot')}</dt>
                           <dd>{renderRuntimeStatus(terminal)}</dd>
                         </div>
                         <div>
@@ -216,7 +218,7 @@ export default function PosTerminalPage() {
                         </div>
                         {runtimeStatus?.message && (
                           <div className="col-span-2">
-                            <dt className="text-gray-500">Üzenet</dt>
+                            <dt className="text-gray-500">{i18n.t('literals.uzenet')}</dt>
                             <dd className="text-gray-900">{runtimeStatus.message}</dd>
                           </div>
                         )}
@@ -256,7 +258,7 @@ export default function PosTerminalPage() {
                       <th>{t('display.kapcsolat')}</th>
                       <th>{t('customers.utolsoTranzakcio')}</th>
                       <th>{t('common.status')}</th>
-                      <th>Backend állapot</th>
+                      <th>{i18n.t('literals.backend-allapot')}</th>
                       <th className="w-44">{t('common.actions')}</th>
                     </tr>
                   </thead>

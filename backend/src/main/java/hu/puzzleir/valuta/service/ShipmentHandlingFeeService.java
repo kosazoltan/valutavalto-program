@@ -59,7 +59,8 @@ public class ShipmentHandlingFeeService {
                 .build());
 
         ShipmentRequest saved = shipmentService.create(request, SERIAL_PREFIX_HANDLING_FEE);
-        BigDecimal calculatedFee = handlingFeeService.calculateHandlingFee(hufAmount);
+        // FK-096/D3: a feladó iroda viseli a KK díjat — fail-closed, iroda-tudatos feloldás.
+        BigDecimal calculatedFee = handlingFeeService.calculateHandlingFee(hufAmount, saved.getFromBranchId());
 
         ShipmentHandlingFee fee = feeRepository.save(ShipmentHandlingFee.builder()
                 .companyId(saved.getCompanyId())

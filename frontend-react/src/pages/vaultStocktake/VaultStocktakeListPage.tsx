@@ -7,6 +7,7 @@ import {
 } from '../../services/api/vaultStocktake'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 // ============================================================================
 // Értéktár leltár (stocktake) oldal - Sprint 7.1
@@ -152,7 +153,7 @@ export default function VaultStocktakeListPage() {
 
       {/* Session lista */}
       {loading ? (
-        <div className="text-center text-gray-500 py-8">Toltodik...</div>
+        <div className="text-center text-gray-500 py-8">{i18n.t('literals.toltodik')}</div>
       ) : sessions.length === 0 ? (
         <div className="text-center text-gray-500 py-12 bg-gray-50 rounded">
           {t('vaultStocktake.megNincsLeltarSessionKattintsAzUjLeltarGombra')}
@@ -196,7 +197,7 @@ export default function VaultStocktakeListPage() {
                         {s.discrepancyTotalHuf.toLocaleString('hu-HU')}
                       </span>
                     ) : (
-                      <span className="text-gray-400">0</span>
+                      <span className="text-gray-400">{i18n.t('literals.0-2')}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">

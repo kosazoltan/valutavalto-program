@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ShieldAlert } from 'lucide-react'
 import { api } from '../services/api'
 import { getErrorMessage } from '../utils/errorHandling'
+import i18n from '../i18n'
 
 /**
  * EXCMD b9-korlevelek FR-03: pénztárosi gyanú-bejelentés (SAR) modal.
@@ -89,17 +90,18 @@ export default function SuspicionReportModal({
         <div className="flex items-center justify-between border-b p-4">
           <h2 id="suspicion-report-title" className="text-lg font-semibold flex items-center gap-2">
             <ShieldAlert size={18} className="text-red-700" />
-            Gyanú-bejelentés (felfüggesztett ügylet)
+            {i18n.t('literals.gyanu-bejelentes-felfuggesztett-ugylet')}
           </h2>
         </div>
         <div className="space-y-3 p-4">
           <p className="text-sm text-gray-600">
-            A bejelentés a szűrési naplóba kerül és a vezetők azonnali értesítést kapnak. A
-            tranzakciót NE rögzítse — a bejelentés után telefonon egyeztessen a területi vezetővel.
+            {i18n.t('literals.a-bejelentes-a-szuresi-naploba-kerul-es')}
           </p>
           {!hasPrefilledName && (
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-gray-700">Ügyfél neve</span>
+              <span className="mb-1 block font-medium text-gray-700">
+                {i18n.t('literals.ugyfel-neve')}
+              </span>
               {/* Review (Copilot): üres névnél ide kerül a fókusz (kötelező mező elsőként) */}
               <input
                 type="text"
@@ -113,11 +115,13 @@ export default function SuspicionReportModal({
           )}
           {hasPrefilledName && (
             <div className="text-sm">
-              <strong>Ügyfél:</strong> {customerName}
+              <strong>{i18n.t('literals.ugyfel')}</strong> {customerName}
             </div>
           )}
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Gyanús jelek leírása</span>
+            <span className="mb-1 block font-medium text-gray-700">
+              {i18n.t('literals.gyanus-jelek-leirasa')}
+            </span>
             <textarea
               value={signs}
               onChange={(e) => setSigns(e.target.value)}
@@ -135,7 +139,7 @@ export default function SuspicionReportModal({
         </div>
         <div className="flex items-center justify-end gap-2 border-t p-4">
           <button onClick={resetAndClose} className="form-button" disabled={saving}>
-            Mégse
+            {i18n.t('literals.megse')}
           </button>
           <button
             onClick={() => void submit()}

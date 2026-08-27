@@ -2,13 +2,13 @@ package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeBracketDto;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeConfigDto;
-import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.FeeConfigStatus;
 import hu.puzzleir.valuta.entity.HandlingFeeBracket;
 import hu.puzzleir.valuta.entity.HandlingFeeType;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
-import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.BranchHandlingFeeConfigService;
 import hu.puzzleir.valuta.service.SystemParameterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class HandlingFeeConfigController {
 
     private final SystemParameterService systemParameterService;
     private final HandlingFeeBracketRepository bracketRepository;
-    private final CompanyRepository companyRepository;
+    private final BranchHandlingFeeConfigService branchHandlingFeeConfigService;
 
     @GetMapping
     // FK-KEZDIJ B.1 (2026-06-12, penztar-batch): a PENZTAROS READ-ONLY lekerheti a konfigot,
@@ -74,7 +74,7 @@ public class HandlingFeeConfigController {
         }
 
         List<HandlingFeeBracket> brackets = bracketRepository
-                .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
+                .findByCompanyIdAndStatusAndActiveOrderByBracketOrder(companyId, FeeConfigStatus.LIVE, true);
 
         List<HandlingFeeBracketDto> bracketDtos = brackets.stream()
                 .map(b -> HandlingFeeBracketDto.builder()
@@ -96,7 +96,16 @@ public class HandlingFeeConfigController {
 
     @PutMapping
     @Transactional
+    @Deprecated
+    // FK-096 ITEM 1 (round 2, R2-D2): method-szintű RBAC felülírja a class-level bő kört —
+    // íráshoz CSAK UGYVEZETO/FOERTEKTAR/ADMIN fér (IRODAVEZETO/BELSO_ELLENOR/MANAGER tiltva).
+    // A GET pénztáros read-only elérhetősége (B.1) a saját method-annotációján marad.
+    @PreAuthorize("hasAnyRole('UGYVEZETO','FOERTEKTAR','ADMIN')")
     public ResponseEntity<HandlingFeeConfigDto> updateConfig(@Valid @RequestBody HandlingFeeConfigDto dto) {
+        // FK-096/W8/D16 + ITEM 1(c): a system_parameter felére vonatkozó warn — a legacy
+        // kulcsokat írjuk, de a díjszámítás már az iroda-szintű feloldást olvassa.
+        log.warn("FK-096: a legacy PUT /handling-fee-config system_parameter írása NEM"
+                + " befolyásolja a díjszámítást — használd a /branch-fee-config végpontokat");
         if (dto.getFeeType() == null || dto.getFeeType().isBlank()) {
             return ResponseEntity.badRequest().build();
         }
@@ -114,8 +123,15 @@ public class HandlingFeeConfigController {
             systemParameterService.upsert("HANDLING_FEE_PER_MILLE_MAX", dto.getPerMilleMaxAmount().toPlainString(), "HANDLING_FEE", "Ezrelékes maximum összeg");
         }
 
+        // ITEM 1 (R2-D1): a sáv-fej NEM ír LIVE sort — DRAFT-ként delegál a közös
+        // sáv-piszkozat-útra; élesítés CSAK POST /api/v1/handling-fee-bracket/publish-csal.
+        // A warn CSAK akkor szól, ha a törzs ténylegesen hozott sávokat (ITEM 1c:
+        // a tényeknek megfelelő üzenet request-szinten). Ha a validáció dob, a fenti
+        // system_parameter upsertök azonos tranzakcióban visszagörgetnek (atomic).
         if (dto.getBrackets() != null) {
-            saveBrackets(dto.getBrackets());
+            branchHandlingFeeConfigService.saveBracketDraft(dto.getBrackets());
+            log.warn("FK-096: a PUT /handling-fee-config sávjai PISZKOZATKÉNT (DRAFT) mentődtek —"
+                    + " élesítés: POST /api/v1/handling-fee-bracket/publish");
         }
 
         log.info("Kezelési díj konfiguráció frissítve: type={}, perMille={}, maxAmount={}",
@@ -126,33 +142,13 @@ public class HandlingFeeConfigController {
 
     @PostMapping("/brackets")
     @Transactional
+    @Deprecated
+    @PreAuthorize("hasAnyRole('UGYVEZETO','FOERTEKTAR','ADMIN')")
     public ResponseEntity<List<HandlingFeeBracketDto>> saveBracketsEndpoint(@RequestBody List<HandlingFeeBracketDto> dtos) {
-        saveBrackets(dtos);
-        return ResponseEntity.ok(dtos);
-    }
-
-    private void saveBrackets(List<HandlingFeeBracketDto> dtos) {
-        UUID companyId = SecurityUtils.getCurrentCompanyId();
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new IllegalStateException("Company not found: " + companyId));
-
-        List<HandlingFeeBracket> existing = bracketRepository
-                .findByCompanyIdAndActiveOrderByBracketOrder(companyId, true);
-        for (HandlingFeeBracket b : existing) {
-            b.setActive(false);
-        }
-        bracketRepository.saveAll(existing);
-
-        int order = 1;
-        for (HandlingFeeBracketDto dto : dtos) {
-            HandlingFeeBracket bracket = HandlingFeeBracket.builder()
-                    .company(company)
-                    .bracketOrder(order++)
-                    .upperLimit(dto.getUpperLimit())
-                    .feeAmount(dto.getFeeAmount())
-                    .active(true)
-                    .build();
-            bracketRepository.save(bracket);
-        }
+        // ITEM 1 (R2-D1): DRAFT-delegáció — a response a mentett DRAFT-készlet (byte-kompatibilis
+        // List<HandlingFeeBracketDto> alak), LIVE sor ezen az úton nem keletkezik.
+        log.warn("FK-096: a legacy POST /handling-fee-config/brackets PISZKOZATKÉNT (DRAFT) ment —"
+                + " élesítés: POST /api/v1/handling-fee-bracket/publish");
+        return ResponseEntity.ok(branchHandlingFeeConfigService.saveBracketDraft(dtos).getDraft());
     }
 }

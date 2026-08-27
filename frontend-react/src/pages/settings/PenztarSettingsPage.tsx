@@ -20,6 +20,7 @@ import {
   type FutofenyMode,
 } from './penztarSettings'
 import { machineConfigApi, resolveWorkstationCode } from '../../services/api/machineConfig'
+import i18n from '../../i18n'
 
 const APP_OPTIONS = ['VALUTAVALTAS', 'WESTERN_UNION', 'TESCO_AFA', 'METRO_AFA', 'E_KERESKEDELEM']
 
@@ -284,9 +285,11 @@ export default function PenztarSettingsPage() {
       <div className="space-y-4">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <SettingsIcon />
-          Pénztárgép beállítások
+          {i18n.t('literals.penztargep-beallitasok')}
         </h1>
-        <div className="form-panel text-sm text-muted-foreground">Beállítások betöltése...</div>
+        <div className="form-panel text-sm text-muted-foreground">
+          {i18n.t('literals.beallitasok-betoltese')}
+        </div>
       </div>
     )
   }
@@ -295,12 +298,12 @@ export default function PenztarSettingsPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-bold flex items-center gap-2">
         <SettingsIcon />
-        Pénztárgép beállítások
+        {i18n.t('literals.penztargep-beallitasok')}
       </h1>
 
       {/* FR-02 + FR-03: Alapfunkció és Alkalmazások */}
       <div className="form-panel space-y-3">
-        <h2 className="section-title">Alapfunkció</h2>
+        <h2 className="section-title">{i18n.t('literals.alapfunkcio')}</h2>
         {radioGroup<MachineRole>(
           'machineRole',
           'A gép szerepe',
@@ -314,7 +317,7 @@ export default function PenztarSettingsPage() {
         )}
 
         <div>
-          <div className="form-label">Engedélyezett alkalmazások</div>
+          <div className="form-label">{i18n.t('literals.engedelyezett-alkalmazasok')}</div>
           <div className="flex flex-wrap gap-3">
             {APP_OPTIONS.map((app) => (
               <label key={app} className="flex items-center gap-1 text-sm">
@@ -332,7 +335,7 @@ export default function PenztarSettingsPage() {
 
       {/* FR-04 + FR-13: Kijelző és reklám */}
       <div className="form-panel space-y-3">
-        <h2 className="section-title">Kijelző és reklám</h2>
+        <h2 className="section-title">{i18n.t('literals.kijelzo-es-reklam')}</h2>
         {radioGroup<DisplayColor>(
           'displayColor',
           'Árfolyam-kijelző színe',
@@ -350,15 +353,15 @@ export default function PenztarSettingsPage() {
             checked={s.adOnDisplay}
             onChange={(e) => set('adOnDisplay', e.target.checked)}
           />
-          Reklám a kijelzőn
+          {i18n.t('literals.reklam-a-kijelzon')}
         </label>
       </div>
 
       {/* FR-05 + FR-07: Szerver kapcsolat */}
       <div className="form-panel space-y-3">
-        <h2 className="section-title">Szerver kapcsolat</h2>
+        <h2 className="section-title">{i18n.t('literals.szerver-kapcsolat')}</h2>
         <div>
-          <div className="form-label">Szerver elérés IP-címe</div>
+          <div className="form-label">{i18n.t('literals.szerver-eleres-ip-cime')}</div>
           <div className="flex items-center gap-1">
             {[0, 1, 2, 3].map((i) => (
               <span key={i} className="flex items-center gap-1">
@@ -370,14 +373,16 @@ export default function PenztarSettingsPage() {
                   value={s.serverIp[i]}
                   onChange={(e) => setOctet(i, e.target.value)}
                 />
-                {i < 3 && <span>.</span>}
+                {i < 3 && <span>{i18n.t('literals.lit-5')}</span>}
               </span>
             ))}
           </div>
         </div>
         <div>
           <label className="form-label" htmlFor="freq">
-            Adatküldés gyakorisága: {s.dataSendFrequencyMin} perc
+            {i18n.t('literals.adatkuldes-gyakorisaga')}
+            {s.dataSendFrequencyMin}
+            {i18n.t('literals.perc')}
           </label>
           <input
             id="freq"
@@ -393,7 +398,7 @@ export default function PenztarSettingsPage() {
 
       {/* FR-06: Napi jelentés jelszó + értéktár e-mail + szombati nyitvatartás */}
       <div className="form-panel space-y-3">
-        <h2 className="section-title">Napi jelentés</h2>
+        <h2 className="section-title">{i18n.t('literals.napi-jelentes')}</h2>
 
         {/* Jelszó maszkolva + módosítás gomb */}
         {/*
@@ -403,7 +408,7 @@ export default function PenztarSettingsPage() {
           történik (window.prompt TILOS Electron-ban).
         */}
         <div>
-          <div className="form-label">Napi-jelentés jelszó</div>
+          <div className="form-label">{i18n.t('literals.napi-jelentes-jelszo')}</div>
           <div className="flex items-center gap-2">
             <span className="form-input w-32 inline-block text-center tracking-widest select-none text-muted-foreground">
               {pendingPassword ? '••••••••' : '••••'}
@@ -414,11 +419,11 @@ export default function PenztarSettingsPage() {
               onClick={() => setShowPasswordModal(true)}
             >
               <Lock size={14} />
-              Jelszó módosítás
+              {i18n.t('literals.jelszo-modositas')}
             </button>
             {pendingPassword && (
               <span className="text-xs text-green-600">
-                (Új jelszó beállítva — mentéskor érvényesül)
+                {i18n.t('literals.uj-jelszo-beallitva-menteskor-ervenyesul')}
               </span>
             )}
           </div>
@@ -433,12 +438,16 @@ export default function PenztarSettingsPage() {
           backward-kompatibilitásból, de a szerkesztés a BranchEditPage-en történik.
         */}
         <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 space-y-1">
-          <div className="font-medium">Értéktár e-mail és szombati nyitvatartás</div>
+          <div className="font-medium">
+            {i18n.t('literals.ertektar-e-mail-es-szombati-nyitvatartas')}
+          </div>
           <div>
-            Ezek a beállítások a <strong>Pénztár Törzs</strong> iroda-adataiban szerkeszthetők
-            (Branch entitás, V293: email + closed_saturday mezők). A jelenlegi értékek: e-mail:{' '}
-            <em>{s.dailyReportEmail || '(nem megadott)'}</em>, szombat:{' '}
-            <em>{s.saturdayOpen ? 'nyitva' : 'zárva'}</em>.
+            {i18n.t('literals.ezek-a-beallitasok-a')}
+            <strong>{i18n.t('literals.penztar-torzs')}</strong>
+            {i18n.t('literals.iroda-adataiban-szerkeszthetok-branch-en')}{' '}
+            <em>{s.dailyReportEmail || '(nem megadott)'}</em>
+            {i18n.t('literals.szombat')} <em>{s.saturdayOpen ? 'nyitva' : 'zárva'}</em>
+            {i18n.t('literals.lit-5')}
           </div>
         </div>
       </div>
@@ -450,11 +459,12 @@ export default function PenztarSettingsPage() {
         rögzíti — az Electron main folyamatban lesz a tényleges COM-kommunikáció.
       */}
       <div className="form-panel space-y-3">
-        <h2 className="section-title">Futófény beállítások</h2>
+        <h2 className="section-title">{i18n.t('literals.futofeny-beallitasok')}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
             <label className="form-label" htmlFor="futofenyDarab">
-              Futófénytáblák száma: {s.futofenyDarab}
+              {i18n.t('literals.futofenytablak-szama')}
+              {s.futofenyDarab}
             </label>
             <input
               id="futofenyDarab"
@@ -468,7 +478,7 @@ export default function PenztarSettingsPage() {
           </div>
           <div>
             <label className="form-label" htmlFor="com1">
-              1. tábla COM-portja
+              {i18n.t('literals.1-tabla-com-portja')}
             </label>
             <input
               id="com1"
@@ -483,7 +493,7 @@ export default function PenztarSettingsPage() {
           </div>
           <div>
             <label className="form-label" htmlFor="com2">
-              2. tábla COM-portja
+              {i18n.t('literals.2-tabla-com-portja')}
             </label>
             <input
               id="com2"
@@ -512,14 +522,16 @@ export default function PenztarSettingsPage() {
 
         <div>
           <label className="form-label" htmlFor="futofenySebesseg">
-            Futófény sebessége:{' '}
+            {i18n.t('literals.futofeny-sebessege')}{' '}
             <span className="font-medium">
               {s.futofenySebesseg <= 3 ? 'Lassú' : s.futofenySebesseg >= 8 ? 'Gyors' : 'Közepes'}
             </span>{' '}
-            ({s.futofenySebesseg})
+            {i18n.t('literals.lit-19')}
+            {s.futofenySebesseg}
+            {i18n.t('literals.lit-2')}
           </label>
           <div className="flex items-center gap-2">
-            <span className="text-xs">Lassú</span>
+            <span className="text-xs">{i18n.t('literals.lassu')}</span>
             <input
               id="futofenySebesseg"
               type="range"
@@ -529,7 +541,7 @@ export default function PenztarSettingsPage() {
               onChange={(e) => set('futofenySebesseg', clampFutofenySebesseg(e.target.value))}
               className="flex-1"
             />
-            <span className="text-xs">Gyors</span>
+            <span className="text-xs">{i18n.t('literals.gyors')}</span>
           </div>
         </div>
 
@@ -542,14 +554,16 @@ export default function PenztarSettingsPage() {
             {s.futofenyKikapcsolva ? '▶ Futófény bekapcsolása' : '⏹ Futófény kikapcsolása'}
           </button>
           {s.futofenyKikapcsolva && (
-            <span className="ml-2 text-xs text-red-600">Futófény kikapcsolva</span>
+            <span className="ml-2 text-xs text-red-600">
+              {i18n.t('literals.futofeny-kikapcsolva')}
+            </span>
           )}
         </div>
       </div>
 
       {/* FR-08, FR-09, FR-10, FR-12: Eszközök és fizetés */}
       <div className="form-panel space-y-3">
-        <h2 className="section-title">Eszközök és fizetés</h2>
+        <h2 className="section-title">{i18n.t('literals.eszkozok-es-fizetes')}</h2>
         {radioGroup<PrinterPort>(
           'printerPort',
           'Nyomtató típusa',
@@ -564,7 +578,7 @@ export default function PenztarSettingsPage() {
             Elég az egyik; nyomtatáskor a soros út fut először, utána a Windows-driveres. */}
         <div>
           <label className="form-label" htmlFor="printerDeviceName">
-            Windows-nyomtató (blokknyomtató)
+            {i18n.t('literals.windows-nyomtato-blokknyomtato')}
           </label>
           {window.electronAPI ? (
             <select
@@ -573,7 +587,7 @@ export default function PenztarSettingsPage() {
               value={s.printerDeviceName}
               onChange={(e) => set('printerDeviceName', e.target.value)}
             >
-              <option value="">— nincs kiválasztva —</option>
+              <option value="">{i18n.t('literals.nincs-kivalasztva')}</option>
               {[
                 ...new Set([
                   ...printers.map((p) => p.name),
@@ -587,13 +601,13 @@ export default function PenztarSettingsPage() {
             </select>
           ) : (
             <div className="text-xs text-muted-foreground">
-              A nyomtatóválasztás csak a telepített (Electron) kliensben érhető el.
+              {i18n.t('literals.a-nyomtatovalasztas-csak-a-telepitett-el')}
             </div>
           )}
         </div>
         <div>
           <label className="form-label" htmlFor="printerSerialPort">
-            Soros port (COM) — Star SP500 blokknyomtató
+            {i18n.t('literals.soros-port-com-star-sp500-blokknyomtato')}
           </label>
           {window.electronAPI ? (
             <select
@@ -602,7 +616,7 @@ export default function PenztarSettingsPage() {
               value={s.printerSerialPort}
               onChange={(e) => set('printerSerialPort', e.target.value)}
             >
-              <option value="">— nincs kiválasztva —</option>
+              <option value="">{i18n.t('literals.nincs-kivalasztva')}</option>
               {[
                 ...new Set([
                   ...serialPorts.map((p) => p.path),
@@ -619,13 +633,13 @@ export default function PenztarSettingsPage() {
             </select>
           ) : (
             <div className="text-xs text-muted-foreground">
-              A soros port választás csak a telepített (Electron) kliensben érhető el.
+              {i18n.t('literals.a-soros-port-valasztas-csak-a-telepitett')}
             </div>
           )}
         </div>
         <div>
           <label className="form-label" htmlFor="scanner">
-            Szkenner driver
+            {i18n.t('literals.szkenner-driver')}
           </label>
           <input
             id="scanner"
@@ -652,7 +666,7 @@ export default function PenztarSettingsPage() {
             checked={s.cardPaymentEnabled}
             onChange={(e) => set('cardPaymentEnabled', e.target.checked)}
           />
-          Bankkártyás fizetés engedélyezve
+          {i18n.t('literals.bankkartyas-fizetes-engedelyezve')}
         </label>
       </div>
 
@@ -663,11 +677,11 @@ export default function PenztarSettingsPage() {
           className="form-button-primary flex items-center gap-1"
         >
           <Save size={16} />
-          Rögzítés és kilépés
+          {i18n.t('literals.rogzites-es-kilepes')}
         </button>
         <button onClick={() => navigate(-1)} className="form-button flex items-center gap-1">
           <X size={16} />
-          Kilépés módosítás nélkül
+          {i18n.t('literals.kilepes-modositas-nelkul')}
         </button>
       </div>
 
@@ -677,11 +691,11 @@ export default function PenztarSettingsPage() {
           <div className="bg-background rounded-lg shadow-lg p-6 space-y-4 w-full max-w-sm">
             <h3 className="font-semibold flex items-center gap-2">
               <Lock size={16} />
-              Napi-jelentés jelszó módosítása
+              {i18n.t('literals.napi-jelentes-jelszo-modositasa')}
             </h3>
             <div className="space-y-2">
               <label className="form-label" htmlFor="newPwd">
-                Új jelszó
+                {i18n.t('literals.uj-jelszo')}
               </label>
               <input
                 id="newPwd"
@@ -695,7 +709,7 @@ export default function PenztarSettingsPage() {
             </div>
             <div className="space-y-2">
               <label className="form-label" htmlFor="confirmPwd">
-                Jelszó megerősítése
+                {i18n.t('literals.jelszo-megerositese')}
               </label>
               <input
                 id="confirmPwd"
@@ -717,14 +731,14 @@ export default function PenztarSettingsPage() {
                   setConfirmPassword('')
                 }}
               >
-                Mégse
+                {i18n.t('literals.megse')}
               </button>
               <button
                 type="button"
                 className="form-button-primary text-sm"
                 onClick={handlePasswordSave}
               >
-                Beállítás
+                {i18n.t('literals.beallitas')}
               </button>
             </div>
           </div>

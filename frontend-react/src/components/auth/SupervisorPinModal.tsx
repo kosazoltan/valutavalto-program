@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 /**
  * P2-2 Supervisor PIN Modal — gyors-engedély 4-6 számjegyhez.
@@ -106,15 +107,16 @@ export default function SupervisorPinModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="supervisor-pin-title" className="mb-2 text-lg font-bold">
-          Supervisor PIN szükséges
+          {i18n.t('literals.supervisor-pin-szukseges')}
         </h2>
         {workerLabel && (
           <p className="mb-3 text-sm text-gray-600">
-            Felhasználó: <strong>{workerLabel}</strong>
+            {i18n.t('literals.felhasznalo')}
+            <strong>{workerLabel}</strong>
           </p>
         )}
         <p className="mb-4 text-sm text-gray-600">
-          Adja meg a 4-6 számjegyű PIN-t a művelet jóváhagyásához.
+          {i18n.t('literals.adja-meg-a-4-6-szamjegyu-pin-t-a-muvelet')}
         </p>
 
         <input
@@ -143,7 +145,7 @@ export default function SupervisorPinModal({
             disabled={submitting}
             className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
-            Mégse
+            {i18n.t('literals.megse')}
           </button>
           <button
             onClick={() => void handleSubmit(pin)}
@@ -155,7 +157,7 @@ export default function SupervisorPinModal({
         </div>
 
         <p className="mt-4 text-xs text-gray-500">
-          3 hibás próbálkozás után 5 perc lockout lép életbe.
+          {i18n.t('literals.3-hibas-probalkozas-utan-5-perc-lockout-2')}
         </p>
       </div>
     </div>

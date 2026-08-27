@@ -3,6 +3,7 @@ import { Plus, Save, CheckCircle, Send, XCircle, Trash2 } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface RateTemplate {
   id?: string
@@ -309,7 +310,10 @@ export default function RateTemplateEditor() {
         >
           {workgroups.map((wg) => (
             <option key={wg.id} value={wg.id}>
-              {wg.name} ({wg.code})
+              {wg.name}
+              {i18n.t('literals.lit')}
+              {wg.code}
+              {i18n.t('literals.lit-2')}
             </option>
           ))}
         </select>
@@ -357,10 +361,12 @@ export default function RateTemplateEditor() {
                     setEditing({ ...editing, currencyId: Number(e.target.value) })
                   }
                 >
-                  <option value={0}>Valassz valutat...</option>
+                  <option value={0}>{i18n.t('literals.valassz-valutat-2')}</option>
                   {currencies.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.code} - {c.name}
+                      {c.code}
+                      {i18n.t('literals.lit-17')}
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -524,17 +530,25 @@ export default function RateTemplateEditor() {
               <div className="p-4 flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    {/* eslint-disable-next-line i18next/no-literal-string -- interpolated rate display */}
+                    { }
                     <span className="font-mono font-medium">
-                      Vétel: {tpl.baseBuyRate} | Eladás: {tpl.baseSellRate}
+                      {i18n.t('literals.vetel-2')}
+                      {tpl.baseBuyRate}
+                      {i18n.t('literals.eladas-2')}
+                      {tpl.baseSellRate}
                     </span>
                     {statusBadge(tpl.status)}
                   </div>
-                  {/* eslint-disable i18next/no-literal-string -- interpolated spread display */}
+                  { }
                   <p className="text-sm text-muted-foreground">
-                    Spread: +{tpl.buySpread} / +{tpl.sellSpread} | Kerekites: {tpl.roundingRule}
+                    {i18n.t('literals.spread')}
+                    {tpl.buySpread}
+                    {i18n.t('literals.lit-42')}
+                    {tpl.sellSpread}
+                    {i18n.t('literals.kerekites-2')}
+                    {tpl.roundingRule}
                   </p>
-                  {/* eslint-enable i18next/no-literal-string */}
+                  { }
                 </div>
                 <div className="flex gap-1">
                   {tpl.status === 'DRAFT' && (

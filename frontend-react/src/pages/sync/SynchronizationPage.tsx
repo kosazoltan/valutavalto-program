@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface SyncStatus {
   lastSync: string | null
@@ -510,7 +511,7 @@ export default function SynchronizationPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold flex items-center gap-2">
               <Database size={16} />
-              Központi adatgyűjtés
+              {i18n.t('literals.kozponti-adatgyujtes')}
             </h2>
             <button
               type="button"
@@ -518,7 +519,7 @@ export default function SynchronizationPage() {
               className="form-button text-xs"
               disabled={dataCollecting}
             >
-              Státusz frissítése
+              {i18n.t('literals.statusz-frissitese')}
             </button>
           </div>
           {dataCollectionError && (
@@ -528,7 +529,7 @@ export default function SynchronizationPage() {
           )}
           <div className="flex flex-wrap items-end gap-2">
             <label className="block min-w-[260px] flex-1">
-              <span className="form-label">Branch UUID</span>
+              <span className="form-label">{i18n.t('literals.branch-uuid')}</span>
               <input
                 className="form-input"
                 value={dataCollectionBranchId}
@@ -543,7 +544,7 @@ export default function SynchronizationPage() {
               disabled={branchSyncLoading || !dataCollectionBranchId.trim()}
               className="form-button"
             >
-              Sync státusz
+              {i18n.t('literals.sync-statusz')}
             </button>
             <button
               type="button"
@@ -551,7 +552,7 @@ export default function SynchronizationPage() {
               disabled={dataCollecting}
               className="form-button"
             >
-              Iroda gyűjtése
+              {i18n.t('literals.iroda-gyujtese')}
             </button>
             <button
               type="button"
@@ -559,7 +560,7 @@ export default function SynchronizationPage() {
               disabled={dataCollecting}
               className="form-button-primary"
             >
-              Összes iroda gyűjtése
+              {i18n.t('literals.osszes-iroda-gyujtese')}
             </button>
             <button
               type="button"
@@ -567,11 +568,13 @@ export default function SynchronizationPage() {
               disabled={dataCollecting}
               className="form-button"
             >
-              Sikertelenek újra
+              {i18n.t('literals.sikertelenek-ujra')}
             </button>
           </div>
           <div className="rounded border border-blue-100 bg-blue-50 p-3">
-            <h3 className="mb-2 text-sm font-semibold text-blue-950">FTP szinkron műveletek</h3>
+            <h3 className="mb-2 text-sm font-semibold text-blue-950">
+              {i18n.t('literals.ftp-szinkron-muveletek')}
+            </h3>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <button
                 type="button"
@@ -580,7 +583,7 @@ export default function SynchronizationPage() {
                 className="form-button justify-center text-xs"
                 data-testid="ftp-sync-rates"
               >
-                Árfolyam fájl
+                {i18n.t('literals.arfolyam-fajl')}
               </button>
               <button
                 type="button"
@@ -589,7 +592,7 @@ export default function SynchronizationPage() {
                 className="form-button justify-center text-xs"
                 data-testid="ftp-sync-daily-report"
               >
-                Napi jelentés
+                {i18n.t('literals.napi-jelentes')}
               </button>
               <button
                 type="button"
@@ -598,7 +601,7 @@ export default function SynchronizationPage() {
                 className="form-button justify-center text-xs"
                 data-testid="ftp-sync-transactions"
               >
-                Tranzakció batch
+                {i18n.t('literals.tranzakcio-batch')}
               </button>
             </div>
           </div>
@@ -607,8 +610,12 @@ export default function SynchronizationPage() {
             data-testid="branch-sync-panel"
           >
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">Branch szinkron állapot</h3>
-              {branchSyncLoading && <span className="text-xs text-gray-500">Betöltés...</span>}
+              <h3 className="text-sm font-semibold">
+                {i18n.t('literals.branch-szinkron-allapot')}
+              </h3>
+              {branchSyncLoading && (
+                <span className="text-xs text-gray-500">{i18n.t('literals.betoltes')}</span>
+              )}
             </div>
             {branchSyncError && (
               <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-sm text-amber-800">
@@ -618,11 +625,15 @@ export default function SynchronizationPage() {
             {branchSyncStatus ? (
               <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                 <div className="rounded bg-white px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">Státusz</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.statusz')}
+                  </div>
                   <div className="font-semibold">{branchSyncStatus.status ?? '-'}</div>
                 </div>
                 <div className="rounded bg-white px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">Utolsó sikeres sync</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.utolso-sikeres-sync')}
+                  </div>
                   <div>
                     {formatSyncDate(
                       branchSyncStatus.lastSuccessfulSyncAt ?? branchSyncStatus.lastSyncAt,
@@ -630,7 +641,9 @@ export default function SynchronizationPage() {
                   </div>
                 </div>
                 <div className="rounded bg-white px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">Függő rekord</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.fuggo-rekord')}
+                  </div>
                   <div className="font-mono">
                     {branchSyncStatus.pendingCount ??
                       (branchSyncStatus.pendingUpload ?? 0) +
@@ -639,11 +652,13 @@ export default function SynchronizationPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">Nincs branch szinkron státusz betöltve.</p>
+              <p className="text-sm text-gray-500">
+                {i18n.t('literals.nincs-branch-szinkron-statusz-betoltve')}
+              </p>
             )}
             <div className="mt-3 space-y-2">
               {branchSyncHistory.length === 0 ? (
-                <p className="text-sm text-gray-500">Nincs sync történet.</p>
+                <p className="text-sm text-gray-500">{i18n.t('literals.nincs-sync-tortenet')}</p>
               ) : (
                 branchSyncHistory.map((row, index) => (
                   <div
@@ -662,7 +677,10 @@ export default function SynchronizationPage() {
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">
-                      {formatSyncDate(row.startedAt)} · {row.recordsSynced ?? 0} rekord
+                      {formatSyncDate(row.startedAt)}
+                      {i18n.t('literals.lit-9')}
+                      {row.recordsSynced ?? 0}
+                      {i18n.t('literals.rekord')}
                     </div>
                     {row.errorMessage && (
                       <div className="text-xs text-red-700">{row.errorMessage}</div>
@@ -672,7 +690,9 @@ export default function SynchronizationPage() {
               )}
             </div>
             <div className="mt-3 border-t border-gray-200 pt-3" data-testid="branch-sync-actions">
-              <h4 className="mb-2 text-sm font-semibold">Branch sync műveletek</h4>
+              <h4 className="mb-2 text-sm font-semibold">
+                {i18n.t('literals.branch-sync-muveletek')}
+              </h4>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                 <button
                   type="button"
@@ -681,7 +701,7 @@ export default function SynchronizationPage() {
                   className="form-button justify-center text-xs"
                   data-testid="branch-sync-rates"
                 >
-                  Árfolyamok
+                  {i18n.t('literals.arfolyamok')}
                 </button>
                 <button
                   type="button"
@@ -690,7 +710,7 @@ export default function SynchronizationPage() {
                   className="form-button justify-center text-xs"
                   data-testid="branch-sync-transactions"
                 >
-                  Tranzakciók
+                  {i18n.t('literals.tranzakciok')}
                 </button>
                 <button
                   type="button"
@@ -699,7 +719,7 @@ export default function SynchronizationPage() {
                   className="form-button justify-center text-xs"
                   data-testid="branch-sync-inventory"
                 >
-                  Készlet
+                  {i18n.t('literals.keszlet')}
                 </button>
                 <button
                   type="button"
@@ -708,14 +728,18 @@ export default function SynchronizationPage() {
                   className="form-button-primary justify-center text-xs"
                   data-testid="branch-sync-full"
                 >
-                  Teljes
+                  {i18n.t('literals.teljes')}
                 </button>
               </div>
             </div>
             <div className="mt-3 border-t border-gray-200 pt-3" data-testid="ftp-sync-history">
-              <h4 className="mb-2 text-sm font-semibold">FTP szinkron történet</h4>
+              <h4 className="mb-2 text-sm font-semibold">
+                {i18n.t('literals.ftp-szinkron-tortenet')}
+              </h4>
               {ftpSyncHistory.length === 0 ? (
-                <p className="text-sm text-gray-500">Nincs FTP sync történet.</p>
+                <p className="text-sm text-gray-500">
+                  {i18n.t('literals.nincs-ftp-sync-tortenet')}
+                </p>
               ) : (
                 ftpSyncHistory.map((row, index) => (
                   <div
@@ -732,8 +756,10 @@ export default function SynchronizationPage() {
                       </span>
                     </div>
                     <div className="break-words text-xs text-gray-500">
-                      {row.fileName ?? '-'} · {formatSyncDate(row.startedAt)} ·{' '}
-                      {formatBytes(row.fileSizeBytes)}
+                      {row.fileName ?? '-'}
+                      {i18n.t('literals.lit-9')}
+                      {formatSyncDate(row.startedAt)}
+                      {i18n.t('literals.lit-29')} {formatBytes(row.fileSizeBytes)}
                     </div>
                     {row.errorMessage && (
                       <div className="text-xs text-red-700">{row.errorMessage}</div>
@@ -747,19 +773,19 @@ export default function SynchronizationPage() {
             <table className="data-grid w-full min-w-[760px] text-sm">
               <thead>
                 <tr>
-                  <th>Iroda</th>
-                  <th>Dátum</th>
-                  <th>Státusz</th>
-                  <th>Típus</th>
-                  <th className="text-right">Tranzakció</th>
-                  <th>Hiba</th>
+                  <th>{i18n.t('literals.iroda')}</th>
+                  <th>{i18n.t('literals.datum-2')}</th>
+                  <th>{i18n.t('literals.statusz')}</th>
+                  <th>{i18n.t('literals.tipus')}</th>
+                  <th className="text-right">{i18n.t('literals.tranzakcio')}</th>
+                  <th>{i18n.t('literals.hiba-3')}</th>
                 </tr>
               </thead>
               <tbody>
                 {dataCollectionRows.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-3 text-center text-gray-500">
-                      Nincs adatgyűjtési státusz.
+                      {i18n.t('literals.nincs-adatgyujtesi-statusz')}
                     </td>
                   </tr>
                 ) : (

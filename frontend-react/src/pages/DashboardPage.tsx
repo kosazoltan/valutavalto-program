@@ -18,6 +18,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useAppMode } from '../hooks/useAppMode'
 import { formatMillions } from './treasury/treasuryUtils'
 import { useTranslation } from 'react-i18next'
+import i18n from '../i18n'
 
 // 2026-04-29 E-B3 fix: a "Árfolyam módosítás" Gyorsművelet-csempe csak a
 // foertektar/ugyvezeto szerepkörnek látható (mode='full'). Az értéktár (és
@@ -321,7 +322,7 @@ export default function DashboardPage() {
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-1.5 text-sm font-bold text-secondary-900">
             <Server size={16} className="text-blue-600" />
-            Rendszerállapot
+            {i18n.t('literals.rendszerallapot')}
           </h2>
           <span
             className={`rounded border px-2 py-1 text-xs font-semibold ${
@@ -389,7 +390,7 @@ export default function DashboardPage() {
                 {ratesLoading ? (
                   <tr>
                     <td colSpan={4} className="text-center py-4 text-secondary-400">
-                      Betöltés...
+                      {i18n.t('literals.betoltes')}
                     </td>
                   </tr>
                 ) : liveRates.length === 0 ? (
@@ -486,7 +487,7 @@ export default function DashboardPage() {
                 <th>{t('common.deviza')}</th>
                 <th className="text-right">{t('common.amount')}</th>
                 <th className="text-right">{t('stockSnapshot.hufValue')}</th>
-                <th>Pénztáros</th>
+                <th>{i18n.t('literals.penztaros-2')}</th>
                 <th>{t('common.status')}</th>
               </tr>
             </thead>

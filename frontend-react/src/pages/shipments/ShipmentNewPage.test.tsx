@@ -14,7 +14,12 @@ const mocks = vi.hoisted(() => ({
   },
   currencyApi: { getActive: vi.fn() },
   exchangeRateApi: { getByCurrencyId: vi.fn() },
-  shipmentRequestApi: { create: vi.fn(), createHandlingFee: vi.fn(), createVatSupply: vi.fn(), submit: vi.fn() },
+  shipmentRequestApi: {
+    create: vi.fn(),
+    createHandlingFee: vi.fn(),
+    createVatSupply: vi.fn(),
+    submit: vi.fn(),
+  },
   persistToken: vi.fn(),
   clearPersistedToken: vi.fn(),
 }))

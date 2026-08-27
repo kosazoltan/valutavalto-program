@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
+import i18n from '../i18n'
 
 /**
  * FKH-027: közös "szöveges ok bekérése" modal a natív window.prompt() kiváltására
@@ -106,7 +107,7 @@ export default function TextReasonModal({ open, title, placeholder, onClose }: P
             onClick={() => onClose(null)}
             className="form-button-secondary text-sm"
           >
-            Mégse
+            {i18n.t('literals.megse')}
           </button>
           <button
             ref={okRef}
@@ -114,7 +115,7 @@ export default function TextReasonModal({ open, title, placeholder, onClose }: P
             onClick={() => onClose(value)}
             className="form-button-primary text-sm"
           >
-            OK
+            {i18n.t('literals.ok')}
           </button>
         </div>
       </div>

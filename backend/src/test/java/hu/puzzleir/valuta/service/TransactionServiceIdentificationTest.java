@@ -135,7 +135,7 @@ class TransactionServiceIdentificationTest {
         when(calculationService.calculateDiscountAmount(any(), any())).thenReturn(BigDecimal.ZERO);
 
         // Kezelési díj: 0 Ft
-        when(handlingFeeCalculator.calculate(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);
         when(handlingFeeCalculator.calculateSellGross(any(), any())).thenAnswer(inv -> inv.getArgument(0));
 
         // Készlet elegendő

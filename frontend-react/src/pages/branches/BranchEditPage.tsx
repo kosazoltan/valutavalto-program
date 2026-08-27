@@ -12,6 +12,7 @@ import {
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { Check, Section } from './branchFormShared'
+import i18n from '../../i18n'
 
 /**
  * FK-022 (2026-06-10): Meglévő iroda adatainak szerkesztése — a Pénztár Törzs Adatbázis
@@ -220,7 +221,7 @@ export default function BranchEditPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Betöltés...</div>
+        <div className="text-gray-500">{i18n.t('literals.betoltes')}</div>
       </div>
     )
   }
@@ -232,14 +233,16 @@ export default function BranchEditPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Building2 />
-          Iroda szerkesztése{branch ? ` — ${branch.code}` : ''}
+          {i18n.t('literals.iroda-szerkesztese')}
+          {branch ? ` — ${branch.code}` : ''}
         </h1>
         <button
           type="button"
           onClick={() => navigate('/admin/branches')}
           className="form-button-secondary flex items-center gap-2"
         >
-          <ArrowLeft size={16} /> Vissza a listára
+          <ArrowLeft size={16} />
+          {i18n.t('literals.vissza-a-listara')}
         </button>
       </div>
 
@@ -259,7 +262,9 @@ export default function BranchEditPage() {
           <Section title="Szervezeti kapcsolat">
             <div className="md:col-span-2 space-y-3">
               <div>
-                <div className="text-xs font-semibold uppercase text-gray-500">Útvonal</div>
+                <div className="text-xs font-semibold uppercase text-gray-500">
+                  {i18n.t('literals.utvonal')}
+                </div>
                 <div
                   className="mt-1 flex flex-wrap items-center gap-1 text-sm text-gray-700"
                   data-testid="branch-path"
@@ -268,19 +273,25 @@ export default function BranchEditPage() {
                     branchPath.map((item, index) => (
                       <span key={item.id} className="inline-flex items-center gap-1">
                         <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-medium">
-                          {item.code} - {item.name}
+                          {item.code}
+                          {i18n.t('literals.lit-17')}
+                          {item.name}
                         </span>
-                        {index < branchPath.length - 1 && <span className="text-gray-400">/</span>}
+                        {index < branchPath.length - 1 && (
+                          <span className="text-gray-400">{i18n.t('literals.lit-4')}</span>
+                        )}
                       </span>
                     ))
                   ) : (
-                    <span className="text-gray-500">Nincs szervezeti útvonal adat.</span>
+                    <span className="text-gray-500">
+                      {i18n.t('literals.nincs-szervezeti-utvonal-adat')}
+                    </span>
                   )}
                 </div>
               </div>
               <div>
                 <div className="text-xs font-semibold uppercase text-gray-500">
-                  Közvetlen alirodák
+                  {i18n.t('literals.kozvetlen-alirodak')}
                 </div>
                 <div className="mt-1 flex flex-wrap gap-2" data-testid="branch-children">
                   {childBranches.length > 0 ? (
@@ -289,11 +300,15 @@ export default function BranchEditPage() {
                         key={item.id}
                         className="rounded border border-blue-100 bg-blue-50 px-2 py-1 text-sm font-medium text-blue-800"
                       >
-                        {item.code} - {item.name}
+                        {item.code}
+                        {i18n.t('literals.lit-17')}
+                        {item.name}
                       </span>
                     ))
                   ) : (
-                    <span className="text-sm text-gray-500">Nincs közvetlen aliroda.</span>
+                    <span className="text-sm text-gray-500">
+                      {i18n.t('literals.nincs-kozvetlen-aliroda')}
+                    </span>
                   )}
                 </div>
               </div>
@@ -304,13 +319,17 @@ export default function BranchEditPage() {
             {adminDetails ? (
               <>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Cég</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    {i18n.t('literals.ceg')}
+                  </div>
                   <div className="mt-1 text-sm font-medium text-gray-800">
                     {adminDetails.companyName ?? '-'}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Státusz</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    {i18n.t('literals.statusz')}
+                  </div>
                   <div className="mt-1">
                     <span className={`badge ${adminDetails.active ? 'badge-green' : 'badge-red'}`}>
                       {adminDetails.active ? 'Aktív' : 'Inaktív'}
@@ -319,15 +338,16 @@ export default function BranchEditPage() {
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase text-gray-500">
-                    Aktív munkatársak
+                    {i18n.t('literals.aktiv-munkatarsak')}
                   </div>
                   <div className="mt-1 text-sm font-medium text-gray-800">
-                    {adminDetails.workerCount ?? 0} fő
+                    {adminDetails.workerCount ?? 0}
+                    {i18n.t('literals.fo')}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase text-gray-500">
-                    Teljes készlet HUF
+                    {i18n.t('literals.teljes-keszlet-huf')}
                   </div>
                   <div className="mt-1 text-sm font-medium text-gray-800">
                     {formatHuf(adminDetails.totalInventoryHuf ?? 0)}
@@ -335,14 +355,16 @@ export default function BranchEditPage() {
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase text-gray-500">
-                    Utolsó szinkron
+                    {i18n.t('literals.utolso-szinkron')}
                   </div>
                   <div className="mt-1 text-sm font-medium text-gray-800">
                     {formatDateTime(adminDetails.lastSyncAt)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase text-gray-500">Nyitvatartás</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    {i18n.t('literals.nyitvatartas')}
+                  </div>
                   <div className="mt-1 text-sm font-medium text-gray-800">
                     {adminDetails.openingHours ?? '-'}
                   </div>
@@ -350,7 +372,7 @@ export default function BranchEditPage() {
               </>
             ) : (
               <div className="md:col-span-2 text-sm text-gray-500">
-                Admin statisztika nem érhető el.
+                {i18n.t('literals.admin-statisztika-nem-erheto-el')}
               </div>
             )}
           </Section>
@@ -358,7 +380,7 @@ export default function BranchEditPage() {
           {/* 1. Alapadatok */}
           <Section title="1. Alapadatok">
             <label className="block">
-              <span className="form-label">Pénztár száma / azonosítója</span>
+              <span className="form-label">{i18n.t('literals.penztar-szama-azonositoja-2')}</span>
               {/* FR-3: a kód nem szerkeszthető — read-only mező, nem része a payloadnak. */}
               <input
                 type="text"
@@ -367,11 +389,14 @@ export default function BranchEditPage() {
                 readOnly
                 disabled
               />
-              <span className="text-xs text-gray-500">A pénztár kódja nem módosítható.</span>
+              <span className="text-xs text-gray-500">
+                {i18n.t('literals.a-penztar-kodja-nem-modosithato')}
+              </span>
             </label>
             <label className="block">
               <span className="form-label">
-                Megjelenítendő név <span className="text-red-600">*</span>
+                {i18n.t('literals.megjelenitendo-nev-2')}
+                <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
               </span>
               <input
                 type="text"
@@ -383,7 +408,7 @@ export default function BranchEditPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Rövid név</span>
+              <span className="form-label">{i18n.t('literals.rovid-nev')}</span>
               <input
                 type="text"
                 className="form-input"
@@ -395,7 +420,7 @@ export default function BranchEditPage() {
               />
             </label>
             <div className="block">
-              <span className="form-label">Iroda típusa</span>
+              <span className="form-label">{i18n.t('literals.iroda-tipusa-2')}</span>
               <div className="flex gap-4 mt-1">
                 <label className="inline-flex items-center gap-2 cursor-pointer">
                   <input
@@ -405,7 +430,7 @@ export default function BranchEditPage() {
                     disabled={disabled}
                     onChange={() => patch({ isVault: false })}
                   />
-                  <span className="text-sm">Pénztár</span>
+                  <span className="text-sm">{i18n.t('literals.penztar-2')}</span>
                 </label>
                 <label className="inline-flex items-center gap-2 cursor-pointer">
                   <input
@@ -415,7 +440,7 @@ export default function BranchEditPage() {
                     disabled={disabled}
                     onChange={() => patch({ isVault: true })}
                   />
-                  <span className="text-sm">Értéktár</span>
+                  <span className="text-sm">{i18n.t('literals.ertektar')}</span>
                 </label>
               </div>
             </div>
@@ -425,7 +450,8 @@ export default function BranchEditPage() {
           <Section title="2. Elérhetőség">
             <label className="block md:col-span-2">
               <span className="form-label">
-                Pénztár pontos címe <span className="text-red-600">*</span>
+                {i18n.t('literals.penztar-pontos-cime')}
+                <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
               </span>
               <input
                 type="text"
@@ -438,7 +464,7 @@ export default function BranchEditPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Irányítószám</span>
+              <span className="form-label">{i18n.t('literals.iranyitoszam')}</span>
               <input
                 type="text"
                 className="form-input"
@@ -451,7 +477,7 @@ export default function BranchEditPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Város</span>
+              <span className="form-label">{i18n.t('literals.varos')}</span>
               <input
                 type="text"
                 className="form-input"
@@ -463,7 +489,7 @@ export default function BranchEditPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Telefon</span>
+              <span className="form-label">{i18n.t('literals.telefon')}</span>
               <input
                 type="text"
                 className="form-input"
@@ -475,7 +501,7 @@ export default function BranchEditPage() {
               />
             </label>
             <label className="block">
-              <span className="form-label">Email</span>
+              <span className="form-label">{i18n.t('literals.email')}</span>
               <input
                 type="email"
                 className="form-input"
@@ -492,7 +518,8 @@ export default function BranchEditPage() {
           <Section title="3. Területi besorolás">
             <label className="block">
               <span className="form-label">
-                Terület / Régió hozzárendelése <span className="text-red-600">*</span>
+                {i18n.t('literals.terulet-regio-hozzarendelese')}
+                <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
               </span>
               <select
                 className="form-input"
@@ -501,7 +528,7 @@ export default function BranchEditPage() {
                 onChange={(e) => patch({ regionCode: e.target.value })}
                 aria-label="Terület / Régió hozzárendelése"
               >
-                <option value="">— válasszon területet —</option>
+                <option value="">{i18n.t('literals.valasszon-teruletet')}</option>
                 {regions.map((r) => (
                   <option key={r.id} value={r.code}>
                     {r.nameHu || r.name}
@@ -509,11 +536,11 @@ export default function BranchEditPage() {
                 ))}
               </select>
               <span className="text-xs text-gray-500">
-                A pénztárt ez a terület (értéktárhoz) köti.
+                {i18n.t('literals.a-penztart-ez-a-terulet-ertektarhoz-koti')}
               </span>
             </label>
             <label className="block">
-              <span className="form-label">Bankkód</span>
+              <span className="form-label">{i18n.t('literals.bankkod')}</span>
               <input
                 type="text"
                 className="form-input"
@@ -523,7 +550,9 @@ export default function BranchEditPage() {
                 disabled={disabled}
                 onChange={(e) => patch({ bankCode: e.target.value })}
               />
-              <span className="text-xs text-gray-500">Banki hivatkozási szám.</span>
+              <span className="text-xs text-gray-500">
+                {i18n.t('literals.banki-hivatkozasi-szam')}
+              </span>
             </label>
           </Section>
 
@@ -595,7 +624,7 @@ export default function BranchEditPage() {
             <p className="text-gray-800">{confirmMessage}</p>
             <div className="flex justify-end gap-2">
               <button type="button" className="form-button" onClick={() => setConfirmMessage(null)}>
-                Nem
+                {i18n.t('literals.nem')}
               </button>
               <button
                 type="button"
@@ -605,7 +634,7 @@ export default function BranchEditPage() {
                   void submitUpdate(form)
                 }}
               >
-                Igen
+                {i18n.t('literals.igen')}
               </button>
             </div>
           </div>

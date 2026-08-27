@@ -174,11 +174,14 @@ export const menuGroups: MenuGroup[] = [
       // vezetői jog — a HandlingFeeConfigPage a szerepkör szerint tiltja a szerkesztést).
       // Explicit canonicalRoles: a route-gate (effectiveCanonicalRolesForPath UNIÓ) így a
       // pénztárost ÉS az oversight-bypass-szal belépő vezetőket is átengedi.
+      // FK-096 FR-12 (2026-08-26): az irodavezető/belső ellenőr LEVÉVE — az új
+      // iroda-szintű konfiguráció írásához/jóváhagyásához csak ügyvezető + főértéktáros
+      // (+ admin break-glass) férhet; a read-only pénztáros nézet megmarad (FR-14).
       {
         path: '/handling-fee-config',
         label: 'Kezelési költség beállítások',
         icon: Wallet,
-        canonicalRoles: ['penztar', 'foertektar', 'ugyvezeto', 'irodavezeto', 'belso_ellenor'],
+        canonicalRoles: ['penztar', 'foertektar', 'ugyvezeto'],
       },
     ],
   },
@@ -445,7 +448,10 @@ export const menuGroups: MenuGroup[] = [
         path: '/handling-fee-config',
         label: 'Kezelési költség beállítások',
         icon: Wallet,
-        canonicalRoles: ['ugyvezeto', 'irodavezeto', 'belso_ellenor'],
+        // FK-096 FR-12 (2026-08-26): szűkítve ugyvezeto+foertektarra (irodavezeto és
+        // belso_ellenor levéve) — a Pénztár-csoportbeli bejegyzéssel UNIÓBAN ez adja a
+        // route-gate jogosultságait, ezért mindkét helyen szerkeszteni kell (pitfall #14).
+        canonicalRoles: ['ugyvezeto', 'foertektar'],
       },
       {
         path: '/packaging',

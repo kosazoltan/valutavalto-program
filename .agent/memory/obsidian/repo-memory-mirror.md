@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-25T21:49:24.974Z
+generated: 2026-08-27T02:02:59.760Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-25T21:49:24.974Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1075
-- generated: 2026-08-25T21:49:24.974Z
+- sources: 1076
+- generated: 2026-08-27T02:02:59.760Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -702,6 +702,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Spec: FK-038 — Értéktár (is_vault) szivárgás-gate a pénztári nézetekbe]] — `docs/specs/fk038-ertektar-szivargas-gate.md` (semantic-reference)
 - [[FK-059 — POS handling-fee daily report contract]] — `docs/specs/fk059-pos-handling-fee.md` (semantic-reference)
 - [[Spec: FK-091 HQ vészkijárat + bridged jelzés, FK-092 transzfer-riasztás idempotencia]] — `docs/specs/fk091-fk092-hq-bridged-transfer-idempotencia.md` (semantic-reference)
+- [[FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv)]] — `docs/specs/fk096-fk097-branch-handling-fee.md` (semantic-reference)
 - [[Spec: FKH-019 / FKH-020 / FKH-021 / FKH-022 Értéktári hiányok lezárása]] — `docs/specs/fkh019-022-ertektar-gap-fix-2026-07-20.md` (semantic-reference)
 - [[legacy-pos-storno-reversal-wrapper-cleanup-2026-06-20.yaml]] — `docs/specs/legacy-pos-storno-reversal-wrapper-cleanup-2026-06-20.yaml` (semantic-reference)
 - [[monthly-closing-perform-frontend-contract-2026-06-20.yaml]] — `docs/specs/monthly-closing-perform-frontend-contract-2026-06-20.yaml` (semantic-reference)

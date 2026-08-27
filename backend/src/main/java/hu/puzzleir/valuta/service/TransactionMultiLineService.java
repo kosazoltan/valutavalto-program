@@ -136,7 +136,7 @@ public class TransactionMultiLineService {
 
         // Kezelesi dij
         BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
-                hufAfterDiscount, TransactionType.BUY, request.getHandlingFee());
+                hufAfterDiscount, TransactionType.BUY, request.getHandlingFee(), branchId);
         // FK-KEZDÍJ (2026-06-02): kezelési díj override AUTORITATÍV validálása a multi-line ágon is.
         BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
                 && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)
@@ -366,7 +366,7 @@ public class TransactionMultiLineService {
 
         // Kezelesi dij
         BigDecimal handlingFeeBase = handlingFeeCalculator.calculate(
-                hufAfterDiscount, TransactionType.SELL, request.getHandlingFee());
+                hufAfterDiscount, TransactionType.SELL, request.getHandlingFee(), branchId);
         // FK-KEZDÍJ (2026-06-02): kezelési díj override AUTORITATÍV validálása a multi-line ágon is.
         BigDecimal serverHandlingFee = (request.getHandlingFeeOverrideType() != null
                 && request.getHandlingFeeOverrideType() != hu.puzzleir.valuta.entity.HandlingFeeOverrideType.NONE)

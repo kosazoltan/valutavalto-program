@@ -5,6 +5,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 export default function LoggingPage() {
   const { t } = useTranslation()
@@ -148,7 +149,7 @@ export default function LoggingPage() {
             {loading ? (
               <tr>
                 <td colSpan={7} className="text-center py-4">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filteredLogs.length === 0 ? (

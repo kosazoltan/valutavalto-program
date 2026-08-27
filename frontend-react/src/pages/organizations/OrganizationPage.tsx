@@ -3,6 +3,7 @@ import { Archive, Building, Plus, Edit, Trash2, Search, X, Save } from 'lucide-r
 import { organizationApi, Organization } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function OrganizationPage() {
   const { t } = useTranslation()
@@ -118,7 +119,9 @@ export default function OrganizationPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (
@@ -147,17 +150,17 @@ export default function OrganizationPage() {
       <div className="form-panel">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs text-gray-500">Összes szervezet</div>
+            <div className="text-xs text-gray-500">{i18n.t('literals.osszes-szervezet')}</div>
             <div className="text-2xl font-semibold text-gray-900">{organizations.length}</div>
           </div>
           <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
-            <div className="text-xs text-emerald-700">Aktív szervezet</div>
+            <div className="text-xs text-emerald-700">{i18n.t('literals.aktiv-szervezet')}</div>
             <div className="text-2xl font-semibold text-emerald-800">
               {activeOrganizations.length}
             </div>
           </div>
           <div className="rounded border border-blue-200 bg-blue-50 p-3">
-            <div className="text-xs text-blue-700">Gyökér szervezet</div>
+            <div className="text-xs text-blue-700">{i18n.t('literals.gyoker-szervezet')}</div>
             <div className="text-2xl font-semibold text-blue-800">{rootOrganizations.length}</div>
           </div>
         </div>

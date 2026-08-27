@@ -4,6 +4,7 @@ import { toast } from '../../components/ui/toaster'
 import { translationApi, type TranslationMap } from '../../services/api/translations'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 export default function TranslationSettingsPage() {
   const [languageCode, setLanguageCode] = useState('hu')
@@ -124,19 +125,21 @@ export default function TranslationSettingsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="section-title">Fordítások</h2>
+        <h2 className="section-title">{i18n.t('literals.forditasok')}</h2>
         <p className="text-sm text-gray-500">
-          Backend i18n kulcsok lekérése és karbantartása nyelv, illetve modul szerint.
+          {i18n.t('literals.backend-i18n-kulcsok-lekerese-es-karbant')}
         </p>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <section className="rounded border border-gray-200 bg-white p-3">
-          <h3 className="mb-3 text-sm font-semibold text-gray-800">Lekérdezés</h3>
+          <h3 className="mb-3 text-sm font-semibold text-gray-800">
+            {i18n.t('literals.lekerdezes')}
+          </h3>
           <div className="grid gap-2 sm:grid-cols-[120px_minmax(0,1fr)_auto_auto] sm:items-end">
             <div>
               <label className="form-label" htmlFor="translation-language">
-                Nyelv
+                {i18n.t('literals.nyelv')}
               </label>
               <input
                 id="translation-language"
@@ -147,7 +150,7 @@ export default function TranslationSettingsPage() {
             </div>
             <div>
               <label className="form-label" htmlFor="translation-module">
-                Modul
+                {i18n.t('literals.modul-2')}
               </label>
               <input
                 id="translation-module"
@@ -163,7 +166,7 @@ export default function TranslationSettingsPage() {
               disabled={loading}
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              Nyelv
+              {i18n.t('literals.nyelv')}
             </button>
             <button
               type="button"
@@ -172,7 +175,7 @@ export default function TranslationSettingsPage() {
               disabled={loading}
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              Modul
+              {i18n.t('literals.modul-2')}
             </button>
           </div>
 
@@ -192,10 +195,10 @@ export default function TranslationSettingsPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                    Kulcs
+                    {i18n.t('literals.kulcs')}
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                    Érték
+                    {i18n.t('literals.ertek')}
                   </th>
                 </tr>
               </thead>
@@ -212,17 +215,19 @@ export default function TranslationSettingsPage() {
 
           {rows.length === 0 && (
             <p className="mt-3 rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
-              Nincs betöltött fordítás.
+              {i18n.t('literals.nincs-betoltott-forditas')}
             </p>
           )}
         </section>
 
         <section className="rounded border border-gray-200 bg-white p-3">
-          <h3 className="mb-3 text-sm font-semibold text-gray-800">Egyedi kulcs mentése</h3>
+          <h3 className="mb-3 text-sm font-semibold text-gray-800">
+            {i18n.t('literals.egyedi-kulcs-mentese')}
+          </h3>
           <div className="space-y-2">
             <div>
               <label className="form-label" htmlFor="translation-key">
-                Kulcs
+                {i18n.t('literals.kulcs')}
               </label>
               <input
                 id="translation-key"
@@ -233,7 +238,7 @@ export default function TranslationSettingsPage() {
             </div>
             <div>
               <label className="form-label" htmlFor="translation-value">
-                Fordítás
+                {i18n.t('literals.forditas')}
               </label>
               <textarea
                 id="translation-value"
@@ -249,14 +254,16 @@ export default function TranslationSettingsPage() {
               disabled={saving}
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              Fordítás mentése
+              {i18n.t('literals.forditas-mentese')}
             </button>
           </div>
         </section>
       </div>
 
       <section className="rounded border border-gray-200 bg-white p-3">
-        <h3 className="mb-3 text-sm font-semibold text-gray-800">JSON import</h3>
+        <h3 className="mb-3 text-sm font-semibold text-gray-800">
+          {i18n.t('literals.json-import')}
+        </h3>
         <textarea
           className="form-input min-h-32 w-full font-mono text-xs"
           aria-label="Fordítás JSON import"
@@ -270,7 +277,7 @@ export default function TranslationSettingsPage() {
           disabled={importing}
         >
           {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          Import
+          {i18n.t('literals.import')}
         </button>
       </section>
 

@@ -55,6 +55,7 @@ import {
   RAIFFEISEN_BAND_PERCENT,
   type BandSource,
 } from './rfmRules'
+import i18n from '../../i18n'
 
 /**
  * Főlap (0-s lap) — Árfolyamkészítő program ALAP felülete.
@@ -1405,15 +1406,22 @@ export default function MainRateSheetPage() {
       {/* === HEADER === */}
       <div className="flex items-center justify-between bg-white px-4 py-2 border-b border-slate-200 shadow-sm">
         <div className="flex items-center gap-3">
-          <h1 className="text-base font-bold text-slate-900">Főlap — Elszámoló árfolyamok</h1>
+          <h1 className="text-base font-bold text-slate-900">
+            {i18n.t('literals.folap-elszamolo-arfolyamok')}
+          </h1>
           <span className="text-xs text-slate-500 px-2 py-0.5 bg-slate-100 rounded">
-            0-s lap (Alap)
+            {i18n.t('literals.0-s-lap-alap')}
           </span>
-          {dirty && <span className="text-xs text-orange-600 font-medium">● módosítva</span>}
+          {dirty && (
+            <span className="text-xs text-orange-600 font-medium">
+              {i18n.t('literals.modositva')}
+            </span>
+          )}
           {/* Phase 2: kozponti szerver szinkron-allapot indikator */}
           {serverSyncState === 'loading' && (
             <span className="text-xs text-blue-600 flex items-center gap-1">
-              <Wifi size={12} className="animate-pulse" /> Szerver szinkron…
+              <Wifi size={12} className="animate-pulse" />
+              {i18n.t('literals.szerver-szinkron')}
             </span>
           )}
           {serverSyncState === 'online' && (
@@ -1421,12 +1429,14 @@ export default function MainRateSheetPage() {
               className="text-xs text-green-700 flex items-center gap-1"
               title={serverLastSyncAt ?? ''}
             >
-              <Wifi size={12} /> Online (kp. szerver)
+              <Wifi size={12} />
+              {i18n.t('literals.online-kp-szerver')}
             </span>
           )}
           {serverSyncState === 'offline' && (
             <span className="text-xs text-red-600 flex items-center gap-1">
-              <WifiOff size={12} /> Offline — helyi cache
+              <WifiOff size={12} />
+              {i18n.t('literals.offline-helyi-cache')}
             </span>
           )}
         </div>
@@ -1437,7 +1447,7 @@ export default function MainRateSheetPage() {
             className="flex items-center gap-1 text-xs"
             title="Raiffeisen eltérési sáv (FR-RFM-12/13): a vétel/eladás max ennyivel térhet el a választott bázistól"
           >
-            <span className="text-slate-500">Sáv:</span>
+            <span className="text-slate-500">{i18n.t('literals.sav-2')}</span>
             <select
               value={bandBase}
               onChange={(e) => setBandBase(e.target.value === 'otp' ? 'otp' : 'settlement')}
@@ -1445,8 +1455,8 @@ export default function MainRateSheetPage() {
               className="px-1 py-0.5 border border-slate-300 rounded text-xs disabled:opacity-40"
               title="A sáv bázisa: elszámoló vagy OTP árfolyam (FR-RFM-13)"
             >
-              <option value="settlement">Elszámoló</option>
-              <option value="otp">OTP</option>
+              <option value="settlement">{i18n.t('literals.elszamolo')}</option>
+              <option value="otp">{i18n.t('literals.otp')}</option>
             </select>
             <input
               type="number"
@@ -1461,21 +1471,23 @@ export default function MainRateSheetPage() {
               className="w-12 px-1 py-0.5 border border-slate-300 rounded text-xs disabled:opacity-40"
               title="Megengedett eltérés százaléka (alap 10%) — FR-RFM-12"
             />
-            <span className="text-slate-500">%</span>
+            <span className="text-slate-500">{i18n.t('literals.lit-30')}</span>
           </div>
           <button
             onClick={() => setShowHelp(true)}
             className="flex items-center gap-1 px-2 py-1 text-xs border border-slate-300 rounded hover:bg-slate-100"
             title="Kitöltési segítség"
           >
-            <Info size={13} /> Segítség
+            <Info size={13} />
+            {i18n.t('literals.segitseg')}
           </button>
           <button
             onClick={saveLocally}
             disabled={!dirty || !canEdit}
             className="flex items-center gap-1 px-2 py-1 text-xs border border-slate-300 rounded hover:bg-slate-100 disabled:opacity-40"
           >
-            <Save size={13} /> Mentés
+            <Save size={13} />
+            {i18n.t('literals.mentes-3')}
           </button>
         </div>
       </div>
@@ -1494,7 +1506,8 @@ export default function MainRateSheetPage() {
           }}
           className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-slate-50 flex items-center gap-1"
         >
-          <ArrowRight size={12} /> CSOPORTOK KARBANTARTÁSA
+          <ArrowRight size={12} />
+          {i18n.t('literals.csoportok-karbantartasa')}
         </button>
         {/* FR-HL-10 (hibalista): dedikált ELLENŐRZÉS gomb — a háromlépcsős flow (Ellenőrzés → Mentés →
             Szétküldés) explicit szétválasztása. Ugyanazt az irány- + EUA-validációt futtatja, mint a
@@ -1552,7 +1565,8 @@ export default function MainRateSheetPage() {
           }}
           className="px-3 py-1 text-xs font-medium bg-blue-600 text-white border border-blue-700 rounded hover:bg-blue-700 flex items-center gap-1"
         >
-          <CheckCircle2 size={12} /> ELLENŐRZÉS
+          <CheckCircle2 size={12} />
+          {i18n.t('literals.ellenorzes-2')}
         </button>
         <button
           onClick={() => void dispatchToServer()}
@@ -1573,7 +1587,9 @@ export default function MainRateSheetPage() {
             title={link.url}
             className="px-2 py-1 text-xs font-medium bg-sky-50 border border-sky-300 rounded text-sky-700 hover:bg-sky-100 flex items-center gap-1"
           >
-            <Globe size={12} /> {link.buttonNumber}. {link.label}
+            <Globe size={12} /> {link.buttonNumber}
+            {i18n.t('literals.lit-31')}
+            {link.label}
           </button>
         ))}
         <button
@@ -1584,7 +1600,8 @@ export default function MainRateSheetPage() {
           title="Internet-címek karbantartása (legacy TINTERNETTMKFORM)"
           className="px-3 py-1 text-xs font-medium bg-white border border-slate-300 rounded hover:bg-slate-50 flex items-center gap-1"
         >
-          <Globe size={12} /> INTERNET CÍMEK KARBANTARTÁSA
+          <Globe size={12} />
+          {i18n.t('literals.internet-cimek-karbantartasa')}
         </button>
         {/* V238 (2026-05-19) Valutakezelő — admin only (foertekitaros / ugyvezeto) */}
         {canEdit && (
@@ -1594,7 +1611,8 @@ export default function MainRateSheetPage() {
             data-testid="open-currency-manager"
             title="Valutakezelő — új valuta hozzáadása / inaktiválás (audit log)"
           >
-            <Settings size={12} /> VALUTAKEZELŐ
+            <Settings size={12} />
+            {i18n.t('literals.valutakezelo')}
           </button>
         )}
         <div className="flex-1" />
@@ -1617,7 +1635,8 @@ export default function MainRateSheetPage() {
           }}
           className="px-3 py-1 text-xs font-medium bg-white border border-slate-400 rounded hover:bg-red-50 hover:border-red-300 flex items-center gap-1"
         >
-          <LogOut size={12} /> KILÉPÉS
+          <LogOut size={12} />
+          {i18n.t('literals.kilepes-2')}
         </button>
       </div>
 
@@ -1627,17 +1646,29 @@ export default function MainRateSheetPage() {
           <thead className="sticky top-0 bg-slate-200 border-b-2 border-slate-400">
             <tr className="text-[10px] uppercase font-bold text-slate-700">
               <th className="border border-slate-300 px-2 py-1 bg-orange-100" colSpan={1}>
-                A — Elszámoló
+                {i18n.t('literals.a-elszamolo')}
               </th>
-              <th className="border border-slate-300 px-2 py-1 bg-blue-50">B — OTP</th>
-              <th className="border border-slate-300 px-2 py-1 bg-blue-50">C — Segéd</th>
-              <th className="border border-slate-300 px-2 py-1 bg-slate-300">D — Valuta</th>
+              <th className="border border-slate-300 px-2 py-1 bg-blue-50">
+                {i18n.t('literals.b-otp')}
+              </th>
+              <th className="border border-slate-300 px-2 py-1 bg-blue-50">
+                {i18n.t('literals.c-seged')}
+              </th>
+              <th className="border border-slate-300 px-2 py-1 bg-slate-300">
+                {i18n.t('literals.d-valuta')}
+              </th>
               <th className="border border-slate-300 px-2 py-1 bg-yellow-100" colSpan={2}>
-                E-F — Gyenge multis (vét/elad)
+                {i18n.t('literals.e-f-gyenge-multis-vet-elad')}
               </th>
-              <th className="border border-slate-300 px-2 py-1 bg-amber-50">G — Kereszt számolt</th>
-              <th className="border border-slate-300 px-2 py-1 bg-pink-50">H — Kereszt forrás</th>
-              <th className="border border-slate-300 px-2 py-1 bg-slate-100">I — Nagybani</th>
+              <th className="border border-slate-300 px-2 py-1 bg-amber-50">
+                {i18n.t('literals.g-kereszt-szamolt')}
+              </th>
+              <th className="border border-slate-300 px-2 py-1 bg-pink-50">
+                {i18n.t('literals.h-kereszt-forras')}
+              </th>
+              <th className="border border-slate-300 px-2 py-1 bg-slate-100">
+                {i18n.t('literals.i-nagybani')}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -1797,7 +1828,7 @@ export default function MainRateSheetPage() {
                         `${row.crossBase}/${row.currency}`,
                       )
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-slate-400">{i18n.t('literals.lit-8')}</span>
                     )}
                   </td>
                   {/* I — Nagybani (szürke, opcionális) */}
@@ -1824,15 +1855,18 @@ export default function MainRateSheetPage() {
         {editing && activeCell && (
           <div className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border border-blue-400 bg-white px-4 py-3 shadow-lg">
             <div className="text-xs font-semibold text-blue-700">
-              {rows[activeCell.rowIdx]?.currency} ·{' '}
+              {rows[activeCell.rowIdx]?.currency}
+              {i18n.t('literals.lit-29')}{' '}
               {COL_NAMES[activeCell.col as FormulaColumn] ?? String(activeCell.col)}
             </div>
             <div className="mt-1 break-all font-mono text-sm text-slate-900">
-              {editBuffer || <span className="text-slate-400">(üres → auto/törlés)</span>}
+              {editBuffer || (
+                <span className="text-slate-400">{i18n.t('literals.ures-auto-torles')}</span>
+              )}
             </div>
             {isFormula(editBuffer) && (
               <div className="mt-1 text-[11px] text-slate-500">
-                Képlet — Enter: jóváhagy, Esc: elvet
+                {i18n.t('literals.keplet-enter-jovahagy-esc-elvet')}
               </div>
             )}
           </div>
@@ -1840,55 +1874,59 @@ export default function MainRateSheetPage() {
 
         {/* === LEGEND / INFO === */}
         <div className="mt-4 p-3 bg-white border border-slate-300 rounded text-xs text-slate-700 space-y-1">
-          <div className="font-bold text-slate-900 mb-1">Oszlop magyarázatok:</div>
-          <div>
-            <b>A — Elszámoló:</b> Itt állítjuk az elszámoló árfolyamokat. Minden munkalapon
-            ugyanazok az értékek a J oszlopban. EUR/USD/GBP/CHF (4 főváluta) napközben kézzel
-            állítva, többi képlettel.
+          <div className="font-bold text-slate-900 mb-1">
+            {i18n.t('literals.oszlop-magyarazatok')}
           </div>
           <div>
-            <b>B — OTP:</b> OTP közzétett vételi árfolyamok (segédérték az alap vételi/eladási
-            árfolyamok megállapítására). Forrás:{' '}
+            <b>{i18n.t('literals.a-elszamolo-2')}</b>
+            {i18n.t('literals.itt-allitjuk-az-elszamolo-arfolyamokat-m')}
+          </div>
+          <div>
+            <b>{i18n.t('literals.b-otp-2')}</b>
+            {i18n.t('literals.otp-kozzetett-veteli-arfolyamok-segedert')}{' '}
             <a
               href="https://www.otpbank.hu/portal/hu/Arfolyamok/OTP"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 underline"
             >
-              otpbank.hu
+              {i18n.t('literals.otpbank-hu')}
             </a>
           </div>
           <div>
-            <b>D — Valuta nem:</b> ISO kód (VÉDETT, nem módosítható).
+            <b>{i18n.t('literals.d-valuta-nem')}</b>
+            {i18n.t('literals.iso-kod-vedett-nem-modosithato')}
           </div>
           <div>
-            <b>E-F — Gyenge multis árfolyamok:</b> Pár munkacsoportban módosítás nélkül áthívva, pár
-            helyen képlet alapja.
+            <b>{i18n.t('literals.e-f-gyenge-multis-arfolyamok')}</b>
+            {i18n.t('literals.par-munkacsoportban-modositas-nelkul-ath')}
           </div>
           <div>
-            <b>G — Kereszt számolt:</b> Az EUR/USD keresztárfolyam alapú elszámoló (számolt: A
-            oszlop EUR vagy USD értéke / H oszlop érték). Pl. CZK A = EUR settlement / EUR/CZK
-            kereszt. Read-only, automatikusan követi az A oszlop EUR/USD változását.
+            <b>{i18n.t('literals.g-kereszt-szamolt-2')}</b>
+            {i18n.t('literals.az-eur-usd-keresztarfolyam-alapu-elszamo')}
           </div>
           <div>
-            <b>H — Kereszt forrás:</b> Reggel/napközben beírt EUR vagy USD kereszt árfolyam (forrás:{' '}
+            <b>{i18n.t('literals.h-kereszt-forras-2')}</b>
+            {i18n.t('literals.reggel-napkozben-beirt-eur-vagy-usd-kere')}{' '}
             <a
               href="https://www.xe.com/currencyconverter/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 underline"
             >
-              xe.com
+              {i18n.t('literals.xe-com')}
             </a>
-            ). Min. 6 tizedes pontosság. EUR-tartozó: CZK, PLN, RON, RSD, BGN, BAM, TRY.
-            USD-tartozó: ILS, UAH, RUB, CNY, THB, BRL, MXN, NZD.
+            {i18n.t('literals.min-6-tizedes-pontossag-eur-tartozo-czk')}
           </div>
           <div>
-            <b>I — Nagybani:</b> Jelenleg nem használt (Phase 2).
+            <b>{i18n.t('literals.i-nagybani-2')}</b>
+            {i18n.t('literals.jelenleg-nem-hasznalt-phase-2')}
           </div>
           <div className="mt-2 text-slate-500">
-            <b>Phase 1 (MVP):</b> Lokális mentés (localStorage). <b>Phase 2:</b> Backend persistence
-            + reaktív adatfolyam munkacsoportokhoz (A → minden mcs J oszlopa).
+            <b>{i18n.t('literals.phase-1-mvp')}</b>
+            {i18n.t('literals.lokalis-mentes-localstorage')}
+            <b>{i18n.t('literals.phase-2')}</b>
+            {i18n.t('literals.backend-persistence-reaktiv-adatfolyam-m')}
           </div>
         </div>
       </div>
@@ -1904,90 +1942,94 @@ export default function MainRateSheetPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold text-emerald-900 text-center mb-4">
-              SEGÍTSÉG AZ ÁRFOLYAM SZERKESZTŐ PROGRAMHOZ
+              {i18n.t('literals.segitseg-az-arfolyam-szerkeszto-programh')}
             </h2>
             <div className="bg-white border border-emerald-300 rounded p-3 mb-4">
-              <div className="font-bold text-sm mb-2 text-center">FÜGGVÉNYEK KEZELÉSE</div>
+              <div className="font-bold text-sm mb-2 text-center">
+                {i18n.t('literals.fuggvenyek-kezelese')}
+              </div>
               <table className="w-full text-xs">
                 <tbody>
                   <tr>
                     <td className="py-1 px-2 font-mono font-bold border-r border-slate-300 w-24">
-                      A, B, C, E, F
+                      {i18n.t('literals.a-b-c-e-f')}
                     </td>
                     <td className="py-1 px-2 italic">
-                      Az AKTUÁLIS valuta sorának adott oszlopa (saját sor). A 0-s lapon ez az 5
-                      érték-oszlop képletezhető.
+                      {i18n.t('literals.az-aktualis-valuta-soranak-adott-oszlopa')}
                     </td>
                   </tr>
                   <tr>
                     <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
-                      C*0,97
+                      {i18n.t('literals.c-0-97')}
                     </td>
                     <td className="py-1 px-2 italic">
-                      Példa: az aktuális valuta C oszlopa szorozva 0,97-tel. (Tizedeselválasztó:
-                      vessző.)
+                      {i18n.t('literals.pelda-az-aktualis-valuta-c-oszlopa-szoro')}
                     </td>
                   </tr>
                   <tr>
                     <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
-                      !Fxxx
+                      {i18n.t('literals.fxxx')}
                     </td>
                     <td className="py-1 px-2 italic">
-                      Más valuta sorának oszlopa (F=oszlop, xxx=valutakód). Pl. <b>!FEUR</b> = az
-                      EUR sor F (eladás) oszlopa — pl. az EUA eladása mindig az EUR eladása.
+                      {i18n.t('literals.mas-valuta-soranak-oszlopa-f-oszlop-xxx')}
+                      <b>{i18n.t('literals.feur')}</b>
+                      {i18n.t('literals.az-eur-sor-f-eladas-oszlopa-pl-az-eua-el')}
                     </td>
                   </tr>
                   <tr>
                     <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
-                      Műveletek
+                      {i18n.t('literals.muveletek')}
                     </td>
                     <td className="py-1 px-2 italic">
-                      + - * / és zárójel (a zárójel kötelező eltérő prioritású műveletek esetén)
+                      {i18n.t('literals.es-zarojel-a-zarojel-kotelezo-eltero-pri')}
                     </td>
                   </tr>
                   <tr>
                     <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
-                      (üres)
+                      {i18n.t('literals.ures')}
                     </td>
                     <td className="py-1 px-2 italic">
-                      Üres cella → automatikus érték. Fix szám → kézi felülírás. Képlet → a képlet
-                      eredménye, automatikus újraszámítással.
+                      {i18n.t('literals.ures-cella-automatikus-ertek-fix-szam-ke')}
                     </td>
                   </tr>
                   <tr>
                     <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
-                      #NNL
+                      {i18n.t('literals.nnl')}
                     </td>
                     <td className="py-1 px-2 italic">
-                      Munkacsoportok közötti hivatkozás (<span className="font-mono">#</span> +
-                      kétjegyű csoportazonosító + oszlopbetű, pl.{' '}
-                      <span className="font-mono">#01L</span>). A 0-s lapon nem értelmezett — a{' '}
-                      <b>csoport árfolyamlapokon</b> használható, a{' '}
-                      <span className="font-mono">J–S</span> oszlop-hivatkozásokkal együtt (lásd a
-                      csoport-lap „Képlet-súgó" gombját).
+                      {i18n.t('literals.munkacsoportok-kozotti-hivatkozas')}
+                      <span className="font-mono">{i18n.t('literals.lit-12')}</span>
+                      {i18n.t('literals.ketjegyu-csoportazonosito-oszlopbetu-pl-2')}{' '}
+                      <span className="font-mono">{i18n.t('literals.01l')}</span>
+                      {i18n.t('literals.a-0-s-lapon-nem-ertelmezett-a')}{' '}
+                      <b>{i18n.t('literals.csoport-arfolyamlapokon')}</b>
+                      {i18n.t('literals.hasznalhato-a')}{' '}
+                      <span className="font-mono">{i18n.t('literals.j-s')}</span>
+                      {i18n.t('literals.oszlop-hivatkozasokkal-egyutt-lasd-a-cso')}
                     </td>
                   </tr>
                 </tbody>
               </table>
               <div className="mt-2 text-[11px] text-slate-500">
-                Megjegyzés: a képlet NEM kezdődik „=" jellel; egyszerűen írd be (pl.{' '}
-                <span className="font-mono">C*0,97</span> vagy{' '}
-                <span className="font-mono">!FEUR</span>). A G és H oszlop (kereszt-számolt /
-                kereszt-forrás) automatikus, nem képletezhető.
+                {i18n.t('literals.megjegyzes-a-keplet-nem-kezdodik-jellel')}{' '}
+                <span className="font-mono">{i18n.t('literals.c-0-97')}</span>
+                {i18n.t('literals.vagy')}{' '}
+                <span className="font-mono">{i18n.t('literals.feur')}</span>
+                {i18n.t('literals.a-g-es-h-oszlop-kereszt-szamolt-kereszt')}
               </div>
             </div>
             <div className="bg-white border border-emerald-300 rounded p-3 mb-4 text-xs space-y-2">
               <div>
-                <b>Adatmásolás:</b> CTRL + bal egér gomb a másolandó terület első adatának
-                kijelöléséhez (LILA KERET) → kijelölés befejezése bal egér gomb lenyomásával (ZÖLD
-                KERET)
+                <b>{i18n.t('literals.adatmasolas')}</b>
+                {i18n.t('literals.ctrl-bal-eger-gomb-a-masolando-terulet-e')}
               </div>
               <div>
-                <b>Adatlehúzás:</b> Az alap-árfolyam táblán egy, a munkacsoportoknál több oszlop
-                adata húzható le. (Phase 2)
+                <b>{i18n.t('literals.adatlehuzas')}</b>
+                {i18n.t('literals.az-alap-arfolyam-tablan-egy-a-munkacsopo')}
               </div>
               <div>
-                <b>Felbukkanó menük:</b> jobb egér gomb (Phase 2)
+                <b>{i18n.t('literals.felbukkano-menuk')}</b>
+                {i18n.t('literals.jobb-eger-gomb-phase-2')}
               </div>
             </div>
             <div className="text-center">
@@ -1995,7 +2037,7 @@ export default function MainRateSheetPage() {
                 onClick={() => setShowHelp(false)}
                 className="px-4 py-2 bg-emerald-700 text-white rounded hover:bg-emerald-800 font-medium"
               >
-                Vissza a munkához
+                {i18n.t('literals.vissza-a-munkahoz')}
               </button>
             </div>
           </div>
@@ -2021,13 +2063,14 @@ export default function MainRateSheetPage() {
           <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold flex items-center gap-2">
-                <Globe size={18} /> Internet-címek karbantartása
+                <Globe size={18} />
+                {i18n.t('literals.internet-cimek-karbantartasa-2')}
               </h2>
               <button
                 onClick={() => setInternetOpen(false)}
                 className="text-slate-500 hover:text-slate-700"
               >
-                ✕
+                {i18n.t('literals.lit-14')}
               </button>
             </div>
 
@@ -2058,19 +2101,24 @@ export default function MainRateSheetPage() {
                   onClick={() => void addInternetLink()}
                   className="col-span-2 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700"
                 >
-                  Hozzáad
+                  {i18n.t('literals.hozzaad')}
                 </button>
               </div>
             )}
 
             <ul className="mt-3 max-h-72 divide-y divide-slate-100 overflow-auto rounded border border-slate-200">
               {internetLinks.length === 0 && (
-                <li className="px-3 py-2 text-sm text-slate-400">Nincs internet-cím rögzítve.</li>
+                <li className="px-3 py-2 text-sm text-slate-400">
+                  {i18n.t('literals.nincs-internet-cim-rogzitve')}
+                </li>
               )}
               {internetLinks.map((link) => (
                 <li key={link.id} className="flex items-center justify-between px-3 py-2 text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="font-mono text-sky-700">{link.buttonNumber}.</span>
+                    <span className="font-mono text-sky-700">
+                      {link.buttonNumber}
+                      {i18n.t('literals.lit-5')}
+                    </span>
                     <span className="font-medium">{link.label}</span>
                     <a
                       href={link.url}
@@ -2087,7 +2135,7 @@ export default function MainRateSheetPage() {
                       className="text-red-500 hover:text-red-700"
                       title="Törlés"
                     >
-                      ✕
+                      {i18n.t('literals.lit-14')}
                     </button>
                   )}
                 </li>

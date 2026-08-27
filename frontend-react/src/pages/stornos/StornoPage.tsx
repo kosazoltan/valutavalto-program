@@ -24,6 +24,7 @@ import type { PrintReceiptData } from '../../types/receipt'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function StornoPage() {
   const { t } = useTranslation()
@@ -222,7 +223,7 @@ export default function StornoPage() {
   if (!transaction || !checkResult) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Betöltés...</div>
+        <div className="text-gray-500">{i18n.t('literals.betoltes')}</div>
       </div>
     )
   }
@@ -396,7 +397,7 @@ export default function StornoPage() {
                     className="form-button-primary mt-2"
                     disabled={loading}
                   >
-                    Telefonos jóváhagyás (supervisor PIN)
+                    {i18n.t('literals.telefonos-jovahagyas-supervisor-pin')}
                   </button>
                 )}
             </div>

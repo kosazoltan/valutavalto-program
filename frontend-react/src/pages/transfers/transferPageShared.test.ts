@@ -12,12 +12,9 @@ describe('buildVaultLabel', () => {
   })
 
   it('régiókód nélkül az iroda kódját és nevét adja vissza', () => {
-    expect(
-      buildVaultLabel(
-        { code: 'BR076', name: 'Pécsi értéktár', isVault: true },
-        null,
-      ),
-    ).toBe('BR076 - Pécsi értéktár')
+    expect(buildVaultLabel({ code: 'BR076', name: 'Pécsi értéktár', isVault: true }, null)).toBe(
+      'BR076 - Pécsi értéktár',
+    )
   })
 
   it('saját iroda nélkül a dolgozó irodanevét adja vissza', () => {

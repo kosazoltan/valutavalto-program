@@ -11,6 +11,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
+import i18n from '../../i18n'
 
 export default function WorkerCommissionPage() {
   const { t } = useTranslation()
@@ -182,7 +183,9 @@ export default function WorkerCommissionPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (
@@ -299,7 +302,7 @@ export default function WorkerCommissionPage() {
             </button>
             <button onClick={handleCalculatePeriod} className="form-button flex items-center gap-2">
               <CheckCircle size={16} />
-              Időszaki számítás
+              {i18n.t('literals.idoszaki-szamitas')}
             </button>
           </div>
           <div>
@@ -324,14 +327,16 @@ export default function WorkerCommissionPage() {
       <div className="form-panel">
         <div className="mb-3 flex flex-col gap-3 border-b border-gray-200 pb-3 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <h2 className="text-base font-bold text-gray-800">Havi jutalékszámítás riport</h2>
+            <h2 className="text-base font-bold text-gray-800">
+              {i18n.t('literals.havi-jutalekszamitas-riport')}
+            </h2>
             <p className="text-sm text-gray-500">
-              Backend számítási riport a kiválasztott hónapra.
+              {i18n.t('literals.backend-szamitasi-riport-a-kivalasztott')}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div>
-              <label className="form-label">Hónap</label>
+              <label className="form-label">{i18n.t('literals.honap')}</label>
               <input
                 type="month"
                 className="form-input"
@@ -378,7 +383,9 @@ export default function WorkerCommissionPage() {
               >
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase text-gray-500">Dolgozó ID</p>
+                    <p className="text-xs font-semibold uppercase text-gray-500">
+                      {i18n.t('literals.dolgozo-id')}
+                    </p>
                     <p className="text-lg font-bold text-gray-900">{row.workerId}</p>
                   </div>
                   <span
@@ -389,39 +396,40 @@ export default function WorkerCommissionPage() {
                 </div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                   <div>
-                    <dt className="text-gray-500">Időszak</dt>
+                    <dt className="text-gray-500">{i18n.t('literals.idoszak')}</dt>
                     <dd className="font-medium text-gray-900">{row.period}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">Tranzakció</dt>
+                    <dt className="text-gray-500">{i18n.t('literals.tranzakcio')}</dt>
                     <dd className="font-medium text-gray-900">{row.totalTransactions ?? 0}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">Forgalom HUF</dt>
+                    <dt className="text-gray-500">{i18n.t('literals.forgalom-huf')}</dt>
                     <dd className="font-mono text-gray-900">
                       {formatInteger(row.totalVolumeHuf ?? 0)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">Jutalék %</dt>
+                    <dt className="text-gray-500">{i18n.t('literals.jutalek')}</dt>
                     <dd className="font-mono text-gray-900">
-                      {formatDecimal((row.commissionRate ?? 0) * 100, 2, 2)}%
+                      {formatDecimal((row.commissionRate ?? 0) * 100, 2, 2)}
+                      {i18n.t('literals.lit-30')}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">Jutalék</dt>
+                    <dt className="text-gray-500">{i18n.t('literals.jutalek-2')}</dt>
                     <dd className="font-mono text-gray-900">
                       {formatInteger(row.commissionAmount ?? 0)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">Bónusz</dt>
+                    <dt className="text-gray-500">{i18n.t('literals.bonusz')}</dt>
                     <dd className="font-mono text-gray-900">
                       {formatInteger(row.bonusAmount ?? 0)}
                     </dd>
                   </div>
                   <div className="col-span-2 border-t border-gray-100 pt-2">
-                    <dt className="text-gray-500">Nettó</dt>
+                    <dt className="text-gray-500">{i18n.t('literals.netto')}</dt>
                     <dd className="font-mono text-lg font-bold text-gray-900">
                       {formatInteger(row.netCommission ?? 0)}
                     </dd>
@@ -450,15 +458,15 @@ export default function WorkerCommissionPage() {
             <table className="data-grid w-full min-w-[760px]">
               <thead>
                 <tr>
-                  <th>Dolgozó ID</th>
-                  <th>Időszak</th>
-                  <th>Tranzakció</th>
-                  <th>Forgalom HUF</th>
-                  <th>Jutalék %</th>
-                  <th>Jutalék</th>
-                  <th>Bónusz</th>
-                  <th>Nettó</th>
-                  <th>Státusz</th>
+                  <th>{i18n.t('literals.dolgozo-id')}</th>
+                  <th>{i18n.t('literals.idoszak')}</th>
+                  <th>{i18n.t('literals.tranzakcio')}</th>
+                  <th>{i18n.t('literals.forgalom-huf')}</th>
+                  <th>{i18n.t('literals.jutalek')}</th>
+                  <th>{i18n.t('literals.jutalek-2')}</th>
+                  <th>{i18n.t('literals.bonusz')}</th>
+                  <th>{i18n.t('literals.netto')}</th>
+                  <th>{i18n.t('literals.statusz')}</th>
                   <th>{t('common.actions')}</th>
                 </tr>
               </thead>
@@ -470,7 +478,8 @@ export default function WorkerCommissionPage() {
                     <td>{row.totalTransactions ?? 0}</td>
                     <td className="font-mono">{formatInteger(row.totalVolumeHuf ?? 0)}</td>
                     <td className="font-mono">
-                      {formatDecimal((row.commissionRate ?? 0) * 100, 2, 2)}%
+                      {formatDecimal((row.commissionRate ?? 0) * 100, 2, 2)}
+                      {i18n.t('literals.lit-30')}
                     </td>
                     <td className="font-mono">{formatInteger(row.commissionAmount ?? 0)}</td>
                     <td className="font-mono">{formatInteger(row.bonusAmount ?? 0)}</td>
@@ -496,7 +505,7 @@ export default function WorkerCommissionPage() {
                             : t('common.approve')}
                         </button>
                       ) : (
-                        <span className="text-xs text-gray-400">-</span>
+                        <span className="text-xs text-gray-400">{i18n.t('literals.lit-15')}</span>
                       )}
                     </td>
                   </tr>
@@ -529,7 +538,9 @@ export default function WorkerCommissionPage() {
                   <div className="col-span-2">
                     <dt className="text-gray-500">{t('common.period')}</dt>
                     <dd className="font-medium text-gray-900">
-                      {c.periodStart} - {c.periodEnd}
+                      {c.periodStart}
+                      {i18n.t('literals.lit-17')}
+                      {c.periodEnd}
                     </dd>
                   </div>
                   <div>
@@ -599,7 +610,9 @@ export default function WorkerCommissionPage() {
                     <td>{c.workerName}</td>
                     <td>{c.branchName || '-'}</td>
                     <td>
-                      {c.periodStart} - {c.periodEnd}
+                      {c.periodStart}
+                      {i18n.t('literals.lit-17')}
+                      {c.periodEnd}
                     </td>
                     <td>{c.transactionCount || 0}</td>
                     <td className="font-mono">

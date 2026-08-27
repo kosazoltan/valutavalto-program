@@ -9,6 +9,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface ParamForm {
   organizationName: string
@@ -260,7 +261,7 @@ export default function OrganizationalSystemParameterPage() {
 
       {/* Grouped tables */}
       {loading ? (
-        <div>Betöltés...</div>
+        <div>{i18n.t('literals.betoltes')}</div>
       ) : filtered.length === 0 ? (
         <div className="form-panel text-center text-gray-500 py-4">
           {t('organizations.nincsParameter')}
@@ -288,7 +289,9 @@ export default function OrganizationalSystemParameterPage() {
                       <td>{p.parameterValue}</td>
                       <td>{p.currencyCode || '-'}</td>
                       <td className="text-sm">
-                        {p.validFrom} – {p.validTo || 'határozatlan'}
+                        {p.validFrom}
+                        {i18n.t('literals.lit-32')}
+                        {p.validTo || 'határozatlan'}
                       </td>
                       <td>
                         <div className="flex gap-1">

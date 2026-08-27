@@ -1,5 +1,6 @@
 import { useVoiceAssistant } from '../context/VoiceAssistantProvider'
 import type { VoiceMode } from '../hooks/useVoiceMode'
+import i18n from '../../../i18n'
 
 /**
  * Felhasználói label a belso `VoiceMode` enum-hoz.
@@ -35,7 +36,9 @@ export function VoiceAssistantPanel() {
       aria-label="EBC Hangsegéd"
     >
       <div className="mb-1.5 flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">EBC Hangsegéd</h3>
+        <h3 className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+          {i18n.t('literals.ebc-hangseged')}
+        </h3>
         <span
           className={`inline-block h-2 w-2 rounded-full ${
             isActive ? 'bg-green-500' : 'bg-slate-400'
@@ -68,7 +71,7 @@ export function VoiceAssistantPanel() {
           disabled={isConnecting}
           onClick={() => start('unified')}
         >
-          Beszélgetés indítása
+          {i18n.t('literals.beszelgetes-inditasa')}
         </button>
       ) : (
         <button
@@ -76,7 +79,7 @@ export function VoiceAssistantPanel() {
           className="w-full rounded bg-red-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
           onClick={stop}
         >
-          Beszélgetés befejezése
+          {i18n.t('literals.beszelgetes-befejezese')}
         </button>
       )}
     </div>

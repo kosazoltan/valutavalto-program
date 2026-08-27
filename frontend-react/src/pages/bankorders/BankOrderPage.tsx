@@ -22,6 +22,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTextReasonModal } from '../../components/TextReasonModal'
 import { toast } from '../../components/ui/toaster'
+import i18n from '../../i18n'
 
 const STATUS_LABELS: Record<BankOrderStatus, string> = {
   PENDING: 'Függőben',
@@ -298,45 +299,48 @@ export default function BankOrderPage() {
     <div className="space-y-4 p-4">
       <div className="flex items-center gap-2">
         <Building2 className="h-6 w-6 text-blue-600" />
-        <h1 className="text-xl font-bold text-gray-800">Banki rendelések</h1>
+        <h1 className="text-xl font-bold text-gray-800">{i18n.t('literals.banki-rendelesek')}</h1>
       </div>
 
       <div className="flex items-center gap-3">
-        <label className="text-sm font-semibold">Státusz szűrő:</label>
+        <label className="text-sm font-semibold">{i18n.t('literals.statusz-szuro')}</label>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as BankOrderStatus | '')}
           className="rounded border px-2 py-1 text-sm"
         >
-          <option value="">Mind</option>
-          <option value="PENDING">Függőben</option>
-          <option value="APPROVED">Jóváhagyva</option>
-          <option value="EXECUTED">Teljesítve</option>
-          <option value="CANCELLED">Visszavonva</option>
+          <option value="">{i18n.t('literals.mind')}</option>
+          <option value="PENDING">{i18n.t('literals.fuggoben')}</option>
+          <option value="APPROVED">{i18n.t('literals.jovahagyva')}</option>
+          <option value="EXECUTED">{i18n.t('literals.teljesitve')}</option>
+          <option value="CANCELLED">{i18n.t('literals.visszavonva')}</option>
         </select>
         <button
           onClick={() => void load()}
           className="flex items-center gap-1 rounded border px-3 py-1 text-sm hover:bg-gray-50"
         >
           <RefreshCw className="h-4 w-4" />
-          Frissít
+          {i18n.t('literals.frissit')}
         </button>
         <button
           onClick={openCreate}
           className="ml-auto flex items-center gap-1 rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
         >
           <Plus className="h-4 w-4" />
-          Új rendelés
+          {i18n.t('literals.uj-rendeles')}
         </button>
       </div>
 
       <section className="rounded border border-gray-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">Western Union napi keret</h2>
+            <h2 className="text-sm font-semibold text-gray-800">
+              {i18n.t('literals.western-union-napi-keret')}
+            </h2>
             {wuLimit && (
               <p className="text-xs text-gray-500">
-                {wuLimit.businessDate} · reset:{' '}
+                {wuLimit.businessDate}
+                {i18n.t('literals.reset')}{' '}
                 {wuLimit.resetAt ? new Date(wuLimit.resetAt).toLocaleString('hu-HU') : '00:00'}
               </p>
             )}
@@ -346,7 +350,7 @@ export default function BankOrderPage() {
             onClick={() => void loadWuLimit()}
             className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
           >
-            Frissít
+            {i18n.t('literals.frissit')}
           </button>
         </div>
         {wuLimitError && <div className="text-sm text-red-700">{wuLimitError}</div>}
@@ -355,11 +359,11 @@ export default function BankOrderPage() {
             <div className="mb-1 flex justify-between text-xs text-gray-600">
               <span>
                 {Number(wuLimit.usedAmount).toLocaleString('hu-HU')} {wuLimit.currencyCode}{' '}
-                felhasználva
+                {i18n.t('literals.felhasznalva')}
               </span>
               <span>
                 {Number(wuLimit.remainingAmount).toLocaleString('hu-HU')} {wuLimit.currencyCode}{' '}
-                maradt
+                {i18n.t('literals.maradt')}
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded bg-gray-100">
@@ -369,14 +373,15 @@ export default function BankOrderPage() {
               />
             </div>
             <div className="mt-1 text-right text-xs text-gray-500">
-              {Number(wuLimit.dailyLimit).toLocaleString('hu-HU')} {wuLimit.currencyCode} napi limit
+              {Number(wuLimit.dailyLimit).toLocaleString('hu-HU')} {wuLimit.currencyCode}
+              {i18n.t('literals.napi-limit')}
             </div>
           </div>
         )}
         <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-end">
           <label className="block text-sm">
             <span className="mb-1 block text-xs font-semibold text-gray-600">
-              Kézi fallback felhasználás (USD)
+              {i18n.t('literals.kezi-fallback-felhasznalas-usd')}
             </span>
             <input
               value={wuLimitUseAmount}
@@ -399,15 +404,16 @@ export default function BankOrderPage() {
 
       {error && (
         <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          Hiba: {error}
+          {i18n.t('literals.hiba')}
+          {error}
         </div>
       )}
 
-      {loading && <div className="text-sm text-gray-500">Betöltés…</div>}
+      {loading && <div className="text-sm text-gray-500">{i18n.t('literals.betoltes-3')}</div>}
 
       {!loading && orders.length === 0 && (
         <div className="rounded border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
-          Nincs banki rendelés a kiválasztott szűrővel.
+          {i18n.t('literals.nincs-banki-rendeles-a-kivalasztott-szur')}
         </div>
       )}
 
@@ -416,14 +422,14 @@ export default function BankOrderPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left">
               <tr>
-                <th className="p-2">Idő</th>
-                <th className="p-2">Iroda</th>
-                <th className="p-2">Valuta</th>
-                <th className="p-2 text-right">Összeg</th>
-                <th className="p-2">Sürgősség</th>
-                <th className="p-2">Státusz</th>
-                <th className="p-2">Kérte</th>
-                <th className="p-2">Jóváhagyta</th>
+                <th className="p-2">{i18n.t('literals.ido-2')}</th>
+                <th className="p-2">{i18n.t('literals.iroda')}</th>
+                <th className="p-2">{i18n.t('literals.valuta')}</th>
+                <th className="p-2 text-right">{i18n.t('literals.osszeg')}</th>
+                <th className="p-2">{i18n.t('literals.surgosseg')}</th>
+                <th className="p-2">{i18n.t('literals.statusz')}</th>
+                <th className="p-2">{i18n.t('literals.kerte')}</th>
+                <th className="p-2">{i18n.t('literals.jovahagyta')}</th>
                 <th className="p-2"></th>
               </tr>
             </thead>
@@ -455,7 +461,7 @@ export default function BankOrderPage() {
                       className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs hover:bg-gray-50 disabled:opacity-50"
                     >
                       <Eye className="h-3 w-3" />
-                      Részletek
+                      {i18n.t('literals.reszletek-2')}
                     </button>
                     {o.status === 'PENDING' && (
                       <>
@@ -464,14 +470,14 @@ export default function BankOrderPage() {
                           onClick={() => void handleApprove(o.id)}
                           className="rounded bg-blue-600 px-2 py-0.5 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
                         >
-                          Jóváhagy
+                          {i18n.t('literals.jovahagy')}
                         </button>
                         <button
                           disabled={actionInProgress === o.id}
                           onClick={() => void handleCancel(o.id)}
                           className="rounded bg-gray-200 px-2 py-0.5 text-xs hover:bg-gray-300 disabled:opacity-50"
                         >
-                          Visszavon
+                          {i18n.t('literals.visszavon')}
                         </button>
                       </>
                     )}
@@ -482,14 +488,14 @@ export default function BankOrderPage() {
                           onClick={() => void handleExecute(o.id)}
                           className="rounded bg-green-600 px-2 py-0.5 text-xs text-white hover:bg-green-700 disabled:opacity-50"
                         >
-                          Teljesít
+                          {i18n.t('literals.teljesit')}
                         </button>
                         <button
                           disabled={actionInProgress === o.id}
                           onClick={() => void handleCancel(o.id)}
                           className="rounded bg-gray-200 px-2 py-0.5 text-xs hover:bg-gray-300 disabled:opacity-50"
                         >
-                          Visszavon
+                          {i18n.t('literals.visszavon')}
                         </button>
                       </>
                     )}
@@ -502,15 +508,16 @@ export default function BankOrderPage() {
       )}
 
       <p className="text-xs text-gray-500">
-        A banki rendelés workflow és a Western Union napi keret aktív. Az EMERGENCY rendelés
-        automatikus vezetői értesítést küld.
+        {i18n.t('literals.a-banki-rendeles-workflow-es-a-western-u')}
       </p>
 
       {(selectedOrder || detailError) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl rounded bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
-              <h2 className="text-lg font-semibold">Banki rendelés részletei</h2>
+              <h2 className="text-lg font-semibold">
+                {i18n.t('literals.banki-rendeles-reszletei')}
+              </h2>
               <button
                 type="button"
                 onClick={() => {
@@ -531,14 +538,18 @@ export default function BankOrderPage() {
               {selectedOrder && (
                 <>
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">Iroda</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      {i18n.t('literals.iroda')}
+                    </div>
                     <div>
-                      {selectedOrder.branchCode} - {selectedOrder.branchName}
+                      {selectedOrder.branchCode}
+                      {i18n.t('literals.lit-17')}
+                      {selectedOrder.branchName}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs font-semibold uppercase text-gray-500">
-                      Valuta és összeg
+                      {i18n.t('literals.valuta-es-osszeg')}
                     </div>
                     <div className="font-mono">
                       {selectedOrder.currencyCode}{' '}
@@ -546,7 +557,9 @@ export default function BankOrderPage() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">Státusz</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      {i18n.t('literals.statusz')}
+                    </div>
                     <span
                       className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${STATUS_COLORS[selectedOrder.status]}`}
                     >
@@ -554,37 +567,45 @@ export default function BankOrderPage() {
                     </span>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">Sürgősség</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      {i18n.t('literals.surgosseg')}
+                    </div>
                     <div>{selectedOrder.urgency}</div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">Kérte</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      {i18n.t('literals.kerte')}
+                    </div>
                     <div>{selectedOrder.requestedByWorkerName ?? '-'}</div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold uppercase text-gray-500">Jóváhagyta</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      {i18n.t('literals.jovahagyta')}
+                    </div>
                     <div>{selectedOrder.approvedByWorkerName ?? '-'}</div>
                   </div>
                   <div>
                     <div className="text-xs font-semibold uppercase text-gray-500">
-                      Teljesítette
+                      {i18n.t('literals.teljesitette')}
                     </div>
                     <div>{selectedOrder.executedByWorkerName ?? '-'}</div>
                   </div>
                   <div>
                     <div className="text-xs font-semibold uppercase text-gray-500">
-                      Bank referencia
+                      {i18n.t('literals.bank-referencia')}
                     </div>
                     <div>{selectedOrder.bankReference ?? '-'}</div>
                   </div>
                   <div className="sm:col-span-2">
-                    <div className="text-xs font-semibold uppercase text-gray-500">Megjegyzés</div>
+                    <div className="text-xs font-semibold uppercase text-gray-500">
+                      {i18n.t('literals.megjegyzes')}
+                    </div>
                     <div>{selectedOrder.notes ?? '-'}</div>
                   </div>
                   {selectedOrder.cancellationReason && (
                     <div className="sm:col-span-2">
                       <div className="text-xs font-semibold uppercase text-gray-500">
-                        Visszavonás indoka
+                        {i18n.t('literals.visszavonas-indoka')}
                       </div>
                       <div>{selectedOrder.cancellationReason}</div>
                     </div>
@@ -600,7 +621,7 @@ export default function BankOrderPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={handleCreate} className="w-full max-w-2xl rounded bg-white shadow-xl">
             <div className="flex items-center justify-between border-b p-4">
-              <h2 className="text-lg font-semibold">Új banki rendelés</h2>
+              <h2 className="text-lg font-semibold">{i18n.t('literals.uj-banki-rendeles')}</h2>
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
@@ -611,39 +632,49 @@ export default function BankOrderPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">Iroda</span>
+                <span className="mb-1 block font-medium text-gray-700">
+                  {i18n.t('literals.iroda')}
+                </span>
                 <select
                   value={createForm.branchId}
                   onChange={(e) => setCreateForm((f) => ({ ...f, branchId: e.target.value }))}
                   disabled={referenceLoading}
                   className="w-full rounded border px-3 py-2"
                 >
-                  <option value="">Válasszon irodát</option>
+                  <option value="">{i18n.t('literals.valasszon-irodat')}</option>
                   {branches.map((branch) => (
                     <option key={branch.id} value={branch.id}>
-                      {branch.code} — {branch.name}
+                      {branch.code}
+                      {i18n.t('literals.lit-18')}
+                      {branch.name}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">Valuta</span>
+                <span className="mb-1 block font-medium text-gray-700">
+                  {i18n.t('literals.valuta')}
+                </span>
                 <select
                   value={createForm.currencyId}
                   onChange={(e) => setCreateForm((f) => ({ ...f, currencyId: e.target.value }))}
                   disabled={referenceLoading}
                   className="w-full rounded border px-3 py-2"
                 >
-                  <option value="">Válasszon valutát</option>
+                  <option value="">{i18n.t('literals.valasszon-valutat')}</option>
                   {currencies.map((currency) => (
                     <option key={currency.id} value={currency.id}>
-                      {currency.code} — {currency.name}
+                      {currency.code}
+                      {i18n.t('literals.lit-18')}
+                      {currency.name}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">Összeg</span>
+                <span className="mb-1 block font-medium text-gray-700">
+                  {i18n.t('literals.osszeg')}
+                </span>
                 <input
                   type="number"
                   min="0.01"
@@ -654,7 +685,9 @@ export default function BankOrderPage() {
                 />
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-gray-700">Sürgősség</span>
+                <span className="mb-1 block font-medium text-gray-700">
+                  {i18n.t('literals.surgosseg')}
+                </span>
                 <select
                   value={createForm.urgency}
                   onChange={(e) =>
@@ -662,13 +695,15 @@ export default function BankOrderPage() {
                   }
                   className="w-full rounded border px-3 py-2"
                 >
-                  <option value="NORMAL">Normál</option>
-                  <option value="URGENT">Sürgős</option>
-                  <option value="EMERGENCY">Azonnali</option>
+                  <option value="NORMAL">{i18n.t('literals.normal')}</option>
+                  <option value="URGENT">{i18n.t('literals.surgos')}</option>
+                  <option value="EMERGENCY">{i18n.t('literals.azonnali')}</option>
                 </select>
               </label>
               <label className="block text-sm md:col-span-2">
-                <span className="mb-1 block font-medium text-gray-700">Megjegyzés</span>
+                <span className="mb-1 block font-medium text-gray-700">
+                  {i18n.t('literals.megjegyzes')}
+                </span>
                 <textarea
                   value={createForm.notes}
                   onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
@@ -688,7 +723,7 @@ export default function BankOrderPage() {
                 onClick={() => setShowCreate(false)}
                 className="rounded border px-4 py-2 text-sm hover:bg-gray-50"
               >
-                Mégse
+                {i18n.t('literals.megse')}
               </button>
               <button
                 type="submit"

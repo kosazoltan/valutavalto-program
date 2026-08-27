@@ -19,6 +19,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface WuTransaction {
   id: string
@@ -376,7 +377,7 @@ export default function WesternUnionPage() {
                 {t('common.type')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                MTCN
+                {i18n.t('literals.mtcn')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('handover.kuldo')}
@@ -388,10 +389,10 @@ export default function WesternUnionPage() {
                 {t('common.country')}
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
-                USD
+                {i18n.t('literals.usd')}
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
-                HUF
+                {i18n.t('literals.huf')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('common.status2')}
@@ -408,7 +409,7 @@ export default function WesternUnionPage() {
             {loading ? (
               <tr>
                 <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -467,7 +468,9 @@ export default function WesternUnionPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
 
       {/* Modal */}
@@ -484,7 +487,7 @@ export default function WesternUnionPage() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">MTCN</label>
+                  <label className="form-label">{i18n.t('literals.mtcn')}</label>
                   <input
                     type="text"
                     className="form-input w-full"
@@ -574,7 +577,9 @@ export default function WesternUnionPage() {
               {(modal === 'send' || modal === 'receive') && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="form-label">Pénzeszköz-forrás dokumentum</label>
+                    <label className="form-label">
+                      {i18n.t('literals.penzeszkoz-forras-dokumentum')}
+                    </label>
                     <select
                       className="form-input w-full"
                       value={form.sourceOfFundsDocType}
@@ -590,7 +595,9 @@ export default function WesternUnionPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="form-label">Forrás-dokumentum dátuma</label>
+                    <label className="form-label">
+                      {i18n.t('literals.forras-dokumentum-datuma')}
+                    </label>
                     <input
                       type="date"
                       className="form-input w-full"
@@ -625,7 +632,7 @@ export default function WesternUnionPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Sztornó indoka</h2>
+              <h2 className="text-lg font-bold">{i18n.t('literals.sztorno-indoka')}</h2>
               <button onClick={() => setStornoTarget(null)}>
                 <X className="h-5 w-5" />
               </button>
@@ -647,7 +654,7 @@ export default function WesternUnionPage() {
                 disabled={!stornoTarget.reason.trim()}
                 className="form-button-primary"
               >
-                Sztornó végrehajtása
+                {i18n.t('literals.sztorno-vegrehajtasa')}
               </button>
             </div>
           </div>

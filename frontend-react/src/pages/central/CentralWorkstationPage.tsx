@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
+import i18n from '../../i18n'
 
 type ModuleStatus = 'ready' | 'partial' | 'server'
 
@@ -347,18 +348,22 @@ export default function CentralWorkstationPage() {
           <div className="flex items-center gap-2">
             <LayoutDashboard className="h-5 w-5 text-slate-700" />
             <div>
-              <h1 className="text-lg font-semibold text-slate-900">Központi irányítóközpont</h1>
+              <h1 className="text-lg font-semibold text-slate-900">
+                {i18n.t('literals.kozponti-iranyitokozpont')}
+              </h1>
               <div className="text-xs text-slate-500">
-                Felügyelet, riportok és törzsadat-kezelés
+                {i18n.t('literals.felugyelet-riportok-es-torzsadat-kezeles')}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">
-              {moduleCount} modul
+              {moduleCount}
+              {i18n.t('literals.modul')}
             </span>
             <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
-              {readyCount} üzemkész
+              {readyCount}
+              {i18n.t('literals.uzemkesz')}
             </span>
           </div>
         </div>

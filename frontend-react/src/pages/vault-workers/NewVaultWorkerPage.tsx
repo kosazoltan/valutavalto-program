@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { UserPlus, Users } from 'lucide-react'
 import { vaultWorkerApi, type VaultWorkerOption } from '../../services/api/auth'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 /**
  * FK-ÉRTÉKTÁR (V285): új személyes értéktári munkatárs felvétele.
@@ -68,12 +69,11 @@ export default function NewVaultWorkerPage() {
     <div className="max-w-2xl mx-auto p-4">
       <div className="flex items-center gap-2 mb-4">
         <UserPlus size={20} />
-        <h1 className="text-lg font-semibold">Új munkatárs felvétele</h1>
+        <h1 className="text-lg font-semibold">{i18n.t('literals.uj-munkatars-felvetele')}</h1>
       </div>
 
       <p className="text-sm text-gray-600 mb-4">
-        Vegyél fel új értéktári munkatársat a saját értéktáradba. A munkatárs a nevével és a most
-        megadott jelszavával fog tudni belépni (a közös Google-fiókos bejelentkezés után).
+        {i18n.t('literals.vegyel-fel-uj-ertektari-munkatarsat-a-sa')}
       </p>
 
       <form
@@ -93,7 +93,8 @@ export default function NewVaultWorkerPage() {
 
         <label className="block mb-3">
           <span className="form-label">
-            Munkatárs neve <span className="text-red-500">*</span>
+            {i18n.t('literals.munkatars-neve')}
+            <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
           </span>
           <input
             type="text"
@@ -108,7 +109,8 @@ export default function NewVaultWorkerPage() {
 
         <label className="block mb-3">
           <span className="form-label">
-            Jelszó <span className="text-red-500">*</span>
+            {i18n.t('literals.jelszo-2')}
+            <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
           </span>
           <input
             type="password"
@@ -122,7 +124,8 @@ export default function NewVaultWorkerPage() {
 
         <label className="block mb-4">
           <span className="form-label">
-            Jelszó megerősítése <span className="text-red-500">*</span>
+            {i18n.t('literals.jelszo-megerositese-2')}
+            <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
           </span>
           <input
             type="password"
@@ -143,12 +146,16 @@ export default function NewVaultWorkerPage() {
 
       <div className="flex items-center gap-2 mb-2">
         <Users size={16} />
-        <h2 className="text-sm font-semibold">Értéktár jelenlegi munkatársai</h2>
+        <h2 className="text-sm font-semibold">
+          {i18n.t('literals.ertektar-jelenlegi-munkatarsai')}
+        </h2>
       </div>
       {listError ? (
         <div className="text-sm text-red-600">{listError}</div>
       ) : workers.length === 0 ? (
-        <div className="text-sm text-gray-500">Még nincs felvett személyes munkatárs.</div>
+        <div className="text-sm text-gray-500">
+          {i18n.t('literals.meg-nincs-felvett-szemelyes-munkatars')}
+        </div>
       ) : (
         <ul className="text-sm border border-form-border rounded divide-y">
           {workers.map((w) => (

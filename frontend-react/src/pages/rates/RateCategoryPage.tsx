@@ -6,6 +6,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface RateCategoryItem {
   id: string | number
@@ -189,11 +190,13 @@ export default function RateCategoryPage() {
 
       {form && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">Árfolyam kategória beállítása</h2>
+          <h2 className="text-base font-semibold">
+            {i18n.t('literals.arfolyam-kategoria-beallitasa')}
+          </h2>
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
             <div>
               <label htmlFor="rate-category-currency" className="form-label">
-                Valuta
+                {i18n.t('literals.valuta')}
               </label>
               <input
                 id="rate-category-currency"
@@ -210,7 +213,7 @@ export default function RateCategoryPage() {
             </div>
             <div>
               <label htmlFor="rate-category-kind" className="form-label">
-                Kategória
+                {i18n.t('literals.kategoria-2')}
               </label>
               <select
                 id="rate-category-kind"
@@ -224,14 +227,14 @@ export default function RateCategoryPage() {
                 }
                 className="form-input w-full"
               >
-                <option value="SMALL">SMALL</option>
-                <option value="STANDARD">STANDARD</option>
-                <option value="LARGE">LARGE</option>
+                <option value="SMALL">{i18n.t('literals.small')}</option>
+                <option value="STANDARD">{i18n.t('literals.standard')}</option>
+                <option value="LARGE">{i18n.t('literals.large')}</option>
               </select>
             </div>
             <div>
               <label htmlFor="rate-category-buy" className="form-label">
-                Vételi árfolyam
+                {i18n.t('literals.veteli-arfolyam')}
               </label>
               <input
                 id="rate-category-buy"
@@ -247,7 +250,7 @@ export default function RateCategoryPage() {
             </div>
             <div>
               <label htmlFor="rate-category-sell" className="form-label">
-                Eladási árfolyam
+                {i18n.t('literals.eladasi-arfolyam')}
               </label>
               <input
                 id="rate-category-sell"
@@ -263,7 +266,7 @@ export default function RateCategoryPage() {
             </div>
             <div>
               <label htmlFor="rate-category-min" className="form-label">
-                Minimum összeg
+                {i18n.t('literals.minimum-osszeg')}
               </label>
               <input
                 id="rate-category-min"
@@ -279,7 +282,7 @@ export default function RateCategoryPage() {
             </div>
             <div>
               <label htmlFor="rate-category-max" className="form-label">
-                Maximum összeg
+                {i18n.t('literals.maximum-osszeg')}
               </label>
               <input
                 id="rate-category-max"
@@ -304,18 +307,18 @@ export default function RateCategoryPage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
       )}
 
       <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-        <h2 className="text-base font-semibold">Kategória próba</h2>
+        <h2 className="text-base font-semibold">{i18n.t('literals.kategoria-proba')}</h2>
         <div className="grid gap-3 md:grid-cols-[160px_180px_auto_1fr] md:items-end">
           <div>
             <label htmlFor="rate-category-probe-currency" className="form-label">
-              Valuta
+              {i18n.t('literals.valuta')}
             </label>
             <input
               id="rate-category-probe-currency"
@@ -328,7 +331,7 @@ export default function RateCategoryPage() {
           </div>
           <div>
             <label htmlFor="rate-category-probe-amount" className="form-label">
-              Összeg
+              {i18n.t('literals.osszeg')}
             </label>
             <input
               id="rate-category-probe-amount"
@@ -354,19 +357,20 @@ export default function RateCategoryPage() {
                   <b>{probeResult.currencyCode}</b>
                 </span>
                 <span>
-                  Kategória: <b>{probeResult.category}</b>
+                  {i18n.t('literals.kategoria-3')}
+                  <b>{probeResult.category}</b>
                 </span>
                 <span>
-                  Vétel: <b>{formatRateCategoryValue(probeResult.buyRate)}</b>
+                  {i18n.t('literals.vetel-2')}
+                  <b>{formatRateCategoryValue(probeResult.buyRate)}</b>
                 </span>
                 <span>
-                  Eladás: <b>{formatRateCategoryValue(probeResult.sellRate)}</b>
+                  {i18n.t('literals.eladas-5')}
+                  <b>{formatRateCategoryValue(probeResult.sellRate)}</b>
                 </span>
               </div>
             ) : (
-              <span>
-                Adjon meg valutát és összeget az alkalmazandó kategória backend lekérdezéséhez.
-              </span>
+              <span>{i18n.t('literals.adjon-meg-valutat-es-osszeget-az-alkalma')}</span>
             )}
           </div>
         </div>
@@ -401,7 +405,7 @@ export default function RateCategoryPage() {
       <div className="grid gap-3 md:hidden">
         {loading ? (
           <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
-            Betöltés...
+            {i18n.t('literals.betoltes')}
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
@@ -431,19 +435,25 @@ export default function RateCategoryPage() {
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">Vételi</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.veteli')}
+                  </div>
                   <div className="font-mono font-semibold">
                     {formatRateCategoryValue(item.buyRate)}
                   </div>
                 </div>
                 <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">Eladási</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.eladasi')}
+                  </div>
                   <div className="font-mono font-semibold">
                     {formatRateCategoryValue(item.sellRate)}
                   </div>
                 </div>
                 <div className="col-span-2 rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">Sáv</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.sav')}
+                  </div>
                   <div>{formatAmountRange(item.minAmount, item.maxAmount)}</div>
                 </div>
               </div>
@@ -460,16 +470,16 @@ export default function RateCategoryPage() {
                 {t('common.currency')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Kategória
+                {i18n.t('literals.kategoria-2')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Vételi
+                {i18n.t('literals.veteli')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Eladási
+                {i18n.t('literals.eladasi')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Sáv
+                {i18n.t('literals.sav')}
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                 {t('common.actions')}
@@ -480,7 +490,7 @@ export default function RateCategoryPage() {
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -523,7 +533,9 @@ export default function RateCategoryPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

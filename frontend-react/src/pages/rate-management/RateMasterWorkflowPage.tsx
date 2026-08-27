@@ -21,6 +21,7 @@ import {
 } from '../../services/api/exchangeRateMaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 // =============================================================================
 // RateMasterWorkflowPage — Foertektari arfolyam-publikalas workflow
@@ -262,9 +263,11 @@ export default function RateMasterWorkflowPage() {
       <section className="rounded border border-slate-200 bg-white p-3">
         <div className="mb-2 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-800">Új törzsárfolyam vázlat</h2>
+            <h2 className="text-sm font-semibold text-slate-800">
+              {i18n.t('literals.uj-torzsarfolyam-vazlat')}
+            </h2>
             <p className="text-xs text-slate-500">
-              Központi workflow vázlat létrehozása jóváhagyás előtt.
+              {i18n.t('literals.kozponti-workflow-vazlat-letrehozasa-jov')}
             </p>
           </div>
           <button
@@ -279,7 +282,7 @@ export default function RateMasterWorkflowPage() {
         </div>
         <div className="grid gap-2 md:grid-cols-5">
           <label className="text-xs text-slate-600">
-            Valuta ID
+            {i18n.t('literals.valuta-id')}
             <input
               type="number"
               min="1"
@@ -292,7 +295,7 @@ export default function RateMasterWorkflowPage() {
             />
           </label>
           <label className="text-xs text-slate-600">
-            Vételi árfolyam
+            {i18n.t('literals.veteli-arfolyam')}
             <input
               type="text"
               inputMode="decimal"
@@ -305,7 +308,7 @@ export default function RateMasterWorkflowPage() {
             />
           </label>
           <label className="text-xs text-slate-600">
-            Eladási árfolyam
+            {i18n.t('literals.eladasi-arfolyam')}
             <input
               type="text"
               inputMode="decimal"
@@ -318,7 +321,7 @@ export default function RateMasterWorkflowPage() {
             />
           </label>
           <label className="text-xs text-slate-600">
-            MNB árfolyam
+            {i18n.t('literals.mnb-arfolyam')}
             <input
               type="text"
               inputMode="decimal"
@@ -331,7 +334,7 @@ export default function RateMasterWorkflowPage() {
             />
           </label>
           <label className="text-xs text-slate-600">
-            Megjegyzés
+            {i18n.t('literals.megjegyzes')}
             <input
               type="text"
               value={createForm.notes}
@@ -370,7 +373,7 @@ export default function RateMasterWorkflowPage() {
 
       {/* Tab content */}
       {loading && rates.length === 0 && (
-        <div className="text-center text-slate-500 py-12">Betöltés...</div>
+        <div className="text-center text-slate-500 py-12">{i18n.t('literals.betoltes')}</div>
       )}
 
       {!loading && rates.length === 0 && (
@@ -394,7 +397,7 @@ export default function RateMasterWorkflowPage() {
                 <th className="px-4 py-3">{t('common.deviza')}</th>
                 <th className="px-4 py-3">{t('cashier.buy')}</th>
                 <th className="px-4 py-3">{t('cashier.sell')}</th>
-                <th className="px-4 py-3">MNB</th>
+                <th className="px-4 py-3">{i18n.t('literals.mnb')}</th>
                 <th className="px-4 py-3">{t('rate-management.limit1VE')}</th>
                 <th className="px-4 py-3">{t('rate-management.limit2VE')}</th>
                 <th className="px-4 py-3">{t('common.createdAt')}</th>
@@ -424,7 +427,7 @@ export default function RateMasterWorkflowPage() {
                           <div>{r.limit1Amount?.toLocaleString('hu-HU')}</div>
                           <div className="text-slate-400">
                             {r.limit1BuyRate?.toLocaleString('hu-HU', { maximumFractionDigits: 2 })}{' '}
-                            /{' '}
+                            {i18n.t('literals.lit-4')}{' '}
                             {r.limit1SellRate?.toLocaleString('hu-HU', {
                               maximumFractionDigits: 2,
                             })}
@@ -440,7 +443,7 @@ export default function RateMasterWorkflowPage() {
                           <div>{r.limit2Amount?.toLocaleString('hu-HU')}</div>
                           <div className="text-slate-400">
                             {r.limit2BuyRate?.toLocaleString('hu-HU', { maximumFractionDigits: 2 })}{' '}
-                            /{' '}
+                            {i18n.t('literals.lit-4')}{' '}
                             {r.limit2SellRate?.toLocaleString('hu-HU', {
                               maximumFractionDigits: 2,
                             })}
@@ -519,7 +522,9 @@ export default function RateMasterWorkflowPage() {
                               {t('rate-management.elosztasStatusz')}
                               {dists?.length ?? 0} {t('foertektar.penztar')}
                             </div>
-                            {!dists && <div className="text-slate-500">Betöltés...</div>}
+                            {!dists && (
+                              <div className="text-slate-500">{i18n.t('literals.betoltes')}</div>
+                            )}
                             {dists && dists.length === 0 && (
                               <div className="text-slate-500">
                                 {t('ratemanagement.nincsElosztasRekord')}
@@ -573,16 +578,21 @@ export default function RateMasterWorkflowPage() {
                                       )}
                                       {pendingPrint && (
                                         <div className="hidden print:block">
-                                          <h2>ÁRFOLYAMVÁLTOZÁS</h2>
+                                          <h2>{i18n.t('literals.arfolyamvaltozas')}</h2>
                                           <p>
-                                            {pendingPrint.currencyCode} v
+                                            {pendingPrint.currencyCode}
+                                            {i18n.t('literals.v-4')}
                                             {pendingPrint.versionNumber}
                                           </p>
                                           <p>
-                                            Vétel: {pendingPrint.baseBuyRate} · Eladás:{' '}
+                                            {i18n.t('literals.vetel-2')}
+                                            {pendingPrint.baseBuyRate}
+                                            {i18n.t('literals.eladas-4')}{' '}
                                             {pendingPrint.baseSellRate}
                                           </p>
-                                          <p>PÉLDÁNY LEFŰZENDŐ — Pmt./MNB előírás</p>
+                                          <p>
+                                            {i18n.t('literals.peldany-lefuzendo-pmt-mnb-eloiras')}
+                                          </p>
                                         </div>
                                       )}
                                     </div>

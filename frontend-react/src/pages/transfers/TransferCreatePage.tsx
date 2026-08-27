@@ -53,6 +53,7 @@ import {
 } from './transferRules'
 import TransferReceiptModal from './TransferReceiptModal'
 import { buildVaultLabel, loadOwnVaultContact } from './transferPageShared'
+import i18n from '../../i18n'
 
 export default function TransferCreatePage() {
   const { t } = useTranslation()
@@ -668,7 +669,7 @@ export default function TransferCreatePage() {
           <AlertCircle size={18} />
           <span>{error}</span>
           <button type="button" onClick={() => setError(null)} className="ml-auto text-red-500">
-            ×
+            {i18n.t('literals.lit-34')}
           </button>
         </div>
       )}
@@ -684,7 +685,8 @@ export default function TransferCreatePage() {
               onClick={() => setShowReceiptModal(true)}
               className="ml-auto inline-flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-700"
             >
-              <Printer size={14} /> Nyomtatás
+              <Printer size={14} />
+              {i18n.t('literals.nyomtatas-2')}
             </button>
           )}
           <button
@@ -695,7 +697,7 @@ export default function TransferCreatePage() {
             }}
             className={printReceiptData ? 'text-green-500' : 'ml-auto text-green-500'}
           >
-            ×
+            {i18n.t('literals.lit-34')}
           </button>
         </div>
       )}
@@ -718,7 +720,8 @@ export default function TransferCreatePage() {
                   : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
               }`}
             >
-              <Send size={16} /> Átadás (kimenő)
+              <Send size={16} />
+              {i18n.t('literals.atadas-kimeno')}
             </button>
             <button
               type="button"
@@ -729,7 +732,8 @@ export default function TransferCreatePage() {
                   : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
               }`}
             >
-              <Download size={16} /> Átvétel (bejövő)
+              <Download size={16} />
+              {i18n.t('literals.atvetel-bejovo')}
             </button>
           </div>
 
@@ -778,7 +782,9 @@ export default function TransferCreatePage() {
                   const badge = isVault ? ' (értéktár)' : isTH ? ' (TH)' : ''
                   return (
                     <option key={b.id} value={b.id}>
-                      {b.code} - {b.name}
+                      {b.code}
+                      {i18n.t('literals.lit-17')}
+                      {b.name}
                       {badge}
                     </option>
                   )
@@ -810,7 +816,9 @@ export default function TransferCreatePage() {
           {isMultiCurrency ? (
             /* #6: több valuta egy átadólapon — soronként valuta + összeg */
             <div>
-              <label className="form-label">Valuták és összegek (több is megadható)</label>
+              <label className="form-label">
+                {i18n.t('literals.valutak-es-osszegek-tobb-is-megadhato')}
+              </label>
               <div className="space-y-2">
                 {currencyLines.map((line, idx) => (
                   <div key={line.id ?? idx} className="flex items-center gap-2">
@@ -823,7 +831,9 @@ export default function TransferCreatePage() {
                       <option value="">{t('transfers.valasszonValutat')}</option>
                       {filteredCurrencies.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.code} - {c.name}
+                          {c.code}
+                          {i18n.t('literals.lit-17')}
+                          {c.name}
                         </option>
                       ))}
                     </select>
@@ -854,7 +864,7 @@ export default function TransferCreatePage() {
                 onClick={addCurrencyLine}
                 className="mt-2 text-sm text-blue-600 hover:underline"
               >
-                + Valuta hozzáadása
+                {i18n.t('literals.valuta-hozzaadasa')}
               </button>
             </div>
           ) : (
@@ -873,7 +883,9 @@ export default function TransferCreatePage() {
                   {!isHufOnlyType && <option value="">{t('transfers.valasszonValutat')}</option>}
                   {filteredCurrencies.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.code} - {c.name}
+                      {c.code}
+                      {i18n.t('literals.lit-17')}
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -900,7 +912,8 @@ export default function TransferCreatePage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="carrier-name" className="form-label">
-                Szállító neve <span className="text-red-500">*</span>
+                {i18n.t('literals.szallito-neve')}
+                <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
               </label>
               <input
                 id="carrier-name"
@@ -914,7 +927,8 @@ export default function TransferCreatePage() {
             </div>
             <div>
               <label htmlFor="seal-number" className="form-label">
-                Plombaszám <span className="text-red-500">*</span>
+                {i18n.t('literals.plombaszam-2')}
+                <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
               </label>
               <input
                 id="seal-number"
@@ -951,15 +965,16 @@ export default function TransferCreatePage() {
                 checked={showDenominations}
                 onChange={(e) => setShowDenominations(e.target.checked)}
               />
-              Címletezés megadása (opcionális)
+              {i18n.t('literals.cimletezes-megadasa-opcionalis')}
             </label>
             {showDenominations && (
               <div className="mt-2 space-y-2">
                 {/* A.3: jelzés, hogy a címlet-törzs előtöltötte a névértékeket. */}
                 {denomPresetCode && (
                   <p className="text-xs text-blue-700">
-                    A(z) {denomPresetCode} címletei betöltve — csak a darabszámot adja meg (a sorok
-                    szabadon szerkeszthetők, az üresen hagyott címlet kimarad).
+                    {i18n.t('literals.a-z')}
+                    {denomPresetCode}
+                    {i18n.t('literals.cimletei-betoltve-csak-a-darabszamot-adj')}
                   </p>
                 )}
                 {denominationLines.map((line, idx) => {
@@ -972,7 +987,9 @@ export default function TransferCreatePage() {
                       className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end"
                     >
                       <div>
-                        {idx === 0 && <label className="form-label text-xs">Darab</label>}
+                        {idx === 0 && (
+                          <label className="form-label text-xs">{i18n.t('literals.darab')}</label>
+                        )}
                         <NumberInput
                           value={line.quantity}
                           onChange={(v) =>
@@ -987,7 +1004,11 @@ export default function TransferCreatePage() {
                         />
                       </div>
                       <div>
-                        {idx === 0 && <label className="form-label text-xs">Névleges érték</label>}
+                        {idx === 0 && (
+                          <label className="form-label text-xs">
+                            {i18n.t('literals.nevleges-ertek')}
+                          </label>
+                        )}
                         <NumberInput
                           value={line.faceValue}
                           onChange={(v) =>
@@ -1002,7 +1023,11 @@ export default function TransferCreatePage() {
                         />
                       </div>
                       <div>
-                        {idx === 0 && <label className="form-label text-xs">Összesen</label>}
+                        {idx === 0 && (
+                          <label className="form-label text-xs">
+                            {i18n.t('literals.osszesen')}
+                          </label>
+                        )}
                         <div className="form-input w-full bg-gray-50 text-right font-mono">
                           {lineTotal ? lineTotal.toLocaleString('hu-HU') : '—'}
                         </div>
@@ -1033,7 +1058,7 @@ export default function TransferCreatePage() {
                   }
                   className="text-sm text-blue-600 hover:underline"
                 >
-                  + Sor hozzáadása
+                  {i18n.t('literals.sor-hozzaadasa-2')}
                 </button>
               </div>
             )}

@@ -47,6 +47,8 @@ class BranchServiceTest {
     // FK-022: update() audit log + JSON-serializálás
     @Mock private AuditLogService auditLogService;
     @Mock private tools.jackson.databind.ObjectMapper objectMapper;
+    // FK-096/D18: az új iroda seed-hívás mockja (a create/createSimpleCashier tesztekben no-op).
+    @Mock private BranchHandlingFeeConfigService branchHandlingFeeConfigService;
     @InjectMocks private BranchService service;
 
     private static final UUID COMPANY_ID = UUID.randomUUID();

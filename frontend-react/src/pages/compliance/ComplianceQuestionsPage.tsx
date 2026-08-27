@@ -9,6 +9,7 @@ import { toast } from '../../components/ui/toaster'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
+import i18n from '../../i18n'
 
 const TYPE_LABELS: Record<string, string> = {
   YES_NO: 'Igen/Nem',
@@ -144,7 +145,8 @@ export default function ComplianceQuestionsPage() {
     <div className="form-panel space-y-4">
       <div className="flex items-center justify-between gap-4">
         <h1 className="form-title flex items-center gap-2">
-          <ClipboardCheck className="h-6 w-6" /> Compliance kérdések
+          <ClipboardCheck className="h-6 w-6" />
+          {i18n.t('literals.compliance-kerdesek')}
         </h1>
         <button
           type="button"
@@ -152,13 +154,13 @@ export default function ComplianceQuestionsPage() {
           className="form-button flex items-center gap-2"
           disabled={loading || saving}
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Frissítés
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          {i18n.t('literals.frissites-2')}
         </button>
       </div>
 
       <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-        A kérdések a pénztárak felé szinkronizálódnak. Inaktiválás után a pénztár már nem kérdezi az
-        adott compliance-kérdést.
+        {i18n.t('literals.a-kerdesek-a-penztarak-fele-szinkronizal')}
       </div>
 
       <form
@@ -167,7 +169,7 @@ export default function ComplianceQuestionsPage() {
       >
         <div className="col-span-12 md:col-span-5">
           <label className="form-label required" htmlFor="question-text-input">
-            Kérdés szövege
+            {i18n.t('literals.kerdes-szovege')}
           </label>
           <input
             id="question-text-input"
@@ -184,7 +186,7 @@ export default function ComplianceQuestionsPage() {
 
         <div className="col-span-12 md:col-span-3">
           <label className="form-label required" htmlFor="question-type-select">
-            Típus
+            {i18n.t('literals.tipus')}
           </label>
           <select
             id="question-type-select"
@@ -199,15 +201,15 @@ export default function ComplianceQuestionsPage() {
             }
             disabled={saving}
           >
-            <option value="">Válasszon típust…</option>
-            <option value="YES_NO">Igen/Nem</option>
-            <option value="FREE_TEXT">Szabad szöveg</option>
+            <option value="">{i18n.t('literals.valasszon-tipust')}</option>
+            <option value="YES_NO">{i18n.t('literals.igen-nem')}</option>
+            <option value="FREE_TEXT">{i18n.t('literals.szabad-szoveg')}</option>
           </select>
         </div>
 
         <div className="col-span-12 md:col-span-2">
           <label className="form-label" htmlFor="display-order-input">
-            Sorrend
+            {i18n.t('literals.sorrend')}
           </label>
           <input
             id="display-order-input"
@@ -223,7 +225,9 @@ export default function ComplianceQuestionsPage() {
             disabled={saving}
           />
           {orderInvalid && (
-            <span className="text-sm text-red-600">A sorrend pozitív egész szám lehet</span>
+            <span className="text-sm text-red-600">
+              {i18n.t('literals.a-sorrend-pozitiv-egesz-szam-lehet')}
+            </span>
           )}
         </div>
 
@@ -243,7 +247,8 @@ export default function ComplianceQuestionsPage() {
               onClick={resetForm}
               disabled={saving}
             >
-              <X className="h-4 w-4" /> Mégse
+              <X className="h-4 w-4" />
+              {i18n.t('literals.megse-2')}
             </button>
           )}
         </div>
@@ -254,22 +259,22 @@ export default function ComplianceQuestionsPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Sorrend
+                {i18n.t('literals.sorrend')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Kérdés
+                {i18n.t('literals.kerdes')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Típus
+                {i18n.t('literals.tipus')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Állapot
+                {i18n.t('literals.allapot')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Rögzítő
+                {i18n.t('literals.rogzito')}
               </th>
               <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                Műveletek
+                {i18n.t('literals.muveletek')}
               </th>
             </tr>
           </thead>
@@ -277,14 +282,14 @@ export default function ComplianceQuestionsPage() {
             {loading && (
               <tr>
                 <td colSpan={6} className="px-3 py-4 text-center text-gray-400">
-                  Kérdések betöltése...
+                  {i18n.t('literals.kerdesek-betoltese')}
                 </td>
               </tr>
             )}
             {!loading && sortedQuestions.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-4 text-center text-gray-400">
-                  Nincs rögzített compliance-kérdés.
+                  {i18n.t('literals.nincs-rogzitett-compliance-kerdes')}
                 </td>
               </tr>
             )}
@@ -315,7 +320,8 @@ export default function ComplianceQuestionsPage() {
                         onClick={() => startEdit(item)}
                         disabled={saving}
                       >
-                        <Pencil className="h-4 w-4" /> Szerkesztés
+                        <Pencil className="h-4 w-4" />
+                        {i18n.t('literals.szerkesztes')}
                       </button>
                       <button
                         type="button"

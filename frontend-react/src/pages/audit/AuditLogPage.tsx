@@ -5,6 +5,7 @@ import type { AuditLog } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 /**
  * AuditLogPage — érzékeny műveletek audit naplója.
@@ -195,7 +196,7 @@ export default function AuditLogPage() {
             className="form-button flex items-center gap-2"
           >
             <Download size={16} />
-            CSV export
+            {i18n.t('literals.csv-export')}
           </button>
         </div>
       </div>
@@ -304,7 +305,7 @@ export default function AuditLogPage() {
             {loading ? (
               <tr>
                 <td colSpan={7} className="text-center py-8">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filteredLogs.length === 0 ? (
@@ -327,7 +328,8 @@ export default function AuditLogPage() {
                   <td>
                     <div className="text-sm">{log.entityType}</div>
                     <div className="text-xs text-gray-400 font-mono">
-                      {log.entityId?.slice(0, 8)}...
+                      {log.entityId?.slice(0, 8)}
+                      {i18n.t('literals.lit-16')}
                     </div>
                   </td>
                   <td className="text-sm">{log.userName || '—'}</td>
@@ -359,7 +361,9 @@ export default function AuditLogPage() {
           </button>
           <span className="text-sm text-gray-600">
             {t('audit.oldal')}
-            {page + 1} / {Math.max(1, Math.ceil(totalElements / 50))}
+            {page + 1}
+            {i18n.t('literals.lit-10')}
+            {Math.max(1, Math.ceil(totalElements / 50))}
           </span>
           <button
             onClick={() => setPage((p) => p + 1)}
@@ -449,9 +453,11 @@ export default function AuditLogPage() {
               </div>
 
               <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Audit trail</h4>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                  {i18n.t('literals.audit-trail')}
+                </h4>
                 {trailLoading ? (
-                  <p className="text-sm text-gray-500">Betöltés...</p>
+                  <p className="text-sm text-gray-500">{i18n.t('literals.betoltes')}</p>
                 ) : trailLogs.length === 0 ? (
                   <p className="text-sm text-gray-500">{t('common.noData')}</p>
                 ) : (
@@ -469,7 +475,9 @@ export default function AuditLogPage() {
                           </span>
                         </div>
                         <div className="mt-1 text-xs text-gray-600">
-                          {entry.userName || '—'} · {entry.branchName || '—'}
+                          {entry.userName || '—'}
+                          {i18n.t('literals.lit-9')}
+                          {entry.branchName || '—'}
                         </div>
                       </div>
                     ))}

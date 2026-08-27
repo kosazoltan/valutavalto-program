@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle, XCircle, RefreshCw, ClipboardCheck } from 'lu
 import { stornoApi, StornoApproval } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 /**
  * Supervisor sztornó-jóváhagyó lista (#954 four-eyes go-live előfeltétel).
@@ -73,7 +74,9 @@ export default function StornoApprovalListPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <ClipboardCheck size={22} className="text-gray-700" />
-          <h1 className="text-xl font-bold text-gray-800">Sztornó jóváhagyások</h1>
+          <h1 className="text-xl font-bold text-gray-800">
+            {i18n.t('literals.sztorno-jovahagyasok')}
+          </h1>
         </div>
         <button
           onClick={() => void loadPending()}
@@ -81,7 +84,7 @@ export default function StornoApprovalListPage() {
           className="toolbar-button flex items-center gap-2"
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          Frissítés
+          {i18n.t('literals.frissites')}
         </button>
       </div>
 
@@ -106,7 +109,7 @@ export default function StornoApprovalListPage() {
       {/* Pending list */}
       {!loading && approvals.length === 0 && (
         <div className="form-panel text-gray-500">
-          Nincs függő sztornó-jóváhagyási kérés az irodában.
+          {i18n.t('literals.nincs-fuggo-sztorno-jovahagyasi-keres-az')}
         </div>
       )}
 
@@ -114,33 +117,35 @@ export default function StornoApprovalListPage() {
         <div key={approval.id} className="form-panel bg-yellow-50 border-yellow-200">
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div>
-              <label className="form-label">Bizonylatszám</label>
+              <label className="form-label">{i18n.t('literals.bizonylatszam-2')}</label>
               <div className="form-input bg-gray-50 font-mono">
                 {approval.receiptNumber || approval.transactionId}
               </div>
             </div>
             <div>
-              <label className="form-label">Kérelmező</label>
+              <label className="form-label">{i18n.t('literals.kerelmezo')}</label>
               <div className="form-input bg-gray-50">
                 {approval.workerName || approval.workerId}
               </div>
             </div>
             <div>
-              <label className="form-label">Kérés időpontja</label>
+              <label className="form-label">{i18n.t('literals.keres-idopontja')}</label>
               <div className="form-input bg-gray-50">
                 {approval.createdAt ? new Date(approval.createdAt).toLocaleString('hu-HU') : '—'}
               </div>
             </div>
             <div>
-              <label className="form-label">Napi sztornók száma</label>
+              <label className="form-label">{i18n.t('literals.napi-sztornok-szama')}</label>
               <div className="form-input bg-gray-50">{approval.dailyStornoCount}</div>
             </div>
             <div className="col-span-2">
-              <label className="form-label">Sztornó oka</label>
+              <label className="form-label">{i18n.t('literals.sztorno-oka')}</label>
               <div className="form-input bg-gray-50">{approval.requestReason}</div>
             </div>
             <div className="col-span-2">
-              <label className="form-label">Elutasítás indoka (elutasításhoz kötelező)</label>
+              <label className="form-label">
+                {i18n.t('literals.elutasitas-indoka-elutasitashoz-kotelezo')}
+              </label>
               <input
                 type="text"
                 value={rejectReasons[approval.id] ?? ''}
@@ -160,7 +165,7 @@ export default function StornoApprovalListPage() {
               className="form-button-primary flex items-center gap-2"
             >
               <CheckCircle size={16} />
-              Engedélyezés
+              {i18n.t('literals.engedelyezes')}
             </button>
             <button
               onClick={() => void handleDecision(approval, false)}
@@ -168,7 +173,7 @@ export default function StornoApprovalListPage() {
               className="form-button flex items-center gap-2 text-red-700"
             >
               <XCircle size={16} />
-              Elutasítás
+              {i18n.t('literals.elutasitas')}
             </button>
           </div>
         </div>

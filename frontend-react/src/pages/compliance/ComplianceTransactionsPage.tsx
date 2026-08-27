@@ -21,6 +21,7 @@ import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { formatDecimal, formatInteger } from '../../utils/numberFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 const PAGE_SIZE = 50
 const AUDIT_TITLE_MAX_LENGTH = 200
@@ -138,7 +139,8 @@ function toCriteria(form: FilterFormState): ComplianceTransactionSearchCriteria 
   }
   if (form.legalDeedNumber.trim()) criteria.legalDeedNumber = form.legalDeedNumber.trim()
   if (form.legalEntitySeat.trim()) criteria.legalEntitySeat = form.legalEntitySeat.trim()
-  if (form.beneficialOwnerName.trim()) criteria.beneficialOwnerName = form.beneficialOwnerName.trim()
+  if (form.beneficialOwnerName.trim())
+    criteria.beneficialOwnerName = form.beneficialOwnerName.trim()
   if (form.customerCountry.trim()) criteria.customerCountry = form.customerCountry.trim()
   if (form.customerBirthName.trim()) criteria.customerBirthName = form.customerBirthName.trim()
   if (form.relatedMinCount.trim()) {
@@ -515,7 +517,8 @@ export default function ComplianceTransactionsPage() {
     <div className="form-panel space-y-4">
       <div className="flex items-center justify-between gap-4">
         <h1 className="form-title flex items-center gap-2">
-          <Search className="h-6 w-6" /> Compliance tranzakciók
+          <Search className="h-6 w-6" />
+          {i18n.t('literals.compliance-tranzakciok')}
         </h1>
         <button
           type="button"
@@ -523,14 +526,13 @@ export default function ComplianceTransactionsPage() {
           className="form-button flex items-center gap-2"
           disabled={masterLoading}
         >
-          <RefreshCw className={`h-4 w-4 ${masterLoading ? 'animate-spin' : ''}`} /> Törzsadat
-          frissítés
+          <RefreshCw className={`h-4 w-4 ${masterLoading ? 'animate-spin' : ''}`} />
+          {i18n.t('literals.torzsadat-frissites')}
         </button>
       </div>
 
       <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-        A lista cégszintű compliance keresést végez. A lekérdezés csak a Keresés gombbal indul,
-        exportálni pedig a legutóbb futtatott keresés szűrőivel lehet.
+        {i18n.t('literals.a-lista-cegszintu-compliance-keresest-ve')}
       </div>
 
       <form
@@ -541,7 +543,7 @@ export default function ComplianceTransactionsPage() {
           <div className="grid grid-cols-12 gap-3">
             <div className="col-span-12 md:col-span-6">
               <label className="form-label" htmlFor="template-select">
-                Mentett szűrő-sablon
+                {i18n.t('literals.mentett-szuro-sablon')}
               </label>
               <select
                 id="template-select"
@@ -550,7 +552,7 @@ export default function ComplianceTransactionsPage() {
                 value={selectedTemplateId}
                 onChange={(event) => handleTemplateChange(event.target.value)}
               >
-                <option value="">Válasszon sablont</option>
+                <option value="">{i18n.t('literals.valasszon-sablont')}</option>
                 {templates.map((template) => (
                   <option key={template.id} value={template.id}>
                     {template.name}
@@ -565,7 +567,7 @@ export default function ComplianceTransactionsPage() {
                 onClick={() => setShowTemplateModal(true)}
                 disabled={templateActionDisabled}
               >
-                Sablon mentése
+                {i18n.t('literals.sablon-mentese')}
               </button>
               <button
                 type="button"
@@ -577,17 +579,19 @@ export default function ComplianceTransactionsPage() {
                 {templateDeleting ? 'Törlés...' : 'Sablon törlése'}
               </button>
               <span className="text-xs text-blue-800">
-                Betöltéskor csak az űrlap töltődik, keresés nem indul.
+                {i18n.t('literals.betolteskor-csak-az-urlap-toltodik-keres')}
               </span>
             </div>
           </div>
         </div>
 
         <fieldset className="col-span-12 grid grid-cols-12 gap-3 rounded border border-gray-100 p-3">
-          <legend className="px-1 text-sm font-semibold text-gray-700">Tranzakció</legend>
+          <legend className="px-1 text-sm font-semibold text-gray-700">
+            {i18n.t('literals.tranzakcio')}
+          </legend>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-branchId">
-              Iroda
+              {i18n.t('literals.iroda')}
             </label>
             <select
               id="filter-branchId"
@@ -596,7 +600,7 @@ export default function ComplianceTransactionsPage() {
               value={form.branchId}
               onChange={(event) => updateField('branchId', event.target.value)}
             >
-              <option value="">Összes iroda</option>
+              <option value="">{i18n.t('literals.osszes-iroda')}</option>
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
                   {buildBranchLabel(branch)}
@@ -606,7 +610,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-2">
             <label className="form-label" htmlFor="filter-startDate">
-              Kezdő dátum
+              {i18n.t('literals.kezdo-datum')}
             </label>
             <input
               id="filter-startDate"
@@ -619,7 +623,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-2">
             <label className="form-label" htmlFor="filter-endDate">
-              Záró dátum
+              {i18n.t('literals.zaro-datum')}
             </label>
             <input
               id="filter-endDate"
@@ -632,7 +636,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-type">
-              Típus
+              {i18n.t('literals.tipus')}
             </label>
             <select
               id="filter-type"
@@ -643,7 +647,7 @@ export default function ComplianceTransactionsPage() {
                 updateField('type', event.target.value as FilterFormState['type'])
               }
             >
-              <option value="">Összes típus</option>
+              <option value="">{i18n.t('literals.osszes-tipus')}</option>
               {Object.entries(TRANSACTION_TYPE_LABELS).map(([type, label]) => (
                 <option key={type} value={type}>
                   {label}
@@ -653,7 +657,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-2">
             <label className="form-label" htmlFor="filter-paymentMethod">
-              Fizetési mód
+              {i18n.t('literals.fizetesi-mod')}
             </label>
             <select
               id="filter-paymentMethod"
@@ -664,7 +668,7 @@ export default function ComplianceTransactionsPage() {
                 updateField('paymentMethod', event.target.value as FilterFormState['paymentMethod'])
               }
             >
-              <option value="">Összes mód</option>
+              <option value="">{i18n.t('literals.osszes-mod')}</option>
               {Object.entries(PAYMENT_METHOD_LABELS).map(([method, label]) => (
                 <option key={method} value={method}>
                   {label}
@@ -675,10 +679,12 @@ export default function ComplianceTransactionsPage() {
         </fieldset>
 
         <fieldset className="col-span-12 grid grid-cols-12 gap-3 rounded border border-gray-100 p-3">
-          <legend className="px-1 text-sm font-semibold text-gray-700">Összeg és valuta</legend>
+          <legend className="px-1 text-sm font-semibold text-gray-700">
+            {i18n.t('literals.osszeg-es-valuta')}
+          </legend>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-minHufAmount">
-              Min. HUF
+              {i18n.t('literals.min-huf')}
             </label>
             <input
               id="filter-minHufAmount"
@@ -691,7 +697,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-maxHufAmount">
-              Max. HUF
+              {i18n.t('literals.max-huf')}
             </label>
             <input
               id="filter-maxHufAmount"
@@ -704,7 +710,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-relatedMinCount">
-              Min. összefüggő tranzakció (db)
+              {i18n.t('literals.min-osszefuggo-tranzakcio-db')}
             </label>
             <input
               id="filter-relatedMinCount"
@@ -720,7 +726,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-6">
             <label className="form-label" htmlFor="filter-currencyIds">
-              Valuták (fő- vagy tételsor)
+              {i18n.t('literals.valutak-fo-vagy-tetelsor')}
             </label>
             <select
               id="filter-currencyIds"
@@ -746,10 +752,12 @@ export default function ComplianceTransactionsPage() {
         </fieldset>
 
         <fieldset className="col-span-12 grid grid-cols-12 gap-3 rounded border border-gray-100 p-3">
-          <legend className="px-1 text-sm font-semibold text-gray-700">Ügyfél</legend>
+          <legend className="px-1 text-sm font-semibold text-gray-700">
+            {i18n.t('literals.ugyfel-2')}
+          </legend>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-customerName">
-              Ügyfél neve
+              {i18n.t('literals.ugyfel-neve')}
             </label>
             <input
               id="filter-customerName"
@@ -761,7 +769,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-customerBirthDate">
-              Születési dátum
+              {i18n.t('literals.szuletesi-datum')}
             </label>
             <input
               id="filter-customerBirthDate"
@@ -774,7 +782,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-customerNationality">
-              Állampolgárság
+              {i18n.t('literals.allampolgarsag')}
             </label>
             <input
               id="filter-customerNationality"
@@ -786,7 +794,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-customerCountry">
-              Ügyfél országa
+              {i18n.t('literals.ugyfel-orszaga')}
             </label>
             <input
               id="filter-customerCountry"
@@ -798,7 +806,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-customerBirthName">
-              Születési név
+              {i18n.t('literals.szuletesi-nev')}
             </label>
             <input
               id="filter-customerBirthName"
@@ -810,7 +818,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-customerDocumentNumber">
-              Okmányszám
+              {i18n.t('literals.okmanyszam')}
             </label>
             <input
               id="filter-customerDocumentNumber"
@@ -823,10 +831,12 @@ export default function ComplianceTransactionsPage() {
         </fieldset>
 
         <fieldset className="col-span-12 grid grid-cols-12 gap-3 rounded border border-gray-100 p-3">
-          <legend className="px-1 text-sm font-semibold text-gray-700">Jogi személy</legend>
+          <legend className="px-1 text-sm font-semibold text-gray-700">
+            {i18n.t('literals.jogi-szemely')}
+          </legend>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-legalEntityName">
-              Jogi személy neve
+              {i18n.t('literals.jogi-szemely-neve')}
             </label>
             <input
               id="filter-legalEntityName"
@@ -838,7 +848,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-legalEntityTaxNumber">
-              Adószám
+              {i18n.t('literals.adoszam')}
             </label>
             <input
               id="filter-legalEntityTaxNumber"
@@ -850,7 +860,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-legalDeedNumber">
-              Okirat száma
+              {i18n.t('literals.okirat-szama')}
             </label>
             <input
               id="filter-legalDeedNumber"
@@ -862,7 +872,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-legalEntitySeat">
-              Székhely
+              {i18n.t('literals.szekhely')}
             </label>
             <input
               id="filter-legalEntitySeat"
@@ -874,7 +884,7 @@ export default function ComplianceTransactionsPage() {
           </div>
           <div className="col-span-12 md:col-span-3">
             <label className="form-label" htmlFor="filter-beneficialOwnerName">
-              Tényleges tulajdonos neve
+              {i18n.t('literals.tenyleges-tulajdonos-neve')}
             </label>
             <input
               id="filter-beneficialOwnerName"
@@ -887,7 +897,9 @@ export default function ComplianceTransactionsPage() {
         </fieldset>
 
         <fieldset className="col-span-12 rounded border border-gray-100 p-3">
-          <legend className="px-1 text-sm font-semibold text-gray-700">Jelölők</legend>
+          <legend className="px-1 text-sm font-semibold text-gray-700">
+            {i18n.t('literals.jelolok')}
+          </legend>
           <div className="grid grid-cols-12 gap-3">
             <label className="col-span-12 flex items-center gap-2 text-sm md:col-span-3">
               <input
@@ -896,7 +908,7 @@ export default function ComplianceTransactionsPage() {
                 checked={form.customRateOnly}
                 onChange={(event) => updateField('customRateOnly', event.target.checked)}
               />
-              Csak egyedi árfolyam
+              {i18n.t('literals.csak-egyedi-arfolyam')}
             </label>
             <label className="col-span-12 flex items-center gap-2 text-sm md:col-span-3">
               <input
@@ -905,7 +917,7 @@ export default function ComplianceTransactionsPage() {
                 checked={form.kkDiscountOnly}
                 onChange={(event) => updateField('kkDiscountOnly', event.target.checked)}
               />
-              Csak KK-kedvezmény
+              {i18n.t('literals.csak-kk-kedvezmeny')}
             </label>
             <label className="col-span-12 flex items-center gap-2 text-sm md:col-span-3">
               <input
@@ -914,7 +926,7 @@ export default function ComplianceTransactionsPage() {
                 checked={form.onBehalfOfOtherOnly}
                 onChange={(event) => updateField('onBehalfOfOtherOnly', event.target.checked)}
               />
-              Csak más nevében
+              {i18n.t('literals.csak-mas-neveben')}
             </label>
             <label className="col-span-12 flex items-center gap-2 text-sm md:col-span-3">
               <input
@@ -923,7 +935,7 @@ export default function ComplianceTransactionsPage() {
                 checked={form.pepOnly}
                 onChange={(event) => updateField('pepOnly', event.target.checked)}
               />
-              Csak PEP
+              {i18n.t('literals.csak-pep')}
             </label>
             <label className="col-span-12 flex items-center gap-2 text-sm md:col-span-3">
               <input
@@ -932,7 +944,7 @@ export default function ComplianceTransactionsPage() {
                 checked={form.legalEntityOnly}
                 onChange={(event) => updateField('legalEntityOnly', event.target.checked)}
               />
-              Csak jogi személy
+              {i18n.t('literals.csak-jogi-szemely')}
             </label>
           </div>
         </fieldset>
@@ -952,7 +964,7 @@ export default function ComplianceTransactionsPage() {
             onClick={() => setForm(EMPTY_FILTERS)}
             disabled={loading}
           >
-            Szűrők törlése
+            {i18n.t('literals.szurok-torlese')}
           </button>
           <button
             type="button"
@@ -961,7 +973,8 @@ export default function ComplianceTransactionsPage() {
             onClick={() => void handleExport('csv')}
             disabled={exportDisabled}
           >
-            <Download className="h-4 w-4" /> CSV export
+            <Download className="h-4 w-4" />
+            {i18n.t('literals.csv-export-2')}
           </button>
           <button
             type="button"
@@ -970,7 +983,8 @@ export default function ComplianceTransactionsPage() {
             onClick={() => void handleExport('xlsx')}
             disabled={exportDisabled}
           >
-            <Download className="h-4 w-4" /> XLSX export
+            <Download className="h-4 w-4" />
+            {i18n.t('literals.xlsx-export')}
           </button>
           <button
             type="button"
@@ -980,7 +994,7 @@ export default function ComplianceTransactionsPage() {
             onClick={() => setShowAuditModal(true)}
             disabled={auditSaveDisabled}
           >
-            Mentés az audit naplóba
+            {i18n.t('literals.mentes-az-audit-naploba')}
           </button>
         </div>
       </form>
@@ -990,40 +1004,40 @@ export default function ComplianceTransactionsPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Dátum
+                {i18n.t('literals.datum-2')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Bizonylat
+                {i18n.t('literals.bizonylat')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Típus
+                {i18n.t('literals.tipus')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Iroda
+                {i18n.t('literals.iroda')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Valuta
+                {i18n.t('literals.valuta')}
               </th>
               <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                Összeg
+                {i18n.t('literals.osszeg')}
               </th>
               <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                Árfolyam
+                {i18n.t('literals.arfolyam')}
               </th>
               <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                HUF
+                {i18n.t('literals.huf')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Fizetés
+                {i18n.t('literals.fizetes')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Ügyfél
+                {i18n.t('literals.ugyfel-2')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Jelölők
+                {i18n.t('literals.jelolok')}
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                Dolgozó
+                {i18n.t('literals.dolgozo-2')}
               </th>
             </tr>
           </thead>
@@ -1031,21 +1045,21 @@ export default function ComplianceTransactionsPage() {
             {loading && (
               <tr>
                 <td colSpan={12} className="px-3 py-4 text-center text-gray-400">
-                  Keresés folyamatban...
+                  {i18n.t('literals.kereses-folyamatban')}
                 </td>
               </tr>
             )}
             {!loading && activeCriteria === null && (
               <tr>
                 <td colSpan={12} className="px-3 py-4 text-center text-gray-400">
-                  Állítsa be a szűrőket, majd indítsa a keresést.
+                  {i18n.t('literals.allitsa-be-a-szuroket-majd-inditsa-a-ker')}
                 </td>
               </tr>
             )}
             {!loading && activeCriteria !== null && rows.length === 0 && (
               <tr>
                 <td colSpan={12} className="px-3 py-4 text-center text-gray-400">
-                  Nincs a szűrőknek megfelelő tranzakció.
+                  {i18n.t('literals.nincs-a-szuroknek-megfelelo-tranzakcio')}
                 </td>
               </tr>
             )}
@@ -1070,7 +1084,8 @@ export default function ComplianceTransactionsPage() {
                       <div>{row.receiptNumber ?? '—'}</div>
                       {row.originalReceiptNumber && (
                         <div className="text-xs text-gray-500">
-                          Eredeti: {row.originalReceiptNumber}
+                          {i18n.t('literals.eredeti')}
+                          {row.originalReceiptNumber}
                         </div>
                       )}
                     </td>
@@ -1104,7 +1119,7 @@ export default function ComplianceTransactionsPage() {
                     </td>
                     <td className="px-3 py-2 text-sm">
                       {badges.length === 0 ? (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-400">{i18n.t('literals.lit-8')}</span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
                           {badges.map((badge) => (
@@ -1127,7 +1142,11 @@ export default function ComplianceTransactionsPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-700">
-        <div>Összesen: {formatInteger(totalElements)} tranzakció</div>
+        <div>
+          {i18n.t('literals.osszesen-2')}
+          {formatInteger(totalElements)}
+          {i18n.t('literals.tranzakcio-2')}
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -1136,10 +1155,12 @@ export default function ComplianceTransactionsPage() {
             onClick={() => goToPage(page - 1)}
             disabled={page === 0 || loading}
           >
-            Előző
+            {i18n.t('literals.elozo-2')}
           </button>
           <span>
-            {page + 1} / {Math.max(totalPages, 1)}
+            {page + 1}
+            {i18n.t('literals.lit-10')}
+            {Math.max(totalPages, 1)}
           </span>
           <button
             type="button"
@@ -1148,7 +1169,7 @@ export default function ComplianceTransactionsPage() {
             onClick={() => goToPage(page + 1)}
             disabled={page >= totalPages - 1 || loading}
           >
-            Következő
+            {i18n.t('literals.kovetkezo-2')}
           </button>
         </div>
       </div>
@@ -1160,37 +1181,41 @@ export default function ComplianceTransactionsPage() {
           className="flex w-full items-center justify-between px-4 py-3 text-left font-semibold text-gray-800"
           onClick={handleToggleAuditList}
         >
-          <span>Keresés-audit napló</span>
+          <span>{i18n.t('literals.kereses-audit-naplo')}</span>
           <span>{showAuditList ? 'Bezárás' : 'Megnyitás'}</span>
         </button>
         {showAuditList && (
           <div className="border-t border-gray-200 p-4">
             {auditListLoading ? (
-              <div className="py-4 text-center text-sm text-gray-500">Audit napló betöltése...</div>
+              <div className="py-4 text-center text-sm text-gray-500">
+                {i18n.t('literals.audit-naplo-betoltese')}
+              </div>
             ) : auditList.length === 0 ? (
-              <div className="py-4 text-center text-sm text-gray-500">Nincs mentett audit bejegyzés.</div>
+              <div className="py-4 text-center text-sm text-gray-500">
+                {i18n.t('literals.nincs-mentett-audit-bejegyzes')}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Időpont
+                        {i18n.t('literals.idopont')}
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Cím
+                        {i18n.t('literals.cim')}
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Leírás
+                        {i18n.t('literals.leiras')}
                       </th>
                       <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                        Találat
+                        {i18n.t('literals.talalat')}
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Rögzítő
+                        {i18n.t('literals.rogzito')}
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Műveletek
+                        {i18n.t('literals.muveletek')}
                       </th>
                     </tr>
                   </thead>
@@ -1222,7 +1247,7 @@ export default function ComplianceTransactionsPage() {
                                   className="form-button"
                                   onClick={() => toggleAuditCriteria(audit.id)}
                                 >
-                                  Szűrők
+                                  {i18n.t('literals.szurok')}
                                 </button>
                                 <button
                                   type="button"
@@ -1231,7 +1256,8 @@ export default function ComplianceTransactionsPage() {
                                   onClick={() => void handleAuditPdf(audit.id)}
                                   disabled={pdfDownloadingId !== null}
                                 >
-                                  <Download className="h-4 w-4" /> PDF
+                                  <Download className="h-4 w-4" />
+                                  {i18n.t('literals.pdf-2')}
                                 </button>
                               </div>
                             </td>
@@ -1240,12 +1266,16 @@ export default function ComplianceTransactionsPage() {
                             <tr>
                               <td colSpan={6} className="bg-gray-50 px-3 py-3 text-sm">
                                 {criteriaEntries.length === 0 ? (
-                                  <span className="text-gray-500">Nincs rögzített szűrő.</span>
+                                  <span className="text-gray-500">
+                                    {i18n.t('literals.nincs-rogzitett-szuro')}
+                                  </span>
                                 ) : (
                                   <dl className="grid grid-cols-1 gap-2 md:grid-cols-2">
                                     {criteriaEntries.map((entry) => (
                                       <div key={entry.key}>
-                                        <dt className="font-semibold text-gray-600">{entry.label}</dt>
+                                        <dt className="font-semibold text-gray-600">
+                                          {entry.label}
+                                        </dt>
                                         <dd>{entry.value}</dd>
                                       </div>
                                     ))}
@@ -1268,9 +1298,11 @@ export default function ComplianceTransactionsPage() {
       {showTemplateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-md bg-white p-5 shadow-lg">
-            <h2 className="mb-3 text-lg font-semibold">Szűrő-sablon mentése</h2>
+            <h2 className="mb-3 text-lg font-semibold">
+              {i18n.t('literals.szuro-sablon-mentese')}
+            </h2>
             <label className="form-label" htmlFor="save-template">
-              Sablon neve
+              {i18n.t('literals.sablon-neve')}
             </label>
             <input
               id="save-template"
@@ -1291,7 +1323,7 @@ export default function ComplianceTransactionsPage() {
                 }}
                 disabled={templateSaving}
               >
-                Mégse
+                {i18n.t('literals.megse')}
               </button>
               <button
                 type="button"
@@ -1310,9 +1342,11 @@ export default function ComplianceTransactionsPage() {
       {showAuditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-lg rounded-md bg-white p-5 shadow-lg">
-            <h2 className="mb-3 text-lg font-semibold">Keresés mentése az audit naplóba</h2>
+            <h2 className="mb-3 text-lg font-semibold">
+              {i18n.t('literals.kereses-mentese-az-audit-naploba')}
+            </h2>
             <label className="form-label" htmlFor="audit-title">
-              Cím
+              {i18n.t('literals.cim')}
             </label>
             <input
               id="audit-title"
@@ -1325,7 +1359,7 @@ export default function ComplianceTransactionsPage() {
               autoFocus
             />
             <label className="form-label mt-3" htmlFor="audit-description">
-              Leírás
+              {i18n.t('literals.leiras')}
             </label>
             <textarea
               id="audit-description"
@@ -1335,7 +1369,9 @@ export default function ComplianceTransactionsPage() {
               onChange={(event) => setAuditDescription(event.target.value)}
               maxLength={AUDIT_DESCRIPTION_MAX_LENGTH}
             />
-            <p className="mt-2 text-xs text-gray-500">A legutóbb futtatott keresést menti.</p>
+            <p className="mt-2 text-xs text-gray-500">
+              {i18n.t('literals.a-legutobb-futtatott-keresest-menti')}
+            </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
@@ -1347,7 +1383,7 @@ export default function ComplianceTransactionsPage() {
                 }}
                 disabled={auditSaving}
               >
-                Mégse
+                {i18n.t('literals.megse')}
               </button>
               <button
                 type="button"

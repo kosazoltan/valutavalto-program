@@ -15,6 +15,7 @@ import {
   appendPrivacyNoticeAcknowledgement,
 } from '../../utils/privacyNotice'
 import type { Customer } from '../../services/api/transactions'
+import i18n from '../../i18n'
 
 export default function CustomerCreatePage() {
   const { t } = useTranslation()
@@ -387,7 +388,9 @@ export default function CustomerCreatePage() {
                   data-testid="customer-create-document-number-input"
                 />
                 {documentChecking && (
-                  <p className="mt-1 text-xs text-gray-500">Okmány ellenőrzése...</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {i18n.t('literals.okmany-ellenorzese')}
+                  </p>
                 )}
               </div>
               {documentDuplicate && (
@@ -395,7 +398,9 @@ export default function CustomerCreatePage() {
                   className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
                   role="alert"
                 >
-                  <div className="font-semibold">Már létezik ügyfél ezzel az okmánnyal.</div>
+                  <div className="font-semibold">
+                    {i18n.t('literals.mar-letezik-ugyfel-ezzel-az-okmannyal')}
+                  </div>
                   <div className="mt-1">
                     {documentDuplicate.name}{' '}
                     {documentDuplicate.customerCode ? `(${documentDuplicate.customerCode})` : ''}
@@ -404,7 +409,7 @@ export default function CustomerCreatePage() {
                     to={`/customers/${documentDuplicate.id}`}
                     className="mt-2 inline-block font-medium text-amber-800 underline"
                   >
-                    Meglévő ügyfél megnyitása
+                    {i18n.t('literals.meglevo-ugyfel-megnyitasa')}
                   </Link>
                 </div>
               )}
@@ -501,11 +506,13 @@ export default function CustomerCreatePage() {
           <div className="form-panel lg:col-span-2">
             <h2 className="section-title flex items-center gap-2">
               <ShieldCheck size={16} />
-              Compliance
+              {i18n.t('literals.compliance')}
             </h2>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <div>
-                <label className="form-label required">Kiemelt közszereplő (PEP)</label>
+                <label className="form-label required">
+                  {i18n.t('literals.kiemelt-kozszereplo-pep')}
+                </label>
                 <select
                   value={formData.isPep === null ? '' : String(formData.isPep)}
                   onChange={(e) => updateField('isPep', e.target.value === 'true')}
@@ -513,9 +520,11 @@ export default function CustomerCreatePage() {
                   required
                   data-testid="customer-is-pep-select"
                 >
-                  <option value="">— válassz —</option>
-                  <option value="false">Nem közszereplő</option>
-                  <option value="true">Kiemelt közszereplő vagy közeli hozzátartozó</option>
+                  <option value="">{i18n.t('literals.valassz-2')}</option>
+                  <option value="false">{i18n.t('literals.nem-kozszereplo')}</option>
+                  <option value="true">
+                    {i18n.t('literals.kiemelt-kozszereplo-vagy-kozeli-hozzatar')}
+                  </option>
                 </select>
               </div>
               <label className="flex items-start gap-2 rounded border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700">
@@ -528,8 +537,9 @@ export default function CustomerCreatePage() {
                   data-testid="customer-privacy-notice-checkbox"
                 />
                 <span>
-                  Az ügyfél megkapta az adatkezelési tájékoztatót, és az azonosításhoz szükséges
-                  adatok kezeléséről tájékoztatást kapott. Verzió: {PRIVACY_NOTICE_VERSION}.
+                  {i18n.t('literals.az-ugyfel-megkapta-az-adatkezelesi-tajek')}
+                  {PRIVACY_NOTICE_VERSION}
+                  {i18n.t('literals.lit-5')}
                 </span>
               </label>
             </div>

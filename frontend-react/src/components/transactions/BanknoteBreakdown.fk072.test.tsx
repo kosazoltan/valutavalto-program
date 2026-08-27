@@ -32,9 +32,7 @@ vi.mock('../../components/ui/toaster', () => ({
 }))
 
 function renderJpyFallback() {
-  return render(
-    <BanknoteBreakdown transactionId={10} currencyCode="JPY" direction="IN" />,
-  )
+  return render(<BanknoteBreakdown transactionId={10} currencyCode="JPY" direction="IN" />)
 }
 
 describe('BanknoteBreakdown — FK-072_v2 tört címletek (FR-6, FR-7)', () => {

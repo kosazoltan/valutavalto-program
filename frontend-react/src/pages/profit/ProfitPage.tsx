@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 /**
  * ProfitReport shape (backend: ProfitCalculationService.ProfitReport)
@@ -52,7 +53,8 @@ type ReportMode =
   | 'wac-territory'
 
 type LoadedReport =
-  { kind: 'classic'; data: ProfitReport } | { kind: 'wac'; data: WacProfitSummary }
+  | { kind: 'classic'; data: ProfitReport }
+  | { kind: 'wac'; data: WacProfitSummary }
 
 const reportModeLabels: Record<ReportMode, string> = {
   'company-monthly': 'Cég havi',
@@ -180,7 +182,7 @@ export default function ProfitPage() {
         <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_2fr]">
           <div>
             <label htmlFor="profit-mode" className="form-label">
-              Riport típusa
+              {i18n.t('literals.riport-tipusa')}
             </label>
             <select
               id="profit-mode"
@@ -199,7 +201,7 @@ export default function ProfitPage() {
             {(mode === 'company-monthly' || mode === 'branch-monthly') && (
               <div>
                 <label htmlFor="profit-month" className="form-label">
-                  Hónap
+                  {i18n.t('literals.honap')}
                 </label>
                 <input
                   id="profit-month"
@@ -213,7 +215,7 @@ export default function ProfitPage() {
             {mode === 'branch-daily' && (
               <div>
                 <label htmlFor="profit-date" className="form-label">
-                  Nap
+                  {i18n.t('literals.nap')}
                 </label>
                 <input
                   id="profit-date"
@@ -228,7 +230,7 @@ export default function ProfitPage() {
               <>
                 <div>
                   <label htmlFor="profit-from" className="form-label">
-                    Kezdete
+                    {i18n.t('literals.kezdete')}
                   </label>
                   <input
                     id="profit-from"
@@ -240,7 +242,7 @@ export default function ProfitPage() {
                 </div>
                 <div>
                   <label htmlFor="profit-to" className="form-label">
-                    Vége
+                    {i18n.t('literals.vege')}
                   </label>
                   <input
                     id="profit-to"
@@ -255,7 +257,7 @@ export default function ProfitPage() {
             {mode === 'wac-territory' && (
               <div>
                 <label htmlFor="profit-territory" className="form-label">
-                  Terület ID
+                  {i18n.t('literals.terulet-id')}
                 </label>
                 <input
                   id="profit-territory"
@@ -305,7 +307,7 @@ export default function ProfitPage() {
       {wacReport && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="bg-white rounded shadow p-3">
-            <div className="text-xs text-gray-500">Tranzakciók</div>
+            <div className="text-xs text-gray-500">{i18n.t('literals.tranzakciok')}</div>
             <div className="text-xl font-mono">{wacReport.transactionCount ?? 0}</div>
           </div>
           <div className="bg-white rounded shadow p-3">
@@ -361,7 +363,7 @@ export default function ProfitPage() {
                   colSpan={wacReport ? 2 : 6}
                   className="px-4 py-8 text-center text-sm text-gray-500"
                 >
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : wacReport ? (

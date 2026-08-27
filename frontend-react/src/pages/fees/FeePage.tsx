@@ -3,6 +3,7 @@ import { DollarSign, Plus, Trash2 } from 'lucide-react'
 import { feeApi, FeeType, FeeRate, FeeDiscount } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function FeePage() {
   const { t } = useTranslation()
@@ -114,7 +115,7 @@ export default function FeePage() {
         </button>
       </div>
       {loading ? (
-        <div>Betöltés...</div>
+        <div>{i18n.t('literals.betoltes')}</div>
       ) : (
         <div className="form-panel">
           {activeTab === 'types' && (

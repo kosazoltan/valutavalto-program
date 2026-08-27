@@ -11,6 +11,7 @@ import { logger } from '../../utils/logger'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 import SuspiciousCustomersPanel from './SuspiciousCustomersPanel'
+import i18n from '../../i18n'
 
 // ============================================================================
 
@@ -148,7 +149,7 @@ export default function ComplianceDashboardPage() {
       )}
 
       {loading ? (
-        <div className="text-center text-gray-500 py-8">Toltodik...</div>
+        <div className="text-center text-gray-500 py-8">{i18n.t('literals.toltodik')}</div>
       ) : (
         <>
           {/* KPI kartyak */}
@@ -191,14 +192,14 @@ export default function ComplianceDashboardPage() {
 
           <div className="bg-white shadow rounded overflow-hidden mb-6">
             <div className="bg-slate-100 px-4 py-2 text-slate-900 font-semibold">
-              Kézi AML tranzakció-ellenőrzés
+              {i18n.t('literals.kezi-aml-tranzakcio-ellenorzes')}
             </div>
             <form
               onSubmit={(event) => void handleManualCheck(event)}
               className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-[1.2fr_1fr_0.7fr_auto] lg:items-end"
             >
               <div>
-                <label className="form-label">Ügyfél azonosító</label>
+                <label className="form-label">{i18n.t('literals.ugyfel-azonosito')}</label>
                 <input
                   type="text"
                   value={manualCheckForm.customerId}
@@ -211,7 +212,7 @@ export default function ComplianceDashboardPage() {
                 />
               </div>
               <div>
-                <label className="form-label required">Összeg HUF</label>
+                <label className="form-label required">{i18n.t('literals.osszeg-huf')}</label>
                 <input
                   type="number"
                   min="1"
@@ -225,7 +226,7 @@ export default function ComplianceDashboardPage() {
                 />
               </div>
               <div>
-                <label className="form-label">Valuta</label>
+                <label className="form-label">{i18n.t('literals.valuta')}</label>
                 <input
                   type="text"
                   value={manualCheckForm.currencyCode}
@@ -274,11 +275,15 @@ export default function ComplianceDashboardPage() {
                   >
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                       <div className="font-semibold">
-                        Tranzakció típus: {manualCheckResult.transactionType}
+                        {i18n.t('literals.tranzakcio-tipus')}
+                        {manualCheckResult.transactionType}
                       </div>
                       <div className="font-mono">
-                        8 nap: {manualCheckResult.rollingWindowTotal?.toLocaleString('hu-HU') ?? 0}{' '}
-                        / {manualCheckResult.rollingWindowLimit?.toLocaleString('hu-HU') ?? 0} HUF
+                        {i18n.t('literals.8-nap')}
+                        {manualCheckResult.rollingWindowTotal?.toLocaleString('hu-HU') ?? 0}{' '}
+                        {i18n.t('literals.lit-33')}
+                        {manualCheckResult.rollingWindowLimit?.toLocaleString('hu-HU') ?? 0}
+                        {i18n.t('literals.huf-2')}
                       </div>
                     </div>
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -317,7 +322,8 @@ export default function ComplianceDashboardPage() {
             <div className="bg-white shadow rounded overflow-hidden mb-6">
               <div className="bg-red-100 px-4 py-2 text-red-900 font-semibold">
                 {t('compliance.lejartHataridejuBejelentesek')}
-                {overdue.length})
+                {overdue.length}
+                {i18n.t('literals.lit-2')}
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">
@@ -353,7 +359,8 @@ export default function ComplianceDashboardPage() {
             <div className="bg-orange-100 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-orange-900 font-semibold">
                 {t('compliance.8NaposGorduloLimitFelettiUgyfelek')}
-                {rollingWindow.length})
+                {rollingWindow.length}
+                {i18n.t('literals.lit-2')}
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <label className="text-sm">{t('compliance.kuszobHuf')}</label>
@@ -397,15 +404,18 @@ export default function ComplianceDashboardPage() {
                           {formatNumber(r.rollingWindowTotalHuf)}
                         </td>
                         <td className="px-4 py-2 text-right font-mono">
-                          {(r.exceedPercent ?? 0).toFixed(1)}%
+                          {(r.exceedPercent ?? 0).toFixed(1)}
+                          {i18n.t('literals.lit-30')}
                         </td>
                         <td className="px-4 py-2 text-center">
                           {r.highRiskFlag ? (
                             <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
-                              MAGAS
+                              {i18n.t('literals.magas')}
                             </span>
                           ) : (
-                            <span className="text-gray-400 text-xs">-</span>
+                            <span className="text-gray-400 text-xs">
+                              {i18n.t('literals.lit-15')}
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -423,7 +433,8 @@ export default function ComplianceDashboardPage() {
             <div className="bg-white shadow rounded overflow-hidden">
               <div className="bg-blue-100 px-4 py-2 text-blue-900 font-semibold">
                 {t('compliance.maiNapOsszesito')}
-                {summary.date})
+                {summary.date}
+                {i18n.t('literals.lit-2')}
               </div>
               <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>

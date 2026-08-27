@@ -21,6 +21,7 @@ import {
 } from '../../services/api/sanction'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 type Tab = 'screen' | 'list' | 'admin'
 
@@ -203,7 +204,9 @@ function ScreeningTab() {
           </div>
         </div>
         <div>
-          <label className="form-label">Állampolgárság / ország (FATF) — opcionális</label>
+          <label className="form-label">
+            {i18n.t('literals.allampolgarsag-orszag-fatf-opcionalis')}
+          </label>
           <input
             type="text"
             className="form-input w-full"
@@ -253,11 +256,15 @@ function ScreeningTab() {
             >
               <div className="flex items-center gap-2 font-semibold">
                 <AlertTriangle size={16} />
-                <span>FATF ország-kockázat: {FATF_LABEL[result.fatfTier]}</span>
+                <span>
+                  {i18n.t('literals.fatf-orszag-kockazat')}
+                  {FATF_LABEL[result.fatfTier]}
+                </span>
               </div>
               {result.fatfRiskCountry && (
                 <div className="text-sm mt-1">
-                  Ország: <strong>{result.fatfRiskCountry}</strong>
+                  {i18n.t('literals.orszag')}
+                  <strong>{result.fatfRiskCountry}</strong>
                   {(result.fatfTier === 'TIER_1A_COUNTERMEASURE' ||
                     result.fatfTier === 'TIER_1B_ENHANCED_DD') &&
                     ' — fokozott ügyfél-átvilágítás kötelező!'}
@@ -274,7 +281,10 @@ function ScreeningTab() {
                     <div className="flex gap-2">
                       <span className="badge badge-blue text-xs">{m.listType}</span>
                       <span className="badge badge-orange text-xs">{m.matchType}</span>
-                      <span className="text-xs font-mono">{(m.score * 100).toFixed(0)}%</span>
+                      <span className="text-xs font-mono">
+                        {(m.score * 100).toFixed(0)}
+                        {i18n.t('literals.lit-30')}
+                      </span>
                     </div>
                   </div>
                   {m.aliases && (
@@ -283,7 +293,10 @@ function ScreeningTab() {
                     </div>
                   )}
                   {m.dateOfBirth && (
-                    <div className="text-xs text-secondary-600">Szul.: {m.dateOfBirth}</div>
+                    <div className="text-xs text-secondary-600">
+                      {i18n.t('literals.szul')}
+                      {m.dateOfBirth}
+                    </div>
                   )}
                   {m.nationality && (
                     <div className="text-xs text-secondary-600">
@@ -414,7 +427,7 @@ function ListTab() {
             {loading && (
               <tr>
                 <td colSpan={6} className="text-center py-8 text-secondary-400">
-                  Betoltes...
+                  {i18n.t('literals.betoltes-4')}
                 </td>
               </tr>
             )}

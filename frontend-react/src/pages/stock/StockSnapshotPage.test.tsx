@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../services/api/index', () => ({ api: { get: mocks.apiGet } }))
 vi.mock('../../utils/logger', () => ({ logger: mocks.logger }))
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 

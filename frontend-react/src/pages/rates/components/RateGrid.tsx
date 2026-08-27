@@ -7,6 +7,7 @@ import { fmtAmount, parseNum, type EditableRate } from '../types'
 import type { WgField } from '../workgroupSheetCompute'
 import { replaceFormulaCurrency } from '../workgroupSheetFormula'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../../i18n'
 
 // FK03-fix (FR-6..8): a J (officialRate) a rács TELJES JOGÚ 0. oszlopa lett — a
 // `useGridNavigation` rácson belül van (nyilas navigáció eléri, dupla kattintásra
@@ -392,7 +393,7 @@ export default function RateGrid({
         <div className="absolute inset-0 z-40 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
           <div className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-md shadow-lg text-sm font-semibold">
             <RefreshCw size={16} className="animate-spin" />
-            Szinkronizálás folyamatban, kérjük várjon…
+            {i18n.t('literals.szinkronizalas-folyamatban-kerjuk-varjon')}
           </div>
         </div>
       )}
@@ -404,15 +405,20 @@ export default function RateGrid({
                 {t('rates.elszArf')}
               </th>
               <th className="px-1 py-0 border-r border-green-600">{t('common.currency')}</th>
-              {/* eslint-disable-next-line i18next/no-literal-string */}
+              { }
               <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
-                0 - {fmtAmount(selectedWg?.limit1Boundary)}
+                {i18n.t('literals.0')}
+                {fmtAmount(selectedWg?.limit1Boundary)}
               </th>
               <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
-                {fmtAmount(selectedWg?.limit1Boundary)} - {fmtAmount(selectedWg?.limit2Boundary)}
+                {fmtAmount(selectedWg?.limit1Boundary)}
+                {i18n.t('literals.lit-17')}
+                {fmtAmount(selectedWg?.limit2Boundary)}
               </th>
               <th colSpan={2} className="px-1 py-0 border-r border-green-600 text-center">
-                {fmtAmount(selectedWg?.limit2Boundary)} - {fmtAmount(selectedWg?.limit3Boundary)}
+                {fmtAmount(selectedWg?.limit2Boundary)}
+                {i18n.t('literals.lit-17')}
+                {fmtAmount(selectedWg?.limit3Boundary)}
               </th>
               <th colSpan={2} className="px-1 py-0 text-center border-r border-green-600">
                 {t('rates.sajatHat')}
@@ -422,35 +428,44 @@ export default function RateGrid({
             <tr className="bg-green-700 text-white text-[10px] leading-none">
               {/* FK-04/C: oszlop-betűk (J–S) a fejlécben — a képletírás ezekre hivatkozik (pl. "L", "#02M", "!FEUR"). */}
               <th className="px-1 py-0 text-left w-16 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">J</span> MNB
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.j')}</span>
+                {i18n.t('literals.mnb-2')}
               </th>
               <th className="px-1 py-0 w-4 border-r border-green-500"></th>
               <th className="px-1 py-0 w-12 border-r border-green-500 font-bold">
-                <span className="text-yellow-300">K</span> {t('common.code')}
+                <span className="text-yellow-300">{i18n.t('literals.k')}</span> {t('common.code')}
               </th>
               <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">L</span> {t('rates.vet')}
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.l')}</span>{' '}
+                {t('rates.vet')}
               </th>
               <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">M</span> {t('rates.elad')}
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.m')}</span>{' '}
+                {t('rates.elad')}
               </th>
               <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">N</span> {t('rates.v')}
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.n')}</span>{' '}
+                {t('rates.v')}
               </th>
               <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">O</span> E-
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.o')}</span>
+                {i18n.t('literals.e-4')}
               </th>
               <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">P</span> {t('rates.v')}
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.p')}</span>{' '}
+                {t('rates.v')}
               </th>
               <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">Q</span> E-
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.q')}</span>
+                {i18n.t('literals.e-4')}
               </th>
               <th className="px-1 py-0 w-[86px] text-green-200 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">R</span> {t('rates.vmax')}
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.r')}</span>{' '}
+                {t('rates.vmax')}
               </th>
               <th className="px-1 py-0 w-[86px] text-red-200 border-r border-green-500">
-                <span className="text-yellow-300 font-bold">S</span> {t('rates.emin')}
+                <span className="text-yellow-300 font-bold">{i18n.t('literals.s-2')}</span>{' '}
+                {t('rates.emin')}
               </th>
               <th className="px-1 py-0 text-yellow-200">{t('common.error')}</th>
             </tr>
@@ -564,7 +579,7 @@ export default function RateGrid({
                         className={`absolute ${isJ ? 'left-0' : 'left-0.5'} top-0 text-[7px] text-indigo-500 font-bold pointer-events-none`}
                         title={`Képlet: ${formulas[key]}`}
                       >
-                        ƒ
+                        {i18n.t('literals.lit-50')}
                       </span>
                     )}
                   </td>
@@ -607,8 +622,8 @@ export default function RateGrid({
                       </div>
                     ))}
                     {!validationErrors[r.currencyId] && r.hasRate && (
-                      // eslint-disable-next-line i18next/no-literal-string
-                      <span className="text-green-600">✓</span>
+                       
+                      <span className="text-green-600">{i18n.t('literals.lit-6')}</span>
                     )}
                   </td>
                 </tr>
@@ -632,7 +647,8 @@ export default function RateGrid({
             className="flex items-center gap-1 px-1.5 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-semibold"
             title="A kijelölés legfelső sorának értékét/képletét lemásolja oszloponként a kijelölt tartomány összes többi cellájába"
           >
-            <ArrowDownToLine size={11} /> Lehúzás (mind)
+            <ArrowDownToLine size={11} />
+            {i18n.t('literals.lehuzas-mind-2')}
           </button>
           <button
             type="button"
@@ -640,7 +656,8 @@ export default function RateGrid({
             className="flex items-center gap-1 px-1.5 py-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300 text-[10px] font-semibold"
             title="A kijelölt cellák értékének/képletének KIÜRÍTÉSE (a cellák üresre állnak)"
           >
-            <Eraser size={11} /> Ürítés
+            <Eraser size={11} />
+            {i18n.t('literals.urites-2')}
           </button>
           {onCopyToGroups && (
             <button
@@ -649,7 +666,8 @@ export default function RateGrid({
               className="flex items-center gap-1 px-1.5 py-1 rounded bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 text-[10px] font-semibold"
               title="A kijelölt cellák tartalmának (érték vagy képlet) másolása más munkacsoport(ok) azonos pozícióiba"
             >
-              <Copy size={11} /> Másolás más csoportba
+              <Copy size={11} />
+              {i18n.t('literals.masolas-mas-csoportba')}
             </button>
           )}
           <button
@@ -658,7 +676,8 @@ export default function RateGrid({
             className="flex items-center gap-1 px-1.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 text-[10px] font-semibold"
             title="A kijelölt sorok kedvezménysáv-oszlopainak (N–S) kiürítése; a fő vétel/eladás érintetlen"
           >
-            <Trash2 size={11} /> Sávok törlése
+            <Trash2 size={11} />
+            {i18n.t('literals.savok-torlese-2')}
           </button>
         </div>
       )}

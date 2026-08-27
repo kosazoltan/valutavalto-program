@@ -55,7 +55,7 @@ class ShipmentHandlingFeeServiceTest {
         ShipmentRequest savedShipment = savedShipment();
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufCurrency()));
         when(shipmentService.create(any(ShipmentRequest.class), eq("KK"))).thenReturn(savedShipment);
-        when(handlingFeeService.calculateHandlingFee(new BigDecimal("125000")))
+        when(handlingFeeService.calculateHandlingFee(new BigDecimal("125000"), FROM_BRANCH_ID))
                 .thenReturn(new BigDecimal("625"));
         when(feeRepository.save(any(ShipmentHandlingFee.class))).thenAnswer(invocation -> {
             ShipmentHandlingFee fee = invocation.getArgument(0);
@@ -89,7 +89,7 @@ class ShipmentHandlingFeeServiceTest {
         assertThat(fee.getHufAmount()).isEqualByComparingTo("125000");
         assertThat(fee.getCalculatedFee()).isEqualByComparingTo("625");
         assertThat(fee.getStatus()).isEqualTo(ShipmentRequestStatus.DRAFT);
-        verify(handlingFeeService).calculateHandlingFee(new BigDecimal("125000"));
+        verify(handlingFeeService).calculateHandlingFee(new BigDecimal("125000"), FROM_BRANCH_ID);
         verify(auditLogService).log(
                 eq(ShipmentHandlingFeeService.ACTION_FEE_RECEIVED),
                 eq("ShipmentHandlingFee"),
@@ -107,7 +107,7 @@ class ShipmentHandlingFeeServiceTest {
     void create_roundsHufAmountToFive() {
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufCurrency()));
         when(shipmentService.create(any(ShipmentRequest.class), eq("KK"))).thenReturn(savedShipment());
-        when(handlingFeeService.calculateHandlingFee(new BigDecimal("125005")))
+        when(handlingFeeService.calculateHandlingFee(new BigDecimal("125005"), FROM_BRANCH_ID))
                 .thenReturn(new BigDecimal("625"));
         when(feeRepository.save(any(ShipmentHandlingFee.class))).thenAnswer(invocation -> {
             ShipmentHandlingFee fee = invocation.getArgument(0);
@@ -128,7 +128,7 @@ class ShipmentHandlingFeeServiceTest {
         ArgumentCaptor<ShipmentHandlingFee> feeCaptor = ArgumentCaptor.forClass(ShipmentHandlingFee.class);
         verify(feeRepository).save(feeCaptor.capture());
         assertThat(feeCaptor.getValue().getHufAmount()).isEqualByComparingTo("125005");
-        verify(handlingFeeService).calculateHandlingFee(new BigDecimal("125005"));
+        verify(handlingFeeService).calculateHandlingFee(new BigDecimal("125005"), FROM_BRANCH_ID);
     }
 
     @Test

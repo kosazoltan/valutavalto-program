@@ -13,6 +13,7 @@ import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 import { toast } from '../../components/ui/toaster'
+import i18n from '../../i18n'
 
 interface DataImportItem {
   id: string | number
@@ -218,7 +219,7 @@ export default function DataImportPage() {
 
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
         <label className="block">
-          <span className="form-label">Import dátum</span>
+          <span className="form-label">{i18n.t('literals.import-datum')}</span>
           <input
             type="date"
             value={importDate}
@@ -228,7 +229,7 @@ export default function DataImportPage() {
         </label>
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
-            <span className="form-label">Tranzakció kezdete</span>
+            <span className="form-label">{i18n.t('literals.tranzakcio-kezdete')}</span>
             <input
               type="date"
               value={fromDate}
@@ -237,7 +238,7 @@ export default function DataImportPage() {
             />
           </label>
           <label className="block">
-            <span className="form-label">Tranzakció vége</span>
+            <span className="form-label">{i18n.t('literals.tranzakcio-vege')}</span>
             <input
               type="date"
               value={toDate}
@@ -254,7 +255,7 @@ export default function DataImportPage() {
             className="form-button flex items-center gap-2"
           >
             <PlayCircle className="h-4 w-4" />
-            Napi zárás
+            {i18n.t('literals.napi-zaras-2')}
           </button>
           <button
             type="button"
@@ -263,7 +264,7 @@ export default function DataImportPage() {
             className="form-button flex items-center gap-2"
           >
             <PlayCircle className="h-4 w-4" />
-            Készlet
+            {i18n.t('literals.keszlet')}
           </button>
           <button
             type="button"
@@ -272,7 +273,7 @@ export default function DataImportPage() {
             className="form-button flex items-center gap-2"
           >
             <PlayCircle className="h-4 w-4" />
-            Tranzakciók
+            {i18n.t('literals.tranzakciok')}
           </button>
           <button
             type="button"
@@ -281,7 +282,7 @@ export default function DataImportPage() {
             className="form-button flex items-center gap-2"
           >
             <PlayCircle className="h-4 w-4" />
-            Teljes import
+            {i18n.t('literals.teljes-import')}
           </button>
         </div>
       </div>
@@ -289,17 +290,18 @@ export default function DataImportPage() {
       <section className="rounded border border-blue-200 bg-blue-50 p-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-blue-950">Konfiguráció import</h2>
+            <h2 className="text-sm font-semibold text-blue-950">
+              {i18n.t('literals.konfiguracio-import')}
+            </h2>
             <p className="mt-1 text-sm text-blue-800">
-              Korábban exportált telephelyi konfiguráció JSON betöltése a bejelentkezett
-              telephelyre.
+              {i18n.t('literals.korabban-exportalt-telephelyi-konfigurac')}
             </p>
           </div>
           <label
             className={`form-button inline-flex cursor-pointer items-center gap-2 ${busyAction !== null || !branchId ? 'pointer-events-none opacity-60' : ''}`}
           >
             <Upload className="h-4 w-4" />
-            Config JSON import
+            {i18n.t('literals.config-json-import')}
             <input
               type="file"
               accept="application/json,.json"
@@ -317,17 +319,24 @@ export default function DataImportPage() {
               {configImportResult.success ? 'Import sikeres' : 'Import hibával zárult'}
             </div>
             <div className="mt-1">
-              Paraméter: {configImportResult.importedSystemParams}, árfolyam:{' '}
-              {configImportResult.importedRateSettings}, kerekítés:{' '}
-              {configImportResult.importedRoundingRules}, sablon:{' '}
-              {configImportResult.importedPrintTemplates}, LED:{' '}
-              {configImportResult.ledConfigImported ? 'igen' : 'nem'}
+              {i18n.t('literals.parameter')}
+              {configImportResult.importedSystemParams}
+              {i18n.t('literals.arfolyam-2')} {configImportResult.importedRateSettings}
+              {i18n.t('literals.kerekites')} {configImportResult.importedRoundingRules}
+              {i18n.t('literals.sablon')} {configImportResult.importedPrintTemplates}
+              {i18n.t('literals.led')} {configImportResult.ledConfigImported ? 'igen' : 'nem'}
             </div>
             {configImportResult.warnings?.length ? (
-              <div className="mt-2">Figyelmeztetés: {configImportResult.warnings.join(', ')}</div>
+              <div className="mt-2">
+                {i18n.t('literals.figyelmeztetes-2')}
+                {configImportResult.warnings.join(', ')}
+              </div>
             ) : null}
             {configImportResult.errors?.length ? (
-              <div className="mt-2">Hiba: {configImportResult.errors.join(', ')}</div>
+              <div className="mt-2">
+                {i18n.t('literals.hiba')}
+                {configImportResult.errors.join(', ')}
+              </div>
             ) : null}
           </div>
         )}
@@ -368,7 +377,7 @@ export default function DataImportPage() {
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -389,7 +398,9 @@ export default function DataImportPage() {
                   </td>
                   <td className="px-4 py-3 text-sm">{item.status ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">
-                    {item.importedRecords ?? 0} / {item.totalRecords ?? 0}
+                    {item.importedRecords ?? 0}
+                    {i18n.t('literals.lit-10')}
+                    {item.totalRecords ?? 0}
                     {item.failedRecords ? ` (${item.failedRecords} hiba)` : ''}
                   </td>
                   <td className="px-4 py-3 text-sm">
@@ -406,7 +417,7 @@ export default function DataImportPage() {
                       title="Újrapróbálás"
                     >
                       <RotateCcw className="h-4 w-4" />
-                      Retry
+                      {i18n.t('literals.retry')}
                     </button>
                   </td>
                 </tr>
@@ -418,7 +429,9 @@ export default function DataImportPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

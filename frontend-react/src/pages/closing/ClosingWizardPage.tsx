@@ -38,6 +38,7 @@ import {
   type WizardResumeAction,
   type WizardStatusValue,
 } from './wizardStatusPolicy'
+import i18n from '../../i18n'
 
 /** HUF cimletek — csökkeno sorrendben */
 const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
@@ -736,7 +737,8 @@ export default function ClosingWizardPage() {
         return (
           <span className="text-green-600 dark:text-green-400 font-medium">
             {t('closing.rendben')}
-            {step.completedAt})
+            {step.completedAt}
+            {i18n.t('literals.lit-2')}
           </span>
         )
       case 'failed':
@@ -749,11 +751,11 @@ export default function ClosingWizardPage() {
       case 'running':
         return (
           <span className="text-blue-600 dark:text-blue-400 font-medium animate-pulse">
-            FOLYAMATBAN...
+            {i18n.t('literals.folyamatban')}
           </span>
         )
       case 'skipped':
-        return <span className="text-gray-400">KIHAGYVA</span>
+        return <span className="text-gray-400">{i18n.t('literals.kihagyva')}</span>
       default:
         return <span className="text-gray-400">{t('closing.var')}</span>
     }
@@ -779,7 +781,9 @@ export default function ClosingWizardPage() {
           </h1>
         </div>
         <span className="text-xs font-semibold bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-          {completedCount} / {steps.length} {t('common.kesz')}
+          {completedCount}
+          {i18n.t('literals.lit-10')}
+          {steps.length} {t('common.kesz')}
         </span>
       </div>
 
@@ -808,7 +812,10 @@ export default function ClosingWizardPage() {
       <div>
         <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-0.5">
           <span>{t('closing.elorehaladas')}</span>
-          <span>{Math.round(progress)}%</span>
+          <span>
+            {Math.round(progress)}
+            {i18n.t('literals.lit-30')}
+          </span>
         </div>
         <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
@@ -822,10 +829,10 @@ export default function ClosingWizardPage() {
         <div className="mb-3 flex items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-bold text-gray-900 dark:text-white">
-              Napi zárás előellenőrzés
+              {i18n.t('literals.napi-zaras-eloellenorzes')}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Címletezési és zárási készültség
+              {i18n.t('literals.cimletezesi-es-zarasi-keszultseg')}
             </p>
           </div>
           <button
@@ -882,7 +889,7 @@ export default function ClosingWizardPage() {
         ) : (
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Előellenőrzés betöltése...
+            {i18n.t('literals.eloellenorzes-betoltese')}
           </div>
         )}
       </div>
@@ -894,12 +901,15 @@ export default function ClosingWizardPage() {
         >
           <div className="mb-1 flex items-center gap-2 font-semibold">
             {wizardLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Betöltött zárási varázsló
+            {i18n.t('literals.betoltott-zarasi-varazslo')}
           </div>
           {currentStepDetail && (
             <div className="space-y-1">
               <div>
-                Aktuális lépés: {currentStepDetail.stepNumber}. {currentStepDetail.stepTitle}
+                {i18n.t('literals.aktualis-lepes')}
+                {currentStepDetail.stepNumber}
+                {i18n.t('literals.lit-31')}
+                {currentStepDetail.stepTitle}
               </div>
               {currentStepDetail.stepDescription && (
                 <div className="text-xs opacity-80">{currentStepDetail.stepDescription}</div>
@@ -991,7 +1001,8 @@ export default function ClosingWizardPage() {
                     </div>
                     {(isVaultContext || denominationSections.length > 1) && (
                       <div className="mt-1 text-right text-xs font-semibold text-gray-600 dark:text-gray-300">
-                        {currencyCode}:{' '}
+                        {currencyCode}
+                        {i18n.t('literals.lit-7')}{' '}
                         {(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')}
                       </div>
                     )}
@@ -1093,10 +1104,10 @@ export default function ClosingWizardPage() {
           <div className="mb-3 flex items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-bold text-gray-900 dark:text-white">
-                Zárási riport előnézet
+                {i18n.t('literals.zarasi-riport-elonezet')}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Backend riport a véglegesítés előtti ellenőrzéshez
+                {i18n.t('literals.backend-riport-a-veglegesites-elotti-ell')}
               </p>
             </div>
             {reportLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
@@ -1139,10 +1150,16 @@ export default function ClosingWizardPage() {
                   <table className="min-w-full text-left text-xs">
                     <thead className="bg-gray-50 text-gray-500 dark:bg-gray-900/40 dark:text-gray-400">
                       <tr>
-                        <th className="px-2 py-1 font-semibold">Valuta</th>
-                        <th className="px-2 py-1 text-right font-semibold">Nyitó</th>
-                        <th className="px-2 py-1 text-right font-semibold">Aktuális</th>
-                        <th className="px-2 py-1 text-right font-semibold">Változás</th>
+                        <th className="px-2 py-1 font-semibold">{i18n.t('literals.valuta')}</th>
+                        <th className="px-2 py-1 text-right font-semibold">
+                          {i18n.t('literals.nyito')}
+                        </th>
+                        <th className="px-2 py-1 text-right font-semibold">
+                          {i18n.t('literals.aktualis')}
+                        </th>
+                        <th className="px-2 py-1 text-right font-semibold">
+                          {i18n.t('literals.valtozas')}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1174,7 +1191,7 @@ export default function ClosingWizardPage() {
       {statusPolicyError && !wizardId && (
         <div className="flex items-center justify-center gap-2 mb-2 p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200 text-sm">
           <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span>Állapot lekérdezése sikertelen, frissítsd az oldalt</span>
+          <span>{i18n.t('literals.allapot-lekerdezese-sikertelen-frissitsd')}</span>
         </div>
       )}
 
@@ -1189,34 +1206,34 @@ export default function ClosingWizardPage() {
           {staleWizard.action === 'resume' ? (
             <>
               <p className="text-sm text-center mb-2">
-                Beragadt zárási munkamenet található a mai napra.
+                {i18n.t('literals.beragadt-zarasi-munkamenet-talalhato-a-m')}
               </p>
               <div className="flex justify-center gap-2">
                 <button
                   onClick={handleResumeStale}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow transition-colors"
                 >
-                  Folytatás
+                  {i18n.t('literals.folytatas')}
                 </button>
                 <button
                   onClick={() => void handleRestartStale()}
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-bold rounded-lg shadow transition-colors"
                 >
-                  Megszakítás és újraindítás
+                  {i18n.t('literals.megszakitas-es-ujrainditas')}
                 </button>
               </div>
             </>
           ) : (
             <>
               <p className="text-sm text-center mb-2">
-                A korábbi zárási munkamenet lejárt (időtúllépés), nem folytatható.
+                {i18n.t('literals.a-korabbi-zarasi-munkamenet-lejart-idotu')}
               </p>
               <div className="flex justify-center">
                 <button
                   onClick={() => void handleRestartStale()}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg shadow transition-colors"
                 >
-                  Új zárás indítása
+                  {i18n.t('literals.uj-zaras-inditasa')}
                 </button>
               </div>
             </>
@@ -1291,7 +1308,7 @@ export default function ClosingWizardPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-lg mx-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
-              Eltérés-magyarázat szükséges
+              {i18n.t('literals.elteres-magyarazat-szukseges')}
             </h3>
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-wrap">
               {discrepancyPrompt.message}
@@ -1312,7 +1329,7 @@ export default function ClosingWizardPage() {
                 disabled={discrepancySubmitting}
                 className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-bold rounded-lg transition-colors"
               >
-                Mégsem
+                {i18n.t('literals.megsem')}
               </button>
               <button
                 onClick={handleDiscrepancySubmit}

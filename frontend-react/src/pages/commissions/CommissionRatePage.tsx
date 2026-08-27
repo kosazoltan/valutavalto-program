@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface RateForm {
   entityType: string
@@ -273,7 +274,7 @@ export default function CommissionRatePage() {
 
       <div className="form-panel">
         {loading ? (
-          <div>Betöltés...</div>
+          <div>{i18n.t('literals.betoltes')}</div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-gray-500 py-4">
             {t('commissions.nincsJutalekMertek')}
@@ -296,9 +297,14 @@ export default function CommissionRatePage() {
                   <td>{r.entityType}</td>
                   <td>{r.entityName || '— Mind —'}</td>
                   <td>{r.currencyCode || '— Mind —'}</td>
-                  <td className="font-mono">{r.rate}%</td>
+                  <td className="font-mono">
+                    {r.rate}
+                    {i18n.t('literals.lit-30')}
+                  </td>
                   <td className="text-sm">
-                    {r.validFrom} – {r.validTo || 'határozatlan'}
+                    {r.validFrom}
+                    {i18n.t('literals.lit-32')}
+                    {r.validTo || 'határozatlan'}
                   </td>
                   <td>
                     <div className="flex gap-1">

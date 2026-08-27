@@ -13,6 +13,7 @@ vi.mock('../../services/api/client', () => ({
   api: { get: (...args: unknown[]) => mockGet(...args) },
 }))
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
@@ -64,7 +65,9 @@ function snapshotWithLowEurForA() {
     regions: [
       {
         regionCode: 'SZEGED',
-        branches: [{ branchId: 'a1', currencies: [{ currencyCode: 'EUR', stock: 100, hasBalance: true }] }],
+        branches: [
+          { branchId: 'a1', currencies: [{ currencyCode: 'EUR', stock: 100, hasBalance: true }] },
+        ],
       },
     ],
   }

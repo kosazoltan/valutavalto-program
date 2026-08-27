@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface SchedulerJobItem {
   id: string | number
@@ -152,11 +153,11 @@ export default function SchedulerPage() {
 
       {form && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">Új ütemezett feladat</h2>
+          <h2 className="text-base font-semibold">{i18n.t('literals.uj-utemezett-feladat')}</h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
               <label htmlFor="scheduler-task-name" className="form-label">
-                Feladat neve
+                {i18n.t('literals.feladat-neve')}
               </label>
               <input
                 id="scheduler-task-name"
@@ -171,7 +172,7 @@ export default function SchedulerPage() {
             </div>
             <div>
               <label htmlFor="scheduler-cron" className="form-label">
-                Cron kifejezés
+                {i18n.t('literals.cron-kifejezes')}
               </label>
               <input
                 id="scheduler-cron"
@@ -186,7 +187,7 @@ export default function SchedulerPage() {
             </div>
             <div>
               <label htmlFor="scheduler-task-type" className="form-label">
-                Feladattípus
+                {i18n.t('literals.feladattipus')}
               </label>
               <select
                 id="scheduler-task-type"
@@ -198,16 +199,16 @@ export default function SchedulerPage() {
                 }
                 className="form-input w-full"
               >
-                <option value="RATE_SYNC">RATE_SYNC</option>
-                <option value="BACKUP">BACKUP</option>
-                <option value="REPORT">REPORT</option>
-                <option value="CLOSING_REMINDER">CLOSING_REMINDER</option>
-                <option value="HEALTH_CHECK">HEALTH_CHECK</option>
+                <option value="RATE_SYNC">{i18n.t('literals.rate-sync')}</option>
+                <option value="BACKUP">{i18n.t('literals.backup')}</option>
+                <option value="REPORT">{i18n.t('literals.report')}</option>
+                <option value="CLOSING_REMINDER">{i18n.t('literals.closing-reminder')}</option>
+                <option value="HEALTH_CHECK">{i18n.t('literals.health-check')}</option>
               </select>
             </div>
             <div>
               <label htmlFor="scheduler-parameters" className="form-label">
-                Paraméterek JSON
+                {i18n.t('literals.parameterek-json')}
               </label>
               <input
                 id="scheduler-parameters"
@@ -231,7 +232,7 @@ export default function SchedulerPage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -274,7 +275,7 @@ export default function SchedulerPage() {
                 {t('scheduler.utemezes')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Típus
+                {i18n.t('literals.tipus')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('scheduler.utolsoFutas')}
@@ -283,7 +284,7 @@ export default function SchedulerPage() {
                 {t('scheduler.kovetkezoFutas')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Eredmény
+                {i18n.t('literals.eredmeny')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('common.active')}
@@ -297,7 +298,7 @@ export default function SchedulerPage() {
             {loading ? (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -347,7 +348,9 @@ export default function SchedulerPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

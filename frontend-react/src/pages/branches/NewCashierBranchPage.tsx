@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, Building2, Save } from 'lucide-react'
 import { branchApi, dictionaryApi, type DictionaryEntry } from '../../services/api/index'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 /**
  * Bali Henriett 2. pont (2026-05-27): manuális lakossági pénztár-felrögzítés
@@ -100,21 +101,20 @@ export default function NewCashierBranchPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Building2 />
-          Új pénztár felrögzítése
+          {i18n.t('literals.uj-penztar-felrogzitese')}
         </h1>
         <button
           type="button"
           onClick={() => navigate(-1)}
           className="form-button-secondary flex items-center gap-2"
         >
-          <ArrowLeft size={16} /> Vissza
+          <ArrowLeft size={16} />
+          {i18n.t('literals.vissza')}
         </button>
       </div>
 
       <p className="text-sm text-gray-600">
-        Ha új lakossági pénztár (iroda) nyílik a területéhez tartozóan, itt rögzítheti fel a
-        rendszerbe. A felrögzítés után a pénztár automatikusan megjelenik a területi szűrt listákban
-        — pl. az „Átadás-átvétel" képernyő Kérő / Cél iroda legördülőjében.
+        {i18n.t('literals.ha-uj-lakossagi-penztar-iroda-nyilik-a-t')}
       </p>
 
       {error && (
@@ -133,7 +133,8 @@ export default function NewCashierBranchPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="block">
             <span className="form-label">
-              Pénztár száma / azonosítója <span className="text-red-600">*</span>
+              {i18n.t('literals.penztar-szama-azonositoja')}
+              <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
             </span>
             <input
               type="text"
@@ -145,11 +146,11 @@ export default function NewCashierBranchPage() {
               maxLength={20}
             />
             <span className="text-xs text-gray-500">
-              Csak nagybetűk és számok (pl. BR099, TESCO12). Egyedi a rendszerben.
+              {i18n.t('literals.csak-nagybetuk-es-szamok-pl-br099-tesco1')}
             </span>
           </label>
           <label className="block">
-            <span className="form-label">Megjelenítendő név (opcionális)</span>
+            <span className="form-label">{i18n.t('literals.megjelenitendo-nev-opcionalis')}</span>
             <input
               type="text"
               className="form-input"
@@ -160,12 +161,13 @@ export default function NewCashierBranchPage() {
               maxLength={255}
             />
             <span className="text-xs text-gray-500">
-              Ha üresen hagyja, a rendszer „Pénztár &lt;kód&gt;" formára generálja.
+              {i18n.t('literals.ha-uresen-hagyja-a-rendszer-penztar-kod')}
             </span>
           </label>
           <label className="block md:col-span-2">
             <span className="form-label">
-              Pénztár pontos címe <span className="text-red-600">*</span>
+              {i18n.t('literals.penztar-pontos-cime')}
+              <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
             </span>
             <input
               type="text"
@@ -179,7 +181,8 @@ export default function NewCashierBranchPage() {
           </label>
           <label className="block">
             <span className="form-label">
-              Terület / Régió hozzárendelése <span className="text-red-600">*</span>
+              {i18n.t('literals.terulet-regio-hozzarendelese')}
+              <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
             </span>
             <select
               className="form-input"
@@ -195,11 +198,11 @@ export default function NewCashierBranchPage() {
               ))}
             </select>
             <span className="text-xs text-gray-500">
-              A pénztárt ez a területhez (értéktárhoz) köti.
+              {i18n.t('literals.a-penztart-ez-a-terulethez-ertektarhoz-k')}
             </span>
           </label>
           <label className="block">
-            <span className="form-label">Város (opcionális)</span>
+            <span className="form-label">{i18n.t('literals.varos-opcionalis')}</span>
             <input
               type="text"
               className="form-input"
@@ -209,10 +212,12 @@ export default function NewCashierBranchPage() {
               onChange={(e) => patch({ city: e.target.value })}
               maxLength={100}
             />
-            <span className="text-xs text-gray-500">Ha üres, a terület nevéből töltjük ki.</span>
+            <span className="text-xs text-gray-500">
+              {i18n.t('literals.ha-ures-a-terulet-nevebol-toltjuk-ki')}
+            </span>
           </label>
           <label className="block">
-            <span className="form-label">Irányítószám (opcionális)</span>
+            <span className="form-label">{i18n.t('literals.iranyitoszam-opcionalis')}</span>
             <input
               type="text"
               className="form-input"

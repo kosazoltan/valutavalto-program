@@ -14,6 +14,7 @@ import {
 } from '../../utils/localQueue'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function HandoverSheetPage() {
   const { t } = useTranslation()
@@ -206,7 +207,9 @@ export default function HandoverSheetPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (
@@ -257,7 +260,7 @@ export default function HandoverSheetPage() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">{t('handover.ujAtadoLap')}</h2>
               <button type="button" onClick={() => setShowForm(false)} className="text-gray-500">
-                X
+                {i18n.t('literals.x-2')}
               </button>
             </div>
             <div className="space-y-4">
@@ -272,7 +275,7 @@ export default function HandoverSheetPage() {
                   value={formData.fromCashDeskId}
                   onChange={(e) => setFormData({ ...formData, fromCashDeskId: e.target.value })}
                 >
-                  <option value="">Válasszon...</option>
+                  <option value="">{i18n.t('literals.valasszon')}</option>
                   {cashDesks.map((cd) => (
                     <option key={cd.id} value={cd.id}>
                       {cd.name}
@@ -291,7 +294,7 @@ export default function HandoverSheetPage() {
                   value={formData.toCashDeskId}
                   onChange={(e) => setFormData({ ...formData, toCashDeskId: e.target.value })}
                 >
-                  <option value="">Válasszon...</option>
+                  <option value="">{i18n.t('literals.valasszon')}</option>
                   {cashDesks.map((cd) => (
                     <option key={cd.id} value={cd.id}>
                       {cd.name}
@@ -337,7 +340,8 @@ export default function HandoverSheetPage() {
               <div>
                 <div className="font-semibold">{selectedSheet.sheetNumber}</div>
                 <div className="text-xs text-blue-700">
-                  {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId} →{' '}
+                  {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId}
+                  {i18n.t('literals.lit-37')}{' '}
                   {selectedSheet.toCashDeskName ?? selectedSheet.toCashDeskId}
                 </div>
               </div>
@@ -345,15 +349,24 @@ export default function HandoverSheetPage() {
             </div>
             <div className="mt-2 grid gap-2 text-xs md:grid-cols-3">
               <div>
-                <span className="font-semibold">{t('common.date')}:</span>{' '}
+                <span className="font-semibold">
+                  {t('common.date')}
+                  {i18n.t('literals.lit-7')}
+                </span>{' '}
                 {new Date(selectedSheet.transferDate).toLocaleDateString('hu-HU')}
               </div>
               <div>
-                <span className="font-semibold">{t('handover.kuldo')}:</span>{' '}
+                <span className="font-semibold">
+                  {t('handover.kuldo')}
+                  {i18n.t('literals.lit-7')}
+                </span>{' '}
                 {selectedSheet.fromCashDeskName ?? selectedSheet.fromCashDeskId}
               </div>
               <div>
-                <span className="font-semibold">{t('handover.fogado')}:</span>{' '}
+                <span className="font-semibold">
+                  {t('handover.fogado')}
+                  {i18n.t('literals.lit-7')}
+                </span>{' '}
                 {selectedSheet.toCashDeskName ?? selectedSheet.toCashDeskId}
               </div>
             </div>

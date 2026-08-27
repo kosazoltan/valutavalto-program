@@ -34,6 +34,7 @@ import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 import DocumentPairCapture from '../../components/documents/DocumentPairCapture'
+import i18n from '../../i18n'
 
 export default function CustomerDetailPage() {
   const { t } = useTranslation()
@@ -403,7 +404,7 @@ export default function CustomerDetailPage() {
     return (
       <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
         <Loader2 size={20} className="animate-spin" />
-        Betöltés...
+        {i18n.t('literals.betoltes')}
       </div>
     )
   }
@@ -450,7 +451,9 @@ export default function CustomerDetailPage() {
             <User />
             {t('customers.ugyfelAdatai')}
             {customer.isVip && (
-              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">VIP</span>
+              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">
+                {i18n.t('literals.vip')}
+              </span>
             )}
             {customer.eddActive && (
               <span
@@ -468,13 +471,14 @@ export default function CustomerDetailPage() {
             {customer.reviewStatus === 'PENDING_REVIEW' && (
               <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1">
                 <ShieldAlert size={12} />
-                Átnézésre vár
+                {i18n.t('literals.atnezesre-var')}
               </span>
             )}
             {customer.reviewStatus === 'REVIEWED' && (
               <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded flex items-center gap-1">
                 <ShieldCheck size={12} />
-                Átnézve{customer.reviewedBy ? `: ${customer.reviewedBy}` : ''}
+                {i18n.t('literals.atnezve')}
+                {customer.reviewedBy ? `: ${customer.reviewedBy}` : ''}
               </span>
             )}
             <span
@@ -494,7 +498,7 @@ export default function CustomerDetailPage() {
               className="form-button flex items-center gap-1 text-emerald-700"
             >
               <ShieldCheck size={16} />
-              Átnézve
+              {i18n.t('literals.atnezve')}
             </button>
           )}
           {canMarkEdd && !isEditing && (
@@ -654,7 +658,7 @@ export default function CustomerDetailPage() {
             <div>
               <label className="form-label flex items-center gap-1">
                 <ShieldCheck size={14} />
-                Kiemelt közszereplő (PEP)
+                {i18n.t('literals.kiemelt-kozszereplo-pep')}
               </label>
               <select
                 value={customer.isPep ? 'true' : 'false'}
@@ -663,8 +667,10 @@ export default function CustomerDetailPage() {
                 className="form-input"
                 data-testid="customer-detail-is-pep-select"
               >
-                <option value="false">Nem közszereplő</option>
-                <option value="true">Kiemelt közszereplő vagy közeli hozzátartozó</option>
+                <option value="false">{i18n.t('literals.nem-kozszereplo')}</option>
+                <option value="true">
+                  {i18n.t('literals.kiemelt-kozszereplo-vagy-kozeli-hozzatar')}
+                </option>
               </select>
             </div>
           </div>
@@ -810,12 +816,12 @@ export default function CustomerDetailPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="section-title flex items-center gap-2">
               <ShieldAlert size={16} />
-              Ügyfél-ellenőrzés
+              {i18n.t('literals.ugyfel-ellenorzes')}
             </h2>
             {controlLoading && (
               <span className="flex items-center gap-1 text-sm text-gray-500">
                 <Loader2 size={14} className="animate-spin" />
-                Kontrolladatok betöltése...
+                {i18n.t('literals.kontrolladatok-betoltese')}
               </span>
             )}
           </div>
@@ -826,19 +832,19 @@ export default function CustomerDetailPage() {
           )}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="rounded border border-blue-100 bg-blue-50 p-3">
-              <div className="text-sm text-blue-700">Éves forgalom</div>
+              <div className="text-sm text-blue-700">{i18n.t('literals.eves-forgalom')}</div>
               <div className="text-lg font-bold text-blue-900" data-testid="customer-annual-total">
                 {formatHuf(annualTotal)}
               </div>
             </div>
             <div className="rounded border border-amber-100 bg-amber-50 p-3">
-              <div className="text-sm text-amber-700">Aktív korlátozások</div>
+              <div className="text-sm text-amber-700">{i18n.t('literals.aktiv-korlatozasok')}</div>
               <div className="text-lg font-bold text-amber-900">
                 {restrictions.filter((item) => item.active).length}
               </div>
             </div>
             <div className="rounded border border-gray-200 bg-gray-50 p-3">
-              <div className="text-sm text-gray-600">Szűrési napló</div>
+              <div className="text-sm text-gray-600">{i18n.t('literals.szuresi-naplo')}</div>
               <div className="text-lg font-bold text-gray-900">{screeningLog.length}</div>
             </div>
           </div>
@@ -846,31 +852,37 @@ export default function CustomerDetailPage() {
           {canManageRestrictions && (
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
               <div className="rounded border border-red-100 bg-red-50 p-3">
-                <div className="text-sm text-red-700">AML kockázat</div>
+                <div className="text-sm text-red-700">{i18n.t('literals.aml-kockazat')}</div>
                 <div className="text-lg font-bold text-red-900" data-testid="customer-aml-risk">
                   {riskLevelLabel(amlRiskProfile?.riskLevel)}
                 </div>
               </div>
               <div className="rounded border border-gray-200 bg-gray-50 p-3">
-                <div className="text-sm text-gray-600">Mai AML forgalom</div>
+                <div className="text-sm text-gray-600">{i18n.t('literals.mai-aml-forgalom')}</div>
                 <div className="text-lg font-bold text-gray-900">
                   {formatOptionalHuf(amlRiskProfile?.dailyTotal)}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {amlRiskProfile?.dailyTransactionCount ?? 0} tranzakció
+                  {amlRiskProfile?.dailyTransactionCount ?? 0}
+                  {i18n.t('literals.tranzakcio-2')}
                 </div>
               </div>
               <div className="rounded border border-gray-200 bg-gray-50 p-3">
-                <div className="text-sm text-gray-600">30 napos AML forgalom</div>
+                <div className="text-sm text-gray-600">
+                  {i18n.t('literals.30-napos-aml-forgalom')}
+                </div>
                 <div className="text-lg font-bold text-gray-900">
                   {formatOptionalHuf(amlRiskProfile?.last30DaysTotal)}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {amlRiskProfile?.last30DaysTransactionCount ?? 0} tranzakció
+                  {amlRiskProfile?.last30DaysTransactionCount ?? 0}
+                  {i18n.t('literals.tranzakcio-2')}
                 </div>
               </div>
               <div className="rounded border border-amber-100 bg-amber-50 p-3">
-                <div className="text-sm text-amber-700">Structuring jelzés</div>
+                <div className="text-sm text-amber-700">
+                  {i18n.t('literals.structuring-jelzes')}
+                </div>
                 <div className="text-lg font-bold text-amber-900">
                   {structuringDetected === null ? '-' : structuringDetected ? 'Igen' : 'Nem'}
                 </div>
@@ -886,21 +898,21 @@ export default function CustomerDetailPage() {
           {canManageRestrictions && (
             <div className="mt-3 grid grid-cols-1 items-end gap-2 lg:grid-cols-[180px_1fr_170px_auto]">
               <label className="block">
-                <span className="form-label">Típus</span>
+                <span className="form-label">{i18n.t('literals.tipus')}</span>
                 <select
                   value={restrictionType}
                   onChange={(event) => setRestrictionType(event.target.value)}
                   className="form-input"
                   data-testid="restriction-type-select"
                 >
-                  <option value="WATCH_LIST">Figyelőlista</option>
-                  <option value="SUSPICIOUS">Gyanús</option>
-                  <option value="BLOCKED">Tiltott</option>
-                  <option value="ANNUAL_LIMIT">Éves limit</option>
+                  <option value="WATCH_LIST">{i18n.t('literals.figyelolista')}</option>
+                  <option value="SUSPICIOUS">{i18n.t('literals.gyanus')}</option>
+                  <option value="BLOCKED">{i18n.t('literals.tiltott')}</option>
+                  <option value="ANNUAL_LIMIT">{i18n.t('literals.eves-limit')}</option>
                 </select>
               </label>
               <label className="block">
-                <span className="form-label">Indoklás</span>
+                <span className="form-label">{i18n.t('literals.indoklas')}</span>
                 <input
                   value={restrictionReason}
                   onChange={(event) => setRestrictionReason(event.target.value)}
@@ -910,7 +922,7 @@ export default function CustomerDetailPage() {
                 />
               </label>
               <label className="block">
-                <span className="form-label">Lejárat</span>
+                <span className="form-label">{i18n.t('literals.lejarat')}</span>
                 <input
                   type="date"
                   value={restrictionExpiresAt}
@@ -975,11 +987,13 @@ export default function CustomerDetailPage() {
           <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
             <div className="overflow-hidden rounded border border-gray-200">
               <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
-                Korlátozások
+                {i18n.t('literals.korlatozasok')}
               </div>
               <div className="divide-y divide-gray-100">
                 {restrictions.length === 0 ? (
-                  <div className="px-3 py-3 text-sm text-gray-500">Nincs rögzített korlátozás.</div>
+                  <div className="px-3 py-3 text-sm text-gray-500">
+                    {i18n.t('literals.nincs-rogzitett-korlatozas')}
+                  </div>
                 ) : (
                   restrictions.map((restriction) => (
                     <div
@@ -990,12 +1004,15 @@ export default function CustomerDetailPage() {
                         <div className="font-semibold text-gray-800">
                           {restrictionTypeLabel(restriction.restrictionType)}
                           {!restriction.active && (
-                            <span className="ml-2 text-xs text-gray-500">inaktív</span>
+                            <span className="ml-2 text-xs text-gray-500">
+                              {i18n.t('literals.inaktiv')}
+                            </span>
                           )}
                         </div>
                         <div className="text-gray-600">{restriction.reason}</div>
                         <div className="text-xs text-gray-500">
-                          Rögzítve: {formatDateTime(restriction.addedAt)}
+                          {i18n.t('literals.rogzitve-2')}
+                          {formatDateTime(restriction.addedAt)}
                           {restriction.expiresAt
                             ? ` | Lejár: ${formatDateTime(restriction.expiresAt)}`
                             : ''}
@@ -1019,18 +1036,20 @@ export default function CustomerDetailPage() {
 
             <div className="overflow-hidden rounded border border-gray-200">
               <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
-                Szűrési napló
+                {i18n.t('literals.szuresi-naplo')}
               </div>
               <div className="divide-y divide-gray-100">
                 {screeningLog.length === 0 ? (
                   <div className="px-3 py-3 text-sm text-gray-500">
-                    Nincs szűrési naplóbejegyzés.
+                    {i18n.t('literals.nincs-szuresi-naplobejegyzes')}
                   </div>
                 ) : (
                   screeningLog.slice(0, 5).map((entry) => (
                     <div key={entry.id} className="px-3 py-2 text-sm">
                       <div className="font-semibold text-gray-800">
-                        {entry.screeningType} / {entry.result}
+                        {entry.screeningType}
+                        {i18n.t('literals.lit-10')}
+                        {entry.result}
                       </div>
                       {entry.details && <div className="text-gray-600">{entry.details}</div>}
                       <div className="text-xs text-gray-500">
@@ -1049,12 +1068,12 @@ export default function CustomerDetailPage() {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="section-title flex items-center gap-2">
               <FileText size={16} />
-              Verziótörténet
+              {i18n.t('literals.verziotortenet')}
             </h2>
             {versionsLoading && (
               <span className="flex items-center gap-1 text-sm text-gray-500">
                 <Loader2 size={14} className="animate-spin" />
-                Betöltés...
+                {i18n.t('literals.betoltes')}
               </span>
             )}
           </div>
@@ -1064,7 +1083,7 @@ export default function CustomerDetailPage() {
             </div>
           )}
           {versions.length === 0 ? (
-            <div className="text-sm text-gray-500">Nincs verziótörténet.</div>
+            <div className="text-sm text-gray-500">{i18n.t('literals.nincs-verziotortenet')}</div>
           ) : (
             <div className="overflow-hidden rounded border border-gray-200">
               <div className="divide-y divide-gray-100">
@@ -1075,7 +1094,10 @@ export default function CustomerDetailPage() {
                     onClick={() => void handleSelectVersion(version.versionNo)}
                     className="grid w-full grid-cols-4 gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
                   >
-                    <span className="font-semibold text-gray-900">v{version.versionNo}</span>
+                    <span className="font-semibold text-gray-900">
+                      {i18n.t('literals.v')}
+                      {version.versionNo}
+                    </span>
                     <span>{version.changedBy || '-'}</span>
                     <span>{version.changeSource}</span>
                     <span>{formatDateTime(version.changedAt)}</span>
@@ -1087,7 +1109,9 @@ export default function CustomerDetailPage() {
           {selectedVersionEntries.length > 0 && (
             <div className="mt-3 overflow-hidden rounded border border-gray-200">
               <div className="border-b bg-gray-50 px-3 py-2 text-sm font-semibold">
-                v{selectedVersion?.versionNo} snapshot
+                {i18n.t('literals.v')}
+                {selectedVersion?.versionNo}
+                {i18n.t('literals.snapshot')}
               </div>
               <table className="data-grid w-full text-sm">
                 <tbody>
@@ -1118,7 +1142,7 @@ export default function CustomerDetailPage() {
                 disabled={!isEditing}
                 className="form-input"
               >
-                <option value="">—</option>
+                <option value="">{i18n.t('literals.lit-8')}</option>
                 <option value="Személyi igazolvány">{t('customers.szemelyiIgazolvany')}</option>
                 <option value="Útlevél">{t('customers.utlevel')}</option>
                 <option value="Vezetői engedély">{t('customers.vezetoiEngedely')}</option>

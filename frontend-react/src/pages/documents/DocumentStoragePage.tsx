@@ -28,6 +28,7 @@ import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import DocumentImagePair from '../../components/documents/DocumentImagePair'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 const FILE_TYPE_ICONS: Record<string, typeof File> = {
   pdf: FileText,
@@ -329,7 +330,10 @@ export default function DocumentStoragePage() {
         </h1>
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-sm text-gray-500">
-            {filtered.length} dokumentum ({formatFileSize(totalSize)})
+            {filtered.length}
+            {i18n.t('literals.dokumentum-2')}
+            {formatFileSize(totalSize)}
+            {i18n.t('literals.lit-2')}
           </span>
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -359,12 +363,17 @@ export default function DocumentStoragePage() {
           <div className="flex min-w-0 gap-3">
             <ScanLine size={20} className="mt-0.5 shrink-0 text-blue-700" />
             <div className="min-w-0">
-              <h2 className="font-semibold text-blue-950">Szkenner kapcsolat</h2>
+              <h2 className="font-semibold text-blue-950">
+                {i18n.t('literals.szkenner-kapcsolat')}
+              </h2>
               <p className="text-sm text-blue-900">
                 {scannerStatus?.message || 'Szkenner eszközlista betöltése...'}
               </p>
               <p className="mt-1 text-xs text-blue-700">
-                Mód: {scannerStatus?.mode || '-'} · Eszközök: {scannerStatus?.devices?.length ?? 0}
+                {i18n.t('literals.mod')}
+                {scannerStatus?.mode || '-'}
+                {i18n.t('literals.eszkozok')}
+                {scannerStatus?.devices?.length ?? 0}
               </p>
             </div>
           </div>
@@ -393,7 +402,7 @@ export default function DocumentStoragePage() {
             className="form-button w-full justify-center sm:w-auto"
           >
             <Upload size={16} />
-            Upload bridge
+            {i18n.t('literals.upload-bridge')}
           </button>
           <input
             ref={scannerScanInputRef}
@@ -420,17 +429,22 @@ export default function DocumentStoragePage() {
       >
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="font-semibold text-gray-900">Szkennelt dokumentumok</h2>
+            <h2 className="font-semibold text-gray-900">
+              {i18n.t('literals.szkennelt-dokumentumok')}
+            </h2>
             <p className="text-sm text-gray-500">
-              Ügyfélhez vagy tranzakcióhoz kötött okmányok listázása és feltöltése.
+              {i18n.t('literals.ugyfelhez-vagy-tranzakciohoz-kotott-okma')}
             </p>
           </div>
-          <span className="text-sm text-gray-500">{scannedDocuments.length} elem</span>
+          <span className="text-sm text-gray-500">
+            {scannedDocuments.length}
+            {i18n.t('literals.elem')}
+          </span>
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-[160px_1fr_180px_auto_auto] md:items-end">
           <div>
             <label className="form-label" htmlFor="scanned-lookup-type">
-              Kapcsolat
+              {i18n.t('literals.kapcsolat')}
             </label>
             <select
               id="scanned-lookup-type"
@@ -438,13 +452,13 @@ export default function DocumentStoragePage() {
               value={scannedLookupType}
               onChange={(e) => setScannedLookupType(e.target.value as 'customer' | 'transaction')}
             >
-              <option value="customer">Ügyfél</option>
-              <option value="transaction">Tranzakció</option>
+              <option value="customer">{i18n.t('literals.ugyfel-2')}</option>
+              <option value="transaction">{i18n.t('literals.tranzakcio')}</option>
             </select>
           </div>
           <div>
             <label className="form-label" htmlFor="scanned-lookup-id">
-              Azonosító
+              {i18n.t('literals.azonosito')}
             </label>
             <input
               id="scanned-lookup-id"
@@ -458,7 +472,7 @@ export default function DocumentStoragePage() {
           </div>
           <div>
             <label className="form-label" htmlFor="scanned-document-type">
-              Dokumentumtípus
+              {i18n.t('literals.dokumentumtipus')}
             </label>
             <select
               id="scanned-document-type"
@@ -489,7 +503,7 @@ export default function DocumentStoragePage() {
             disabled={scannedLoading}
           >
             <Upload size={16} />
-            Feltöltés
+            {i18n.t('literals.feltoltes')}
           </button>
           <input
             ref={scannedUploadInputRef}
@@ -502,7 +516,7 @@ export default function DocumentStoragePage() {
         </div>
         <div className="mt-2">
           <label className="form-label" htmlFor="scanned-notes">
-            Megjegyzés
+            {i18n.t('literals.megjegyzes')}
           </label>
           <input
             id="scanned-notes"
@@ -515,7 +529,9 @@ export default function DocumentStoragePage() {
 
         <div className="mt-3 space-y-2">
           {scannedDocuments.length === 0 ? (
-            <p className="text-sm text-gray-500">Nincs betöltött szkennelt dokumentum.</p>
+            <p className="text-sm text-gray-500">
+              {i18n.t('literals.nincs-betoltott-szkennelt-dokumentum')}
+            </p>
           ) : (
             scannedDocuments.map((doc) => (
               <article
@@ -525,8 +541,10 @@ export default function DocumentStoragePage() {
                 <div className="min-w-0">
                   <p className="break-words font-semibold text-gray-900">{doc.fileName}</p>
                   <p className="text-sm text-gray-500">
-                    {doc.documentType} · {formatFileSize(doc.fileSizeBytes)} ·{' '}
-                    {new Date(doc.scannedAt).toLocaleString('hu-HU')}
+                    {doc.documentType}
+                    {i18n.t('literals.lit-9')}
+                    {formatFileSize(doc.fileSizeBytes)}
+                    {i18n.t('literals.lit-29')} {new Date(doc.scannedAt).toLocaleString('hu-HU')}
                   </p>
                   {doc.notes && <p className="text-sm text-gray-600">{doc.notes}</p>}
                 </div>
@@ -549,7 +567,7 @@ export default function DocumentStoragePage() {
                     disabled={scannedLoading}
                   >
                     <Trash2 size={14} />
-                    Törlés
+                    {i18n.t('literals.torles')}
                   </button>
                 </div>
               </article>
@@ -602,7 +620,7 @@ export default function DocumentStoragePage() {
 
       {/* Table */}
       {loading ? (
-        <div>Betöltés...</div>
+        <div>{i18n.t('literals.betoltes')}</div>
       ) : (
         <div className="form-panel">
           {filtered.length === 0 ? (

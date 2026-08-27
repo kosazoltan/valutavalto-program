@@ -20,6 +20,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import AuthorizationSection from '../../components/representatives/AuthorizationSection'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function RepresentativeDetailPage() {
   const { t } = useTranslation()
@@ -128,7 +129,7 @@ export default function RepresentativeDetailPage() {
     return (
       <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
         <Loader2 size={20} className="animate-spin" />
-        Betöltés...
+        {i18n.t('literals.betoltes')}
       </div>
     )
   }
@@ -178,7 +179,7 @@ export default function RepresentativeDetailPage() {
               disabled={saving}
             >
               <X size={16} />
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           ) : (
             <button
@@ -188,7 +189,7 @@ export default function RepresentativeDetailPage() {
               disabled={saving}
             >
               <Pencil size={16} />
-              Szerkesztés
+              {i18n.t('literals.szerkesztes-2')}
             </button>
           )}
           <button
@@ -198,7 +199,7 @@ export default function RepresentativeDetailPage() {
             disabled={saving}
           >
             <Trash2 size={16} />
-            Törlés
+            {i18n.t('literals.torles')}
           </button>
         </div>
       </div>
@@ -216,11 +217,11 @@ export default function RepresentativeDetailPage() {
         <form onSubmit={(e) => void saveEdit(e)} className="form-panel space-y-3">
           <h2 className="section-title flex items-center gap-2">
             <Pencil size={16} />
-            Meghatalmazott szerkesztése
+            {i18n.t('literals.meghatalmazott-szerkesztese')}
           </h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label required">Teljes név</label>
+              <label className="form-label required">{i18n.t('literals.teljes-nev')}</label>
               <input
                 className="form-input"
                 value={form.name}
@@ -229,23 +230,23 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div>
-              <label className="form-label">Kapcsolat</label>
+              <label className="form-label">{i18n.t('literals.kapcsolat')}</label>
               <select
                 className="form-input"
                 value={form.relationshipDid || ''}
                 onChange={(e) => updateForm('relationshipDid', e.target.value)}
               >
-                <option value="">—</option>
-                <option value="FAMILY">Családtag</option>
-                <option value="COLLEAGUE">Munkatárs</option>
-                <option value="FRIEND">Barát</option>
-                <option value="PROFESSIONAL">Szakmai</option>
-                <option value="BUSINESS">Üzleti</option>
-                <option value="OTHER">Egyéb</option>
+                <option value="">{i18n.t('literals.lit-8')}</option>
+                <option value="FAMILY">{i18n.t('literals.csaladtag')}</option>
+                <option value="COLLEAGUE">{i18n.t('literals.munkatars')}</option>
+                <option value="FRIEND">{i18n.t('literals.barat')}</option>
+                <option value="PROFESSIONAL">{i18n.t('literals.szakmai')}</option>
+                <option value="BUSINESS">{i18n.t('literals.uzleti')}</option>
+                <option value="OTHER">{i18n.t('literals.egyeb')}</option>
               </select>
             </div>
             <div>
-              <label className="form-label required">Okmány típusa</label>
+              <label className="form-label required">{i18n.t('literals.okmany-tipusa')}</label>
               <input
                 className="form-input"
                 value={form.documentType}
@@ -254,7 +255,7 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div>
-              <label className="form-label required">Okmányszám</label>
+              <label className="form-label required">{i18n.t('literals.okmanyszam')}</label>
               <input
                 className="form-input font-mono"
                 value={form.documentNumber}
@@ -263,7 +264,7 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div>
-              <label className="form-label">Okmány érvényes tól</label>
+              <label className="form-label">{i18n.t('literals.okmany-ervenyes-tol')}</label>
               <input
                 type="date"
                 className="form-input"
@@ -272,7 +273,7 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div>
-              <label className="form-label">Okmány érvényes ig</label>
+              <label className="form-label">{i18n.t('literals.okmany-ervenyes-ig')}</label>
               <input
                 type="date"
                 className="form-input"
@@ -281,7 +282,9 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div>
-              <label className="form-label required">Meghatalmazás kezdete</label>
+              <label className="form-label required">
+                {i18n.t('literals.meghatalmazas-kezdete')}
+              </label>
               <input
                 type="date"
                 className="form-input"
@@ -291,7 +294,7 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div>
-              <label className="form-label">Meghatalmazás vége</label>
+              <label className="form-label">{i18n.t('literals.meghatalmazas-vege')}</label>
               <input
                 type="date"
                 className="form-input"
@@ -300,7 +303,7 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div>
-              <label className="form-label">Telefon</label>
+              <label className="form-label">{i18n.t('literals.telefon')}</label>
               <input
                 className="form-input font-mono"
                 value={form.phone || ''}
@@ -308,7 +311,7 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div>
-              <label className="form-label">E-mail</label>
+              <label className="form-label">{i18n.t('literals.e-mail')}</label>
               <input
                 type="email"
                 className="form-input"
@@ -317,7 +320,7 @@ export default function RepresentativeDetailPage() {
               />
             </div>
             <div className="col-span-2">
-              <label className="form-label">Cím</label>
+              <label className="form-label">{i18n.t('literals.cim')}</label>
               <input
                 className="form-input"
                 value={form.address || ''}

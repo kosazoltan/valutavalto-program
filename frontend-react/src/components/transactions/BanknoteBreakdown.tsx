@@ -9,6 +9,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { FRACTIONAL_FACE_VALUE_WARNING, isAllowedFaceValue } from '../../utils/denominationRules'
 import { toast } from '../ui/toaster'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface Props {
   transactionId: number
@@ -89,7 +90,8 @@ export default function BanknoteBreakdown({
       <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
         <Banknote size={14} />
         {t('components.cimletezes')}
-        {direction === 'IN' ? 'Beérkező' : 'Kiadandó'})
+        {direction === 'IN' ? 'Beérkező' : 'Kiadandó'}
+        {i18n.t('literals.lit-2')}
       </h3>
 
       {error && (
@@ -100,7 +102,8 @@ export default function BanknoteBreakdown({
 
       {loading ? (
         <div className="flex items-center justify-center py-3 text-gray-400 gap-1 text-sm">
-          <Loader2 size={14} className="animate-spin" /> Betöltés...
+          <Loader2 size={14} className="animate-spin" />
+          {i18n.t('literals.betoltes-2')}
         </div>
       ) : (
         <>
@@ -150,7 +153,7 @@ export default function BanknoteBreakdown({
                     onChange={(e) => setNewRow({ ...newRow, faceValue: Number(e.target.value) })}
                     className="form-input w-28 text-sm"
                   >
-                    <option value={0}>Válassz...</option>
+                    <option value={0}>{i18n.t('literals.valassz')}</option>
                     {denominations.map((d) => (
                       <option key={d} value={d}>
                         {d.toLocaleString('hu-HU')}

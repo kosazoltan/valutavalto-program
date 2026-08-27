@@ -54,6 +54,10 @@ public class BranchService {
     // FK-022 FR-7: iroda-módosítás audit logja before/after értékkel (hash-láncolt audit_log).
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
+    // FK-096/D18/W4: új irodának automatikus LIVE kezelési díj konfiguráció — a fail-closed
+    // (FR-5) védelme a HIBÁS beállítás ellen szól, nem a helyes iroda-provisioning büntetése.
+    // Egyetlen közös seedDefaultLive implementáció, hogy a két kódot ne tudjon széttartani.
+    private final BranchHandlingFeeConfigService branchHandlingFeeConfigService;
 
     @Autowired
     public BranchService(BranchRepository branchRepository,
@@ -64,7 +68,8 @@ public class BranchService {
                          @Lazy DenominationService denominationService,
                          AccessScopeService accessScopeService,
                          AuditLogService auditLogService,
-                         ObjectMapper objectMapper) {
+                         ObjectMapper objectMapper,
+                         BranchHandlingFeeConfigService branchHandlingFeeConfigService) {
         this.branchRepository = branchRepository;
         this.companyRepository = companyRepository;
         this.dictionaryRepository = dictionaryRepository;
@@ -74,6 +79,7 @@ public class BranchService {
         this.accessScopeService = accessScopeService;
         this.auditLogService = auditLogService;
         this.objectMapper = objectMapper;
+        this.branchHandlingFeeConfigService = branchHandlingFeeConfigService;
     }
 
     /**
@@ -530,6 +536,11 @@ public class BranchService {
                     saved.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
         }
 
+        // FK-096/D18: új iroda azonnal kereshessen — alap kezelési díj konfiguráció
+        // (a V383-mal azonos D6 precedencia + D5 verbatim cap) UGYANEBBEN a tranzakcióban.
+        branchHandlingFeeConfigService.seedDefaultLive(companyId, saved.getId(),
+                SecurityUtils.getCurrentWorkerCode());
+
         return branchMapper.toDto(saved);
     }
 
@@ -699,6 +710,10 @@ public class BranchService {
             log.error("Branch {} denomination auto-init FAILED [{}: {}] (admin kézi init szükséges)",
                     saved.getId(), e.getClass().getSimpleName(), e.getMessage(), e);
         }
+
+        // FK-096/D18: az egyszerű pénztár is kap alap kezelési díj konfigurációt (lásd create()).
+        branchHandlingFeeConfigService.seedDefaultLive(companyId, saved.getId(),
+                SecurityUtils.getCurrentWorkerCode());
 
         return branchMapper.toDto(saved);
     }

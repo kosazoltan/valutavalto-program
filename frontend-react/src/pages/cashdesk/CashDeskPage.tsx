@@ -91,7 +91,10 @@ export default function CashDeskPage() {
   const [codeCheckBalance, setCodeCheckBalance] = useState<CashBalance | null>(null)
   // FK-075 TBD-3 (2026-08-06): a nyitott panel AZONOSÍTÓJA külön state-ben él, hogy a
   // 30 mp-es polling lista-frissülései csendben újratölthessék a részleteket.
-  const [selectedCurrency, setSelectedCurrency] = useState<{ currencyId: number; currency: string } | null>(null)
+  const [selectedCurrency, setSelectedCurrency] = useState<{
+    currencyId: number
+    currency: string
+  } | null>(null)
   const [detailLoadingCurrency, setDetailLoadingCurrency] = useState<string | null>(null)
   const [detailError, setDetailError] = useState<string | null>(null)
   const loadingRef = useRef(false)

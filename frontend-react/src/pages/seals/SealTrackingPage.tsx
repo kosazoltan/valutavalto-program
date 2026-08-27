@@ -16,6 +16,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface SealTrackingItem {
   id: string | number
@@ -325,11 +326,11 @@ export default function SealTrackingPage() {
 
       {form && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">Új plomba</h2>
+          <h2 className="text-base font-semibold">{i18n.t('literals.uj-plomba')}</h2>
           <div className="grid gap-3 md:grid-cols-3">
             <div>
               <label htmlFor="seal-transfer-type" className="form-label">
-                Átadás típusa
+                {i18n.t('literals.atadas-tipusa')}
               </label>
               <input
                 id="seal-transfer-type"
@@ -344,7 +345,7 @@ export default function SealTrackingPage() {
             </div>
             <div>
               <label htmlFor="seal-transfer-id" className="form-label">
-                Átadás ID
+                {i18n.t('literals.atadas-id')}
               </label>
               <input
                 id="seal-transfer-id"
@@ -360,7 +361,7 @@ export default function SealTrackingPage() {
             </div>
             <div>
               <label htmlFor="seal-number" className="form-label">
-                Plombaszám
+                {i18n.t('literals.plombaszam')}
               </label>
               <input
                 id="seal-number"
@@ -389,7 +390,7 @@ export default function SealTrackingPage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -400,14 +401,16 @@ export default function SealTrackingPage() {
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold">
               <ShieldCheck className="h-5 w-5 text-blue-600" />
-              Generált plombaszámok
+              {i18n.t('literals.generalt-plombaszamok')}
             </h2>
             <div className="mt-2 flex flex-wrap gap-2 text-sm">
               <span className="rounded bg-blue-50 px-2 py-1 text-blue-800">
-                Mai: {sealNumbersLoading ? '...' : todaySealNumbers.length}
+                {i18n.t('literals.mai')}
+                {sealNumbersLoading ? '...' : todaySealNumbers.length}
               </span>
               <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-800">
-                Felhasználatlan: {sealNumbersLoading ? '...' : unusedSealNumbers.length}
+                {i18n.t('literals.felhasznalatlan')}
+                {sealNumbersLoading ? '...' : unusedSealNumbers.length}
               </span>
             </div>
           </div>
@@ -434,19 +437,23 @@ export default function SealTrackingPage() {
               disabled={saving}
               className="form-button-primary whitespace-nowrap"
             >
-              Generálás
+              {i18n.t('literals.generalas')}
             </button>
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
-            <h3 className="text-sm font-semibold text-gray-800">Felhasználatlan plombaszámok</h3>
+            <h3 className="text-sm font-semibold text-gray-800">
+              {i18n.t('literals.felhasznalatlan-plombaszamok')}
+            </h3>
             <div className="mt-2 space-y-2">
               {sealNumbersLoading ? (
-                <div className="text-sm text-gray-500">Betöltés...</div>
+                <div className="text-sm text-gray-500">{i18n.t('literals.betoltes')}</div>
               ) : unusedSealNumbers.length === 0 ? (
-                <div className="text-sm text-gray-500">Nincs felhasználatlan plombaszám.</div>
+                <div className="text-sm text-gray-500">
+                  {i18n.t('literals.nincs-felhasznalatlan-plombaszam')}
+                </div>
               ) : (
                 unusedSealNumbers.slice(0, 5).map((seal) => (
                   <div
@@ -458,7 +465,8 @@ export default function SealTrackingPage() {
                         {seal.sealNumber ?? '-'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {seal.sealType ?? 'CLOSE'} ·{' '}
+                        {seal.sealType ?? 'CLOSE'}
+                        {i18n.t('literals.lit-29')}{' '}
                         {seal.createdAt
                           ? new Date(seal.createdAt).toLocaleString('hu-HU')
                           : 'Nincs dátum'}
@@ -470,7 +478,7 @@ export default function SealTrackingPage() {
                       disabled={saving}
                       className="form-button text-sm"
                     >
-                      Felhasználva
+                      {i18n.t('literals.felhasznalva-2')}
                     </button>
                   </div>
                 ))
@@ -479,12 +487,16 @@ export default function SealTrackingPage() {
           </div>
 
           <div className="rounded border border-gray-100 bg-gray-50 p-3">
-            <h3 className="text-sm font-semibold text-gray-800">Mai plombaszámok</h3>
+            <h3 className="text-sm font-semibold text-gray-800">
+              {i18n.t('literals.mai-plombaszamok')}
+            </h3>
             <div className="mt-2 space-y-2">
               {sealNumbersLoading ? (
-                <div className="text-sm text-gray-500">Betöltés...</div>
+                <div className="text-sm text-gray-500">{i18n.t('literals.betoltes')}</div>
               ) : todaySealNumbers.length === 0 ? (
-                <div className="text-sm text-gray-500">Ma még nincs generált plombaszám.</div>
+                <div className="text-sm text-gray-500">
+                  {i18n.t('literals.ma-meg-nincs-generalt-plombaszam')}
+                </div>
               ) : (
                 todaySealNumbers.slice(0, 5).map((seal) => (
                   <div key={seal.id} className="rounded border border-gray-200 bg-white px-3 py-2">
@@ -538,7 +550,7 @@ export default function SealTrackingPage() {
               disabled={saving || !sealLookup.trim()}
               className="form-button"
             >
-              Keresés
+              {i18n.t('literals.kereses-2')}
             </button>
           </div>
           <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
@@ -571,7 +583,7 @@ export default function SealTrackingPage() {
               }
               className="form-button"
             >
-              Átadás keresés
+              {i18n.t('literals.atadas-kereses')}
             </button>
           </div>
         </div>
@@ -598,7 +610,7 @@ export default function SealTrackingPage() {
                 {t('seals.plombaSzam')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Átadás
+                {i18n.t('literals.atadas')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('common.status2')}
@@ -610,7 +622,7 @@ export default function SealTrackingPage() {
                 {t('seals.eltavolitva')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Kezelők
+                {i18n.t('literals.kezelok')}
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                 {t('common.actions')}
@@ -621,7 +633,7 @@ export default function SealTrackingPage() {
             {loading ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -635,7 +647,9 @@ export default function SealTrackingPage() {
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm">{item.sealNumber ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">
-                    {item.transferType ?? '-'} / {item.transferId ?? '-'}
+                    {item.transferType ?? '-'}
+                    {i18n.t('literals.lit-10')}
+                    {item.transferId ?? '-'}
                   </td>
                   <td className="px-4 py-3 text-sm">{item.transitStatus ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">
@@ -645,7 +659,9 @@ export default function SealTrackingPage() {
                     {item.openedAt ? new Date(item.openedAt).toLocaleString('hu-HU') : '-'}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    {item.sealedBy ?? '-'} / {item.openedBy ?? '-'}
+                    {item.sealedBy ?? '-'}
+                    {i18n.t('literals.lit-10')}
+                    {item.openedBy ?? '-'}
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <button
@@ -700,7 +716,9 @@ export default function SealTrackingPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

@@ -11,12 +11,11 @@ import {
   dailySessionApi,
   cashBalanceApi,
   receiptApi,
-  handlingFeeConfigApi,
   discountThresholdApi,
   incomeSourceDocApi,
 } from '../../services/api/index'
 import type { HandlingFeeConfig } from '../../services/api/index'
-import { computeHandlingFee } from '../../utils/handlingFee'
+import { computeHandlingFee, loadHandlingFeeConfig } from '../../utils/handlingFee'
 import { api } from '../../services/api/client'
 import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
 import SuspicionReportModal from '../../components/SuspicionReportModal'
@@ -59,6 +58,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { sanitizeSyncErrorMessage } from '../../utils/syncErrorSanitizer'
 import IncomeSourceDocCapture from '../../components/documents/IncomeSourceDocCapture'
 import ComplianceQuestionsBlock from './components/ComplianceQuestionsBlock'
+import i18n from '../../i18n'
 
 /**
  * Penztaros Eladas/Vetel kepernyoje — 6 soros valuta tabla.
@@ -315,13 +315,15 @@ export default function CashierTransactionPage() {
   const { identificationLevel, minimumLevel, setIdentificationLevel, requiresSourceVerification } =
     useIdentificationLevel(String(total))
 
-  // FK-KEZDIJ B.1 (2026-06-12): a kezelési díj konfig betöltése (read-only — a backend
-  // GET /handling-fee-config a pénztárosnak is engedélyezett). Régi backend (403) vagy
-  // hálózati hiba → null konfig, a viselkedés a korábbi marad (a szerver sync-kor számol).
+  // FK-097 WU-15 (FR-4/FR-5/FR-6): a kezelési díj konfig CACHE-FIRST betöltése —
+  // először a helyi SQLite tükör (az iroda saját, LIVE díj-konfigurációja, amit a
+  // SyncEngine 30 mp-enként lehúz), csak üres cache esetén HTTP-fallback a
+  // /branch-fee-config/own végzontra. Offline pénztárnál a config NEM esik null-ra,
+  // a díjmező nem nyílik ki kézi beírásra. Mindkét forrás hibája esetén marad a régi
+  // null-viselkedés (a szerver tranzakció-rögzítéskor autoritatívan számol).
   useEffect(() => {
     let cancelled = false
-    handlingFeeConfigApi
-      .get()
+    loadHandlingFeeConfig()
       .then((cfg) => {
         if (!cancelled) setFeeConfig(cfg)
       })
@@ -1859,7 +1861,8 @@ export default function CashierTransactionPage() {
                   className="mt-1 text-xs font-medium text-green-700"
                   data-testid="auto-fee-discount"
                 >
-                  Automatikus küszöbkedvezmény: {autoFeeDiscountLabel}
+                  {i18n.t('literals.automatikus-kuszobkedvezmeny')}
+                  {autoFeeDiscountLabel}
                 </p>
               )}
             </div>
@@ -1887,7 +1890,7 @@ export default function CashierTransactionPage() {
               />
               {discountApprovalLoading && (
                 <p className="mt-1 text-xs text-gray-500">
-                  Kedvezmény jóváhagyási szint ellenőrzése...
+                  {i18n.t('literals.kedvezmeny-jovahagyasi-szint-ellenorzese')}
                 </p>
               )}
               {discountApprovalInfo && (
@@ -1899,13 +1902,19 @@ export default function CashierTransactionPage() {
                   }`}
                   data-testid="discount-approval-info"
                 >
-                  Szükséges szint: {discountApprovalInfo.requiredLevel ?? '-'}; dolgozói szint:{' '}
-                  {discountApprovalInfo.workerLevel ?? '-'}.
+                  {i18n.t('literals.szukseges-szint')}
+                  {discountApprovalInfo.requiredLevel ?? '-'}
+                  {i18n.t('literals.dolgozoi-szint')} {discountApprovalInfo.workerLevel ?? '-'}
+                  {i18n.t('literals.lit-5')}
                   {discountApprovalInfo.exceedsMaxCap && (
-                    <span> Maximum: {discountApprovalInfo.maxAllowedPercent ?? '-'}%.</span>
+                    <span>
+                      {i18n.t('literals.maximum-2')}
+                      {discountApprovalInfo.maxAllowedPercent ?? '-'}
+                      {i18n.t('literals.lit-59')}
+                    </span>
                   )}
                   {!discountApprovalInfo.canApprove && !discountApprovalInfo.exceedsMaxCap && (
-                    <span> Magasabb jóváhagyási szint szükséges.</span>
+                    <span>{i18n.t('literals.magasabb-jovahagyasi-szint-szukseges')}</span>
                   )}
                 </div>
               )}
@@ -1921,7 +1930,7 @@ export default function CashierTransactionPage() {
             {/* FK-KEZDÍJ (2026-06-02): kezelési díj módosítás (override) — engedély-mátrix. */}
             <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Kezelési díj módosítása
+                {i18n.t('literals.kezelesi-dij-modositasa')}
               </label>
               <select
                 value={feeOverrideType}
@@ -1935,11 +1944,13 @@ export default function CashierTransactionPage() {
                 }}
                 className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white"
               >
-                <option value="">Nincs módosítás</option>
-                <option value="HALF">Felezés</option>
-                <option value="WAIVED">Elengedés</option>
+                <option value="">{i18n.t('literals.nincs-modositas')}</option>
+                <option value="HALF">{i18n.t('literals.felezes')}</option>
+                <option value="WAIVED">{i18n.t('literals.elengedes')}</option>
                 {isDirectorUser && (
-                  <option value="SPECIAL">Speciális (egyedi összeg — vezetői)</option>
+                  <option value="SPECIAL">
+                    {i18n.t('literals.specialis-egyedi-osszeg-vezetoi')}
+                  </option>
                 )}
               </select>
               {feeOverrideType && (
@@ -1952,14 +1963,18 @@ export default function CashierTransactionPage() {
                   }}
                   className="w-full h-10 px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white"
                 >
-                  <option value="">Jogcím választása...</option>
+                  <option value="">{i18n.t('literals.jogcim-valasztasa')}</option>
                   {isDirectorUser && (
-                    <option value="DIRECTOR_APPROVAL">Ügyvezetői / főértéktárosi jóváhagyás</option>
+                    <option value="DIRECTOR_APPROVAL">
+                      {i18n.t('literals.ugyvezetoi-foertektarosi-jovahagyas')}
+                    </option>
                   )}
                   {feeOverrideType !== 'SPECIAL' && (
-                    <option value="CUSTOMER_CARD">Ügyfélkártya</option>
+                    <option value="CUSTOMER_CARD">{i18n.t('literals.ugyfelkartya')}</option>
                   )}
-                  {feeOverrideType !== 'SPECIAL' && <option value="PROMOTION">Akció</option>}
+                  {feeOverrideType !== 'SPECIAL' && (
+                    <option value="PROMOTION">{i18n.t('literals.akcio')}</option>
+                  )}
                 </select>
               )}
               {feeOverrideType && feeOverrideReason === 'CUSTOMER_CARD' && (
@@ -1974,8 +1989,7 @@ export default function CashierTransactionPage() {
               )}
               {feeOverrideType && feeOverrideType !== 'SPECIAL' && (
                 <p className="text-xs text-gray-500">
-                  A díjat a szerver számolja (felezés = fele, elengedés = 0). A fenti díj-mező csak
-                  speciális (egyedi) díjnál érvényes.
+                  {i18n.t('literals.a-dijat-a-szerver-szamolja-felezes-fele')}
                 </p>
               )}
             </div>
@@ -2026,14 +2040,14 @@ export default function CashierTransactionPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  <th className="px-2 py-1.5 text-left w-28">VALUTA</th>
+                  <th className="px-2 py-1.5 text-left w-28">{i18n.t('literals.valuta-4')}</th>
                   <th className="px-2 py-1.5 text-right w-28">{t('transactions.arfolyam')}</th>
                   <th className="px-2 py-1.5 text-right w-32">{t('transactions.bankjegyDb')}</th>
                   <th
                     className="px-2 py-1.5 text-center w-16"
                     title="Devizastátusz: K=külföldi, B=belföldi (bizonylaton megjelenik)"
                   >
-                    DSZ
+                    {i18n.t('literals.dsz')}
                   </th>
                   <th className="px-2 py-1.5 text-right">{t('transactions.forintErtek')}</th>
                 </tr>
@@ -2197,7 +2211,8 @@ export default function CashierTransactionPage() {
                 <div className="bg-blue-50 dark:bg-blue-950/30 p-2 text-xs border-t border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-4 flex-wrap">
                     <span className="font-semibold text-blue-700 dark:text-blue-300">
-                      {activeRowData.currencyCode} sávok:
+                      {activeRowData.currencyCode}
+                      {i18n.t('literals.savok-2')}
                     </span>
                     {/* FK-SAVOS B.2 (2026-06-12, user-kérés): a sáv-badge-ek KATTINTHATÓK — a
                         kiválasztott sáv árfolyama a sorra kerül. Csak az összeg-küszöböt elérő
@@ -2230,7 +2245,9 @@ export default function CashierTransactionPage() {
                                 : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
                             } ${reachable ? 'cursor-pointer hover:ring-1 hover:ring-blue-500' : 'opacity-50 cursor-not-allowed'}`}
                           >
-                            {tier.name}: {tier.rate.toFixed(2)}{' '}
+                            {tier.name}
+                            {i18n.t('literals.lit-22')}
+                            {tier.rate.toFixed(2)}{' '}
                             {tier.minHuf > 0 ? `(${(tier.minHuf / 1000).toFixed(0)}k+)` : ''}
                           </button>
                         </span>
@@ -2246,13 +2263,22 @@ export default function CashierTransactionPage() {
                     )}
                     {cashierRateQuota && cashierRateQuota.remaining > 0 && (
                       <span className="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                        Pénztárosi sáv: {cashierRateQuota.remaining}/{cashierRateQuota.limit} (
-                        {(cashierRateQuota.minAmountHuf / 1000).toFixed(0)}k+ Ft)
+                        {i18n.t('literals.penztarosi-sav')}
+                        {cashierRateQuota.remaining}
+                        {i18n.t('literals.lit-4')}
+                        {cashierRateQuota.limit}
+                        {i18n.t('literals.lit')}
+                        {(cashierRateQuota.minAmountHuf / 1000).toFixed(0)}
+                        {i18n.t('literals.k-ft')}
                       </span>
                     )}
                     {cashierRateQuota && cashierRateQuota.remaining <= 0 && (
                       <span className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
-                        Pénztárosi sáv: elfogyott ({cashierRateQuota.used}/{cashierRateQuota.limit})
+                        {i18n.t('literals.penztarosi-sav-elfogyott')}
+                        {cashierRateQuota.used}
+                        {i18n.t('literals.lit-4')}
+                        {cashierRateQuota.limit}
+                        {i18n.t('literals.lit-2')}
                       </span>
                     )}
                   </div>
@@ -2266,17 +2292,23 @@ export default function CashierTransactionPage() {
                 <span className="text-gray-600 dark:text-gray-400">
                   {t('transactions.osszesen')}
                 </span>
-                <span className="font-mono font-semibold">{formatNum(subtotal)} HUF</span>
+                <span className="font-mono font-semibold">
+                  {formatNum(subtotal)}
+                  {i18n.t('literals.huf-2')}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">
                   {t('transactions.kezelesiDij')}
                 </span>
-                <span className="font-mono font-semibold">{formatNum(handlingFee)} HUF</span>
+                <span className="font-mono font-semibold">
+                  {formatNum(handlingFee)}
+                  {i18n.t('literals.huf-2')}
+                </span>
               </div>
               {autoFeeDiscountLabel && (
                 <div className="flex justify-between gap-3 text-xs text-green-700">
-                  <span>Automatikus díjkedvezmény</span>
+                  <span>{i18n.t('literals.automatikus-dijkedvezmeny')}</span>
                   <span className="text-right">{autoFeeDiscountLabel}</span>
                 </div>
               )}
@@ -2284,10 +2316,13 @@ export default function CashierTransactionPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">
                     {t('transactions.kedvezmeny2')}
-                    {discount}%):
+                    {discount}
+                    {i18n.t('literals.lit-60')}
                   </span>
                   <span className="font-mono font-semibold text-green-600">
-                    -{formatNum(discountAmount)} HUF
+                    {i18n.t('literals.lit-15')}
+                    {formatNum(discountAmount)}
+                    {i18n.t('literals.huf-2')}
                   </span>
                 </div>
               )}
@@ -2298,7 +2333,8 @@ export default function CashierTransactionPage() {
                   className="text-2xl font-mono font-black text-white px-3 py-1 rounded shadow"
                   style={{ backgroundColor: 'var(--primary)' }}
                 >
-                  {formatNum(total)} HUF
+                  {formatNum(total)}
+                  {i18n.t('literals.huf-2')}
                 </span>
               </div>
             </div>

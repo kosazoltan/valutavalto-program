@@ -44,6 +44,7 @@ import TransferReceiptModal from './TransferReceiptModal'
 import { buildVaultLabel, loadOwnVaultContact } from './transferPageShared'
 import StaleShipmentConfirmDialog from '../../components/shipments/StaleShipmentConfirmDialog'
 import { useTextReasonModal } from '../../components/TextReasonModal'
+import i18n from '../../i18n'
 
 /**
  * v2.3.41 (B31 audit fix): Raw enum -> magyar label mapping.
@@ -772,7 +773,7 @@ export default function TransferPage() {
                   {/* FR-14: sztornózott bizonylat jelölése a listában */}
                   {transfer.isCancelled && (
                     <span className="ml-1 inline-block rounded bg-red-100 text-red-700 text-[10px] font-semibold px-1.5 py-0.5 align-middle">
-                      Sztornózva
+                      {i18n.t('literals.sztornozva')}
                     </span>
                   )}
                 </td>
@@ -901,7 +902,7 @@ export default function TransferPage() {
                   <span>{shipment.requestingBranchName}</span>
                 </div>
               </td>
-              <td>Shipment</td>
+              <td>{i18n.t('literals.shipment')}</td>
               <td className="font-semibold">
                 {shipment.items?.map((item) => (
                   <div key={item.id}>{item.currencyCode ?? `#${item.currencyId}`}</div>
@@ -982,7 +983,7 @@ export default function TransferPage() {
       >
         <div className="min-w-0 flex-1">
           <label htmlFor="transfer-number-lookup" className="form-label">
-            Átadólap keresése
+            {i18n.t('literals.atadolap-keresese')}
           </label>
           <input
             id="transfer-number-lookup"
@@ -1003,7 +1004,7 @@ export default function TransferPage() {
           ) : (
             <Search size={16} />
           )}
-          Keresés
+          {i18n.t('literals.kereses-2')}
         </button>
       </form>
 
@@ -1013,7 +1014,7 @@ export default function TransferPage() {
           <AlertCircle size={18} />
           <span>{error}</span>
           <button type="button" onClick={() => setError(null)} className="ml-auto text-red-500">
-            ×
+            {i18n.t('literals.lit-34')}
           </button>
         </div>
       )}
@@ -1029,7 +1030,8 @@ export default function TransferPage() {
               onClick={() => setShowReceiptModal(true)}
               className="ml-auto inline-flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-green-700"
             >
-              <Printer size={14} /> Nyomtatás
+              <Printer size={14} />
+              {i18n.t('literals.nyomtatas-2')}
             </button>
           )}
           <button
@@ -1040,7 +1042,7 @@ export default function TransferPage() {
             }}
             className={printReceiptData ? 'text-green-500' : 'ml-auto text-green-500'}
           >
-            ×
+            {i18n.t('literals.lit-34')}
           </button>
         </div>
       )}
@@ -1048,12 +1050,15 @@ export default function TransferPage() {
       {shipmentReceiptIssues.length > 0 && (
         <div className="form-panel border-amber-300 bg-amber-50 text-amber-900">
           <div className="mb-1 flex items-center gap-2 font-semibold">
-            <AlertCircle size={18} /> Offline Shipment-átvételi hibák
+            <AlertCircle size={18} />
+            {i18n.t('literals.offline-shipment-atveteli-hibak')}
           </div>
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {shipmentReceiptIssues.map((issue) => (
               <li key={`${issue.requestNumber}-${issue.message}`}>
-                {issue.requestNumber}: {issue.message}
+                {issue.requestNumber}
+                {i18n.t('literals.lit-22')}
+                {issue.message}
               </li>
             ))}
           </ul>
@@ -1133,7 +1138,9 @@ export default function TransferPage() {
                 <div className="text-sm text-gray-600">{t('transfers.atadolapSzam')}</div>
                 <div className="font-mono font-semibold">{selectedTransfer.transferNumber}</div>
                 {receiveDetailLoading && (
-                  <div className="mt-1 text-xs text-gray-500">Részletadatok frissítése...</div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    {i18n.t('literals.reszletadatok-frissitese')}
+                  </div>
                 )}
               </div>
 
@@ -1218,16 +1225,19 @@ export default function TransferPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-              <Ban size={18} className="text-orange-600" /> Bizonylat sztornózása
+              <Ban size={18} className="text-orange-600" />
+              {i18n.t('literals.bizonylat-sztornozasa')}
             </h3>
             <p className="text-sm text-gray-600 mb-3">
-              {stornoTarget.transferNumber} — a sztornó bizonylat sorszáma:{' '}
+              {stornoTarget.transferNumber}
+              {i18n.t('literals.a-sztorno-bizonylat-sorszama')}{' '}
               <span className="font-mono font-semibold">
                 {stornoTarget.stornoSerialNumber ?? `${stornoTarget.transferNumber}-SZ`}
               </span>
             </p>
             <label htmlFor="storno-reason" className="form-label">
-              Sztornó indoklása <span className="text-red-500">*</span>
+              {i18n.t('literals.sztorno-indoklasa')}
+              <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
             </label>
             <textarea
               id="storno-reason"
@@ -1248,7 +1258,7 @@ export default function TransferPage() {
                 disabled={loading || !stornoReason.trim()}
                 className="form-button-primary bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
               >
-                Sztornó rögzítése
+                {i18n.t('literals.sztorno-rogzitese')}
               </button>
             </div>
           </div>

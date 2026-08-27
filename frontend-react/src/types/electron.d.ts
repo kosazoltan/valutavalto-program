@@ -418,6 +418,18 @@ export interface ElectronAPI {
       limit3_sell_rate?: number | null
     }>
   >
+  // FK-097 WU-14 (FR-3): iroda-szintű kezelési díj konfiguráció offline cache (preload bridge).
+  getCachedHandlingFeeConfig(): Promise<{
+    branch_id: string
+    branch_code: string | null
+    company_id: string | null
+    fee_mode: 'NONE' | 'BRACKET' | 'PER_MILLE'
+    per_mille_rate: number | null
+    per_mille_cap: number | null
+    bracket_json: string | null
+    valid_from: string | null
+    synced_at: string
+  } | null>
   getCachedCashDesks(): Promise<
     Array<{
       id: string

@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface PrintTemplateItem {
   id: string | number
@@ -241,7 +242,7 @@ export default function PrintTemplatePage() {
           <div className="grid gap-3 md:grid-cols-3">
             <div>
               <label htmlFor="print-template-name" className="form-label">
-                Név
+                {i18n.t('literals.nev')}
               </label>
               <input
                 id="print-template-name"
@@ -254,7 +255,7 @@ export default function PrintTemplatePage() {
             </div>
             <div>
               <label htmlFor="print-template-type" className="form-label">
-                Típus
+                {i18n.t('literals.tipus')}
               </label>
               <input
                 id="print-template-type"
@@ -277,12 +278,12 @@ export default function PrintTemplatePage() {
                   )
                 }
               />
-              Alapértelmezett
+              {i18n.t('literals.alapertelmezett')}
             </label>
           </div>
           <div>
             <label htmlFor="print-template-content" className="form-label">
-              Tartalom
+              {i18n.t('literals.tartalom')}
             </label>
             <textarea
               id="print-template-content"
@@ -343,7 +344,7 @@ export default function PrintTemplatePage() {
             {loading ? (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -376,7 +377,9 @@ export default function PrintTemplatePage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

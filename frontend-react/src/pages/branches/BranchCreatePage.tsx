@@ -5,6 +5,7 @@ import { branchApi, dictionaryApi, type DictionaryEntry } from '../../services/a
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { Check, Section } from './branchFormShared'
+import i18n from '../../i18n'
 
 /**
  * FK-021 (2026-06-05): Új iroda (pénztár / értéktár) felrögzítése — teljes törzsadat-form
@@ -135,14 +136,15 @@ export default function BranchCreatePage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Building2 />
-          Új iroda felrögzítése
+          {i18n.t('literals.uj-iroda-felrogzitese')}
         </h1>
         <button
           type="button"
           onClick={() => navigate('/admin/branches')}
           className="form-button-secondary flex items-center gap-2"
         >
-          <ArrowLeft size={16} /> Vissza a listára
+          <ArrowLeft size={16} />
+          {i18n.t('literals.vissza-a-listara')}
         </button>
       </div>
 
@@ -158,7 +160,8 @@ export default function BranchCreatePage() {
         <Section title="1. Alapadatok">
           <label className="block">
             <span className="form-label">
-              Pénztár száma / azonosítója <span className="text-red-600">*</span>
+              {i18n.t('literals.penztar-szama-azonositoja')}
+              <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
             </span>
             {/* Sourcery #1058: a backend @Pattern("^[A-Z0-9]+$")-t a beviteli szűrés is tükrözi —
                 rögtön kiszűrjük a nem megengedett karaktert (szóköz/ékezet/írásjel), nem csak uppercase. */}
@@ -174,11 +177,11 @@ export default function BranchCreatePage() {
               }
             />
             <span className="text-xs text-gray-500">
-              Csak nagybetűk és számok (pl. BR099). Egyedi a rendszerben.
+              {i18n.t('literals.csak-nagybetuk-es-szamok-pl-br099-egyedi')}
             </span>
           </label>
           <label className="block">
-            <span className="form-label">Megjelenítendő név</span>
+            <span className="form-label">{i18n.t('literals.megjelenitendo-nev')}</span>
             <input
               type="text"
               className="form-input"
@@ -189,11 +192,11 @@ export default function BranchCreatePage() {
               onChange={(e) => patch({ name: e.target.value })}
             />
             <span className="text-xs text-gray-500">
-              Ha üres, a rendszer „Pénztár &lt;kód&gt;" formára generálja.
+              {i18n.t('literals.ha-ures-a-rendszer-penztar-kod-formara-g')}
             </span>
           </label>
           <label className="block">
-            <span className="form-label">Rövid név</span>
+            <span className="form-label">{i18n.t('literals.rovid-nev')}</span>
             <input
               type="text"
               className="form-input"
@@ -206,7 +209,8 @@ export default function BranchCreatePage() {
           </label>
           <div className="block">
             <span className="form-label">
-              Iroda típusa <span className="text-red-600">*</span>
+              {i18n.t('literals.iroda-tipusa')}
+              <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
             </span>
             <div className="flex gap-4 mt-1">
               <label className="inline-flex items-center gap-2 cursor-pointer">
@@ -217,7 +221,7 @@ export default function BranchCreatePage() {
                   disabled={disabled}
                   onChange={() => patch({ isVault: false })}
                 />
-                <span className="text-sm">Pénztár</span>
+                <span className="text-sm">{i18n.t('literals.penztar-2')}</span>
               </label>
               <label className="inline-flex items-center gap-2 cursor-pointer">
                 <input
@@ -227,7 +231,7 @@ export default function BranchCreatePage() {
                   disabled={disabled}
                   onChange={() => patch({ isVault: true })}
                 />
-                <span className="text-sm">Értéktár</span>
+                <span className="text-sm">{i18n.t('literals.ertektar')}</span>
               </label>
             </div>
           </div>
@@ -237,7 +241,8 @@ export default function BranchCreatePage() {
         <Section title="2. Elérhetőség">
           <label className="block md:col-span-2">
             <span className="form-label">
-              Pénztár pontos címe <span className="text-red-600">*</span>
+              {i18n.t('literals.penztar-pontos-cime')}
+              <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
             </span>
             <input
               type="text"
@@ -250,7 +255,7 @@ export default function BranchCreatePage() {
             />
           </label>
           <label className="block">
-            <span className="form-label">Irányítószám</span>
+            <span className="form-label">{i18n.t('literals.iranyitoszam')}</span>
             <input
               type="text"
               className="form-input"
@@ -263,7 +268,7 @@ export default function BranchCreatePage() {
             />
           </label>
           <label className="block">
-            <span className="form-label">Város</span>
+            <span className="form-label">{i18n.t('literals.varos')}</span>
             <input
               type="text"
               className="form-input"
@@ -273,10 +278,12 @@ export default function BranchCreatePage() {
               disabled={disabled}
               onChange={(e) => patch({ city: e.target.value })}
             />
-            <span className="text-xs text-gray-500">Ha üres, a terület nevéből töltjük ki.</span>
+            <span className="text-xs text-gray-500">
+              {i18n.t('literals.ha-ures-a-terulet-nevebol-toltjuk-ki')}
+            </span>
           </label>
           <label className="block">
-            <span className="form-label">Telefon</span>
+            <span className="form-label">{i18n.t('literals.telefon')}</span>
             <input
               type="text"
               className="form-input"
@@ -288,7 +295,7 @@ export default function BranchCreatePage() {
             />
           </label>
           <label className="block">
-            <span className="form-label">Email</span>
+            <span className="form-label">{i18n.t('literals.email')}</span>
             <input
               type="email"
               className="form-input"
@@ -305,7 +312,8 @@ export default function BranchCreatePage() {
         <Section title="3. Területi besorolás">
           <label className="block">
             <span className="form-label">
-              Terület / Régió hozzárendelése <span className="text-red-600">*</span>
+              {i18n.t('literals.terulet-regio-hozzarendelese')}
+              <span className="text-red-600">{i18n.t('literals.lit-3')}</span>
             </span>
             <select
               className="form-input"
@@ -321,11 +329,11 @@ export default function BranchCreatePage() {
               ))}
             </select>
             <span className="text-xs text-gray-500">
-              A pénztárt ez a terület (értéktárhoz) köti.
+              {i18n.t('literals.a-penztart-ez-a-terulet-ertektarhoz-koti')}
             </span>
           </label>
           <label className="block">
-            <span className="form-label">Bankkód</span>
+            <span className="form-label">{i18n.t('literals.bankkod')}</span>
             <input
               type="text"
               className="form-input"
@@ -336,7 +344,7 @@ export default function BranchCreatePage() {
               onChange={(e) => patch({ bankCode: e.target.value })}
             />
             <span className="text-xs text-gray-500">
-              Banki hivatkozási szám. Ha üres, a kód lesz a bankkód.
+              {i18n.t('literals.banki-hivatkozasi-szam-ha-ures-a-kod-les')}
             </span>
           </label>
         </Section>

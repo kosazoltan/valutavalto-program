@@ -550,7 +550,10 @@ export default function CameraPlaybackPage() {
           </div>
           <div className="p-4">
             {distinctCameraIds.length > 0 && (
-              <div className="mb-3 flex flex-wrap items-center gap-2" aria-label={t('camera.kameraValaszto')}>
+              <div
+                className="mb-3 flex flex-wrap items-center gap-2"
+                aria-label={t('camera.kameraValaszto')}
+              >
                 <button
                   type="button"
                   className={`rounded-md border px-3 py-1 text-sm ${
@@ -566,7 +569,9 @@ export default function CameraPlaybackPage() {
                     key={cameraId}
                     type="button"
                     className={`rounded-md border px-3 py-1 text-sm ${
-                      selectedCameraId === cameraId ? 'bg-primary text-primary-foreground' : 'bg-card'
+                      selectedCameraId === cameraId
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card'
                     }`}
                     onClick={() => setSelectedCameraId(cameraId)}
                     data-testid={`camera-switch-${cameraId}`}
