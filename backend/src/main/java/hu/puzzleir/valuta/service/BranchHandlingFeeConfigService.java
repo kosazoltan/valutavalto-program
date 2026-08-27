@@ -73,6 +73,9 @@ public class BranchHandlingFeeConfigService {
 
     private static final String ACTION_PUBLISHED = "BRANCH_FEE_CONFIG_PUBLISHED";
     private static final String ACTION_BRACKET_PUBLISHED = "HANDLING_FEE_BRACKET_PUBLISHED";
+    /** ITEM 2 (round 2): RBAC/cross-tenant megtagadás forenzikus auditja (FR-12/FR-13). */
+    public static final String ACTION_ACCESS_DENIED = "BRANCH_FEE_CONFIG_ACCESS_DENIED";
+    private static final String ERR_ACCESS_DENIED = "VV-AUTH-001";
     private static final String ENTITY_TYPE = "BranchHandlingFeeConfig";
 
     // =====================================================================
@@ -280,6 +283,11 @@ public class BranchHandlingFeeConfigService {
         // C3: kizárólag a SAJÁT iroda konfigurációja olvasható itt — idegen → 404.
         UUID ownBranchId = SecurityUtils.getCurrentBranchId();
         if (ownBranchId == null || !ownBranchId.equals(branchId)) {
+            // ITEM 2 (round 2): a megtagadás forenzikus auditja REQUIRES_NEW tranzakcióban —
+            // túléli a 404-et kísérő rollbacket. A HTTP-válasz továbbra is 404 (FR-13:
+            // a tenant-guard sem árulja el az iroda létezését, a 403 tenant-enumerációs
+            // orákulum lenne).
+            auditAccessDenied(branchId, companyId, "FOREIGN_BRANCH_LIVE_READ");
             throw new ResourceNotFoundException("Ehhez az irodához nincs hozzáférése: " + branchId);
         }
         Branch branch = findBranchInCompany(branchId, companyId);
@@ -395,8 +403,42 @@ public class BranchHandlingFeeConfigService {
 
     private Branch findBranchInCompany(UUID branchId, UUID companyId) {
         // FR-13: tenant-guard — másik cég irodája → 404, soha nem 403.
+        // ITEM 2 (round 2): a 404 ELŐTT REQUIRES_NEW audit-sor íródik a HÍVÓ tenantjába —
+        // az audit-nak túl kell élnie a rollbacket (security trail).
         return branchRepository.findByIdAndCompanyId(branchId, companyId)
-                .orElseThrow(() -> new ResourceNotFoundException("Iroda nem található: " + branchId));
+                .orElseThrow(() -> {
+                    auditAccessDenied(branchId, companyId, "CROSS_TENANT_BRANCH");
+                    return new ResourceNotFoundException("Iroda nem található: " + branchId);
+                });
+    }
+
+    /**
+     * ITEM 2 (round 2): BRANCH_FEE_CONFIG_ACCESS_DENIED forenzikus sor. A payload-alak a
+     * repo-konvenciót követi (ShipmentStockBookingService.assertReceiver): KAT:AUTH +
+     * error_code + reason. A companyId explicit paraméter — a hívó tenantjába kerül a sor,
+     * soha nem kerül újra-feloldásra a SecurityContextből (multi-tenant invariáns).
+     */
+    private void auditAccessDenied(UUID branchId, UUID companyId, String reason) {
+        auditLogService.logInNewTransaction(
+                ACTION_ACCESS_DENIED, ENTITY_TYPE,
+                branchId != null ? branchId.toString() : null,
+                workerCodeOrNull(), workerCodeOrNull(),
+                branchId != null ? branchId.toString() : null, null,
+                String.format("{\"KAT\":\"AUTH\",\"error_code\":\"%s\",\"reason\":\"%s\","
+                        + "\"branch_id\":\"%s\",\"company_id\":\"%s\"}",
+                        ERR_ACCESS_DENIED, reason, branchId, companyId),
+                companyId);
+        log.warn("FK-096: kezelési díj konfiguráció hozzáférés megtagadva — ok={}, iroda={}, cég={}",
+                reason, branchId, companyId);
+    }
+
+    /** A 404-et SOHA nem cserélheti 400-ra egy hiányzó SecurityContext (audit-only olvasás). */
+    private static String workerCodeOrNull() {
+        try {
+            return SecurityUtils.getCurrentWorkerCode();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private static BranchFeeConfigDto toDto(UUID branchId, BranchHandlingFeeConfig config) {

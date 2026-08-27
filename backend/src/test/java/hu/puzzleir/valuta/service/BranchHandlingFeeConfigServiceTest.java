@@ -43,7 +43,6 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -177,7 +176,17 @@ class BranchHandlingFeeConfigServiceTest {
                     .isInstanceOf(ResourceNotFoundException.class);
 
             verify(configRepository, never()).save(any());
-            verifyNoInteractions(auditLogService);
+            // ITEM 2 (round 2): a 404 ellenére a forenzikus audit REQUIRES_NEW-ben íródik —
+            // a korábbi verifyNoInteractions(auditLogService) assert a ruling (ITEM 2) szerinti
+            // audit-követelménnyel ellentétes volt; ez a csere SZIGORÍTÁS (write-side bizonyíték),
+            // nem gyengítés (a publikálás KAT:RATE auditja továbbra sem íródhat itt).
+            verify(auditLogService).logInNewTransaction(
+                    eq("BRANCH_FEE_CONFIG_ACCESS_DENIED"), any(), any(),
+                    any(), any(), any(), any(), any(), eq(COMPANY_ID));
+            verify(auditLogService, never()).log(
+                    anyString(), anyString(), anyString(),
+                    anyString(), anyString(), anyString(), any(),
+                    anyString(), any(), any());
         }
     }
 
