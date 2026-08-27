@@ -1,4 +1,4 @@
-generated_at: 2026-08-27T02:02:59.760Z
+generated_at: 2026-08-27T07:01:00.889Z
 schema_version: 1
 source_count: 1076
 short_term:
@@ -2061,24 +2061,24 @@ operational:
     title: ReceiptPreviewModal.multiline.test.tsx
     type: operational-receipt
     path: frontend-react/src/components/electron/ReceiptPreviewModal.multiline.test.tsx
-    sha256: c7d1b1b951999c796deea4a58b6f936ef25acb4034a46891f3023c6208ef4aad
-    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a valuta-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), })) // Több-valutás (multi-line) v"
+    sha256: 24d99c04a6b54ff0b6afc8f5b0d627df1bebcaeb1a6409c8a0c67475dbd4fcd4
+    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a valuta-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty' }, useTranslation: () => ({ t: (k: string) =>"
     areas: [arfolyam, frontend, penztar]
     keywords: [receiptpreviewmodal, multiline, test, tsx, import, render, from, testing, library, react, describe, expect]
   - id: 25f9aae30dcd1ff1
     title: ReceiptPreviewModal.transfer.test.tsx
     type: operational-receipt
     path: frontend-react/src/components/electron/ReceiptPreviewModal.transfer.test.tsx
-    sha256: cdaf8ce96748f69c209e0040d73d9ca708813aaf206a9bb56a10619df5cb10d9
-    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a transfer-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), })) const base: PrintReceiptData"
+    sha256: 3c6be5205b11d318512d0716d81eef04ea7f7921fe000abdf68751b35d390f44
+    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a transfer-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty' }, useTranslation: () => ({ t: (k: string) ="
     areas: [ertektar, frontend]
     keywords: [receiptpreviewmodal, transfer, test, tsx, import, render, from, testing, library, react, describe, expect]
   - id: ba6d11038991f082
     title: ReceiptPreviewModal.transferEnhancements.test.tsx
     type: operational-receipt
     path: frontend-react/src/components/electron/ReceiptPreviewModal.transferEnhancements.test.tsx
-    sha256: 168a1a4b0a0ddd1a61aec3abc96200c0683803606bc8df533923de4f7e59dabb
-    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), })) const base: PrintReceiptData = { type: 'transfer', companyType: 'BEST_CHANGE', receiptNumber: 'AT-000042', branchCode:"
+    sha256: d6b11ef37d76cecebd21befa282129bf0538908649a257fab9c7bf2c83dcf5ea
+    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty' }, useTranslation: () => ({ t: (k: string) => k }), })) const base: PrintReceiptData = { type: 'transfer', companyType: 'BEST_CHANGE',"
     areas: [cimletezes, ertektar, frontend]
     keywords: [receiptpreviewmodal, transferenhancements, test, tsx, import, render, from, testing, library, react, describe, expect]
   - id: cc1aaded3e412bd8
@@ -2109,7 +2109,7 @@ operational:
     title: ReceiptPage.tsx
     type: operational-receipt
     path: frontend-react/src/pages/receipts/ReceiptPage.tsx
-    sha256: 4492152da29fbde1424e2f09b194a3218c2bf865b043aee73537ea97f3235a7b
+    sha256: 9249c4031143093e61ea98ba282eb4d1074376d507d0202d2e709fa36dce0763
     summary: "import { useState, useEffect, useMemo, useCallback } from 'react' import { Receipt as ReceiptIcon, Search, Printer, Eye, Clock, ChevronDown, ChevronRight, X, Download, AlertTriangle, RefreshCw, } from 'lucide-react' import { receiptApi, Receipt } from '../../services/api/index' import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling' import { downloadBlob } from '../../utils/downloadBlob' impo"
     areas: [aml, frontend, napzaras, penztar, sync]
     keywords: [receiptpage, tsx, import, usestate, useeffect, usememo, usecallback, from, react, receipt, receipticon, search]
@@ -2133,8 +2133,8 @@ operational:
     title: ReceiptTextSettingsPage.tsx
     type: operational-receipt
     path: frontend-react/src/pages/settings/ReceiptTextSettingsPage.tsx
-    sha256: b64a13e11d09fbf60fa72ad8e05da3673548e8a32530d3124ba435838c616a07
-    summary: "import { useState, useEffect, useCallback } from 'react' import { Save, Loader2, RotateCcw, FileText } from 'lucide-react' import { systemParameterApi, type SystemParameter } from '../../services/api/settings' import { toast } from '../../components/ui/toaster' import { logger } from '../../utils/logger' interface ReceiptTextField { key: string label: string description: string multiline: boolean placeholder: string"
+    sha256: 6278a1cb64c12966ddffc439e63e485e7f9f165c0ec771337b02a835dba56203
+    summary: "import { useState, useEffect, useCallback } from 'react' import { Save, Loader2, RotateCcw, FileText } from 'lucide-react' import { systemParameterApi, type SystemParameter } from '../../services/api/settings' import { toast } from '../../components/ui/toaster' import { logger } from '../../utils/logger' import i18n from '../../i18n' interface ReceiptTextField { key: string label: string description: string multiline"
     areas: [frontend, security]
     keywords: [receipttextsettingspage, tsx, import, usestate, useeffect, usecallback, from, react, save, loader2, rotateccw, filetext]
   - id: 0189538b3db96496
@@ -2149,7 +2149,7 @@ operational:
     title: TransferReceiptModal.tsx
     type: operational-receipt
     path: frontend-react/src/pages/transfers/TransferReceiptModal.tsx
-    sha256: d0e7ebf64e4a69e6edf1805a74b82dc4fa8d85f2c22a011d3381da8be7ed736b
+    sha256: 2364ef0c0cd67f514c231049bdf7606929c286a5abd56f5285bd2251127cb7ce
     summary: "import { ReceiptPreviewModal } from '../../components/electron' import { isElectron } from '../../utils/electron' import { toast } from '../../components/ui/toaster' import type { PrintReceiptData } from '../../types/receipt' export default function TransferReceiptModal({ isOpen, onClose, receiptData, }: { isOpen: boolean onClose: () => void receiptData: PrintReceiptData | null }) { return ( <ReceiptPreviewModal isOp"
     areas: [frontend]
     keywords: [transferreceiptmodal, tsx, import, receiptpreviewmodal, from, components, electron, iselectron, utils, toast, toaster, type]
@@ -7417,7 +7417,7 @@ long_term:
     title: "FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv)"
     type: semantic-reference
     path: docs/specs/fk096-fk097-branch-handling-fee.md
-    sha256: 7e44d055a179edf8d380630bfc6ea4f2db9e7bad5e4499033f2a37e343f8c727
+    sha256: 44dccf4031919012ee2c2a5835151a8f648da9c8bfffd79168989529455b8b95
     summary: "# FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv) > Pipeline job: `20260826-fk096-fk097-branch-fee`, base `76bb1188`, branch `pipeline/20260826-fk096-fk097-branch-fee`. > Spec-ek: FK-096 (14 FR), FK-097 (8 FR). Terv: `.hermes/pipeline/20260826-fk096-fk097-branch-fee/round-1/10-plan.md`. > Ebben a batchben a frontend-változás a közös `frontend-react` bundle-t érinti, ezért **MINDKÉT t"
     areas: [database, ertektar, frontend, installer, legacy, penztar, security, specifikacio, sync, tenant]
     keywords: [096, 097, iroda, szintu, kezelesi, dij, dontesnaplo, uzemeltetoi, kezikonyv, pipeline, job, 20260826]
@@ -7497,8 +7497,8 @@ long_term:
     title: LegacyCustomerPanel.test.tsx
     type: semantic-reference
     path: frontend-react/src/pages/transactions/components/LegacyCustomerPanel.test.tsx
-    sha256: 04ccd9dbf030d687456d8fd6d8121e991751547bcf879c012508fcba5f3c50bd
-    summary: "import { render, screen } from '@testing-library/react' import userEvent from '@testing-library/user-event' import { vi, describe, beforeEach, it, expect } from 'vitest' import LegacyCustomerPanel from './LegacyCustomerPanel' vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, }), })) function renderPanel(onCustomerChange = vi.fn()) { const onCustomerAddressChange = vi.fn() const view"
+    sha256: 955f21be91eec77f2a1eb80bf7e260969a69ed89b7a5ee86b2a7aa5057774092
+    summary: "import { render, screen } from '@testing-library/react' import userEvent from '@testing-library/user-event' import { vi, describe, beforeEach, it, expect } from 'vitest' import LegacyCustomerPanel from './LegacyCustomerPanel' vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty' }, useTranslation: () => ({ t: (key: string) => key, }), })) function renderPanel(onCustomerChange = vi.fn()) { const onCus"
     areas: [frontend, legacy]
     keywords: [legacycustomerpanel, test, tsx, import, render, screen, from, testing, library, react, userevent, user]
   - id: 8649b8066423f842
