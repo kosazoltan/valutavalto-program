@@ -336,6 +336,9 @@ public class BranchHandlingFeeConfigService {
 
     @Transactional(rollbackFor = Exception.class)
     public BracketSetDto saveBracketDraft(List<HandlingFeeBracketDto> rows) {
+        // ITEM 3 (round 2): batch-validáció ELŐBB, mint bármilyen archíválás/insert —
+        // érvénytelen payload nem törölheti a meglévő piszkozat-készletet (fail-closed).
+        validateBracketRows(rows);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
@@ -407,6 +410,34 @@ public class BranchHandlingFeeConfigService {
     }
 
     // ============================ SEGÉDMETÓDUSOK ============================
+
+    /**
+     * ITEM 3 (round 2): batch-validáció — a hívó egyszerre látja az összes hibás sort
+     * (API-doktrína: a validációs hibákat kötegeljük, nem az elsőnél állunk meg).
+     * A dobott entitások eldobhatóak — soha nem kerülnek save-be (R2 pitfall #2:
+     * a @Builder.Default status=LIVE csapda itt nem számít, mert nincs perzisztálás).
+     */
+    private static void validateBracketRows(List<HandlingFeeBracketDto> rows) {
+        if (rows == null) {
+            throw new ValidationException("A sáv-lista kötelező.");
+        }
+        List<String> errors = new java.util.ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            HandlingFeeBracketDto row = rows.get(i);
+            try {
+                HandlingFeeBracket.builder()
+                        .upperLimit(row != null ? row.getUpperLimit() : null)
+                        .feeAmount(row != null ? row.getFeeAmount() : null)
+                        .build()
+                        .assertValid();
+            } catch (ValidationException e) {
+                errors.add((i + 1) + ". sáv: " + e.getMessage());
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new ValidationException("Érvénytelen sáv-készlet — " + String.join(" ", errors));
+        }
+    }
 
     private Branch findBranchInCompany(UUID branchId, UUID companyId) {
         // FR-13: tenant-guard — másik cég irodája → 404, soha nem 403.

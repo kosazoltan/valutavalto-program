@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.entity;
 
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.exception.ValidationException;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -69,4 +70,17 @@ public class HandlingFeeBracket {
     @Column(name = "status", nullable = false, length = 10)
     @Builder.Default
     private FeeConfigStatus status = FeeConfigStatus.LIVE;
+
+    /**
+     * FK-096 ITEM 3: sáv-sor invariáns. A sáv felső határa pozitív, a díj nemnegatív —
+     * a NOT NULL oszlopokra (upper_limit, fee_amount) SOHA nem juthat el null.
+     */
+    public void assertValid() {
+        if (upperLimit == null || upperLimit.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("A sáv felső határa kötelező és pozitív kell legyen.");
+        }
+        if (feeAmount == null || feeAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidationException("A sáv díja kötelező és nem lehet negatív.");
+        }
+    }
 }
