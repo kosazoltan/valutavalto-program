@@ -143,7 +143,20 @@ describe('HandlingFeeConfigPage — admin nézet', () => {
 
   it('a Küldés megerősítéssel pontosan egyszer hív publish-t a sor verziójával (FR-9)', async () => {
     const user = userEvent.setup()
-    mocks.publish.mockResolvedValue({ ...ROWS[1], hasDraft: false })
+    // ITEM 5 (R2-WU-9): a mock a VALÓS controller JSON-t adja — a publish válasz
+    // BranchFeeConfigRowDto (sor-alakú): a LIVE oszlopok a publikált értéket hordozzák,
+    // a DRAFT oszlopok kiürülnek, a verzió a publish utáni sor verziója.
+    mocks.publish.mockResolvedValue({
+      ...ROWS[1],
+      liveFeeMode: 'PER_MILLE',
+      livePerMilleRate: 5,
+      livePerMilleCap: 1000,
+      hasDraft: false,
+      draftFeeMode: null,
+      draftPerMilleRate: null,
+      draftPerMilleCap: null,
+      version: 3,
+    })
     renderPage()
     await screen.findByText('D01')
     await user.click(screen.getAllByText('D01')[0]!)
@@ -159,6 +172,80 @@ describe('HandlingFeeConfigPage — admin nézet', () => {
     })
     // B2/N11: a verzió a sorból jön (itt 2), a törzsben utazik
     expect(mocks.publish).toHaveBeenCalledWith('b2', 2)
+  })
+
+  it('a publikálás után a LIVE oszlop frissül teljes újratöltés nélkül (ITEM 5)', async () => {
+    const user = userEvent.setup()
+    mocks.publish.mockResolvedValue({
+      ...ROWS[1],
+      liveFeeMode: 'PER_MILLE',
+      livePerMilleRate: 5,
+      livePerMilleCap: 1000,
+      hasDraft: false,
+      draftFeeMode: null,
+      draftPerMilleRate: null,
+      draftPerMilleCap: null,
+      version: 3,
+    })
+    renderPage()
+    await screen.findByText('D01')
+    await user.click(screen.getAllByText('D01')[0]!)
+
+    const modalEl = (await screen.findByText(/Kezelési díj — D01/)).closest('.max-w-lg')
+    const modal = modalEl as HTMLElement
+    await user.click(within(modal).getByRole('button', { name: 'Küldés' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Küldés megerősítése' }))
+
+    // A sor-alakú válasz {...row, ...updated} merge-je a LIVE oszlopokat frissíti:
+    // 3‰/Sávos helyett 5‰ + 1 000 Ft + Ezrelékes, a piszkozat-cella üres — mindez
+    // a publish válaszából, lista-refetch NÉLKÜL.
+    // (A Ft-formázást a komponens formatHuf-jával azonosan toLocaleString-gel építjük —
+    // a hu-HU elválasztó whitespace-kódja környezetfüggő.)
+    const tableRow = await screen.findByRole('row', { name: /D01/ })
+    await waitFor(() => {
+      expect(within(tableRow).getByText('5 ‰')).toBeInTheDocument()
+    })
+    expect(within(tableRow).getByText(`${(1000).toLocaleString('hu-HU')} Ft`)).toBeInTheDocument()
+    expect(within(tableRow).getByText('Ezrelékes')).toBeInTheDocument()
+    expect(within(tableRow).queryByText('Sávos')).not.toBeInTheDocument()
+    expect(within(tableRow).queryByText('✎ van')).not.toBeInTheDocument()
+    // Nincs refetch: a lista egyetlen betöltése a mount-kor történt.
+    expect(mocks.list).toHaveBeenCalledTimes(1)
+  })
+
+  it('a saveDraft valasza sor-alaku es a LIVE oszlop VALTOZATLAN marad (FR-8)', async () => {
+    const user = userEvent.setup()
+    // ITEM 5 + FR-8: a saveDraft válasz a VALÓS sor-alakú DTO — a LIVE oszlopok
+    // az ÉRINTETLEN értékeket hordozzák, csak a DRAFT oszlopok újak.
+    mocks.saveDraft.mockResolvedValue({
+      ...ROWS[1],
+      liveFeeMode: 'BRACKET',
+      livePerMilleRate: null,
+      livePerMilleCap: null,
+      hasDraft: true,
+      draftFeeMode: 'PER_MILLE',
+      draftPerMilleRate: 5,
+      draftPerMilleCap: 1000,
+      version: 3,
+    })
+    renderPage()
+    await screen.findByText('D01')
+    await user.click(screen.getAllByText('D01')[0]!)
+
+    const modalEl = (await screen.findByText(/Kezelési díj — D01/)).closest('.max-w-lg')
+    const modal = modalEl as HTMLElement
+    await user.click(within(modal).getByRole('button', { name: 'Mentés (piszkozat)' }))
+
+    await waitFor(() => {
+      expect(mocks.saveDraft).toHaveBeenCalledTimes(1)
+    })
+    // FR-8: a LIVE oszlop változatlan (Sávos mód, '—' mérték), a piszkozat-jelölő megjelenik.
+    const tableRow = await screen.findByRole('row', { name: /D01/ })
+    expect(within(tableRow).getByText('Sávos')).toBeInTheDocument()
+    expect(within(tableRow).getAllByText('—').length).toBeGreaterThanOrEqual(1)
+    expect(within(tableRow).getByText('✎ van')).toBeInTheDocument()
+    expect(mocks.list).toHaveBeenCalledTimes(1)
   })
 })
 

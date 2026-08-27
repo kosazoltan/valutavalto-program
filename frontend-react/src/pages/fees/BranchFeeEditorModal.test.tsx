@@ -62,7 +62,16 @@ describe('BranchFeeEditorModal', () => {
 
   it('a Mentés (piszkozat) NEM változtatja a LIVE oszlopot — csak saveDraft hívódik (FR-8)', async () => {
     const user = userEvent.setup()
-    mocks.saveDraft.mockResolvedValue({ ...ROW, hasDraft: true })
+    // ITEM 5 (R2-WU-9): a mock a VALÓS controller JSON-t adja (sor-alakú DTO):
+    // a LIVE oszlopok érintetlenek, a DRAFT oszlopok az új értékek, verzió növelve.
+    mocks.saveDraft.mockResolvedValue({
+      ...ROW,
+      hasDraft: true,
+      draftFeeMode: 'PER_MILLE',
+      draftPerMilleRate: 5,
+      draftPerMilleCap: 2003,
+      version: 1,
+    })
     renderModal()
 
     await user.click(screen.getByRole('radio', { name: /Ezrelékes/ }))
@@ -101,7 +110,17 @@ describe('BranchFeeEditorModal', () => {
 
   it('megerősítéskor publish(branchId, version) hívódik — version=0 legitim (B2)', async () => {
     const user = userEvent.setup()
-    mocks.publish.mockResolvedValue({ ...ROW, hasDraft: false })
+    // ITEM 5 (R2-WU-9): a VALÓS publish-válasz sor-alakú — a LIVE oszlopok a
+    // publikált értéket hordozzák, a DRAFT oszlopok kiürülnek, verzió növelve.
+    mocks.publish.mockResolvedValue({
+      ...ROW,
+      livePerMilleRate: 5,
+      hasDraft: false,
+      draftFeeMode: null,
+      draftPerMilleRate: null,
+      draftPerMilleCap: null,
+      version: 1,
+    })
     renderModal()
 
     await user.click(screen.getByRole('radio', { name: /Ezrelékes/ }))

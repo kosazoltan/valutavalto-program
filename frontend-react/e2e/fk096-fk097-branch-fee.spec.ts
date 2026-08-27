@@ -155,6 +155,12 @@ async function mockAdminApis(page: Page) {
     if (path.endsWith('/features') && method === 'GET') return json({})
 
     // FK-096 branch-fee-config végpontok (D11: expectedVersion a törzsben).
+    // ITEM 5 (R2-WU-9): a draft (:draft POST) és publish (:publish POST) handlerek a
+    // VALÓS controller-választ adják vissza — R2-D8 óta a BranchFeeConfigController
+    // saveDraft/publish SOR-alakú BranchFeeConfigRowDto-t ad (branchId/branchCode/
+    // branchName/region/live*/hasDraft/draft*/version), pontosan azt, amit a branchRow()
+    // épít. A korábbi round-1 mock ezzel már kontrakt-helyes volt; a round-2-ben a
+    // backend igazodott hozzá (nincs DTO-only válasz többé).
     if (path.endsWith('/branch-fee-config') && method === 'GET') {
       return json({
         summary: {
@@ -254,6 +260,10 @@ test('(a) FK-096/097 online: Mentés nem érinti a LIVE-ot, Küldés publikál, 
   await page.getByRole('alertdialog').getByRole('button', { name: 'Küldés megerősítése' }).click()
   const publishBody = (await publishRequest).postDataJSON() as Record<string, unknown>
   expect(publishBody).toEqual({ expectedVersion: 0 })
+
+  // ITEM 5 (R2-WU-9): a LIVE oszlop frissülése a publish VÁLASZÁBÓL történik —
+  // bármiféle navigáció/újratöltés ELŐTT bizonyítjuk, hogy nem refetch menti meg.
+  await expect(row).toContainText('5 ‰')
 
   // Publikálás után a LIVE oszlop az új értéket mutatja, a piszkozat-jelölő eltűnik.
   await expect(row).toContainText('5 ‰')
