@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-27T02:02:59.760Z
+generated_at: 2026-08-27T07:01:00.889Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -4913,21 +4913,21 @@ nodes:
     type: operational-receipt
     title: ReceiptPreviewModal.multiline.test.tsx
     source_path: frontend-react/src/components/electron/ReceiptPreviewModal.multiline.test.tsx
-    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a valuta-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), })) // Több-valutás (multi-line) v"
+    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a valuta-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty' }, useTranslation: () => ({ t: (k: string) =>"
     tags: [receiptpreviewmodal, multiline, test, tsx, import, render, from, testing, library, react]
     areas: [arfolyam, frontend, penztar]
   - id: 25f9aae30dcd1ff1
     type: operational-receipt
     title: ReceiptPreviewModal.transfer.test.tsx
     source_path: frontend-react/src/components/electron/ReceiptPreviewModal.transfer.test.tsx
-    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a transfer-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), })) const base: PrintReceiptData"
+    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' // A modal csak a header-címhez használ i18n-t; a transfer-tartalom literal magyar szöveg. vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty' }, useTranslation: () => ({ t: (k: string) ="
     tags: [receiptpreviewmodal, transfer, test, tsx, import, render, from, testing, library, react]
     areas: [ertektar, frontend]
   - id: ba6d11038991f082
     type: operational-receipt
     title: ReceiptPreviewModal.transferEnhancements.test.tsx
     source_path: frontend-react/src/components/electron/ReceiptPreviewModal.transferEnhancements.test.tsx
-    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }), })) const base: PrintReceiptData = { type: 'transfer', companyType: 'BEST_CHANGE', receiptNumber: 'AT-000042', branchCode:"
+    summary: "import { render } from '@testing-library/react' import { describe, it, expect, vi } from 'vitest' import ReceiptPreviewModal from './ReceiptPreviewModal' import type { PrintReceiptData } from '../../types/receipt' vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty' }, useTranslation: () => ({ t: (k: string) => k }), })) const base: PrintReceiptData = { type: 'transfer', companyType: 'BEST_CHANGE',"
     tags: [receiptpreviewmodal, transferenhancements, test, tsx, import, render, from, testing, library, react]
     areas: [cimletezes, ertektar, frontend]
   - id: cc1aaded3e412bd8
@@ -4976,14 +4976,14 @@ nodes:
     type: operational-receipt
     title: ReceiptTextSettingsPage.tsx
     source_path: frontend-react/src/pages/settings/ReceiptTextSettingsPage.tsx
-    summary: "import { useState, useEffect, useCallback } from 'react' import { Save, Loader2, RotateCcw, FileText } from 'lucide-react' import { systemParameterApi, type SystemParameter } from '../../services/api/settings' import { toast } from '../../components/ui/toaster' import { logger } from '../../utils/logger' interface ReceiptTextField { key: string label: string description: string multiline: boolean placeholder: string"
+    summary: "import { useState, useEffect, useCallback } from 'react' import { Save, Loader2, RotateCcw, FileText } from 'lucide-react' import { systemParameterApi, type SystemParameter } from '../../services/api/settings' import { toast } from '../../components/ui/toaster' import { logger } from '../../utils/logger' import i18n from '../../i18n' interface ReceiptTextField { key: string label: string description: string multiline"
     tags: [receipttextsettingspage, tsx, import, usestate, useeffect, usecallback, from, react, save, loader2]
     areas: [frontend, security]
   - id: 5c1c9e995db495cd
     type: semantic-reference
     title: LegacyCustomerPanel.test.tsx
     source_path: frontend-react/src/pages/transactions/components/LegacyCustomerPanel.test.tsx
-    summary: "import { render, screen } from '@testing-library/react' import userEvent from '@testing-library/user-event' import { vi, describe, beforeEach, it, expect } from 'vitest' import LegacyCustomerPanel from './LegacyCustomerPanel' vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, }), })) function renderPanel(onCustomerChange = vi.fn()) { const onCustomerAddressChange = vi.fn() const view"
+    summary: "import { render, screen } from '@testing-library/react' import userEvent from '@testing-library/user-event' import { vi, describe, beforeEach, it, expect } from 'vitest' import LegacyCustomerPanel from './LegacyCustomerPanel' vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty' }, useTranslation: () => ({ t: (key: string) => key, }), })) function renderPanel(onCustomerChange = vi.fn()) { const onCus"
     tags: [legacycustomerpanel, test, tsx, import, render, screen, from, testing, library, react]
     areas: [frontend, legacy]
   - id: 8649b8066423f842
