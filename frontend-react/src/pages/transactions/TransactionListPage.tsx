@@ -30,6 +30,7 @@ import { getBlobErrorMessage } from '../../utils/errorHandling'
 import { sanitizeSyncErrorMessage } from '../../utils/syncErrorSanitizer'
 import { classifyPendingSyncState } from '../../utils/pendingSyncState'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import i18n from '../../i18n'
 
 const PAGE_SIZE = 25
 const PENDING_TX_ID_OFFSET = 1_000_000
@@ -319,7 +320,7 @@ export default function TransactionListPage() {
             disabled={loading}
           >
             <CalendarDays size={16} />
-            Mai tranzakciók
+            {i18n.t('literals.mai-tranzakciok')}
           </button>
           <Link to="/transactions/new" className="form-button-primary flex items-center gap-1">
             <Plus size={16} />
@@ -490,7 +491,11 @@ export default function TransactionListPage() {
                       <td className="text-right font-mono font-semibold">
                         {formatNumber(tx.roundedHufAmount ?? tx.hufAmount, 0)} {t('common.ft')}
                       </td>
-                      <td>{tx.customerName || <span className="text-gray-400 italic">—</span>}</td>
+                      <td>
+                        {tx.customerName || (
+                          <span className="text-gray-400 italic">{i18n.t('literals.lit-8')}</span>
+                        )}
+                      </td>
                       <td>
                         {(() => {
                           // FK-SYNC (2026-06-02): ha a függő tételnél van tartós sync-hiba, PIROS
@@ -693,7 +698,9 @@ export default function TransactionListPage() {
                 <ChevronLeft size={14} />
               </button>
               <span className="font-mono text-xs">
-                {page + 1} / {Math.max(totalPages, 1)}
+                {page + 1}
+                {i18n.t('literals.lit-10')}
+                {Math.max(totalPages, 1)}
               </span>
               <button
                 className="form-button px-2 py-1"
@@ -732,32 +739,33 @@ export default function TransactionListPage() {
             onClick={(e) => e.stopPropagation()}
             data-testid="local-pending-detail"
           >
-            <h2 className="mb-2 text-lg font-bold text-gray-800">Helyi tétel részletei</h2>
+            <h2 className="mb-2 text-lg font-bold text-gray-800">
+              {i18n.t('literals.helyi-tetel-reszletei')}
+            </h2>
             <p className="mb-3 text-xs text-gray-500">
-              Ez a tétel még nem került fel a szerverre, ezért csak a helyben tárolt adatok
-              láthatók.
+              {i18n.t('literals.ez-a-tetel-meg-nem-kerult-fel-a-szerverr')}
             </p>
             <dl className="space-y-1 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">Típus</dt>
+                <dt className="text-gray-500">{i18n.t('literals.tipus')}</dt>
                 <dd className="font-mono">{localDetailTx.transactionType}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">Deviza</dt>
+                <dt className="text-gray-500">{i18n.t('literals.deviza-2')}</dt>
                 <dd className="font-mono">{localDetailTx.currencyCode}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">Összeg</dt>
+                <dt className="text-gray-500">{i18n.t('literals.osszeg')}</dt>
                 <dd className="font-mono">
                   {formatNumber(localDetailTx.foreignAmount, 2)} {localDetailTx.currencyCode}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">Árfolyam</dt>
+                <dt className="text-gray-500">{i18n.t('literals.arfolyam')}</dt>
                 <dd className="font-mono">{formatNumber(localDetailTx.exchangeRate, 4)}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">HUF</dt>
+                <dt className="text-gray-500">{i18n.t('literals.huf')}</dt>
                 <dd className="font-mono">
                   {formatNumber(localDetailTx.roundedHufAmount ?? localDetailTx.hufAmount, 0)}{' '}
                   {t('common.ft')}
@@ -765,7 +773,7 @@ export default function TransactionListPage() {
               </div>
               {localDetailTx.syncAttempts !== undefined && (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-gray-500">Küldési kísérletek</dt>
+                  <dt className="text-gray-500">{i18n.t('literals.kuldesi-kiserletek')}</dt>
                   <dd className="font-mono">{localDetailTx.syncAttempts}</dd>
                 </div>
               )}

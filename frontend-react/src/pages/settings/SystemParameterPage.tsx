@@ -7,6 +7,7 @@ import {
 } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function SystemParameterPage() {
   const { t } = useTranslation()
@@ -195,7 +196,7 @@ export default function SystemParameterPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Betöltés...</div>
+        <div className="text-gray-500">{i18n.t('literals.betoltes')}</div>
       </div>
     )
   }
@@ -312,15 +313,24 @@ export default function SystemParameterPage() {
             {lookupParameter && (
               <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
                 <div>
-                  <span className="text-gray-500">{t('organizations.kulcs2')}: </span>
+                  <span className="text-gray-500">
+                    {t('organizations.kulcs2')}
+                    {i18n.t('literals.lit-22')}
+                  </span>
                   <span className="font-mono">{lookupParameter.parameterKey}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">{t('fees.ertek')}: </span>
+                  <span className="text-gray-500">
+                    {t('fees.ertek')}
+                    {i18n.t('literals.lit-22')}
+                  </span>
                   <span className="font-mono">{lookupValue ?? lookupParameter.parameterValue}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">{t('common.category')}: </span>
+                  <span className="text-gray-500">
+                    {t('common.category')}
+                    {i18n.t('literals.lit-22')}
+                  </span>
                   <span>{lookupParameter.category}</span>
                 </div>
               </div>

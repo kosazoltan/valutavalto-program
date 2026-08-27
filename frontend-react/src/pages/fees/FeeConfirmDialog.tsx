@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import i18n from '../../i18n'
 
 interface Props {
   title: string
@@ -63,7 +64,7 @@ export default function FeeConfirmDialog({ title, text, onConfirm, onCancel }: P
             onClick={onCancel}
             className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Mégse
+            {i18n.t('literals.megse')}
           </button>
           <button
             ref={confirmRef}
@@ -71,7 +72,7 @@ export default function FeeConfirmDialog({ title, text, onConfirm, onCancel }: P
             onClick={onConfirm}
             className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
           >
-            Küldés megerősítése
+            {i18n.t('literals.kuldes-megerositese')}
           </button>
         </div>
       </div>

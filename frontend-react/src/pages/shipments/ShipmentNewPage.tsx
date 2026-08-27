@@ -22,6 +22,7 @@ import { toast } from '../../components/ui/toaster'
 import { getCompanyType } from '../../utils/localQueue'
 import { localIsoDate } from '../../utils/dateFormat'
 import type { PrintReceiptData } from '../../types/receipt'
+import i18n from '../../i18n'
 
 type FormState = {
   fromBranchId: string
@@ -523,9 +524,11 @@ export default function ShipmentNewPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
             <span className="form-label">
-              Átadó
+              {i18n.t('literals.atado')}
               {direction === 'outbound' && (
-                <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>
+                <span className="ml-1 text-xs text-gray-500">
+                  {i18n.t('literals.automatikus-on-ertektara')}
+                </span>
               )}
             </span>
             <select
@@ -534,7 +537,7 @@ export default function ShipmentNewPage() {
               disabled={disabled || direction === 'outbound'}
               onChange={(e) => patch({ fromBranchId: e.target.value })}
             >
-              <option value="">Válasszon átadót</option>
+              <option value="">{i18n.t('literals.valasszon-atadot')}</option>
               {vaultCounterparties ? (
                 // FK-013: 3-csoportos optgroup értéktáros user esetén
                 // Audit follow-up: defenzív `?? []` — ha a backend Jackson kihagy egy null
@@ -555,7 +558,9 @@ export default function ShipmentNewPage() {
                         .filter((b) => b.isActive !== false)
                         .map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.code} - {b.name}
+                            {b.code}
+                            {i18n.t('literals.lit-17')}
+                            {b.name}
                           </option>
                         ))}
                     </optgroup>
@@ -566,7 +571,9 @@ export default function ShipmentNewPage() {
                         .filter((b) => b.isActive !== false)
                         .map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.code} - {b.name}
+                            {b.code}
+                            {i18n.t('literals.lit-17')}
+                            {b.name}
                           </option>
                         ))}
                     </optgroup>
@@ -577,7 +584,9 @@ export default function ShipmentNewPage() {
                         .filter((b) => b.isActive !== false)
                         .map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.code} - {b.name}
+                            {b.code}
+                            {i18n.t('literals.lit-17')}
+                            {b.name}
                           </option>
                         ))}
                     </optgroup>
@@ -586,7 +595,9 @@ export default function ShipmentNewPage() {
               ) : (
                 branches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
-                    {branch.code} - {branch.name}
+                    {branch.code}
+                    {i18n.t('literals.lit-17')}
+                    {branch.name}
                   </option>
                 ))
               )}
@@ -594,9 +605,11 @@ export default function ShipmentNewPage() {
           </label>
           <label className="block">
             <span className="form-label">
-              Átvevő
+              {i18n.t('literals.atvevo')}
               {direction === 'inbound' && (
-                <span className="ml-1 text-xs text-gray-500">(automatikus — Ön értéktára)</span>
+                <span className="ml-1 text-xs text-gray-500">
+                  {i18n.t('literals.automatikus-on-ertektara')}
+                </span>
               )}
             </span>
             <select
@@ -605,7 +618,7 @@ export default function ShipmentNewPage() {
               disabled={disabled || direction === 'inbound'}
               onChange={(e) => patch({ toBranchId: e.target.value })}
             >
-              <option value="">Válasszon átvevőt</option>
+              <option value="">{i18n.t('literals.valasszon-atvevot')}</option>
               {vaultCounterparties ? (
                 // FK-013: 3-csoportos optgroup értéktáros user esetén
                 // Audit follow-up: defenzív `?? []` — ha a backend Jackson kihagy egy null
@@ -626,7 +639,9 @@ export default function ShipmentNewPage() {
                         .filter((b) => b.isActive !== false)
                         .map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.code} - {b.name}
+                            {b.code}
+                            {i18n.t('literals.lit-17')}
+                            {b.name}
                           </option>
                         ))}
                     </optgroup>
@@ -637,7 +652,9 @@ export default function ShipmentNewPage() {
                         .filter((b) => b.isActive !== false)
                         .map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.code} - {b.name}
+                            {b.code}
+                            {i18n.t('literals.lit-17')}
+                            {b.name}
                           </option>
                         ))}
                     </optgroup>
@@ -648,7 +665,9 @@ export default function ShipmentNewPage() {
                         .filter((b) => b.isActive !== false)
                         .map((b) => (
                           <option key={b.id} value={b.id}>
-                            {b.code} - {b.name}
+                            {b.code}
+                            {i18n.t('literals.lit-17')}
+                            {b.name}
                           </option>
                         ))}
                     </optgroup>
@@ -657,14 +676,16 @@ export default function ShipmentNewPage() {
               ) : (
                 branches.map((branch) => (
                   <option key={branch.id} value={branch.id}>
-                    {branch.code} - {branch.name}
+                    {branch.code}
+                    {i18n.t('literals.lit-17')}
+                    {branch.name}
                   </option>
                 ))
               )}
             </select>
           </label>
           <label className="block">
-            <span className="form-label">Kért kézbesítési dátum</span>
+            <span className="form-label">{i18n.t('literals.kert-kezbesitesi-datum')}</span>
             <input
               type="date"
               className="form-input"
@@ -693,17 +714,19 @@ export default function ShipmentNewPage() {
           )}
           {!isHufOnlyItem && (
             <label className="block">
-              <span className="form-label">Valuta</span>
+              <span className="form-label">{i18n.t('literals.valuta')}</span>
               <select
                 className="form-input"
                 value={form.currencyId}
                 disabled={disabled}
                 onChange={(e) => patch({ currencyId: e.target.value })}
               >
-                <option value="">Válasszon valutát</option>
+                <option value="">{i18n.t('literals.valasszon-valutat')}</option>
                 {currencies.map((currency) => (
                   <option key={currency.id} value={currency.id}>
-                    {currency.code} - {currency.name}
+                    {currency.code}
+                    {i18n.t('literals.lit-17')}
+                    {currency.name}
                   </option>
                 ))}
               </select>
@@ -735,9 +758,9 @@ export default function ShipmentNewPage() {
           {!isHufOnlyItem && (
             <label className="block">
               <span className="form-label">
-                Alkalmazott elszámoló árfolyam
+                {i18n.t('literals.alkalmazott-elszamolo-arfolyam')}
                 <span className="ml-1 text-xs text-gray-500">
-                  (automatikus — aktuális rendszer-árfolyam)
+                  {i18n.t('literals.automatikus-aktualis-rendszer-arfolyam')}
                 </span>
               </span>
               <input
@@ -758,11 +781,15 @@ export default function ShipmentNewPage() {
           <label className="block">
             <span className="form-label">
               {isHufOnlyItem ? 'Kerekített összeg' : 'Forintosított érték'}
-              <span className="ml-1 text-xs text-gray-500">(automatikus — 5 Ft-ra kerekítve)</span>
+              <span className="ml-1 text-xs text-gray-500">
+                {i18n.t('literals.automatikus-5-ft-ra-kerekitve')}
+              </span>
               {isHandlingFee && calculatedHandlingFee != null && (
                 <span className="ml-1 text-xs text-gray-500">
-                  — {t('shipments.szamitottKezelesiDij')}:{' '}
-                  {calculatedHandlingFee.toLocaleString('hu-HU')} Ft
+                  {i18n.t('literals.lit-55')}
+                  {t('shipments.szamitottKezelesiDij')}
+                  {i18n.t('literals.lit-7')} {calculatedHandlingFee.toLocaleString('hu-HU')}
+                  {i18n.t('literals.ft')}
                 </span>
               )}
             </span>
@@ -781,7 +808,8 @@ export default function ShipmentNewPage() {
           {/* FK02 (FR-1..3): szállító neve + plombaszám — KÖTELEZŐ az átadás-átvételnél. */}
           <label className="block">
             <span className="form-label">
-              Szállító neve <span className="text-red-500">*</span>
+              {i18n.t('literals.szallito-neve')}
+              <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
             </span>
             <input
               type="text"
@@ -795,7 +823,8 @@ export default function ShipmentNewPage() {
           </label>
           <label className="block">
             <span className="form-label">
-              Plombaszám <span className="text-red-500">*</span>
+              {i18n.t('literals.plombaszam-2')}
+              <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
             </span>
             <input
               type="text"
@@ -808,7 +837,7 @@ export default function ShipmentNewPage() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className="form-label">Megjegyzés</span>
+            <span className="form-label">{i18n.t('literals.megjegyzes')}</span>
             <textarea
               className="form-input min-h-24"
               value={form.notes}
@@ -818,7 +847,7 @@ export default function ShipmentNewPage() {
           </label>
           <div className="md:col-span-2 rounded border border-gray-200 p-3">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <span className="form-label mb-0">Címletezés</span>
+              <span className="form-label mb-0">{i18n.t('literals.cimletezes')}</span>
               <button
                 type="button"
                 className="form-button flex items-center gap-2"
@@ -827,7 +856,8 @@ export default function ShipmentNewPage() {
                   setDenominations((current) => [...current, { quantity: '', faceValue: '' }])
                 }
               >
-                <Plus size={16} /> Sor hozzáadása
+                <Plus size={16} />
+                {i18n.t('literals.sor-hozzaadasa')}
               </button>
             </div>
             {denominations.length > 0 && (

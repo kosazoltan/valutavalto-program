@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
+import i18n from '../../i18n'
 
 export default function ContributionPage() {
   const { t } = useTranslation()
@@ -94,7 +95,9 @@ export default function ContributionPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (
@@ -139,7 +142,7 @@ export default function ContributionPage() {
               className="form-button flex min-h-10 items-center justify-center gap-2"
             >
               <Calculator size={16} />
-              Időszaki számítás
+              {i18n.t('literals.idoszaki-szamitas')}
             </button>
           </div>
           <div>
@@ -189,7 +192,9 @@ export default function ContributionPage() {
                     <td>{c.workerFullName}</td>
                     <td>{c.branchName || '-'}</td>
                     <td>
-                      {c.periodStart} - {c.periodEnd}
+                      {c.periodStart}
+                      {i18n.t('literals.lit-17')}
+                      {c.periodEnd}
                     </td>
                     <td>{c.contributionTypeName}</td>
                     <td className="font-mono">
@@ -227,45 +232,49 @@ export default function ContributionPage() {
       {selectedContribution && (
         <div className="form-panel" data-testid="contribution-detail-panel">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-gray-800">Járulék részletei</h2>
+            <h2 className="text-base font-semibold text-gray-800">
+              {i18n.t('literals.jarulek-reszletei')}
+            </h2>
             <button
               type="button"
               className="form-button h-8 text-xs"
               onClick={() => setSelectedContribution(null)}
             >
-              Bezárás
+              {i18n.t('literals.bezaras')}
             </button>
           </div>
           <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
             <div>
-              <dt className="text-gray-500">Dolgozó</dt>
+              <dt className="text-gray-500">{i18n.t('literals.dolgozo-2')}</dt>
               <dd className="font-medium text-gray-900">{selectedContribution.workerFullName}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Időszak</dt>
+              <dt className="text-gray-500">{i18n.t('literals.idoszak')}</dt>
               <dd className="font-medium text-gray-900">
-                {selectedContribution.periodStart} - {selectedContribution.periodEnd}
+                {selectedContribution.periodStart}
+                {i18n.t('literals.lit-17')}
+                {selectedContribution.periodEnd}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Státusz</dt>
+              <dt className="text-gray-500">{i18n.t('literals.statusz')}</dt>
               <dd className="font-medium text-gray-900">{selectedContribution.statusName}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Tranzakciók</dt>
+              <dt className="text-gray-500">{i18n.t('literals.tranzakciok')}</dt>
               <dd className="font-mono text-gray-900">
                 {formatInteger(selectedContribution.transactionCount ?? 0)}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Teljes volumen</dt>
+              <dt className="text-gray-500">{i18n.t('literals.teljes-volumen')}</dt>
               <dd className="font-mono text-gray-900">
                 {formatInteger(selectedContribution.totalVolume ?? 0)}{' '}
                 {selectedContribution.currencyCode}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Számítás dátuma</dt>
+              <dt className="text-gray-500">{i18n.t('literals.szamitas-datuma')}</dt>
               <dd className="font-medium text-gray-900">{selectedContribution.calculationDate}</dd>
             </div>
           </dl>

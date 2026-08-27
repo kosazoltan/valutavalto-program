@@ -17,7 +17,12 @@ vi.mock('../services/api/index', () => ({
   clearPersistedToken: vi.fn().mockResolvedValue(undefined),
 }))
 
-const ALL_APP_MODES: MenuVisibilityContext['appMode'][] = ['full', 'penztar', 'ertektar', 'rate-maker']
+const ALL_APP_MODES: MenuVisibilityContext['appMode'][] = [
+  'full',
+  'penztar',
+  'ertektar',
+  'rate-maker',
+]
 
 function courierCtx(appMode: MenuVisibilityContext['appMode']): MenuVisibilityContext {
   return {
@@ -49,7 +54,10 @@ describe('HOLDOUT H3 — ertekszallito menü-univerzum söprés + legacy fallbac
       const visibleItems = menuGroups.flatMap((g) =>
         g.items.filter((i) => isMenuItemVisible(i, g, ctx)),
       )
-      expect(visibleItems.map((i) => i.path), `item-láthatóság mode=${mode}`).toEqual([])
+      expect(
+        visibleItems.map((i) => i.path),
+        `item-láthatóság mode=${mode}`,
+      ).toEqual([])
     }
   })
 

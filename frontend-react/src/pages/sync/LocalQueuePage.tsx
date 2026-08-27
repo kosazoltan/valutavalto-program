@@ -16,6 +16,7 @@ import { isElectron } from '../../utils/electron'
 import type { BankTransaction, Transfer } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function LocalQueuePage() {
   const { t } = useTranslation()
@@ -94,7 +95,9 @@ export default function LocalQueuePage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (
@@ -214,7 +217,10 @@ export default function LocalQueuePage() {
                 {bankTransactions.map((transaction) => (
                   <tr key={`bank-${transaction.id}`}>
                     <td>{t('sync.bank')}</td>
-                    <td className="font-mono">#{Math.abs(transaction.id)}</td>
+                    <td className="font-mono">
+                      {i18n.t('literals.lit-12')}
+                      {Math.abs(transaction.id)}
+                    </td>
                     <td>
                       {transaction.transactionType} {transaction.currencyCode}{' '}
                       {transaction.amount.toLocaleString('hu-HU')}

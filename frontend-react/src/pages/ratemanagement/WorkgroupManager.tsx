@@ -19,6 +19,7 @@ import {
   ConfirmDialog,
   type ConfirmState,
 } from '../rates/workgroupMaintenance'
+import i18n from '../../i18n'
 
 // FK-02 pont 4: alapértelmezett táblázatstruktúra (J–S oszlopok). A részletes működés (képletezés,
 // árfolyamvédelem, kedvezménysávok) külön fejlesztési kérés — itt csak a struktúrát jelenítjük meg.
@@ -184,23 +185,24 @@ export default function WorkgroupManager() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Munkacsoportok
+            {i18n.t('literals.munkacsoportok')}
           </h2>
           <button
             className="form-button inline-flex items-center gap-1 px-3 py-1.5 text-sm"
             onClick={openCreate}
           >
-            <Plus className="h-4 w-4" /> Új munkacsoport
+            <Plus className="h-4 w-4" />
+            {i18n.t('literals.uj-munkacsoport')}
           </button>
         </div>
 
         {error && <div className="form-error">{error}</div>}
 
         {loading ? (
-          <p>Betöltés…</p>
+          <p>{i18n.t('literals.betoltes-3')}</p>
         ) : workgroups.length === 0 ? (
           <p className="text-gray-500">
-            Még nincs munkacsoport. Hozzon létre egyet az „Új munkacsoport” gombbal.
+            {i18n.t('literals.meg-nincs-munkacsoport-hozzon-letre-egye')}
           </p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -233,7 +235,7 @@ export default function WorkgroupManager() {
                         className="h-3.5 w-3.5"
                         aria-label={`Árfolyamvédelem a(z) ${wg.name} csoporton`}
                       />
-                      VÉDELEM
+                      {i18n.t('literals.vedelem')}
                     </label>
                   </div>
                   <div className="mt-2 text-sm font-medium truncate" title={wg.name}>
@@ -272,7 +274,8 @@ export default function WorkgroupManager() {
             className="form-button-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm"
             onClick={() => setSelected(null)}
           >
-            <ArrowLeft className="h-4 w-4" /> Vissza
+            <ArrowLeft className="h-4 w-4" />
+            {i18n.t('literals.vissza')}
           </button>
           <span
             className={`inline-flex items-center rounded px-2 py-1 text-sm font-bold border ${tileClasses(selected.tileColor)}`}
@@ -280,20 +283,26 @@ export default function WorkgroupManager() {
             {selected.legacyGroupNumber ?? '—'}
           </span>
           <h2 className="text-lg font-semibold">{selected.name}</h2>
-          <span className="text-sm text-gray-500">({selected.code})</span>
+          <span className="text-sm text-gray-500">
+            {i18n.t('literals.lit-19')}
+            {selected.code}
+            {i18n.t('literals.lit-2')}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
             className="form-button-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm"
             onClick={() => openRename(selected)}
           >
-            <Pencil className="h-4 w-4" /> Átnevezés / szín
+            <Pencil className="h-4 w-4" />
+            {i18n.t('literals.atnevezes-szin')}
           </button>
           <button
             className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100"
             onClick={() => requestDelete(selected)}
           >
-            <Trash2 className="h-4 w-4" /> Törlés
+            <Trash2 className="h-4 w-4" />
+            {i18n.t('literals.torles-2')}
           </button>
         </div>
       </div>
@@ -385,11 +394,16 @@ function BranchAssignment({
       },
     })
 
-  if (loading) return <p className="text-sm text-gray-500">Pénztárak betöltése…</p>
+  if (loading)
+    return <p className="text-sm text-gray-500">{i18n.t('literals.penztarak-betoltese')}</p>
 
   return (
     <div className="rounded-lg border bg-card p-3">
-      <h3 className="text-sm font-semibold mb-2">Pénztárak ({assigned.length})</h3>
+      <h3 className="text-sm font-semibold mb-2">
+        {i18n.t('literals.penztarak')}
+        {assigned.length}
+        {i18n.t('literals.lit-2')}
+      </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
         {branches.map((b) => (
           <div
@@ -437,10 +451,12 @@ function DefaultRateTable() {
   return (
     <div className="rounded-lg border bg-card p-3 overflow-x-auto">
       <h3 className="text-sm font-semibold mb-2">
-        Árfolyamlap-struktúra ({currencies.length} valuta)
+        {i18n.t('literals.arfolyamlap-struktura')}
+        {currencies.length}
+        {i18n.t('literals.valuta-3')}
       </h3>
       <p className="text-xs text-gray-500 mb-2">
-        A részletes képletezés és árfolyamvédelem külön fejlesztési kérés tárgya lesz.
+        {i18n.t('literals.a-reszletes-kepletezes-es-arfolyamvedele')}
       </p>
       <table className="w-full text-xs border-collapse">
         <thead>
@@ -460,7 +476,7 @@ function DefaultRateTable() {
                   {c.col === 'K' ? (
                     <span className="font-mono font-semibold">{cur.code}</span>
                   ) : (
-                    <span className="text-gray-300">—</span>
+                    <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                   )}
                 </td>
               ))}

@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function NotificationPage() {
   const { t } = useTranslation()
@@ -219,15 +220,15 @@ export default function NotificationPage() {
             />
           </div>
           <div>
-            <label className="form-label">Küldési mód</label>
+            <label className="form-label">{i18n.t('literals.kuldesi-mod')}</label>
             <select
               className="form-input"
               value={sendForm.channel}
               onChange={(e) => setSendForm({ ...sendForm, channel: e.target.value })}
               data-testid="notification-channel"
             >
-              <option value="email">In-app + email</option>
-              <option value="in-app">Csak in-app</option>
+              <option value="email">{i18n.t('literals.in-app-email')}</option>
+              <option value="in-app">{i18n.t('literals.csak-in-app')}</option>
             </select>
           </div>
           <div className="flex gap-2">
@@ -284,7 +285,7 @@ export default function NotificationPage() {
       {/* Table */}
       <div className="form-panel">
         {loading ? (
-          <div>Betöltés...</div>
+          <div>{i18n.t('literals.betoltes')}</div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-gray-500 py-4">{t('notifications.nincsErtesites')}</div>
         ) : (

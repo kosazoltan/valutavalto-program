@@ -6,6 +6,7 @@ import {
 } from '../../services/api/settings'
 import { logger } from '../../utils/logger'
 import FeeConfirmDialog from './FeeConfirmDialog'
+import i18n from '../../i18n'
 
 const formatHuf = (value: number) => `${value.toLocaleString('hu-HU')} Ft`
 
@@ -78,14 +79,14 @@ export default function CommonBracketEditor() {
     <div className="mt-3">
       <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
       {rows.length === 0 ? (
-        <p className="text-xs text-gray-500">Nincs sáv.</p>
+        <p className="text-xs text-gray-500">{i18n.t('literals.nincs-sav')}</p>
       ) : (
         <table className="mt-1 w-full text-left text-xs">
           <thead>
             <tr className="border-b text-gray-500">
-              <th className="py-1 pr-2 font-medium">Sáv</th>
-              <th className="py-1 pr-2 font-medium">Felső határ</th>
-              <th className="py-1 font-medium">Díj</th>
+              <th className="py-1 pr-2 font-medium">{i18n.t('literals.sav')}</th>
+              <th className="py-1 pr-2 font-medium">{i18n.t('literals.felso-hatar')}</th>
+              <th className="py-1 font-medium">{i18n.t('literals.dij')}</th>
             </tr>
           </thead>
           <tbody>
@@ -104,19 +105,21 @@ export default function CommonBracketEditor() {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="text-base font-semibold text-gray-800">Közös kezelési díj sávok</h2>
+      <h2 className="text-base font-semibold text-gray-800">
+        {i18n.t('literals.kozos-kezelesi-dij-savok')}
+      </h2>
 
       {renderTable('Éles (LIVE) sávok', set.live)}
       {set.draft.length > 0 && renderTable('Piszkozat (DRAFT) sávok', set.draft)}
 
       <div className="mt-4">
-        <h3 className="text-sm font-semibold text-gray-700">Szerkesztés</h3>
+        <h3 className="text-sm font-semibold text-gray-700">{i18n.t('literals.szerkesztes-2')}</h3>
         <table className="mt-1 w-full text-left text-xs">
           <thead>
             <tr className="border-b text-gray-500">
-              <th className="py-1 pr-2 font-medium">Sáv</th>
-              <th className="py-1 pr-2 font-medium">Felső határ (Ft)</th>
-              <th className="py-1 font-medium">Díj (Ft)</th>
+              <th className="py-1 pr-2 font-medium">{i18n.t('literals.sav')}</th>
+              <th className="py-1 pr-2 font-medium">{i18n.t('literals.felso-hatar-ft')}</th>
+              <th className="py-1 font-medium">{i18n.t('literals.dij-ft')}</th>
             </tr>
           </thead>
           <tbody>
@@ -152,7 +155,7 @@ export default function CommonBracketEditor() {
           onClick={() => setDraftRows((rows) => [...rows, { ...EMPTY_ROW }])}
           className="mt-2 rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-50"
         >
-          + Új sáv
+          {i18n.t('literals.uj-sav')}
         </button>
       </div>
 
@@ -173,7 +176,7 @@ export default function CommonBracketEditor() {
           disabled={publishing || (set.draft.length === 0 && draftRows.length === 0)}
           className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
         >
-          Küldés
+          {i18n.t('literals.kuldes')}
         </button>
       </div>
 

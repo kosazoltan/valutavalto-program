@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { useTranslation } from 'react-i18next'
 import DocumentImagePair from './DocumentImagePair'
+import i18n from '../../i18n'
 
 type DocType = 'szemelyi' | 'utlevel' | 'jogositvany' | 'egyeb'
 
@@ -219,12 +220,12 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
           <button type="button" onClick={() => void captureSide('front')} className="form-button">
             <Camera size={16} />
             {t('documents.okmanyCaptureElolap')}
-            {frontPath && <span className="ml-2 text-green-600">✓</span>}
+            {frontPath && <span className="ml-2 text-green-600">{i18n.t('literals.lit-6')}</span>}
           </button>
           <button type="button" onClick={() => void captureSide('back')} className="form-button">
             <Camera size={16} />
             {t('documents.okmanyCaptureHatlap')}
-            {backPath && <span className="ml-2 text-green-600">✓</span>}
+            {backPath && <span className="ml-2 text-green-600">{i18n.t('literals.lit-6')}</span>}
           </button>
           <button
             type="button"
@@ -241,12 +242,20 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
           <div className="rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-600">
             {frontPath && (
               <div>
-                <strong>{t('documents.elolap')}:</strong> {frontPath}
+                <strong>
+                  {t('documents.elolap')}
+                  {i18n.t('literals.lit-7')}
+                </strong>{' '}
+                {frontPath}
               </div>
             )}
             {backPath && (
               <div>
-                <strong>{t('documents.hatlap')}:</strong> {backPath}
+                <strong>
+                  {t('documents.hatlap')}
+                  {i18n.t('literals.lit-7')}
+                </strong>{' '}
+                {backPath}
               </div>
             )}
           </div>
@@ -261,7 +270,7 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
           {loadingDocs ? (
             <p className="text-sm text-gray-400">{t('documents.nagyitasBetoltes')}</p>
           ) : registeredDocs.length === 0 ? (
-            <p className="text-sm text-gray-400">—</p>
+            <p className="text-sm text-gray-400">{i18n.t('literals.lit-8')}</p>
           ) : (
             <ul className="space-y-2">
               {registeredDocs.map((doc) => (
@@ -272,7 +281,9 @@ export default function DocumentPairCapture({ customerId }: DocumentPairCaptureP
                   <div className="min-w-0">
                     <p className="break-words font-medium text-gray-900">{doc.fileName}</p>
                     <p className="text-xs text-gray-500">
-                      {doc.documentType} · {new Date(doc.scannedAt).toLocaleString('hu-HU')}
+                      {doc.documentType}
+                      {i18n.t('literals.lit-9')}
+                      {new Date(doc.scannedAt).toLocaleString('hu-HU')}
                     </p>
                   </div>
                   {(doc.hasFrontImage || doc.hasBackImage) && (

@@ -3,6 +3,7 @@ import { Percent, Plus, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface Workgroup {
   id: string
@@ -101,7 +102,10 @@ export default function DiscountLevelEditor() {
         >
           {workgroups.map((wg) => (
             <option key={wg.id} value={wg.id}>
-              {wg.name} ({wg.code})
+              {wg.name}
+              {i18n.t('literals.lit')}
+              {wg.code}
+              {i18n.t('literals.lit-2')}
             </option>
           ))}
         </select>
@@ -188,7 +192,7 @@ export default function DiscountLevelEditor() {
       )}
 
       {loading ? (
-        <p>Betöltés...</p>
+        <p>{i18n.t('literals.betoltes')}</p>
       ) : discounts.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {t('ratemanagement.nincsKedvezmenySzintMax3SzintAdhatoHozza')}
@@ -208,7 +212,8 @@ export default function DiscountLevelEditor() {
                     {t('ratemanagement.vetel')}
                     {d.buyDiscountPercent}
                     {t('ratemanagement.eladas')}
-                    {d.sellDiscountPercent}%
+                    {d.sellDiscountPercent}
+                    {i18n.t('literals.lit-30')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

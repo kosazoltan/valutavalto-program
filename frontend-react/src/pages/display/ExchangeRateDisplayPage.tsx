@@ -10,6 +10,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '@/utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface DisplayForm {
   displayName: string
@@ -207,7 +208,7 @@ export default function ExchangeRateDisplayPage() {
       {/* Form */}
       {showForm && (
         <div className="form-panel space-y-3 border-2 border-blue-200">
-          <h2 className="font-semibold">Kijelző szerkesztése</h2>
+          <h2 className="font-semibold">{i18n.t('literals.kijelzo-szerkesztese')}</h2>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="form-label">{t('display.kijelzoNeve')}</label>
@@ -240,7 +241,7 @@ export default function ExchangeRateDisplayPage() {
               >
                 <option value="SERIAL">{t('display.sorosPort')}</option>
                 <option value="TCP">{t('display.tcpIp')}</option>
-                <option value="USB">USB</option>
+                <option value="USB">{i18n.t('literals.usb')}</option>
               </select>
             </div>
             {form.connectionType === 'SERIAL' && (
@@ -348,7 +349,10 @@ export default function ExchangeRateDisplayPage() {
                 value={form.brightness}
                 onChange={(e) => setForm({ ...form, brightness: Number(e.target.value) })}
               />
-              <span className="text-sm ml-2">{form.brightness}%</span>
+              <span className="text-sm ml-2">
+                {form.brightness}
+                {i18n.t('literals.lit-30')}
+              </span>
             </div>
             <div className="col-span-3 flex gap-4">
               <label className="flex items-center gap-1">
@@ -404,7 +408,7 @@ export default function ExchangeRateDisplayPage() {
 
       {/* Table */}
       {loading ? (
-        <div>Betöltés...</div>
+        <div>{i18n.t('literals.betoltes')}</div>
       ) : (
         <div className="form-panel">
           {safeArray(displays).length === 0 ? (
@@ -436,8 +440,11 @@ export default function ExchangeRateDisplayPage() {
                       <td className="text-sm">
                         {d.connectionType || 'SERIAL'} {d.comPort || d.ipAddress || ''}
                       </td>
-                      {/* eslint-disable-next-line i18next/no-literal-string */}
-                      <td>{d.refreshInterval}s</td>
+                      { }
+                      <td>
+                        {d.refreshInterval}
+                        {i18n.t('literals.s')}
+                      </td>
                       <td>
                         <span className={`badge ${d.isActive ? 'badge-green' : 'badge-gray'}`}>
                           {d.isActive ? (

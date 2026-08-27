@@ -34,6 +34,7 @@ import { ownCompanyApi, type OwnCompany } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 /**
  * v2.3.36 (Sourcery #299 P3): Type-safe field whitelist a SettingsPage company
@@ -170,7 +171,7 @@ export default function SettingsPage() {
               {companyLoading && (
                 <div className="flex items-center gap-2 text-gray-500">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Betöltés...</span>
+                  <span>{i18n.t('literals.betoltes')}</span>
                 </div>
               )}
               {!companyLoading && !companyData && (
@@ -332,7 +333,9 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <h2 className="section-title">{t('settings.adatbazis')}</h2>
               <div className="bg-green-50 p-3 rounded border border-green-200">
-                <span className="text-green-800">Kapcsolat: OK | PostgreSQL 15.2</span>
+                <span className="text-green-800">
+                  {i18n.t('literals.kapcsolat-ok-postgresql-15-2')}
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -430,7 +433,7 @@ export default function SettingsPage() {
                   <label className="form-label">{t('settings.datumFormatum')}</label>
                   <select className="form-input w-48">
                     <option>{t('settings.eeeeHhNn')}</option>
-                    <option>ÉÉÉÉ.HH.NN</option>
+                    <option>{i18n.t('literals.eeee-hh-nn')}</option>
                     <option>{t('settings.nnHhEeee')}</option>
                   </select>
                 </div>

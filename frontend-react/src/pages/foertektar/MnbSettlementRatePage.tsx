@@ -5,6 +5,7 @@ import { mnbSettlementRateApi, type MnbSettlementRateRow } from '../../services/
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 type RateRowState = MnbSettlementRateRow & {
   current: number | null
@@ -102,7 +103,9 @@ export default function MnbSettlementRatePage() {
     try {
       setQuerying(true)
       const preview = await mnbSettlementRateApi.mnbQuery()
-      const byCode = new Map(preview.map((rate) => [rate.currencyCode, toNumber(rate.officialRate)]))
+      const byCode = new Map(
+        preview.map((rate) => [rate.currencyCode, toNumber(rate.officialRate)]),
+      )
       setRows((current) =>
         current.map((row) => {
           if (row.currencyCode === 'HUF') return row
@@ -142,7 +145,7 @@ export default function MnbSettlementRatePage() {
     <div className="space-y-4">
       <h1 className="text-xl font-bold flex items-center gap-2">
         <TrendingUp />
-        MNB árfolyamok rögzítése
+        {i18n.t('literals.mnb-arfolyamok-rogzitese')}
       </h1>
 
       <div className="form-panel flex flex-wrap gap-3 items-center">
@@ -153,7 +156,7 @@ export default function MnbSettlementRatePage() {
           type="button"
         >
           <Download size={16} className={querying ? 'animate-spin' : ''} />
-          MNB letöltés
+          {i18n.t('literals.mnb-letoltes')}
         </button>
         <button
           className="form-button-primary"
@@ -162,7 +165,7 @@ export default function MnbSettlementRatePage() {
           type="button"
         >
           <Save size={16} />
-          Rögzítés
+          {i18n.t('literals.rogzites')}
         </button>
         <button
           className="form-button-primary"
@@ -171,11 +174,11 @@ export default function MnbSettlementRatePage() {
           type="button"
         >
           <Send size={16} />
-          Rögzítés + Küldés irodáknak
+          {i18n.t('literals.rogzites-kuldes-irodaknak')}
         </button>
         {!canEdit && (
           <span className="text-sm text-gray-600">
-            Olvasási mód: a rögzítés csak főértéktáros szerepkörrel engedélyezett.
+            {i18n.t('literals.olvasasi-mod-a-rogzites-csak-foertektaro')}
           </span>
         )}
       </div>
@@ -188,18 +191,20 @@ export default function MnbSettlementRatePage() {
 
       <div className="form-panel overflow-x-auto">
         {loading ? (
-          <div className="text-center text-gray-500 py-4">Betöltés...</div>
+          <div className="text-center text-gray-500 py-4">{i18n.t('literals.betoltes')}</div>
         ) : rows.length === 0 ? (
-          <div className="text-center text-gray-500 py-4">Nincs aktív valuta.</div>
+          <div className="text-center text-gray-500 py-4">
+            {i18n.t('literals.nincs-aktiv-valuta')}
+          </div>
         ) : (
           <table className="data-grid w-full text-sm" data-testid="mnb-settlement-grid">
             <thead>
               <tr>
-                <th>Kód</th>
-                <th>Név</th>
-                <th className="text-right">MNB árfolyam</th>
-                <th>Figyelmeztetés</th>
-                <th>Kiküldve</th>
+                <th>{i18n.t('literals.kod-3')}</th>
+                <th>{i18n.t('literals.nev')}</th>
+                <th className="text-right">{i18n.t('literals.mnb-arfolyam')}</th>
+                <th>{i18n.t('literals.figyelmeztetes')}</th>
+                <th>{i18n.t('literals.kikuldve')}</th>
               </tr>
             </thead>
             <tbody>
@@ -234,10 +239,10 @@ export default function MnbSettlementRatePage() {
                           data-testid={`rate-warning-${row.currencyCode}`}
                           title="10%-nál nagyobb eltérés az előző árfolyamhoz képest"
                         >
-                          &gt;10% eltérés
+                          {i18n.t('literals.10-elteres')}
                         </span>
                       ) : (
-                        <span className="text-gray-400">–</span>
+                        <span className="text-gray-400">{i18n.t('literals.lit-36')}</span>
                       )}
                     </td>
                     <td>

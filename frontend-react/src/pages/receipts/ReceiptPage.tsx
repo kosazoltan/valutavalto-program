@@ -30,6 +30,7 @@ import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
 import type { PrintReceiptData, TransactionReceiptLine } from '../../types/receipt'
 import type { Worker } from '../../stores/authStore'
+import i18n from '../../i18n'
 
 // A backend Receipt.receiptType = TransactionType.name() (enum-név). Magyar megjelenítő-címkék, hogy a
 // tábla/részletek a típus-szűrővel konzisztens, olvasható szöveget mutassanak (a TransactionType.java
@@ -638,7 +639,9 @@ export default function ReceiptPage() {
   )
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (
@@ -654,7 +657,7 @@ export default function ReceiptPage() {
         <div className="mb-3 flex flex-wrap items-end gap-2 border-b pb-3">
           <div className="min-w-[220px]">
             <label className="form-label" htmlFor="closing-pdf-id">
-              Zárás azonosító
+              {i18n.t('literals.zaras-azonosito')}
             </label>
             <input
               id="closing-pdf-id"
@@ -882,13 +885,13 @@ export default function ReceiptPage() {
                             className="text-xs font-semibold text-red-800"
                             data-testid={`draft-manual-required-${draft.id}`}
                           >
-                            A rendszer már nem próbálkozik automatikusan — kézi újraküldés
-                            szükséges.
+                            {i18n.t('literals.a-rendszer-mar-nem-probalkozik-automatik')}
                           </span>
                         )}
                         {typeof draft.syncAttempts === 'number' && draft.syncAttempts > 0 && (
                           <span className="text-xs text-gray-500">
-                            Sikertelen kísérletek: {draft.syncAttempts}
+                            {i18n.t('literals.sikertelen-kiserletek')}
+                            {draft.syncAttempts}
                           </span>
                         )}
                       </div>
@@ -925,7 +928,7 @@ export default function ReceiptPage() {
                             size={12}
                             className={retryingDraftIds.has(draft.id) ? 'animate-spin' : ''}
                           />
-                          Újraküldés
+                          {i18n.t('literals.ujrakuldes')}
                         </button>
                       )}
                     </div>
@@ -1073,7 +1076,7 @@ export default function ReceiptPage() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">{t('receipts.bizonylatReszletek')}</h2>
               <button onClick={() => setSelectedReceipt(null)} className="text-gray-500">
-                X
+                {i18n.t('literals.x-2')}
               </button>
             </div>
             <div className="space-y-2">

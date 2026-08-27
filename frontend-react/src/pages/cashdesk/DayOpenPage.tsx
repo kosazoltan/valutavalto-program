@@ -8,6 +8,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { clearPersistedToken } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 /** HUF cimletek — csökkeno sorrendben */
 const HUF_DENOMINATIONS = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5] as const
@@ -155,7 +156,7 @@ export default function DayOpenPage() {
     return (
       <div className="flex flex-1 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-3 text-lg text-gray-600">Betöltés...</span>
+        <span className="ml-3 text-lg text-gray-600">{i18n.t('literals.betoltes')}</span>
       </div>
     )
   }
@@ -209,11 +210,14 @@ export default function DayOpenPage() {
           >
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-amber-900">
               <AlertTriangle className="h-4 w-4" />
-              Napnyitási figyelmeztetés
+              {i18n.t('literals.napnyitasi-figyelmeztetes')}
             </div>
             <ul className="space-y-1 text-xs text-amber-800">
               {openWarnings.map((warning) => (
-                <li key={warning}>- {warning}</li>
+                <li key={warning}>
+                  {i18n.t('literals.lit-26')}
+                  {warning}
+                </li>
               ))}
             </ul>
           </div>
@@ -224,7 +228,7 @@ export default function DayOpenPage() {
           data-testid="daily-reversal-count"
         >
           <div className="flex items-center justify-between gap-3">
-            <span className="font-semibold text-slate-600">Mai sztornók</span>
+            <span className="font-semibold text-slate-600">{i18n.t('literals.mai-sztornok')}</span>
             <span className="font-mono text-sm font-bold text-slate-900">
               {reversalCount ?? '-'}
             </span>
@@ -238,7 +242,7 @@ export default function DayOpenPage() {
             data-testid="session-opening-balances"
           >
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-green-700">
-              Backend nyitó készlet
+              {i18n.t('literals.backend-nyito-keszlet')}
             </h3>
             <div className="grid grid-cols-2 gap-x-3">
               {sessionOpeningBalanceRows.map(([currencyCode, amount]) => (
@@ -266,7 +270,7 @@ export default function DayOpenPage() {
             {/* HUF balance — highlighted */}
             {hufBalance && (
               <div className="mb-1 flex items-center justify-between rounded bg-blue-50 px-2 py-1">
-                <span className="text-sm font-bold text-blue-900">HUF</span>
+                <span className="text-sm font-bold text-blue-900">{i18n.t('literals.huf')}</span>
                 <span className="text-sm font-bold text-blue-900">
                   {hufBalance.currentBalance.toLocaleString('hu-HU')} {t('common.ft')}
                 </span>
@@ -327,7 +331,8 @@ export default function DayOpenPage() {
                   {/* Codex P2 #347: min-w-0 kell a truncate-hez, mert flex item default
                         min-width: auto megakadalyozza a shrink-et a tartalom alá. */}
                   <span className="min-w-0 flex-1 text-xs text-gray-500 truncate">
-                    = {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')}{' '}
+                    {i18n.t('literals.lit-27')}
+                    {(faceValue * (denomQuantities[faceValue] ?? 0)).toLocaleString('hu-HU')}{' '}
                     {t('common.ft')}
                   </span>
                 </div>
@@ -366,7 +371,7 @@ export default function DayOpenPage() {
           {opening ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Megnyitás...
+              {i18n.t('literals.megnyitas')}
             </span>
           ) : (
             'Nap megnyitása'

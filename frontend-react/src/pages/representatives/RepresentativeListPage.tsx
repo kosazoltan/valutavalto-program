@@ -8,6 +8,7 @@ import {
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function RepresentativeListPage() {
   const { t } = useTranslation()
@@ -56,7 +57,10 @@ export default function RepresentativeListPage() {
             <Users />
             {t('customers.meghatalmazottak')}
             {customerName && (
-              <span className="text-base font-normal text-gray-500">— {customerName}</span>
+              <span className="text-base font-normal text-gray-500">
+                {i18n.t('literals.lit-55')}
+                {customerName}
+              </span>
             )}
           </h1>
         </div>
@@ -83,7 +87,7 @@ export default function RepresentativeListPage() {
       {loading ? (
         <div className="form-panel flex items-center justify-center py-8 text-gray-500 gap-2">
           <Loader2 size={18} className="animate-spin" />
-          Betöltés...
+          {i18n.t('literals.betoltes')}
         </div>
       ) : representatives.length === 0 ? (
         <div className="form-panel text-center py-8 text-gray-500">
@@ -102,7 +106,8 @@ export default function RepresentativeListPage() {
                     <p className="truncate text-lg font-bold text-gray-900">{rep.fullName}</p>
                     {!isCustomerScoped && (
                       <p className="text-sm text-gray-500">
-                        Ügyfél ID: <span className="font-mono">{rep.customerId}</span>
+                        {i18n.t('literals.ugyfel-id')}
+                        <span className="font-mono">{rep.customerId}</span>
                       </p>
                     )}
                   </div>
@@ -158,7 +163,7 @@ export default function RepresentativeListPage() {
               <thead>
                 <tr>
                   <th>{t('common.name')}</th>
-                  {!isCustomerScoped && <th>Ügyfél ID</th>}
+                  {!isCustomerScoped && <th>{i18n.t('literals.ugyfel-id-2')}</th>}
                   <th>{t('common.documentNumber')}</th>
                   <th>{t('customers.okmanyTipus')}</th>
                   <th>{t('display.kapcsolat')}</th>

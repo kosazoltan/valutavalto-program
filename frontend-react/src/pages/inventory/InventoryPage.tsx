@@ -7,6 +7,7 @@ import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 import { useVaultStockUpdates } from '../../hooks/useVaultStockUpdates'
+import i18n from '../../i18n'
 
 /**
  * v2.4.9: Az "Értéktári készlet" oldal — KIZÁRÓLAG az értéktár saját készletét
@@ -711,8 +712,8 @@ export default function InventoryPage() {
       <div className="hidden print:block mb-2">
         <div className="text-base font-bold">{t('inventory.ertektariKeszlet')}</div>
         <div className="text-sm">
-          {worker?.branchName ?? worker?.branchCode ?? ''} —{' '}
-          {new Date().toLocaleDateString('hu-HU')}
+          {worker?.branchName ?? worker?.branchCode ?? ''}
+          {i18n.t('literals.lit-28')} {new Date().toLocaleDateString('hu-HU')}
         </div>
       </div>
 
@@ -726,14 +727,16 @@ export default function InventoryPage() {
       {banknoteError && (
         <div className="no-print form-error flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
-          Címletszintű készlet betöltési hiba: {banknoteError}
+          {i18n.t('literals.cimletszintu-keszlet-betoltesi-hiba')}
+          {banknoteError}
         </div>
       )}
 
       {operationalInventoryError && (
         <div className="no-print form-error flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
-          Készlet riportok betöltési hiba: {operationalInventoryError}
+          {i18n.t('literals.keszlet-riportok-betoltesi-hiba')}
+          {operationalInventoryError}
         </div>
       )}
 
@@ -764,7 +767,9 @@ export default function InventoryPage() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-secondary-900">Mobil készlet-riportok</h2>
+              <h2 className="text-sm font-bold text-secondary-900">
+                {i18n.t('literals.mobil-keszlet-riportok')}
+              </h2>
               {isVaultOperationalContext && (
                 <span
                   data-testid="vault-context-badge"
@@ -787,7 +792,7 @@ export default function InventoryPage() {
             className="form-button h-8 text-xs flex items-center gap-1"
           >
             <RefreshCw className="h-3 w-3" />
-            Riportok frissítése
+            {i18n.t('literals.riportok-frissitese')}
           </button>
         </div>
         <div
@@ -796,7 +801,7 @@ export default function InventoryPage() {
         >
           <div className="grid gap-2 lg:grid-cols-[160px_120px_120px_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-end">
             <label className="block">
-              <span className="form-label">Művelet</span>
+              <span className="form-label">{i18n.t('literals.muvelet')}</span>
               <select
                 className="form-input w-full"
                 value={inventoryOperationType}
@@ -805,14 +810,14 @@ export default function InventoryPage() {
                 }
                 aria-label="Készletművelet típusa"
               >
-                <option value="bankWithdraw">Bankból kivét</option>
-                <option value="bankDeposit">Bankba befizetés</option>
-                <option value="transfer">Irodák közti átadás</option>
-                <option value="correction">Korrekció</option>
+                <option value="bankWithdraw">{i18n.t('literals.bankbol-kivet')}</option>
+                <option value="bankDeposit">{i18n.t('literals.bankba-befizetes')}</option>
+                <option value="transfer">{i18n.t('literals.irodak-kozti-atadas')}</option>
+                <option value="correction">{i18n.t('literals.korrekcio')}</option>
               </select>
             </label>
             <label className="block">
-              <span className="form-label">Deviza</span>
+              <span className="form-label">{i18n.t('literals.deviza-2')}</span>
               <select
                 className="form-input w-full"
                 value={inventoryCurrencyId}
@@ -825,7 +830,9 @@ export default function InventoryPage() {
                 </option>
                 {inventoryCurrencies.map((currency) => (
                   <option key={currency.id} value={currency.id}>
-                    {currency.code} – {currency.name}
+                    {currency.code}
+                    {i18n.t('literals.lit-32')}
+                    {currency.name}
                   </option>
                 ))}
               </select>
@@ -864,7 +871,9 @@ export default function InventoryPage() {
                 </option>
                 {transferTargets.map((target) => (
                   <option key={target.branchId} value={target.branchId}>
-                    {target.code} — {target.name}
+                    {target.code}
+                    {i18n.t('literals.lit-18')}
+                    {target.name}
                     {target.isVault ? ` · ${t('inventory.ertektarBadge')}` : ''}
                   </option>
                 ))}
@@ -901,7 +910,8 @@ export default function InventoryPage() {
           )}
           {inventoryCurrenciesError && (
             <p className="mt-2 text-xs text-red-700">
-              Devizalista betöltési hiba: {inventoryCurrenciesError}
+              {i18n.t('literals.devizalista-betoltesi-hiba')}
+              {inventoryCurrenciesError}
             </p>
           )}
           {inventoryOperationType === 'transfer' &&
@@ -914,13 +924,17 @@ export default function InventoryPage() {
             )}
           {transferTargetsError && (
             <p className="mt-2 text-xs text-red-700">
-              {t('inventory.celTelephelyListaBetoltesiHiba')}: {transferTargetsError}
+              {t('inventory.celTelephelyListaBetoltesiHiba')}
+              {i18n.t('literals.lit-22')}
+              {transferTargetsError}
             </p>
           )}
         </div>
         <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs uppercase text-gray-500">Saját pénztárkészlet</div>
+            <div className="text-xs uppercase text-gray-500">
+              {i18n.t('literals.sajat-penztarkeszlet')}
+            </div>
             <div className="mt-1 text-xl font-bold text-secondary-900">
               {branchStockRows.length}
             </div>
@@ -931,29 +945,41 @@ export default function InventoryPage() {
             </div>
           </div>
           <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs uppercase text-gray-500">Készletmátrix</div>
-            <div className="mt-1 text-xl font-bold text-secondary-900">
-              {stockMatrixInfo.branches} / {stockMatrixInfo.currencies}
+            <div className="text-xs uppercase text-gray-500">
+              {i18n.t('literals.keszletmatrix')}
             </div>
-            <div className="mt-1 text-xs text-gray-600">telephely / valuta</div>
+            <div className="mt-1 text-xl font-bold text-secondary-900">
+              {stockMatrixInfo.branches}
+              {i18n.t('literals.lit-10')}
+              {stockMatrixInfo.currencies}
+            </div>
+            <div className="mt-1 text-xs text-gray-600">{i18n.t('literals.telephely-valuta')}</div>
           </div>
           <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs uppercase text-gray-500">Napi egyenleg</div>
+            <div className="text-xs uppercase text-gray-500">
+              {i18n.t('literals.napi-egyenleg')}
+            </div>
             <div className="mt-1 text-xl font-bold text-secondary-900">
               {formatAmount(dailyBalance?.closingBalance, dailyBalance?.currencyCode)}
             </div>
             <div className="mt-1 text-xs text-gray-600">
-              Be: {formatAmount(dailyBalance?.totalIn, dailyBalance?.currencyCode)} · Ki:{' '}
+              {i18n.t('literals.be')}
+              {formatAmount(dailyBalance?.totalIn, dailyBalance?.currencyCode)}
+              {i18n.t('literals.ki')}{' '}
               {formatAmount(dailyBalance?.totalOut, dailyBalance?.currencyCode)}
             </div>
           </div>
           <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs uppercase text-gray-500">Utolsó regenerálás</div>
+            <div className="text-xs uppercase text-gray-500">
+              {i18n.t('literals.utolso-regeneralas')}
+            </div>
             <div className="mt-1 text-xl font-bold text-secondary-900">
-              {lastRegeneration?.discrepancyCount ?? 0} eltérés
+              {lastRegeneration?.discrepancyCount ?? 0}
+              {i18n.t('literals.elteres')}
             </div>
             <div className="mt-1 text-xs text-gray-600">
-              Javítva: {lastRegeneration?.correctedCount ?? 0}
+              {i18n.t('literals.javitva')}
+              {lastRegeneration?.correctedCount ?? 0}
             </div>
             <button
               type="button"
@@ -967,7 +993,9 @@ export default function InventoryPage() {
         </div>
         <div className="grid gap-3 border-t border-gray-200 p-3 lg:grid-cols-2">
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">Mozgások</div>
+            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
+              {i18n.t('literals.mozgasok')}
+            </div>
             <div className="space-y-2">
               {movementRows.slice(0, 3).map((movement, idx) => (
                 <div
@@ -984,8 +1012,8 @@ export default function InventoryPage() {
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2 text-gray-600">
                     <span>
-                      {movement.movementTypeDisplay ?? movement.movementType ?? 'Mozgás'} ·{' '}
-                      {movement.statusDisplay ?? movement.status ?? '-'}
+                      {movement.movementTypeDisplay ?? movement.movementType ?? 'Mozgás'}
+                      {i18n.t('literals.lit-29')} {movement.statusDisplay ?? movement.status ?? '-'}
                     </span>
                     {movement.id != null && (
                       <button
@@ -1010,7 +1038,7 @@ export default function InventoryPage() {
                         className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
                         aria-label={`Készletmozgás #${movement.id} jóváhagyása`}
                       >
-                        Jóváhagy
+                        {i18n.t('literals.jovahagy')}
                       </button>
                       <button
                         type="button"
@@ -1022,7 +1050,7 @@ export default function InventoryPage() {
                         className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
                         aria-label={`Készletmozgás #${movement.id} fogadása`}
                       >
-                        Fogad
+                        {i18n.t('literals.fogad')}
                       </button>
                       <button
                         type="button"
@@ -1034,14 +1062,14 @@ export default function InventoryPage() {
                         className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
                         aria-label={`Készletmozgás #${movement.id} visszavonása`}
                       >
-                        Visszavon
+                        {i18n.t('literals.visszavon')}
                       </button>
                     </div>
                   )}
                 </div>
               ))}
               {movementRows.length === 0 && (
-                <div className="text-xs text-gray-500">Nincs mozgás adat.</div>
+                <div className="text-xs text-gray-500">{i18n.t('literals.nincs-mozgas-adat')}</div>
               )}
             </div>
             {selectedMovementDetail && (
@@ -1049,22 +1077,28 @@ export default function InventoryPage() {
                 className="mt-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-950"
                 data-testid="inventory-movement-detail"
               >
-                <div className="font-semibold">Mozgás részlete #{selectedMovementDetail.id}</div>
+                <div className="font-semibold">
+                  {i18n.t('literals.mozgas-reszlete')}
+                  {selectedMovementDetail.id}
+                </div>
                 <div className="mt-1 grid gap-1 sm:grid-cols-2">
-                  <span>Valuta: {selectedMovementDetail.currencyCode ?? '-'}</span>
                   <span>
-                    Összeg:{' '}
+                    {i18n.t('literals.valuta-2')}
+                    {selectedMovementDetail.currencyCode ?? '-'}
+                  </span>
+                  <span>
+                    {i18n.t('literals.osszeg-2')}{' '}
                     {formatAmount(
                       selectedMovementDetail.amount,
                       selectedMovementDetail.currencyCode,
                     )}
                   </span>
                   <span>
-                    Státusz:{' '}
+                    {i18n.t('literals.statusz-2')}{' '}
                     {selectedMovementDetail.statusDisplay ?? selectedMovementDetail.status ?? '-'}
                   </span>
                   <span>
-                    Típus:{' '}
+                    {i18n.t('literals.tipus-2')}{' '}
                     {selectedMovementDetail.movementTypeDisplay ??
                       selectedMovementDetail.movementType ??
                       '-'}
@@ -1075,7 +1109,7 @@ export default function InventoryPage() {
           </div>
           <div>
             <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
-              Napi mozgásnapló
+              {i18n.t('literals.napi-mozgasnaplo')}
             </div>
             <div className="space-y-2">
               {movementLogRows.slice(0, 3).map((movement, idx) => (
@@ -1097,7 +1131,9 @@ export default function InventoryPage() {
                 </div>
               ))}
               {movementLogRows.length === 0 && (
-                <div className="text-xs text-gray-500">Nincs napi mozgásnapló adat.</div>
+                <div className="text-xs text-gray-500">
+                  {i18n.t('literals.nincs-napi-mozgasnaplo-adat')}
+                </div>
               )}
             </div>
           </div>
@@ -1122,7 +1158,7 @@ export default function InventoryPage() {
               {loading && rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-500">
-                    Betöltés...
+                    {i18n.t('literals.betoltes')}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
@@ -1178,23 +1214,28 @@ export default function InventoryPage() {
       <section className="form-panel p-0">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
           <div>
-            <h2 className="text-sm font-bold text-secondary-900">Címletszintű értéktári készlet</h2>
+            <h2 className="text-sm font-bold text-secondary-900">
+              {i18n.t('literals.cimletszintu-ertektari-keszlet')}
+            </h2>
             <div className="text-xs text-gray-500">
-              Backend: banknote-inventory / saját telephely
+              {i18n.t('literals.backend-banknote-inventory-sajat-telephe')}
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="rounded border border-gray-200 bg-white px-2 py-1">
-              {banknoteRows.length} címlet
+              {banknoteRows.length}
+              {i18n.t('literals.cimlet-2')}
             </span>
             {lowStockRows.length > 0 && (
               <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-800">
-                Alacsony: {lowStockRows.length}
+                {i18n.t('literals.alacsony')}
+                {lowStockRows.length}
               </span>
             )}
             {overStockRows.length > 0 && (
               <span className="rounded border border-blue-300 bg-blue-50 px-2 py-1 text-blue-800">
-                Túl magas: {overStockRows.length}
+                {i18n.t('literals.tul-magas')}
+                {overStockRows.length}
               </span>
             )}
           </div>
@@ -1203,7 +1244,7 @@ export default function InventoryPage() {
           <div className="no-print border-b border-gray-200 bg-white px-3 py-3">
             <div className="grid gap-2 lg:grid-cols-[minmax(220px,1fr)_120px_minmax(220px,1fr)_auto] lg:items-end">
               <label className="block">
-                <span className="form-label">Címletsor</span>
+                <span className="form-label">{i18n.t('literals.cimletsor')}</span>
                 <select
                   className="form-input w-full"
                   value={selectedBanknote?.id ?? ''}
@@ -1212,14 +1253,15 @@ export default function InventoryPage() {
                 >
                   {banknoteRows.map((row) => (
                     <option key={row.id} value={row.id}>
-                      {row.currencyCode} {formatCurrency(row.faceValue, row.currencyCode)} ·{' '}
-                      {row.quantity} db
+                      {row.currencyCode} {formatCurrency(row.faceValue, row.currencyCode)}
+                      {i18n.t('literals.lit-29')} {row.quantity}
+                      {i18n.t('literals.db')}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="block">
-                <span className="form-label">Darab</span>
+                <span className="form-label">{i18n.t('literals.darab')}</span>
                 <input
                   className="form-input w-full font-mono"
                   inputMode="numeric"
@@ -1230,7 +1272,7 @@ export default function InventoryPage() {
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className="form-label">Min.</span>
+                  <span className="form-label">{i18n.t('literals.min')}</span>
                   <input
                     className="form-input w-full font-mono"
                     inputMode="numeric"
@@ -1240,7 +1282,7 @@ export default function InventoryPage() {
                   />
                 </label>
                 <label className="block">
-                  <span className="form-label">Max.</span>
+                  <span className="form-label">{i18n.t('literals.max')}</span>
                   <input
                     className="form-input w-full font-mono"
                     inputMode="numeric"
@@ -1257,7 +1299,7 @@ export default function InventoryPage() {
                   disabled={banknoteActionLoading}
                   onClick={() => void runBanknoteAction('add')}
                 >
-                  Bevét
+                  {i18n.t('literals.bevet')}
                 </button>
                 <button
                   type="button"
@@ -1265,7 +1307,7 @@ export default function InventoryPage() {
                   disabled={banknoteActionLoading}
                   onClick={() => void runBanknoteAction('remove')}
                 >
-                  Kiad
+                  {i18n.t('literals.kiad')}
                 </button>
                 <button
                   type="button"
@@ -1273,7 +1315,7 @@ export default function InventoryPage() {
                   disabled={banknoteActionLoading}
                   onClick={() => void runBanknoteAction('count')}
                 >
-                  Leltárdarab
+                  {i18n.t('literals.leltardarab')}
                 </button>
                 <button
                   type="button"
@@ -1281,7 +1323,7 @@ export default function InventoryPage() {
                   disabled={banknoteActionLoading}
                   onClick={() => void runBanknoteAction('thresholds')}
                 >
-                  Küszöb mentése
+                  {i18n.t('literals.kuszob-mentese')}
                 </button>
               </div>
             </div>
@@ -1294,20 +1336,20 @@ export default function InventoryPage() {
           <table className="w-full min-w-[760px] text-sm">
             <thead className="border-b border-gray-200 bg-white text-xs uppercase text-gray-600">
               <tr>
-                <th className="px-3 py-2 text-left">Valuta</th>
-                <th className="px-3 py-2 text-right">Címlet</th>
-                <th className="px-3 py-2 text-right">Darab</th>
-                <th className="px-3 py-2 text-right">Összesen</th>
-                <th className="px-3 py-2 text-right">Min.</th>
-                <th className="px-3 py-2 text-right">Max.</th>
-                <th className="px-3 py-2 text-left">Státusz</th>
+                <th className="px-3 py-2 text-left">{i18n.t('literals.valuta')}</th>
+                <th className="px-3 py-2 text-right">{i18n.t('literals.cimlet')}</th>
+                <th className="px-3 py-2 text-right">{i18n.t('literals.darab')}</th>
+                <th className="px-3 py-2 text-right">{i18n.t('literals.osszesen')}</th>
+                <th className="px-3 py-2 text-right">{i18n.t('literals.min')}</th>
+                <th className="px-3 py-2 text-right">{i18n.t('literals.max')}</th>
+                <th className="px-3 py-2 text-left">{i18n.t('literals.statusz')}</th>
               </tr>
             </thead>
             <tbody>
               {banknoteRows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-6 text-center text-sm text-gray-500">
-                    Nincs címletszintű banknote_inventory adat ehhez a telephelyhez.
+                    {i18n.t('literals.nincs-cimletszintu-banknote-inventory-ad')}
                   </td>
                 </tr>
               ) : (

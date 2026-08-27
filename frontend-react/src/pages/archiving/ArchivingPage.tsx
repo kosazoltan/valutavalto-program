@@ -16,6 +16,7 @@ import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface MonthlyArchiveStatus {
   yearMonth: string
@@ -202,13 +203,13 @@ export default function ArchivingPage() {
             <table className="data-grid w-full min-w-[760px]">
               <thead>
                 <tr>
-                  <th>Bizonylat</th>
+                  <th>{i18n.t('literals.bizonylat')}</th>
                   <th>{t('cashdesk.tipus')}</th>
-                  <th>Valuta</th>
-                  <th className="text-right">Összeg</th>
-                  <th className="text-right">HUF</th>
-                  <th>Ügyfél</th>
-                  <th>Eredeti dátum</th>
+                  <th>{i18n.t('literals.valuta')}</th>
+                  <th className="text-right">{i18n.t('literals.osszeg')}</th>
+                  <th className="text-right">{i18n.t('literals.huf')}</th>
+                  <th>{i18n.t('literals.ugyfel-2')}</th>
+                  <th>{i18n.t('literals.eredeti-datum')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,7 +287,7 @@ export default function ArchivingPage() {
       <div className="form-panel">
         <h2 className="font-semibold mb-2">{t('archiving.archivalasiFeladatok')}</h2>
         {loading ? (
-          <div>Betöltés...</div>
+          <div>{i18n.t('literals.betoltes')}</div>
         ) : safeArray<ArchiveTask>(tasks).length === 0 ? (
           <div className="text-center text-gray-500 py-4">
             {t('archiving.nincsArchivalasiFeladat')}

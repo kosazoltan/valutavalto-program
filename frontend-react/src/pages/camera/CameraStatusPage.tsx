@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 const isElectron = () => !!window.electronAPI
 
@@ -141,7 +142,7 @@ export default function CameraStatusPage() {
       </div>
 
       {loading ? (
-        <p>Betöltés...</p>
+        <p>{i18n.t('literals.betoltes')}</p>
       ) : (
         <>
           {cameras.length > 0 && (
@@ -167,7 +168,9 @@ export default function CameraStatusPage() {
                     </div>
                     {cam.frozen && cam.lastFreshFrameAt && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {t('camera.utolsoFrissKep')}: {cam.lastFreshFrameAt.replace('T', ' ')}
+                        {t('camera.utolsoFrissKep')}
+                        {i18n.t('literals.lit-22')}
+                        {cam.lastFreshFrameAt.replace('T', ' ')}
                       </p>
                     )}
                   </div>
@@ -178,7 +181,7 @@ export default function CameraStatusPage() {
 
           {cameraSubsystemDisabled ? (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-              A kamera-alrendszer nincs engedélyezve ezen a szerveren.
+              {i18n.t('literals.a-kamera-alrendszer-nincs-engedelyezve-e')}
             </div>
           ) : (
             <>
@@ -204,7 +207,9 @@ export default function CameraStatusPage() {
                   <div className="p-4">
                     <p className="text-sm text-muted-foreground">{t('common.period')}</p>
                     <p className="text-lg font-bold">
-                      {stats?.oldestDate ?? '-'} -- {stats?.newestDate ?? '-'}
+                      {stats?.oldestDate ?? '-'}
+                      {i18n.t('literals.lit-23')}
+                      {stats?.newestDate ?? '-'}
                     </p>
                   </div>
                 </div>

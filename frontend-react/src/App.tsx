@@ -8,6 +8,7 @@ import { Toaster } from './components/ui/toaster'
 import ErrorBoundary from './components/ErrorBoundary'
 // EBC Hangsegéd Phase 9.5b — VoiceAssistantProvider + Panel mount (env-flag gated)
 import { VoiceAssistantProvider, VoiceAssistantPanel } from './modules/voice-assistant'
+import i18n from './i18n'
 
 const VOICE_ASSISTANT_ENABLED = import.meta.env.VITE_VOICE_ASSISTANT_ENABLED === 'true'
 import {
@@ -230,7 +231,7 @@ const DailyCheckPage = lazy(() => import('./pages/foertektar/DailyCheckPage'))
 function RouteLoadingFallback() {
   return (
     <div className="flex h-full min-h-[240px] items-center justify-center">
-      <p className="text-sm text-gray-500">Oldal betöltése...</p>
+      <p className="text-sm text-gray-500">{i18n.t('literals.oldal-betoltese')}</p>
     </div>
   )
 }
@@ -346,7 +347,7 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
   if (status === 'checking') {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-gray-500">Beállítások ellenőrzése...</p>
+        <p className="text-gray-500">{i18n.t('literals.beallitasok-ellenorzese')}</p>
       </div>
     )
   }
@@ -539,7 +540,7 @@ export default function App() {
   if (isRestoring) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-gray-500">Betöltés...</p>
+        <p className="text-gray-500">{i18n.t('literals.betoltes')}</p>
       </div>
     )
   }

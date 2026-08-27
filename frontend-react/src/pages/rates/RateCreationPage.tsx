@@ -81,6 +81,7 @@ import {
   dirtyCurrencyIdsFromOverlay,
 } from './workgroupSheetStorage'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 /** FK-04/C: a 8 képletezhető string-mező (J=officialRate read-only auto, K=ISO kód kihagyva). */
 const WG_STRING_FIELDS: Exclude<WgField, 'officialRate'>[] = [
@@ -1392,7 +1393,7 @@ export default function RateCreationPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="animate-spin text-blue-600" size={32} />
-        <span className="ml-3 text-gray-600">Árfolyamok betöltése...</span>
+        <span className="ml-3 text-gray-600">{i18n.t('literals.arfolyamok-betoltese')}</span>
       </div>
     )
   }
@@ -1421,7 +1422,8 @@ export default function RateCreationPage() {
             className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border border-blue-400 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded"
             title="Vissza a csoport árfolyamlapok csempés listájához"
           >
-            <ArrowLeft size={11} /> Csempés nézet
+            <ArrowLeft size={11} />
+            {i18n.t('literals.csempes-nezet')}
           </button>
           {/* Spec szerint: Munkacsoport felület felső menü → MÁSIK MUNKACSOPORT (visszalépés a 0-s lapra/csoport-választóra) */}
           <button
@@ -1429,16 +1431,21 @@ export default function RateCreationPage() {
             className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-800 rounded"
             title="Vissza a Főlap (0-s lap) elszámoló árfolyamokhoz"
           >
-            <Home size={11} /> FŐLAP
+            <Home size={11} />
+            {i18n.t('literals.folap')}
           </button>
           {/* T9.F: képletszintaxis-súgó — itt, ahol a J–S/#NNL képleteket írják. */}
           <FormulaSyntaxHelpButton onClick={() => setShowFormulaHelp(true)} />
           {selectedWg && (
             <span className="text-xs text-gray-500 ml-2">
               <span className="font-mono font-bold">{selectedWg.legacyGroupNumber ?? '—'}</span>
-              <span className="mx-1">·</span>
+              <span className="mx-1">{i18n.t('literals.lit-45')}</span>
               <span className="font-semibold text-gray-700">{selectedWg.name}</span>
-              <span className="ml-1 text-gray-400">({selectedWg.code})</span>
+              <span className="ml-1 text-gray-400">
+                {i18n.t('literals.lit-19')}
+                {selectedWg.code}
+                {i18n.t('literals.lit-2')}
+              </span>
             </span>
           )}
         </div>
@@ -1497,7 +1504,7 @@ export default function RateCreationPage() {
                     })
                   }}
                 >
-                  Eltérések elvetése
+                  {i18n.t('literals.elteresek-elvetese')}
                 </button>
               )}
             </>
@@ -1584,13 +1591,18 @@ export default function RateCreationPage() {
               title="Vissza a csoport árfolyamlapok csempés listájához"
             >
               <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
-                <ArrowLeft size={10} /> Csempés nézet
+                <ArrowLeft size={10} />
+                {i18n.t('literals.csempes-nezet')}
               </div>
               <div className="text-[11px] font-semibold text-gray-700 truncate">
                 {selectedWg?.name ?? '—'}
               </div>
               <div className="text-[10px] text-gray-500">
-                #{selectedWg?.legacyGroupNumber ?? '—'} · {selectedWg?.branches.length ?? 0} iroda
+                {i18n.t('literals.lit-12')}
+                {selectedWg?.legacyGroupNumber ?? '—'}
+                {i18n.t('literals.lit-9')}
+                {selectedWg?.branches.length ?? 0}
+                {i18n.t('literals.iroda-2')}
               </div>
             </button>
 
@@ -1599,14 +1611,16 @@ export default function RateCreationPage() {
               data-testid="rate-prepare-panel"
             >
               <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
-                Backend javaslat
+                {i18n.t('literals.backend-javaslat')}
               </div>
               {rateAdviceError && <div className="text-[10px] text-red-600">{rateAdviceError}</div>}
               {rateAdvice ? (
                 <div className="space-y-1 text-[11px]">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-gray-700">
-                      {rateAdvice.currencyCode} - {rateAdvice.currencyName}
+                      {rateAdvice.currencyCode}
+                      {i18n.t('literals.lit-17')}
+                      {rateAdvice.currencyName}
                     </span>
                     <span className="rounded bg-blue-50 px-1.5 py-0.5 font-mono text-blue-800">
                       {rateAdvice.recommendedMiddleRate}
@@ -1615,25 +1629,26 @@ export default function RateCreationPage() {
                   <div className="grid grid-cols-2 gap-1 font-mono">
                     <div className="rounded bg-green-50 px-1.5 py-1 text-green-800">
                       <div className="text-[9px] font-sans uppercase text-green-700">
-                        Ajánlott vétel
+                        {i18n.t('literals.ajanlott-vetel')}
                       </div>
                       {rateAdvice.recommendedBuyRate}
                     </div>
                     <div className="rounded bg-red-50 px-1.5 py-1 text-red-800">
                       <div className="text-[9px] font-sans uppercase text-red-700">
-                        Ajánlott eladás
+                        {i18n.t('literals.ajanlott-eladas')}
                       </div>
                       {rateAdvice.recommendedSellRate}
                     </div>
                   </div>
                   <div className="text-[10px] text-gray-500">
-                    Bank: {rateAdvice.bankRates.length} · Versenytárs:{' '}
-                    {rateAdvice.competitorRates.length}
+                    {i18n.t('literals.bank-3')}
+                    {rateAdvice.bankRates.length}
+                    {i18n.t('literals.versenytars')} {rateAdvice.competitorRates.length}
                   </div>
                 </div>
               ) : (
                 <div className="text-[10px] text-gray-500">
-                  Valuta sorban kattints a Javaslat gombra a backend előkészítő adataihoz.
+                  {i18n.t('literals.valuta-sorban-kattints-a-javaslat-gombra')}
                 </div>
               )}
             </div>
@@ -1642,7 +1657,7 @@ export default function RateCreationPage() {
             <div className="bg-white rounded border shadow-sm px-2 py-1.5 flex-shrink-0">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] text-gray-500 uppercase font-bold">
-                  Aktuális függvény
+                  {i18n.t('literals.aktualis-fuggveny')}
                 </span>
                 <span
                   className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-800 font-mono text-[11px] font-bold"
@@ -1655,15 +1670,22 @@ export default function RateCreationPage() {
                 Helyette a táblázatban egér-drag / Shift+kattintás kijelölés + lebegő toolbar (Lehúzás
                 üres / Lehúzás mind / Sávok törlése) — kizárólag a kijelölt tartományra hat. */}
               <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
-                Kitöltési segítség
+                {i18n.t('literals.kitoltesi-segitseg')}
               </div>
               <div className="text-[10px] text-gray-500 leading-tight">
-                Jelölj ki cellákat a táblázatban (egér-húzás vagy Shift+kattintás), majd a megjelenő
-                lebegő eszköztárból válassz:{' '}
-                <span className="font-semibold text-amber-700">Lehúzás (mind)</span> (felső sor
-                másolása lefelé), <span className="font-semibold text-gray-700">Ürítés</span>{' '}
-                (kijelölt cellák kiürítése) vagy{' '}
-                <span className="font-semibold text-red-700">Sávok törlése</span>.
+                {i18n.t('literals.jelolj-ki-cellakat-a-tablazatban-eger-hu')}{' '}
+                <span className="font-semibold text-amber-700">
+                  {i18n.t('literals.lehuzas-mind')}
+                </span>
+                {i18n.t('literals.felso-sor-masolasa-lefele')}
+                <span className="font-semibold text-gray-700">
+                  {i18n.t('literals.urites')}
+                </span>{' '}
+                {i18n.t('literals.kijelolt-cellak-kiuritese-vagy')}{' '}
+                <span className="font-semibold text-red-700">
+                  {i18n.t('literals.savok-torlese')}
+                </span>
+                {i18n.t('literals.lit-5')}
               </div>
             </div>
 
@@ -1672,7 +1694,10 @@ export default function RateCreationPage() {
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
                   <Building2 size={10} />
-                  {t('rates.irodak')} ({selectedWg?.branches.length ?? 0})
+                  {t('rates.irodak')}
+                  {i18n.t('literals.lit')}
+                  {selectedWg?.branches.length ?? 0}
+                  {i18n.t('literals.lit-2')}
                 </span>
                 <button
                   onClick={() => void openBranchPicker()}
@@ -1769,7 +1794,7 @@ export default function RateCreationPage() {
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-3 rounded shadow flex items-center justify-center gap-2 transition-colors flex-shrink-0"
             >
               <CheckCircle2 size={16} />
-              <span className="text-xs">Ellenőrzés</span>
+              <span className="text-xs">{i18n.t('literals.ellenorzes')}</span>
             </button>
 
             {/* Publish button - always visible */}
@@ -1821,7 +1846,8 @@ export default function RateCreationPage() {
           >
             <div className="flex items-center justify-between px-5 py-3 border-b">
               <h2 className="text-lg font-bold flex items-center gap-2">
-                <Copy size={18} /> Másolás más csoportba
+                <Copy size={18} />
+                {i18n.t('literals.masolas-mas-csoportba')}
               </h2>
               <button
                 onClick={closeCopyModal}
@@ -1832,8 +1858,8 @@ export default function RateCreationPage() {
               </button>
             </div>
             <div className="px-5 py-3 text-sm text-gray-600">
-              {copyCells.length} kijelölt cella tartalma a kiválasztott munkacsoport(ok) azonos
-              pozícióiba kerül. Válassz egy vagy több célcsoportot (az aktuális nem választható):
+              {copyCells.length}
+              {i18n.t('literals.kijelolt-cella-tartalma-a-kivalasztott-m')}
             </div>
             <div className="px-5 pb-3 overflow-y-auto">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -1855,7 +1881,9 @@ export default function RateCreationPage() {
                           {wg.name}
                         </div>
                         {selected && (
-                          <div className="mt-1 text-xs font-semibold text-sky-700">✓ kijelölve</div>
+                          <div className="mt-1 text-xs font-semibold text-sky-700">
+                            {i18n.t('literals.kijelolve')}
+                          </div>
                         )}
                       </button>
                     )
@@ -1863,7 +1891,7 @@ export default function RateCreationPage() {
               </div>
               {workgroups.filter((w) => w.id !== selectedWg?.id).length === 0 && (
                 <div className="text-center py-6 text-gray-400 text-sm">
-                  Nincs másik munkacsoport.
+                  {i18n.t('literals.nincs-masik-munkacsoport')}
                 </div>
               )}
             </div>
@@ -1872,14 +1900,16 @@ export default function RateCreationPage() {
                 onClick={closeCopyModal}
                 className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium"
               >
-                Mégse
+                {i18n.t('literals.megse')}
               </button>
               <button
                 onClick={() => setCopyConfirmOpen(true)}
                 disabled={copyTargetIds.size === 0}
                 className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
               >
-                Véglegesítés ({copyTargetIds.size})
+                {i18n.t('literals.veglegesites')}
+                {copyTargetIds.size}
+                {i18n.t('literals.lit-2')}
               </button>
             </div>
           </div>
@@ -1890,29 +1920,29 @@ export default function RateCreationPage() {
       {copyConfirmOpen && copyCells && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold mb-3">Másolás megerősítése</h3>
+            <h3 className="text-lg font-bold mb-3">{i18n.t('literals.masolas-megerositese')}</h3>
             <p className="text-sm text-gray-700 mb-5">
-              Biztosan másolod ezekbe a munkacsoportokba:{' '}
+              {i18n.t('literals.biztosan-masolod-ezekbe-a-munkacsoportok')}{' '}
               <span className="font-semibold">
                 {workgroups
                   .filter((w) => copyTargetIds.has(w.id))
                   .map((w) => w.name)
                   .join(', ')}
               </span>
-              ? A célcsoport(ok) érintett celláinak korábbi értéke felülíródik.
+              {i18n.t('literals.a-celcsoport-ok-erintett-cellainak-korab')}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setCopyConfirmOpen(false)}
                 className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium"
               >
-                Nem
+                {i18n.t('literals.nem')}
               </button>
               <button
                 onClick={() => void executeCrossGroupCopy()}
                 className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 text-sm font-semibold"
               >
-                Igen, másolás
+                {i18n.t('literals.igen-masolas')}
               </button>
             </div>
           </div>
@@ -2078,14 +2108,21 @@ export function WorkgroupTileListView({
       {/* HEADER */}
       <div className="flex items-center justify-between bg-white px-3 py-2 rounded shadow-sm border">
         <div className="flex items-center gap-2">
-          <h1 className="text-base font-bold text-gray-800">Csoport árfolyamlapok</h1>
-          <span className="text-xs text-gray-500">({workgroups.length})</span>
+          <h1 className="text-base font-bold text-gray-800">
+            {i18n.t('literals.csoport-arfolyamlapok')}
+          </h1>
+          <span className="text-xs text-gray-500">
+            {i18n.t('literals.lit-19')}
+            {workgroups.length}
+            {i18n.t('literals.lit-2')}
+          </span>
           <button
             onClick={onBackToMain}
             className="ml-2 flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-800 rounded"
             title="Vissza a Főlap (0-s lap) elszámoló árfolyamokhoz"
           >
-            <Home size={11} /> FŐLAP
+            <Home size={11} />
+            {i18n.t('literals.folap')}
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -2095,7 +2132,8 @@ export function WorkgroupTileListView({
               className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold border border-blue-500 bg-blue-600 hover:bg-blue-700 text-white rounded"
               title="Új munkacsoport létrehozása"
             >
-              <Plus size={12} /> Új munkacsoport
+              <Plus size={12} />
+              {i18n.t('literals.uj-munkacsoport')}
             </button>
           )}
           <button
@@ -2119,11 +2157,11 @@ export function WorkgroupTileListView({
       {loading && workgroups.length === 0 ? (
         <div className="flex items-center justify-center h-64">
           <RefreshCw className="animate-spin text-blue-600" size={32} />
-          <span className="ml-3 text-gray-600">Csoportok betöltése…</span>
+          <span className="ml-3 text-gray-600">{i18n.t('literals.csoportok-betoltese')}</span>
         </div>
       ) : workgroups.length === 0 ? (
         <div className="bg-white rounded shadow-sm border p-6 text-center text-gray-500">
-          Még nincs csoport árfolyamlap.
+          {i18n.t('literals.meg-nincs-csoport-arfolyamlap')}
           {canWrite
             ? ' Hozzon létre egyet az „Új munkacsoport” gombbal.'
             : ' Új létrehozása a Munkacsoportok kezelő felületen lehetséges.'}
@@ -2153,7 +2191,7 @@ export function WorkgroupTileListView({
                         className="h-3.5 w-3.5"
                         aria-label={`Árfolyamvédelem a(z) ${wg.name} csoporton`}
                       />
-                      VÉDELEM
+                      {i18n.t('literals.vedelem')}
                     </label>
                   ) : (
                     <span
@@ -2161,7 +2199,7 @@ export function WorkgroupTileListView({
                       title={protectionOn ? 'Árfolyamvédelem BE' : 'Árfolyamvédelem KI'}
                     >
                       {protectionOn ? <ShieldCheck size={12} /> : <Shield size={12} />}
-                      VÉDELEM
+                      {i18n.t('literals.vedelem')}
                     </span>
                   )}
                 </div>
@@ -2183,8 +2221,11 @@ export function WorkgroupTileListView({
                   </div>
                   <div className="text-xs opacity-70 mt-0.5">
                     <span className="font-mono">{wg.code}</span>
-                    <span className="mx-1">·</span>
-                    <span>{wg.branches.length} iroda</span>
+                    <span className="mx-1">{i18n.t('literals.lit-45')}</span>
+                    <span>
+                      {wg.branches.length}
+                      {i18n.t('literals.iroda-2')}
+                    </span>
                   </div>
                 </button>
 
@@ -2198,7 +2239,8 @@ export function WorkgroupTileListView({
                       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-white/70 hover:bg-white border border-black/10"
                       title="Átnevezés / szín / kedvezményhatárok"
                     >
-                      <Pencil size={10} /> Szerk.
+                      <Pencil size={10} />
+                      {i18n.t('literals.szerk')}
                     </button>
                     <button
                       type="button"
@@ -2206,7 +2248,8 @@ export function WorkgroupTileListView({
                       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-white/70 hover:bg-red-50 text-red-700 border border-red-200"
                       title="Munkacsoport törlése"
                     >
-                      <Trash2 size={10} /> Törlés
+                      <Trash2 size={10} />
+                      {i18n.t('literals.torles-2')}
                     </button>
                   </div>
                 )}

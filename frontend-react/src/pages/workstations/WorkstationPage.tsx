@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function WorkstationPage() {
   const { t } = useTranslation()
@@ -141,7 +142,9 @@ export default function WorkstationPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (
@@ -160,17 +163,17 @@ export default function WorkstationPage() {
       <div className="form-panel">
         <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs text-gray-500">Összes munkaállomás</div>
+            <div className="text-xs text-gray-500">{i18n.t('literals.osszes-munkaallomas')}</div>
             <div className="text-2xl font-semibold text-gray-900">{workstations.length}</div>
           </div>
           <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
-            <div className="text-xs text-emerald-700">Aktív munkaállomás</div>
+            <div className="text-xs text-emerald-700">{i18n.t('literals.aktiv-munkaallomas')}</div>
             <div className="text-2xl font-semibold text-emerald-800">
               {activeWorkstations.length}
             </div>
           </div>
           <div className="rounded border border-blue-200 bg-blue-50 p-3">
-            <div className="text-xs text-blue-700">Online jelzés</div>
+            <div className="text-xs text-blue-700">{i18n.t('literals.online-jelzes')}</div>
             <div className="text-2xl font-semibold text-blue-800">
               {workstations.filter((w) => w.isOnline).length}
             </div>
@@ -239,7 +242,7 @@ export default function WorkstationPage() {
                 >
                   <option value="CASHIER">{t('branch.branch')}</option>
                   <option value="ADMIN">{t('workstations.admin')}</option>
-                  <option value="POS">POS</option>
+                  <option value="POS">{i18n.t('literals.pos')}</option>
                 </select>
               </div>
               <div>

@@ -1,4 +1,5 @@
 import { HelpCircle, X } from 'lucide-react'
+import i18n from '../../i18n'
 
 /**
  * T9.F (FK-04) — Képletszintaxis használati útmutató a csoport árfolyamlapokhoz.
@@ -24,7 +25,7 @@ export function FormulaSyntaxHelp({ open, onClose }: { open: boolean; onClose: (
       >
         <div className="flex items-center justify-between mb-3">
           <h2 id="formula-help-title" className="text-lg font-bold text-emerald-900">
-            Képletszintaxis — csoport árfolyamlap
+            {i18n.t('literals.kepletszintaxis-csoport-arfolyamlap')}
           </h2>
           <button
             type="button"
@@ -38,28 +39,35 @@ export function FormulaSyntaxHelp({ open, onClose }: { open: boolean; onClose: (
         </div>
 
         <div className="bg-white border border-emerald-300 rounded p-3 mb-3">
-          <div className="font-bold text-sm mb-2 text-center">CELLA-MÓDOK</div>
+          <div className="font-bold text-sm mb-2 text-center">{i18n.t('literals.cella-modok')}</div>
           <table className="w-full text-xs">
             <tbody>
               <tr>
                 <td className="py-1 px-2 font-mono font-bold border-r border-slate-300 w-28">
-                  (üres)
+                  {i18n.t('literals.ures')}
                 </td>
                 <td className="py-1 px-2 italic">
-                  Automatikus érték (a J elszámoló a 0-s lap A oszlopát veszi át).
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">123,45</td>
-                <td className="py-1 px-2 italic">
-                  Fix érték — kézi felülírás. (Tizedeselválasztó: <b>vessző</b>.)
+                  {i18n.t('literals.automatikus-ertek-a-j-elszamolo-a-0-s-la')}
                 </td>
               </tr>
               <tr>
-                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">képlet</td>
+                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                  {i18n.t('literals.123-45')}
+                </td>
                 <td className="py-1 px-2 italic">
-                  A képlet eredménye jelenik meg, és <b>automatikusan újraszámolódik</b>, ha a
-                  hivatkozott érték változik.
+                  {i18n.t('literals.fix-ertek-kezi-feluliras-tizedeselvalasz')}
+                  <b>{i18n.t('literals.vesszo')}</b>
+                  {i18n.t('literals.lit-44')}
+                </td>
+              </tr>
+              <tr>
+                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                  {i18n.t('literals.keplet')}
+                </td>
+                <td className="py-1 px-2 italic">
+                  {i18n.t('literals.a-keplet-eredmenye-jelenik-meg-es')}
+                  <b>{i18n.t('literals.automatikusan-ujraszamolodik')}</b>
+                  {i18n.t('literals.ha-a-hivatkozott-ertek-valtozik')}
                 </td>
               </tr>
             </tbody>
@@ -67,79 +75,109 @@ export function FormulaSyntaxHelp({ open, onClose }: { open: boolean; onClose: (
         </div>
 
         <div className="bg-white border border-emerald-300 rounded p-3 mb-3">
-          <div className="font-bold text-sm mb-2 text-center">HIVATKOZÁSOK</div>
+          <div className="font-bold text-sm mb-2 text-center">
+            {i18n.t('literals.hivatkozasok')}
+          </div>
           <table className="w-full text-xs">
             <tbody>
               <tr>
                 <td className="py-1 px-2 font-mono font-bold border-r border-slate-300 w-28">
-                  A–C, E–I
+                  {i18n.t('literals.a-c-e-i')}
                 </td>
                 <td className="py-1 px-2 italic">
-                  A <b>0-s lap</b> adott érték-oszlopa az aktuális valuta sorában (pl.{' '}
-                  <span className="font-mono">A</span> = elszámoló). A <b>D</b> a 0-s lap valuta ISO
-                  kódja — <b>nem hivatkozható értékként</b> (mint a csoportlap K oszlopa).
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">J–S</td>
-                <td className="py-1 px-2 italic">
-                  Az <b>aktuális csoportlap</b> adott oszlopa az aktuális valuta sorában (pl.{' '}
-                  <span className="font-mono">L</span> = alap vételi).
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">!Fxxx</td>
-                <td className="py-1 px-2 italic">
-                  Másik valuta oszlopa a <b>0-s lapon</b> (F=oszlop, xxx=valutakód). Pl.{' '}
-                  <span className="font-mono">!FEUR</span> = az EUR sor F (eladás) oszlopa.
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">#NNL</td>
-                <td className="py-1 px-2 italic">
-                  Másik <b>csoportlap</b> oszlopa az aktuális valuta sorában.{' '}
-                  <span className="font-mono">#</span> + kétjegyű csoportazonosító + oszlopbetű. Pl.{' '}
-                  <span className="font-mono">#01L</span> = az 1-es csoport L oszlopa.
+                  {i18n.t('literals.a')}
+                  <b>{i18n.t('literals.0-s-lap')}</b>
+                  {i18n.t('literals.adott-ertek-oszlopa-az-aktualis-valuta-s')}{' '}
+                  <span className="font-mono">{i18n.t('literals.a-2')}</span>
+                  {i18n.t('literals.elszamolo-a')}
+                  <b>{i18n.t('literals.d')}</b>
+                  {i18n.t('literals.a-0-s-lap-valuta-iso-kodja')}
+                  <b>{i18n.t('literals.nem-hivatkozhato-ertekkent')}</b>
+                  {i18n.t('literals.mint-a-csoportlap-k-oszlopa')}
                 </td>
               </tr>
               <tr>
                 <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
-                  Műveletek
+                  {i18n.t('literals.j-s')}
                 </td>
                 <td className="py-1 px-2 italic">
-                  + − * / és zárójel (eltérő prioritásnál a zárójel kötelező). Pl.{' '}
-                  <span className="font-mono">J*0,985</span> vagy{' '}
-                  <span className="font-mono">(L+M)/2</span>.
+                  {i18n.t('literals.az')}
+                  <b>{i18n.t('literals.aktualis-csoportlap')}</b>
+                  {i18n.t('literals.adott-oszlopa-az-aktualis-valuta-soraban')}{' '}
+                  <span className="font-mono">{i18n.t('literals.l')}</span>
+                  {i18n.t('literals.alap-veteli')}
                 </td>
               </tr>
               <tr>
-                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">K</td>
+                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                  {i18n.t('literals.fxxx')}
+                </td>
+                <td className="py-1 px-2 italic">
+                  {i18n.t('literals.masik-valuta-oszlopa-a')}
+                  <b>{i18n.t('literals.0-s-lapon')}</b>
+                  {i18n.t('literals.f-oszlop-xxx-valutakod-pl')}{' '}
+                  <span className="font-mono">{i18n.t('literals.feur')}</span>
+                  {i18n.t('literals.az-eur-sor-f-eladas-oszlopa')}
+                </td>
+              </tr>
+              <tr>
+                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                  {i18n.t('literals.nnl')}
+                </td>
+                <td className="py-1 px-2 italic">
+                  {i18n.t('literals.masik')}
+                  <b>{i18n.t('literals.csoportlap')}</b>
+                  {i18n.t('literals.oszlopa-az-aktualis-valuta-soraban')}{' '}
+                  <span className="font-mono">{i18n.t('literals.lit-12')}</span>
+                  {i18n.t('literals.ketjegyu-csoportazonosito-oszlopbetu-pl')}{' '}
+                  <span className="font-mono">{i18n.t('literals.01l')}</span>
+                  {i18n.t('literals.az-1-es-csoport-l-oszlopa')}
+                </td>
+              </tr>
+              <tr>
+                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                  {i18n.t('literals.muveletek')}
+                </td>
+                <td className="py-1 px-2 italic">
+                  {i18n.t('literals.es-zarojel-eltero-prioritasnal-a-zarojel')}{' '}
+                  <span className="font-mono">{i18n.t('literals.j-0-985')}</span>
+                  {i18n.t('literals.vagy')}{' '}
+                  <span className="font-mono">{i18n.t('literals.l-m-2')}</span>
+                  {i18n.t('literals.lit-5')}
+                </td>
+              </tr>
+              <tr>
+                <td className="py-1 px-2 font-mono font-bold border-r border-slate-300">
+                  {i18n.t('literals.k')}
+                </td>
                 <td className="py-1 px-2 italic text-slate-500">
-                  <b>Védett</b> (valuta ISO kód) — nem szerkeszthető, nem hivatkozható értékként.
+                  <b>{i18n.t('literals.vedett')}</b>
+                  {i18n.t('literals.valuta-iso-kod-nem-szerkesztheto-nem-hiv')}
                 </td>
               </tr>
             </tbody>
           </table>
           <div className="mt-2 text-[11px] text-slate-500">
-            A hivatkozás mindig a hivatkozott cella <b>aktuális értékét</b> adja (nem a mögöttes
-            képletet). A képlet NEM kezdődik „=" jellel. Körkörös vagy hibás hivatkozás esetén a
-            cella az eredeti értékét tartja, a szerkesztő jelzi a hibát.
+            {i18n.t('literals.a-hivatkozas-mindig-a-hivatkozott-cella')}
+            <b>{i18n.t('literals.aktualis-erteket')}</b>
+            {i18n.t('literals.adja-nem-a-mogottes-kepletet-a-keplet-ne')}
           </div>
         </div>
 
         <div className="bg-white border border-emerald-300 rounded p-3 mb-4 text-xs">
-          <div className="font-bold mb-1">Példák</div>
+          <div className="font-bold mb-1">{i18n.t('literals.peldak')}</div>
           <ul className="list-disc pl-5 space-y-0.5">
             <li>
-              <span className="font-mono">J*0,985</span> — a vételi az elszámoló 98,5%-a (saját
-              sor).
+              <span className="font-mono">{i18n.t('literals.j-0-985')}</span>
+              {i18n.t('literals.a-veteli-az-elszamolo-98-5-a-sajat-sor')}
             </li>
             <li>
-              <span className="font-mono">!FEUR</span> — az EUA eladása legyen mindig az EUR eladása
-              (0-s lap).
+              <span className="font-mono">{i18n.t('literals.feur')}</span>
+              {i18n.t('literals.az-eua-eladasa-legyen-mindig-az-eur-elad')}
             </li>
             <li>
-              <span className="font-mono">#03M</span> — a 3-as csoport eladási árfolyamát veszi át.
+              <span className="font-mono">{i18n.t('literals.03m')}</span>
+              {i18n.t('literals.a-3-as-csoport-eladasi-arfolyamat-veszi')}
             </li>
           </ul>
         </div>
@@ -150,7 +188,7 @@ export function FormulaSyntaxHelp({ open, onClose }: { open: boolean; onClose: (
             onClick={onClose}
             className="px-4 py-2 bg-emerald-700 text-white rounded hover:bg-emerald-800 font-medium"
           >
-            Vissza a munkához
+            {i18n.t('literals.vissza-a-munkahoz')}
           </button>
         </div>
       </div>
@@ -167,7 +205,8 @@ export function FormulaSyntaxHelpButton({ onClick }: { onClick: () => void }) {
       className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium border border-emerald-400 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded"
       title="Képletszintaxis súgó (A–I, J–S, !Fxxx, #NNL)"
     >
-      <HelpCircle size={11} /> Képlet-súgó
+      <HelpCircle size={11} />
+      {i18n.t('literals.keplet-sugo')}
     </button>
   )
 }

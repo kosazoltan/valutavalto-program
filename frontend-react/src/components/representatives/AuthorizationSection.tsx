@@ -10,6 +10,7 @@ import { toast } from '../ui/toaster'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
 import { useTextReasonModal } from '../TextReasonModal'
+import i18n from '../../i18n'
 
 interface Props {
   representativeId: string
@@ -237,7 +238,8 @@ export default function AuthorizationSection({ representativeId }: Props) {
 
       {loading ? (
         <div className="flex items-center justify-center py-4 text-gray-500 gap-2">
-          <Loader2 size={16} className="animate-spin" /> Betöltés...
+          <Loader2 size={16} className="animate-spin" />
+          {i18n.t('literals.betoltes-2')}
         </div>
       ) : authorizations.length === 0 ? (
         <div className="text-center py-4 text-gray-500 text-sm">
@@ -275,7 +277,9 @@ export default function AuthorizationSection({ representativeId }: Props) {
                     : 'Korlátlan'}
                 </td>
                 <td className="font-mono">
-                  {auth.usedTransactionCount ?? 0} / {auth.maxTransactionCount ?? '∞'}
+                  {auth.usedTransactionCount ?? 0}
+                  {i18n.t('literals.lit-10')}
+                  {auth.maxTransactionCount ?? '∞'}
                 </td>
                 <td>
                   <div className="flex gap-1">

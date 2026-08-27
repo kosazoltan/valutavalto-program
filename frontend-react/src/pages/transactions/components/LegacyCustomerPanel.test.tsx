@@ -4,6 +4,7 @@ import { vi, describe, beforeEach, it, expect } from 'vitest'
 import LegacyCustomerPanel from './LegacyCustomerPanel'
 
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({
     t: (key: string) => key,
   }),

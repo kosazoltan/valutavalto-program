@@ -126,7 +126,9 @@ export default function CameraReviewPanel({ branchId, date, cameraIds }: CameraR
         api.get<ReviewStatus>(`/camera/review/status?${params}`),
         api.get<ReviewTransaction[]>(`/camera/review/transactions?${params}`),
       ])
-      setMarks((marksResult.data ?? []).slice().sort((a, b) => a.markTime.localeCompare(b.markTime)))
+      setMarks(
+        (marksResult.data ?? []).slice().sort((a, b) => a.markTime.localeCompare(b.markTime)),
+      )
       setStatus(statusResult.data ?? { reviewed: false })
       setTransactions(
         (txResult.data ?? [])
@@ -134,7 +136,11 @@ export default function CameraReviewPanel({ branchId, date, cameraIds }: CameraR
           .sort((a, b) => transactionTimeKey(a).localeCompare(transactionTimeKey(b))),
       )
     } catch (err) {
-      logger.error('CameraReviewPanel', 'Átnézési adatok betöltése sikertelen:', getErrorMessage(err))
+      logger.error(
+        'CameraReviewPanel',
+        'Átnézési adatok betöltése sikertelen:',
+        getErrorMessage(err),
+      )
     } finally {
       setLoading(false)
     }
@@ -196,7 +202,11 @@ export default function CameraReviewPanel({ branchId, date, cameraIds }: CameraR
   }
 
   const timeline = useMemo(() => {
-    const txItems = transactions.map((tx) => ({ type: 'transaction' as const, time: transactionTimeKey(tx), tx }))
+    const txItems = transactions.map((tx) => ({
+      type: 'transaction' as const,
+      time: transactionTimeKey(tx),
+      tx,
+    }))
     const markItems = marks.map((mark) => ({ type: 'mark' as const, time: mark.markTime, mark }))
     return [...txItems, ...markItems].sort((a, b) => a.time.localeCompare(b.time))
   }, [marks, transactions])
@@ -271,7 +281,10 @@ export default function CameraReviewPanel({ branchId, date, cameraIds }: CameraR
 
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               {CONDITIONS.map((condition) => (
-                <label key={condition.key} className="flex items-center justify-between gap-3 text-sm">
+                <label
+                  key={condition.key}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
                   <span>{t(condition.labelKey)}</span>
                   <select
                     className="h-9 rounded-md border px-2 text-sm"
@@ -351,7 +364,8 @@ export default function CameraReviewPanel({ branchId, date, cameraIds }: CameraR
                           : 'border border-red-200 bg-red-50 text-red-800'
                       }`}
                     >
-                      {t(condition.labelKey)}: {mark[condition.key] ? t('camera.rendben') : t('camera.nincsRendben')}
+                      {t(condition.labelKey)}:{' '}
+                      {mark[condition.key] ? t('camera.rendben') : t('camera.nincsRendben')}
                     </span>
                   ))}
                 </div>
@@ -382,7 +396,10 @@ export default function CameraReviewPanel({ branchId, date, cameraIds }: CameraR
                   </div>
                 </div>
               ) : (
-                <div key={`mark-${item.mark.id}`} className="rounded-md border border-primary/30 p-2 text-sm">
+                <div
+                  key={`mark-${item.mark.id}`}
+                  className="rounded-md border border-primary/30 p-2 text-sm"
+                >
                   <div className="flex items-center gap-2 font-medium">
                     <CheckCircle2 className="h-4 w-4" />
                     {item.mark.markTime} · {t('camera.megjeloles')}

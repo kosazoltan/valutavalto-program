@@ -38,6 +38,7 @@ import { api } from '../../services/api/client'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
 import AmlApproverModal, { toApprovalCustomer } from '../../components/auth/AmlApproverModal'
+import i18n from '../../i18n'
 
 /**
  * Konverziós tranzakció oldal
@@ -601,7 +602,7 @@ export default function ConversionPage() {
             step === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
           }`}
         >
-          <span className="font-bold">1</span>
+          <span className="font-bold">{i18n.t('literals.1-2')}</span>
           <span>{t('transactions.forrasValuta')}</span>
         </div>
         <ArrowRightLeft className="text-gray-400" />
@@ -610,7 +611,7 @@ export default function ConversionPage() {
             step === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
           }`}
         >
-          <span className="font-bold">2</span>
+          <span className="font-bold">{i18n.t('literals.2-2')}</span>
           <span>{t('transactions.celValuta')}</span>
         </div>
       </div>
@@ -619,7 +620,7 @@ export default function ConversionPage() {
         {/* Left: Source currency */}
         <div className={`form-panel ${step === 1 ? 'ring-2 ring-blue-500' : ''}`}>
           <h2 className="font-semibold mb-3 text-green-700 flex items-center gap-2">
-            <span className="bg-green-100 px-2 py-1 rounded">VESZEK</span>
+            <span className="bg-green-100 px-2 py-1 rounded">{i18n.t('literals.veszek')}</span>
             {t('transactions.forrasValutaUgyfelElad')}
           </h2>
 
@@ -641,7 +642,9 @@ export default function ConversionPage() {
                 <option value="">{t('cashdesk.valasszValutat')}</option>
                 {currencies.map((c) => (
                   <option key={c.id} value={c.id} disabled={c.id === toCurrencyId}>
-                    {c.code} - {c.name}
+                    {c.code}
+                    {i18n.t('literals.lit-17')}
+                    {c.name}
                   </option>
                 ))}
               </select>
@@ -661,7 +664,8 @@ export default function ConversionPage() {
             <div>
               <label htmlFor="from-amount" className="form-label">
                 {t('transactions.osszeg')}
-                {fromCurrency?.code || 'valuta'})
+                {fromCurrency?.code || 'valuta'}
+                {i18n.t('literals.lit-2')}
               </label>
               <NumberInput
                 id="from-amount"
@@ -714,7 +718,10 @@ export default function ConversionPage() {
                   {t('transactions.konverziosArfolyam')}
                 </div>
                 <div className="text-lg font-bold font-mono">
-                  1 {fromCurrency.code} = {formatDecimal(conversionRate, 4, 6)} {toCurrency.code}
+                  {i18n.t('literals.1-3')}
+                  {fromCurrency.code}
+                  {i18n.t('literals.lit-53')}
+                  {formatDecimal(conversionRate, 4, 6)} {toCurrency.code}
                 </div>
               </div>
             )}
@@ -739,7 +746,9 @@ export default function ConversionPage() {
             {/* HIBA 2026-05-26 (#4): visszajáró forint a cél-összeg lefelé módosításakor */}
             {returnedHuf > 0 && (
               <div className="p-3 bg-amber-50 rounded border border-amber-300 text-center">
-                <div className="text-sm text-amber-700 mb-1">Visszajáró forint</div>
+                <div className="text-sm text-amber-700 mb-1">
+                  {i18n.t('literals.visszajaro-forint')}
+                </div>
                 <div className="text-xl font-bold font-mono text-amber-700">
                   {formatInteger(returnedHuf)} {t('common.ft')}
                 </div>
@@ -783,7 +792,7 @@ export default function ConversionPage() {
         {/* Right: Target currency */}
         <div className={`form-panel ${step === 2 ? 'ring-2 ring-blue-500' : 'opacity-75'}`}>
           <h2 className="font-semibold mb-3 text-blue-700 flex items-center gap-2">
-            <span className="bg-blue-100 px-2 py-1 rounded">ELADOK</span>
+            <span className="bg-blue-100 px-2 py-1 rounded">{i18n.t('literals.eladok')}</span>
             {t('transactions.celValutaUgyfelVesz')}
           </h2>
 
@@ -805,7 +814,9 @@ export default function ConversionPage() {
                 <option value="">{t('cashdesk.valasszValutat')}</option>
                 {currencies.map((c) => (
                   <option key={c.id} value={c.id} disabled={c.id === fromCurrencyId}>
-                    {c.code} - {c.name}
+                    {c.code}
+                    {i18n.t('literals.lit-17')}
+                    {c.name}
                   </option>
                 ))}
               </select>
@@ -825,7 +836,8 @@ export default function ConversionPage() {
             <div>
               <label htmlFor="to-amount" className="form-label">
                 {t('transactions.kapottOsszeg')}
-                {toCurrency?.code || 'valuta'})
+                {toCurrency?.code || 'valuta'}
+                {i18n.t('literals.lit-2')}
               </label>
               <NumberInput
                 id="to-amount"
@@ -845,7 +857,9 @@ export default function ConversionPage() {
             {/* HIBA 2026-05-26 (#2): ügyfél deviza-státusza (belföldi / külföldi) */}
             {step === 2 && (
               <div>
-                <span className="form-label block mb-1">Ügyfél deviza-státusza</span>
+                <span className="form-label block mb-1">
+                  {i18n.t('literals.ugyfel-deviza-statusza')}
+                </span>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -856,7 +870,7 @@ export default function ConversionPage() {
                         : 'bg-white text-gray-600 border-gray-300'
                     }`}
                   >
-                    Külföldi (K)
+                    {i18n.t('literals.kulfoldi-k')}
                   </button>
                   <button
                     type="button"
@@ -867,7 +881,7 @@ export default function ConversionPage() {
                         : 'bg-white text-gray-600 border-gray-300'
                     }`}
                   >
-                    Belföldi (B)
+                    {i18n.t('literals.belfoldi-b')}
                   </button>
                 </div>
               </div>

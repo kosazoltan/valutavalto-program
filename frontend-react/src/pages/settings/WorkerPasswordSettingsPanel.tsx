@@ -3,6 +3,7 @@ import { LockKeyhole, Loader2, UserRound } from 'lucide-react'
 import { userApi, type UserDetail } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 export default function WorkerPasswordSettingsPanel() {
   const [oldPassword, setOldPassword] = useState('')
@@ -59,7 +60,11 @@ export default function WorkerPasswordSettingsPanel() {
       setNewPassword('')
       setNewPasswordConfirm('')
     } catch (err) {
-      logger.error('WorkerPasswordSettingsPanel', 'Saját user jelszóváltás sikertelen', getErrorMessage(err))
+      logger.error(
+        'WorkerPasswordSettingsPanel',
+        'Saját user jelszóváltás sikertelen',
+        getErrorMessage(err),
+      )
       setError('Saját jelszó módosítása sikertelen.')
     } finally {
       setSaving(false)
@@ -71,10 +76,10 @@ export default function WorkerPasswordSettingsPanel() {
       <div className="mb-4">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <LockKeyhole size={18} />
-          Saját dolgozói jelszó
+          {i18n.t('literals.sajat-dolgozoi-jelszo')}
         </h2>
         <p className="mt-1 text-sm text-gray-600">
-          A bejelentkezett dolgozó jelszavának módosítása a saját felhasználói fiók szerződésén.
+          {i18n.t('literals.a-bejelentkezett-dolgozo-jelszavanak-mod')}
         </p>
       </div>
 
@@ -84,46 +89,54 @@ export default function WorkerPasswordSettingsPanel() {
       >
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
           <UserRound size={16} />
-          Saját felhasználói profil
+          {i18n.t('literals.sajat-felhasznaloi-profil')}
         </div>
         {profileLoading && (
           <div className="flex items-center gap-2 text-sm text-slate-600">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Profil betöltése...
+            {i18n.t('literals.profil-betoltese')}
           </div>
         )}
         {!profileLoading && profile && (
           <dl className="grid gap-2 text-sm md:grid-cols-2">
             <div>
-              <dt className="text-xs uppercase text-slate-500">Felhasználónév</dt>
+              <dt className="text-xs uppercase text-slate-500">
+                {i18n.t('literals.felhasznalonev')}
+              </dt>
               <dd className="font-mono font-semibold text-slate-900">{profile.username}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-slate-500">Név</dt>
+              <dt className="text-xs uppercase text-slate-500">{i18n.t('literals.nev')}</dt>
               <dd className="font-semibold text-slate-900">
                 {profile.name ?? profile.workerName ?? '-'}
               </dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-slate-500">E-mail</dt>
+              <dt className="text-xs uppercase text-slate-500">{i18n.t('literals.e-mail')}</dt>
               <dd className="break-words text-slate-900">{profile.email || '-'}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-slate-500">Alapértelmezett fiók</dt>
+              <dt className="text-xs uppercase text-slate-500">
+                {i18n.t('literals.alapertelmezett-fiok')}
+              </dt>
               <dd className="text-slate-900">{profile.defaultBranchName || '-'}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-slate-500">Szerepkör</dt>
+              <dt className="text-xs uppercase text-slate-500">{i18n.t('literals.szerepkor')}</dt>
               <dd className="text-slate-900">{profile.roles?.join(', ') || profile.role || '-'}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-slate-500">Utolsó belépés</dt>
+              <dt className="text-xs uppercase text-slate-500">
+                {i18n.t('literals.utolso-belepes')}
+              </dt>
               <dd className="text-slate-900">{profile.lastLoginAt || profile.lastLogin || '-'}</dd>
             </div>
           </dl>
         )}
         {!profileLoading && !profile && (
-          <p className="text-sm text-slate-600">A saját felhasználói profil nem tölthető be.</p>
+          <p className="text-sm text-slate-600">
+            {i18n.t('literals.a-sajat-felhasznaloi-profil-nem-toltheto')}
+          </p>
         )}
       </div>
 
@@ -140,7 +153,9 @@ export default function WorkerPasswordSettingsPanel() {
 
       <div className="grid gap-3 md:grid-cols-3">
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700">Jelenlegi jelszó</span>
+          <span className="mb-1 block font-medium text-gray-700">
+            {i18n.t('literals.jelenlegi-jelszo')}
+          </span>
           <input
             type="password"
             autoComplete="current-password"
@@ -150,7 +165,9 @@ export default function WorkerPasswordSettingsPanel() {
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700">Új jelszó</span>
+          <span className="mb-1 block font-medium text-gray-700">
+            {i18n.t('literals.uj-jelszo')}
+          </span>
           <input
             type="password"
             autoComplete="new-password"
@@ -160,7 +177,9 @@ export default function WorkerPasswordSettingsPanel() {
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700">Új jelszó ismét</span>
+          <span className="mb-1 block font-medium text-gray-700">
+            {i18n.t('literals.uj-jelszo-ismet')}
+          </span>
           <input
             type="password"
             autoComplete="new-password"

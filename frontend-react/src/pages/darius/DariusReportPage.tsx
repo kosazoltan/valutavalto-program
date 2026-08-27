@@ -18,6 +18,7 @@ import { localIsoDate } from '../../utils/dateFormat'
 import { filenameFromContentDisposition } from '../../utils/contentDisposition'
 import { useTranslation } from 'react-i18next'
 import DariusFixingPanel from './DariusFixingPanel'
+import i18n from '../../i18n'
 
 type Tab = 'daily' | 'monthly' | 'missing' | 'fixing'
 
@@ -315,7 +316,7 @@ export default function DariusReportPage() {
             className="btn-secondary text-sm flex items-center gap-1"
           >
             <Calendar size={14} />
-            Napi lekérdezés
+            {i18n.t('literals.napi-lekerdezes')}
           </button>
           <button
             onClick={handleGenerate}
@@ -326,7 +327,7 @@ export default function DariusReportPage() {
             {t('darius.generalas')}
           </button>
           <label className="flex items-center gap-1 text-sm text-gray-600">
-            Értéknap (T+N)
+            {i18n.t('literals.erteknap-t-n')}
             <input
               type="number"
               min={-200}
@@ -352,7 +353,9 @@ export default function DariusReportPage() {
       </div>
 
       {/* Content */}
-      {loading && <div className="text-center py-8 text-gray-400">Betöltés...</div>}
+      {loading && (
+        <div className="text-center py-8 text-gray-400">{i18n.t('literals.betoltes')}</div>
+      )}
 
       {tab === 'daily' && !loading && (
         <div className="grid grid-cols-3 gap-3">
@@ -403,7 +406,9 @@ export default function DariusReportPage() {
                   </span>
                 </div>
                 {detailLoadingId === r.id && (
-                  <div className="mt-1 text-xs text-blue-600">Részletek betöltése...</div>
+                  <div className="mt-1 text-xs text-blue-600">
+                    {i18n.t('literals.reszletek-betoltese-2')}
+                  </div>
                 )}
               </div>
             ))}
@@ -425,13 +430,16 @@ export default function DariusReportPage() {
                   <div>
                     {t('darius.payloadHash')}
                     <code className="text-[10px] bg-gray-100 px-1 rounded">
-                      {selected.payloadHash?.slice(0, 16)}...
+                      {selected.payloadHash?.slice(0, 16)}
+                      {i18n.t('literals.lit-16')}
                     </code>
                   </div>
                   {selected.approvedBy && (
                     <div>
-                      {t('camera.jovahagyta')} {selected.approvedBy} (
-                      {formatDate(selected.approvedAt || '')})
+                      {t('camera.jovahagyta')} {selected.approvedBy}
+                      {i18n.t('literals.lit')}
+                      {formatDate(selected.approvedAt || '')}
+                      {i18n.t('literals.lit-2')}
                     </div>
                   )}
                   {selected.submittedBy && (
@@ -451,7 +459,9 @@ export default function DariusReportPage() {
                   )}
                   {selected.retryCount > 0 && (
                     <div>
-                      {t('darius.retry')} {selected.retryCount}/{selected.maxRetries}
+                      {t('darius.retry')} {selected.retryCount}
+                      {i18n.t('literals.lit-4')}
+                      {selected.maxRetries}
                     </div>
                   )}
                 </div>
@@ -484,7 +494,7 @@ export default function DariusReportPage() {
                       className="block text-xs font-medium text-gray-600"
                       htmlFor="darius-ack-reference"
                     >
-                      Visszaigazolási referencia
+                      {i18n.t('literals.visszaigazolasi-referencia')}
                     </label>
                     <input
                       id="darius-ack-reference"

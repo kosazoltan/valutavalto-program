@@ -23,6 +23,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { useAppMode } from '../../hooks/useAppMode'
+import i18n from '../../i18n'
 
 interface InventoryItem {
   id: string | number
@@ -603,21 +604,25 @@ export default function CashierStocksPage() {
         <section className="cashier-stock-print form-panel p-3">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-sm font-bold text-secondary-900">Részletes pénztári készlet</h2>
+              <h2 className="text-sm font-bold text-secondary-900">
+                {i18n.t('literals.reszletes-penztari-keszlet')}
+              </h2>
               <p className="text-xs text-gray-500">
-                {selectedBranchName} · {todayLocalIso()} · utolsó frissítés:{' '}
-                {formatClock(lastRefreshAt)}
+                {selectedBranchName}
+                {i18n.t('literals.lit-9')}
+                {todayLocalIso()}
+                {i18n.t('literals.utolso-frissites')} {formatClock(lastRefreshAt)}
               </p>
             </div>
             <div className="no-print flex flex-wrap items-end gap-2">
               <label className="grid gap-1 text-xs font-semibold text-gray-600">
-                Pénztár
+                {i18n.t('literals.penztar-2')}
                 <select
                   className="form-input h-9 min-w-56"
                   value={selectedBranchId}
                   onChange={(event) => setSelectedBranchId(event.target.value)}
                 >
-                  <option value="ALL">Körzet összesen</option>
+                  <option value="ALL">{i18n.t('literals.korzet-osszesen')}</option>
                   {cashierOptions.map((option) => (
                     <option key={option.id} value={option.id}>
                       {option.name}
@@ -634,7 +639,7 @@ export default function CashierStocksPage() {
                 title="Frissítés"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Frissítés
+                {i18n.t('literals.frissites')}
               </button>
               <button
                 onClick={() => window.print()}
@@ -642,7 +647,7 @@ export default function CashierStocksPage() {
                 title="Nyomtatás"
               >
                 <Printer className="h-4 w-4" />
-                Nyomtatás
+                {i18n.t('literals.nyomtatas')}
               </button>
               <button
                 type="button"
@@ -651,7 +656,7 @@ export default function CashierStocksPage() {
                 title="MNB letöltése"
               >
                 <Download className="h-4 w-4" />
-                MNB letöltése
+                {i18n.t('literals.mnb-letoltese')}
               </button>
             </div>
           </div>
@@ -659,17 +664,17 @@ export default function CashierStocksPage() {
             <table className="w-full min-w-[980px] text-xs">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-600">
-                  <th className="px-2 py-2">Val.</th>
-                  <th className="px-2 py-2 text-right">Készlet</th>
-                  <th className="px-2 py-2 text-right">Forgalom vétel</th>
-                  <th className="px-2 py-2 text-right">Forgalom eladás</th>
-                  <th className="px-2 py-2 text-right">Árf. vétel</th>
-                  <th className="px-2 py-2 text-right">Árf. eladás</th>
-                  <th className="px-2 py-2 text-right">Elszámoló</th>
-                  <th className="px-2 py-2 text-right">1. kedv. vétel</th>
-                  <th className="px-2 py-2 text-right">1. kedv. eladás</th>
-                  <th className="px-2 py-2 text-right">2. kedv. vétel</th>
-                  <th className="px-2 py-2 text-right">2. kedv. eladás</th>
+                  <th className="px-2 py-2">{i18n.t('literals.val')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.keszlet')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.forgalom-vetel')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.forgalom-eladas')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.arf-vetel')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.arf-eladas')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.elszamolo')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.1-kedv-vetel')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.1-kedv-eladas')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.2-kedv-vetel')}</th>
+                  <th className="px-2 py-2 text-right">{i18n.t('literals.2-kedv-eladas')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -734,8 +739,9 @@ export default function CashierStocksPage() {
             </span>
           </div>
           <span className="text-xs text-primary-600">
-            <strong>{totalBranches}</strong> {t('inventory.penztar')} · {totalNonZero}{' '}
-            {t('inventory.aktivTetel')}
+            <strong>{totalBranches}</strong> {t('inventory.penztar')}
+            {i18n.t('literals.lit-9')}
+            {totalNonZero} {t('inventory.aktivTetel')}
           </span>
         </div>
       </div>
@@ -743,7 +749,7 @@ export default function CashierStocksPage() {
       {/* Pénztáranként kártyák */}
       {loading && branchGroups.length === 0 ? (
         <div className="no-print form-panel text-center text-sm text-gray-500 py-8">
-          Betöltés...
+          {i18n.t('literals.betoltes')}
         </div>
       ) : branchGroups.length === 0 ? (
         <div className="no-print form-panel text-center text-sm text-gray-500 py-8">
@@ -759,7 +765,10 @@ export default function CashierStocksPage() {
                 <h2 className="font-bold text-secondary-900 text-sm">
                   {terr.regionKey}
                   {terr.vaultName && (
-                    <span className="font-normal text-gray-500"> · {terr.vaultName}</span>
+                    <span className="font-normal text-gray-500">
+                      {i18n.t('literals.lit-9')}
+                      {terr.vaultName}
+                    </span>
                   )}
                 </h2>
                 <span className="ml-auto text-xs text-primary-700 font-mono">
@@ -767,7 +776,8 @@ export default function CashierStocksPage() {
                   {t('common.ft')}
                   <span className="text-gray-400">
                     {' '}
-                    · {terr.groups.length} {t('inventory.penztar')}
+                    {i18n.t('literals.lit-38')}
+                    {terr.groups.length} {t('inventory.penztar')}
                   </span>
                 </span>
               </div>
@@ -809,7 +819,7 @@ function BranchCard({ group, isVault = false }: { group: BranchGroup; isVault?: 
         >
           {isVault && (
             <span className="text-[9px] font-bold uppercase bg-amber-500 text-white rounded px-1 py-px shrink-0">
-              Értéktár
+              {i18n.t('literals.ertektar')}
             </span>
           )}
           <span className="truncate">{group.branchName}</span>

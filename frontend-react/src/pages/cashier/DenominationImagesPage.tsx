@@ -8,6 +8,7 @@ import {
   type Currency,
   type CurrencyDenominationImageDto,
 } from '../../services/api/exchange-rates'
+import i18n from '../../i18n'
 
 // FS-9 S3: pénztári READ-ONLY címletkép-nézegető — hamis bankjegy vizuális
 // összevetéshez teljes méretű képek (nem thumbnail). Write endpoint hívás TILOS.
@@ -133,15 +134,15 @@ export default function DenominationImagesPage() {
   return (
     <div className="p-4 space-y-4" data-testid="denomination-viewer-page">
       <div>
-        <h1 className="text-lg font-bold">Címletképek (valuta)</h1>
+        <h1 className="text-lg font-bold">{i18n.t('literals.cimletkepek-valuta')}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Aktív címletképek megtekintése teljes méretben — hamis bankjegy ellenőrzéshez
+          {i18n.t('literals.aktiv-cimletkepek-megtekintese-teljes-me')}
         </p>
       </div>
 
       <div className="max-w-xs">
         <label className="text-xs block mb-0.5" htmlFor="denomination-viewer-currency">
-          Valuta
+          {i18n.t('literals.valuta')}
         </label>
         <select
           id="denomination-viewer-currency"
@@ -152,10 +153,12 @@ export default function DenominationImagesPage() {
           className="form-input w-full"
           data-testid="denomination-viewer-currency"
         >
-          <option value="">— Válassz valutát —</option>
+          <option value="">{i18n.t('literals.valassz-valutat')}</option>
           {currencies.map((currency) => (
             <option key={currency.id} value={currency.id}>
-              {currency.code} — {currency.name}
+              {currency.code}
+              {i18n.t('literals.lit-18')}
+              {currency.name}
             </option>
           ))}
         </select>
@@ -166,13 +169,13 @@ export default function DenominationImagesPage() {
           className="rounded-md border border-dashed border-gray-300 p-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
           data-testid="denomination-viewer-empty"
         >
-          Válassz valutát a címletképek megtekintéséhez
+          {i18n.t('literals.valassz-valutat-a-cimletkepek-megtekinte')}
         </div>
       ) : (
         <>
           {loading && (
             <span className="text-xs text-gray-500" data-testid="denomination-viewer-loading">
-              Betöltés...
+              {i18n.t('literals.betoltes')}
             </span>
           )}
           {!loading && images.length === 0 && (
@@ -180,7 +183,7 @@ export default function DenominationImagesPage() {
               className="rounded border border-gray-200 p-3 text-xs text-gray-500 dark:border-gray-700"
               data-testid="denomination-viewer-no-images"
             >
-              Nincs aktív címletkép ehhez a valutához
+              {i18n.t('literals.nincs-aktiv-cimletkep-ehhez-a-valutahoz')}
             </div>
           )}
           <div className="space-y-6">
@@ -191,8 +194,10 @@ export default function DenominationImagesPage() {
                 data-testid={`denomination-viewer-image-${image.id}`}
               >
                 <figcaption className="text-sm font-semibold">
-                  {image.faceValue} {selectedCurrency?.code ?? ''} —{' '}
-                  {getTypeLabel(image.denominationType)} / {getSideLabel(image.side)}
+                  {image.faceValue} {selectedCurrency?.code ?? ''}
+                  {i18n.t('literals.lit-28')} {getTypeLabel(image.denominationType)}
+                  {i18n.t('literals.lit-10')}
+                  {getSideLabel(image.side)}
                 </figcaption>
                 {imageUrls[image.id] ? (
                   <img
@@ -202,7 +207,7 @@ export default function DenominationImagesPage() {
                   />
                 ) : (
                   <div className="flex h-40 max-w-md items-center justify-center rounded border border-gray-200 bg-gray-50 text-xs text-gray-400">
-                    Kép betöltése...
+                    {i18n.t('literals.kep-betoltese')}
                   </div>
                 )}
               </figure>

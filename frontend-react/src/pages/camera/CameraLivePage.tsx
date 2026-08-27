@@ -4,6 +4,7 @@ import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 const isElectron = () => !!window.electronAPI
 
@@ -134,7 +135,7 @@ export default function CameraLivePage() {
             {t('camera.kamerak')}
           </h2>
           {loading ? (
-            <p className="text-muted-foreground">Betöltés...</p>
+            <p className="text-muted-foreground">{i18n.t('literals.betoltes')}</p>
           ) : cameras.length === 0 ? (
             <p className="text-muted-foreground">{t('camera.nincsCsatlakoztatottKamera')}</p>
           ) : (

@@ -6,6 +6,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { exchangeRateApi, type ExchangeRate } from '../../services/api/exchange-rates'
+import i18n from '../../i18n'
 
 interface RateHistoryItem {
   id: string | number
@@ -338,7 +339,9 @@ export default function RateHistoryPage() {
         )}
         {canonicalHistory.length > 0 && (
           <div className="mt-2 text-xs text-emerald-900">
-            {t('rates.canonicalHistoryTalalatok')}: {canonicalHistory.length}
+            {t('rates.canonicalHistoryTalalatok')}
+            {i18n.t('literals.lit-22')}
+            {canonicalHistory.length}
           </div>
         )}
       </section>
@@ -346,7 +349,7 @@ export default function RateHistoryPage() {
       <div className="space-y-2 md:hidden">
         {loading ? (
           <div className="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
-            Betöltés...
+            {i18n.t('literals.betoltes')}
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-md border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
@@ -409,7 +412,7 @@ export default function RateHistoryPage() {
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -437,7 +440,9 @@ export default function RateHistoryPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

@@ -26,6 +26,7 @@ import {
   PRIVACY_NOTICE_VERSION,
   appendPrivacyNoticeAcknowledgement,
 } from '../../../utils/privacyNotice'
+import i18n from '../../../i18n'
 
 /**
  * V235 (2026-05-19 HIBA #15): a Pmt. szerinti "kiemelt kozszereplo" 6 minoseg-
@@ -911,7 +912,10 @@ export default function CustomerPanel({
               : 'AML figyelmeztetesek:'}
           </p>
           {amlResult.warnings.map((w, i) => (
-            <p key={i}>- {w}</p>
+            <p key={i}>
+              {i18n.t('literals.lit-26')}
+              {w}
+            </p>
           ))}
           {amlChecking && <Loader2 className="w-4 h-4 animate-spin inline ml-2" />}
         </div>
@@ -919,7 +923,8 @@ export default function CustomerPanel({
 
       {amlChecking && !amlResult && (
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Loader2 className="w-4 h-4 animate-spin" /> AML ellenorzes...
+          <Loader2 className="w-4 h-4 animate-spin" />
+          {i18n.t('literals.aml-ellenorzes')}
         </div>
       )}
 
@@ -1103,7 +1108,11 @@ export default function CustomerPanel({
                       {c.name}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {c.documentType}: {c.documentNumber} | {c.nationality ?? 'Magyar'}
+                      {c.documentType}
+                      {i18n.t('literals.lit-22')}
+                      {c.documentNumber}
+                      {i18n.t('literals.lit-52')}
+                      {c.nationality ?? 'Magyar'}
                     </div>
                   </button>
                 ))}
@@ -1309,12 +1318,14 @@ export default function CustomerPanel({
             {hufTotal >= 300_000 && (
               <div className="mt-3 p-3 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/20 space-y-2">
                 <div className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                  Pmt. JOGCÍM nyilatkozat (300.000 Ft felett kötelező)
+                  {i18n.t('literals.pmt-jogcim-nyilatkozat-300-000-ft-felett')}
                 </div>
                 {/* HIBA #15 (2026-05-19): a PEP minoseg 7-utas dropdown — nem csak Igen/Nem.
                     A bizonylaton kotelezo megjelolni MILYEN minosegben kiemelt kozszereplo. */}
                 <div>
-                  <label className="text-xs block mb-0.5">Kiemelt közszereplő (PEP)?</label>
+                  <label className="text-xs block mb-0.5">
+                    {i18n.t('literals.kiemelt-kozszereplo-pep-2')}
+                  </label>
                   <select
                     className={fieldClass}
                     style={fieldStyle}
@@ -1331,22 +1342,30 @@ export default function CustomerPanel({
                       }
                     }}
                   >
-                    <option value="NEM">Nem közszereplő</option>
-                    <option value="CSALADTAG">Igen — kiemelt közszereplő családtagja</option>
+                    <option value="NEM">{i18n.t('literals.nem-kozszereplo')}</option>
+                    <option value="CSALADTAG">
+                      {i18n.t('literals.igen-kiemelt-kozszereplo-csaladtagja')}
+                    </option>
                     <option value="KOZELI_MUNKATARS">
-                      Igen — közeli munkatárs / üzleti partner
+                      {i18n.t('literals.igen-kozeli-munkatars-uzleti-partner')}
                     </option>
-                    <option value="KORMANYFO">Igen — miniszter / államtitkár / kormányfő</option>
+                    <option value="KORMANYFO">
+                      {i18n.t('literals.igen-miniszter-allamtitkar-kormanyfo')}
+                    </option>
                     <option value="PARLAMENTI">
-                      Igen — országgyűlési / önkormányzati képviselő
+                      {i18n.t('literals.igen-orszaggyulesi-onkormanyzati-kepvise')}
                     </option>
-                    <option value="NAV_VEZETO">Igen — NAV / állami vállalat felsővezetés</option>
-                    <option value="EGYEB">Igen — egyéb kiemelt közszereplő</option>
+                    <option value="NAV_VEZETO">
+                      {i18n.t('literals.igen-nav-allami-vallalat-felsovezetes')}
+                    </option>
+                    <option value="EGYEB">
+                      {i18n.t('literals.igen-egyeb-kiemelt-kozszereplo')}
+                    </option>
                   </select>
                 </div>
                 <div className="flex items-center gap-4">
                   <label className="text-xs flex items-center gap-1.5">
-                    <span>Saját nevében jár el?</span>
+                    <span>{i18n.t('literals.sajat-neveben-jar-el')}</span>
                     <label className="inline-flex items-center gap-1">
                       <input
                         type="radio"
@@ -1354,7 +1373,7 @@ export default function CustomerPanel({
                         checked={onOwnBehalf}
                         onChange={() => setOnOwnBehalf(true)}
                       />
-                      <span>Igen</span>
+                      <span>{i18n.t('literals.igen')}</span>
                     </label>
                     <label className="inline-flex items-center gap-1">
                       <input
@@ -1363,7 +1382,7 @@ export default function CustomerPanel({
                         checked={!onOwnBehalf}
                         onChange={() => setOnOwnBehalf(false)}
                       />
-                      <span>Nem</span>
+                      <span>{i18n.t('literals.nem')}</span>
                     </label>
                   </label>
                 </div>
@@ -1373,10 +1392,10 @@ export default function CustomerPanel({
                 {!onOwnBehalf && (
                   <div className="ml-4 p-2 rounded border border-amber-400 dark:border-amber-600 bg-amber-100/50 dark:bg-amber-900/30 space-y-2">
                     <div className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                      Képviselt fél teljes azonosítása (kötelező)
+                      {i18n.t('literals.kepviselt-fel-teljes-azonositasa-kotelez')}
                     </div>
                     <div>
-                      <label className="text-xs block">Név *</label>
+                      <label className="text-xs block">{i18n.t('literals.nev-2')}</label>
                       <input
                         type="text"
                         className={fieldClass}
@@ -1389,7 +1408,7 @@ export default function CustomerPanel({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-xs block">Születési hely *</label>
+                        <label className="text-xs block">{i18n.t('literals.szuletesi-hely')}</label>
                         <input
                           type="text"
                           className={fieldClass}
@@ -1400,7 +1419,7 @@ export default function CustomerPanel({
                         />
                       </div>
                       <div>
-                        <label className="text-xs block">Születési idő *</label>
+                        <label className="text-xs block">{i18n.t('literals.szuletesi-ido')}</label>
                         <input
                           type="date"
                           className={fieldClass}
@@ -1411,7 +1430,7 @@ export default function CustomerPanel({
                         />
                       </div>
                       <div>
-                        <label className="text-xs block">Anyja neve *</label>
+                        <label className="text-xs block">{i18n.t('literals.anyja-neve')}</label>
                         <input
                           type="text"
                           className={fieldClass}
@@ -1422,7 +1441,7 @@ export default function CustomerPanel({
                         />
                       </div>
                       <div>
-                        <label className="text-xs block">Állampolgárság</label>
+                        <label className="text-xs block">{i18n.t('literals.allampolgarsag')}</label>
                         <select
                           className={fieldClass}
                           style={fieldStyle}
@@ -1437,30 +1456,34 @@ export default function CustomerPanel({
                             ))
                           ) : (
                             <>
-                              <option>Magyar</option>
-                              <option>EU-állampolgárság</option>
-                              <option>Egyéb</option>
+                              <option>{i18n.t('literals.magyar')}</option>
+                              <option>{i18n.t('literals.eu-allampolgarsag')}</option>
+                              <option>{i18n.t('literals.egyeb')}</option>
                             </>
                           )}
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs block">Okmány típus</label>
+                        <label className="text-xs block">{i18n.t('literals.okmany-tipus')}</label>
                         <select
                           className={fieldClass}
                           style={fieldStyle}
                           value={actorDocumentType}
                           onChange={(e) => setActorDocumentType(e.target.value)}
                         >
-                          <option value="ID_CARD">Személyi igazolvány</option>
-                          <option value="PASSPORT">Útlevél</option>
-                          <option value="DRIVING_LICENSE">Vezetői engedély</option>
-                          <option value="RESIDENCE_PERMIT">Tartózkodási engedély</option>
-                          <option value="OTHER">Egyéb</option>
+                          <option value="ID_CARD">{i18n.t('literals.szemelyi-igazolvany')}</option>
+                          <option value="PASSPORT">{i18n.t('literals.utlevel')}</option>
+                          <option value="DRIVING_LICENSE">
+                            {i18n.t('literals.vezetoi-engedely')}
+                          </option>
+                          <option value="RESIDENCE_PERMIT">
+                            {i18n.t('literals.tartozkodasi-engedely')}
+                          </option>
+                          <option value="OTHER">{i18n.t('literals.egyeb')}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs block">Okmányszám *</label>
+                        <label className="text-xs block">{i18n.t('literals.okmanyszam-3')}</label>
                         <input
                           type="text"
                           className={`${fieldClass} font-mono`}
@@ -1472,7 +1495,7 @@ export default function CustomerPanel({
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs block">Lakcím *</label>
+                      <label className="text-xs block">{i18n.t('literals.lakcim')}</label>
                       <input
                         type="text"
                         className={fieldClass}
@@ -1496,16 +1519,18 @@ export default function CustomerPanel({
                       checked={isLegalEntity}
                       onChange={(e) => setIsLegalEntity(e.target.checked)}
                     />
-                    <span>Jogi személy nevében jár el?</span>
+                    <span>{i18n.t('literals.jogi-szemely-neveben-jar-el')}</span>
                   </label>
                 </div>
                 {isLegalEntity && (
                   <div className="ml-4 p-2 rounded border border-indigo-400 dark:border-indigo-600 bg-indigo-100/50 dark:bg-indigo-900/30 space-y-2">
                     <div className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-                      Jogi személy adatai (Pmt. 8-9.§)
+                      {i18n.t('literals.jogi-szemely-adatai-pmt-8-9')}
                     </div>
                     <div>
-                      <label className="text-xs block">Jogi személy neve *</label>
+                      <label className="text-xs block">
+                        {i18n.t('literals.jogi-szemely-neve-2')}
+                      </label>
                       <input
                         type="text"
                         className={fieldClass}
@@ -1517,7 +1542,7 @@ export default function CustomerPanel({
                       />
                     </div>
                     <div>
-                      <label className="text-xs block">Székhely *</label>
+                      <label className="text-xs block">{i18n.t('literals.szekhely-2')}</label>
                       <input
                         type="text"
                         className={fieldClass}
@@ -1530,7 +1555,7 @@ export default function CustomerPanel({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-xs block">Adószám</label>
+                        <label className="text-xs block">{i18n.t('literals.adoszam')}</label>
                         <input
                           type="text"
                           className={`${fieldClass} font-mono`}
@@ -1542,7 +1567,9 @@ export default function CustomerPanel({
                         />
                       </div>
                       <div>
-                        <label className="text-xs block">Okiratszám / cégjegyzékszám</label>
+                        <label className="text-xs block">
+                          {i18n.t('literals.okiratszam-cegjegyzekszam')}
+                        </label>
                         <input
                           type="text"
                           className={`${fieldClass} font-mono`}
@@ -1556,7 +1583,7 @@ export default function CustomerPanel({
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-                        Tényleges tulajdonosok (max 4)
+                        {i18n.t('literals.tenyleges-tulajdonosok-max-4')}
                       </span>
                       <button
                         type="button"
@@ -1565,7 +1592,7 @@ export default function CustomerPanel({
                         onClick={() => setBeneficialOwners((prev) => [...prev, { ...EMPTY_OWNER }])}
                         className="text-xs px-2 py-0.5 rounded border border-indigo-400 hover:bg-indigo-200/50 disabled:opacity-40"
                       >
-                        + Tulajdonos
+                        {i18n.t('literals.tulajdonos')}
                       </button>
                     </div>
                     {beneficialOwners.map((o, idx) => {
@@ -1579,7 +1606,10 @@ export default function CustomerPanel({
                           className="p-2 rounded border border-indigo-300 dark:border-indigo-700 space-y-1.5"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold">{idx + 1}. tulajdonos</span>
+                            <span className="text-xs font-semibold">
+                              {idx + 1}
+                              {i18n.t('literals.tulajdonos-2')}
+                            </span>
                             <button
                               type="button"
                               className="text-xs text-red-600 hover:underline"
@@ -1587,12 +1617,12 @@ export default function CustomerPanel({
                                 setBeneficialOwners((prev) => prev.filter((_, i) => i !== idx))
                               }
                             >
-                              Eltávolítás
+                              {i18n.t('literals.eltavolitas')}
                             </button>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-xs block">Név *</label>
+                              <label className="text-xs block">{i18n.t('literals.nev-2')}</label>
                               <input
                                 type="text"
                                 className={fieldClass}
@@ -1602,7 +1632,7 @@ export default function CustomerPanel({
                               />
                             </div>
                             <div>
-                              <label className="text-xs block">Lakcím</label>
+                              <label className="text-xs block">{i18n.t('literals.lakcim-2')}</label>
                               <input
                                 type="text"
                                 className={fieldClass}
@@ -1612,7 +1642,9 @@ export default function CustomerPanel({
                               />
                             </div>
                             <div>
-                              <label className="text-xs block">Születési hely</label>
+                              <label className="text-xs block">
+                                {i18n.t('literals.szuletesi-hely-2')}
+                              </label>
                               <input
                                 type="text"
                                 className={fieldClass}
@@ -1622,7 +1654,9 @@ export default function CustomerPanel({
                               />
                             </div>
                             <div>
-                              <label className="text-xs block">Születési idő</label>
+                              <label className="text-xs block">
+                                {i18n.t('literals.szuletesi-ido-2')}
+                              </label>
                               <input
                                 type="date"
                                 className={fieldClass}
@@ -1632,7 +1666,9 @@ export default function CustomerPanel({
                               />
                             </div>
                             <div>
-                              <label className="text-xs block">Állampolgárság</label>
+                              <label className="text-xs block">
+                                {i18n.t('literals.allampolgarsag')}
+                              </label>
                               <input
                                 type="text"
                                 className={fieldClass}
@@ -1642,7 +1678,9 @@ export default function CustomerPanel({
                               />
                             </div>
                             <div>
-                              <label className="text-xs block">Külföldi tartózkodási hely</label>
+                              <label className="text-xs block">
+                                {i18n.t('literals.kulfoldi-tartozkodasi-hely')}
+                              </label>
                               <input
                                 type="text"
                                 className={fieldClass}
@@ -1652,7 +1690,9 @@ export default function CustomerPanel({
                               />
                             </div>
                             <div>
-                              <label className="text-xs block">Érdekeltség jellege</label>
+                              <label className="text-xs block">
+                                {i18n.t('literals.erdekeltseg-jellege')}
+                              </label>
                               <input
                                 type="text"
                                 className={fieldClass}
@@ -1663,7 +1703,9 @@ export default function CustomerPanel({
                               />
                             </div>
                             <div>
-                              <label className="text-xs block">Részesedés mértéke</label>
+                              <label className="text-xs block">
+                                {i18n.t('literals.reszesedes-merteke')}
+                              </label>
                               <input
                                 type="text"
                                 className={fieldClass}
@@ -1680,7 +1722,7 @@ export default function CustomerPanel({
                               checked={o.isPep}
                               onChange={(e) => upd({ isPep: e.target.checked })}
                             />
-                            <span>Kiemelt közszereplő</span>
+                            <span>{i18n.t('literals.kiemelt-kozszereplo')}</span>
                           </label>
                         </div>
                       )
@@ -1688,7 +1730,7 @@ export default function CustomerPanel({
                   </div>
                 )}
                 <div>
-                  <label className="text-xs block">Pénzeszközök forrása *</label>
+                  <label className="text-xs block">{i18n.t('literals.penzeszkozok-forrasa')}</label>
                   <input
                     type="text"
                     className={fieldClass}
@@ -1705,7 +1747,7 @@ export default function CustomerPanel({
                   <>
                     <div>
                       <label className="text-xs block">
-                        Forrás-dokumentum (50M felett kötelező) *
+                        {i18n.t('literals.forras-dokumentum-50m-felett-kotelezo')}
                       </label>
                       <select
                         className={fieldClass}
@@ -1714,20 +1756,22 @@ export default function CustomerPanel({
                         value={sourceOfFundsDocType}
                         onChange={(e) => setSourceOfFundsDocType(e.target.value)}
                       >
-                        <option value="">— válassz —</option>
+                        <option value="">{i18n.t('literals.valassz-2')}</option>
                         <option value="MAGANOKIRAT_KOZJEGYZO">
-                          Közjegyző által ellenjegyzett magánokirat
+                          {i18n.t('literals.kozjegyzo-altal-ellenjegyzett-maganokira')}
                         </option>
                         <option value="MAGANOKIRAT_UGYVED">
-                          Ügyvéd által ellenjegyzett magánokirat
+                          {i18n.t('literals.ugyved-altal-ellenjegyzett-maganokirat')}
                         </option>
-                        <option value="BANK_SZLIP">Banki bizonylat / szlip (max. 3 éves)</option>
+                        <option value="BANK_SZLIP">
+                          {i18n.t('literals.banki-bizonylat-szlip-max-3-eves')}
+                        </option>
                       </select>
                     </div>
                     {sourceOfFundsDocType === 'BANK_SZLIP' && (
                       <div>
                         <label className="text-xs block">
-                          Banki bizonylat kiállítási dátuma (max. 3 év) *
+                          {i18n.t('literals.banki-bizonylat-kiallitasi-datuma-max-3')}
                         </label>
                         <input
                           type="date"
@@ -1753,7 +1797,9 @@ export default function CustomerPanel({
                 data-testid="customer-privacy-notice-checkbox"
               />
               <span>
-                Az ügyfél megkapta az adatkezelési tájékoztatót. Verzió: {PRIVACY_NOTICE_VERSION}.
+                {i18n.t('literals.az-ugyfel-megkapta-az-adatkezelesi-tajek-2')}
+                {PRIVACY_NOTICE_VERSION}
+                {i18n.t('literals.lit-5')}
               </span>
             </label>
 
@@ -1775,7 +1821,8 @@ export default function CustomerPanel({
               >
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>
-                  <strong>Hiányzó mezők:</strong> {missingRequiredFields.join(', ')}
+                  <strong>{i18n.t('literals.hianyzo-mezok')}</strong>{' '}
+                  {missingRequiredFields.join(', ')}
                 </span>
               </div>
             )}

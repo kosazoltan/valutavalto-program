@@ -160,7 +160,11 @@ export default function CashierTurnoverReportPage() {
         params: { startDate: from, endDate: to },
         responseType: 'blob',
       })
-      downloadBlob(r.data as BlobPart, `penztaros-teljesitmeny-${workerFilter}-${from}-${to}.csv`, 'text/csv; charset=UTF-8')
+      downloadBlob(
+        r.data as BlobPart,
+        `penztaros-teljesitmeny-${workerFilter}-${from}-${to}.csv`,
+        'text/csv; charset=UTF-8',
+      )
     } catch (err) {
       logger.error('CashierTurnoverReportPage', 'CSV export hiba:', err)
       setError(await getBlobErrorMessage(err))

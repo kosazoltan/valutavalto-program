@@ -234,7 +234,9 @@ describe('Production API — Bootstrap status', () => {
 // ---------------------------------------------------------------------------
 describe('Production API — Branch listing', () => {
   it('GET /public/branches?companyCode=EBC visszaad legalább 60 irodát', async () => {
-    const res = await fetchWithTransportRetry(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
+    const res = await fetchWithTransportRetry(
+      `${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`,
+    )
     expect(res.status).toBe(200)
 
     const branches = (await res.json()) as Array<{
@@ -255,7 +257,9 @@ describe('Production API — Branch listing', () => {
   })
 
   it('A BR039 (Szeged Tisza) iroda létezik a listában', async () => {
-    const res = await fetchWithTransportRetry(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
+    const res = await fetchWithTransportRetry(
+      `${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`,
+    )
     const branches = (await res.json()) as Array<{ code: string; name: string }>
     const br039 = branches.find((b) => b.code === TEST_BRANCH_CODE)
     expect(br039).toBeDefined()
@@ -306,7 +310,9 @@ describe('Production API — Worker listing', () => {
   })
 
   it('branchCode nélkül üres lista (nem hiba)', async () => {
-    const res = await fetchWithTransportRetry(`${API_BASE}/public/workers?companyCode=${COMPANY_CODE}`)
+    const res = await fetchWithTransportRetry(
+      `${API_BASE}/public/workers?companyCode=${COMPANY_CODE}`,
+    )
     expect(res.status).toBe(200)
     const workers = await res.json()
     expect(Array.isArray(workers)).toBe(true)
@@ -408,7 +414,9 @@ describe('Production API — SetupWizard teljes flow szimuláció', () => {
     const bootstrap = (await bootstrapRes.json()) as { completed: boolean }
 
     // 2. Branch-ek lekérése
-    const branchesRes = await fetchWithTransportRetry(`${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`)
+    const branchesRes = await fetchWithTransportRetry(
+      `${API_BASE}/public/branches?companyCode=${COMPANY_CODE}`,
+    )
     expect(branchesRes.status).toBe(200)
     const branches = (await branchesRes.json()) as Array<{ code: string; name: string }>
     expect(branches.length).toBeGreaterThan(0)

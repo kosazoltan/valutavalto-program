@@ -6,6 +6,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface StampBatchItem {
   id: string
@@ -177,22 +178,22 @@ export default function StampPage() {
           </button>
           <button onClick={openAssignForm} className="form-button flex items-center gap-1">
             <LinkIcon className="h-4 w-4" />
-            Hozzárendelés
+            {i18n.t('literals.hozzarendeles')}
           </button>
           <button onClick={openBatchForm} className="form-button-primary flex items-center gap-1">
             <Plus className="h-4 w-4" />
-            Új batch
+            {i18n.t('literals.uj-batch')}
           </button>
         </div>
       </div>
 
       {batchForm && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">Új matrica batch</h2>
+          <h2 className="text-base font-semibold">{i18n.t('literals.uj-matrica-batch')}</h2>
           <div className="grid gap-3 md:grid-cols-4">
             <div>
               <label htmlFor="stamp-prefix" className="form-label">
-                Előtag
+                {i18n.t('literals.elotag')}
               </label>
               <input
                 id="stamp-prefix"
@@ -207,7 +208,7 @@ export default function StampPage() {
             </div>
             <div>
               <label htmlFor="stamp-start" className="form-label">
-                Kezdő sorszám
+                {i18n.t('literals.kezdo-sorszam')}
               </label>
               <input
                 id="stamp-start"
@@ -223,7 +224,7 @@ export default function StampPage() {
             </div>
             <div>
               <label htmlFor="stamp-end" className="form-label">
-                Záró sorszám
+                {i18n.t('literals.zaro-sorszam')}
               </label>
               <input
                 id="stamp-end"
@@ -239,7 +240,7 @@ export default function StampPage() {
             </div>
             <div>
               <label htmlFor="stamp-note" className="form-label">
-                Megjegyzés
+                {i18n.t('literals.megjegyzes')}
               </label>
               <input
                 id="stamp-note"
@@ -263,7 +264,7 @@ export default function StampPage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setBatchForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -271,11 +272,13 @@ export default function StampPage() {
 
       {assignForm && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">Matrica hozzárendelése tranzakcióhoz</h2>
+          <h2 className="text-base font-semibold">
+            {i18n.t('literals.matrica-hozzarendelese-tranzakciohoz')}
+          </h2>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <label htmlFor="stamp-serial" className="form-label">
-                Matrica sorszám
+                {i18n.t('literals.matrica-sorszam')}
               </label>
               <input
                 id="stamp-serial"
@@ -291,7 +294,7 @@ export default function StampPage() {
             </div>
             <div>
               <label htmlFor="stamp-transaction" className="form-label">
-                Tranzakció ID
+                {i18n.t('literals.tranzakcio-id')}
               </label>
               <input
                 id="stamp-transaction"
@@ -316,7 +319,7 @@ export default function StampPage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setAssignForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -353,22 +356,22 @@ export default function StampPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Előtag
+                {i18n.t('literals.elotag')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Tartomány
+                {i18n.t('literals.tartomany-2')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Összes
+                {i18n.t('literals.osszes')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('stamps.felhasznalva')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Felvéve
+                {i18n.t('literals.felveve')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Megjegyzés
+                {i18n.t('literals.megjegyzes')}
               </th>
             </tr>
           </thead>
@@ -376,7 +379,7 @@ export default function StampPage() {
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -392,7 +395,9 @@ export default function StampPage() {
                     {item.serialPrefix ?? '-'}
                   </td>
                   <td className="px-4 py-3 text-sm font-mono">
-                    {item.serialStart ?? '-'} - {item.serialEnd ?? '-'}
+                    {item.serialStart ?? '-'}
+                    {i18n.t('literals.lit-17')}
+                    {item.serialEnd ?? '-'}
                   </td>
                   <td className="px-4 py-3 text-sm">{item.totalCount ?? '-'}</td>
                   <td className="px-4 py-3 text-sm">{item.usedCount ?? 0}</td>
@@ -406,7 +411,7 @@ export default function StampPage() {
       </div>
 
       <div className="rounded border border-gray-200 bg-white p-3">
-        <h2 className="mb-3 text-base font-semibold">Felhasznált matricák</h2>
+        <h2 className="mb-3 text-base font-semibold">{i18n.t('literals.felhasznalt-matricak')}</h2>
         <div className="data-grid overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -415,13 +420,13 @@ export default function StampPage() {
                   {t('stamps.belyegSzam')}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  Tranzakció ID
+                  {i18n.t('literals.tranzakcio-id')}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  Hozzárendelve
+                  {i18n.t('literals.hozzarendelve')}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  Felhasználó
+                  {i18n.t('literals.felhasznalo-2')}
                 </th>
               </tr>
             </thead>
@@ -451,7 +456,9 @@ export default function StampPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

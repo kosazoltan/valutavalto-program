@@ -6,6 +6,7 @@ import {
 } from '../../services/api/incomeSourceDocs'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const MAX_RECIPIENTS = 20
@@ -102,7 +103,7 @@ export default function IncomeProofRecipientsPanel() {
     return (
       <div className="flex items-center gap-2 p-4 text-gray-500">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Címzettek betöltése...</span>
+        <span>{i18n.t('literals.cimzettek-betoltese')}</span>
       </div>
     )
   }
@@ -111,21 +112,26 @@ export default function IncomeProofRecipientsPanel() {
     <div className="space-y-4">
       <h2 className="section-title flex items-center gap-2">
         <Mail size={18} className="text-blue-600" />
-        Jövedelemigazolás címzettek
+        {i18n.t('literals.jovedelemigazolas-cimzettek')}
       </h2>
 
       <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-        A 10.000.000 Ft feletti jövedelemforrás-dokumentumok e-mail címzettjei cégszinten vannak
-        nyilvántartva. A lista legfeljebb 20 címzettet tartalmazhat.
+        {i18n.t('literals.a-10-000-000-ft-feletti-jovedelemforras')}
       </div>
 
       <div className="rounded border border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-3 py-2 text-sm font-medium text-gray-700">
-          Címzettek ({recipients.length}/{MAX_RECIPIENTS})
+          {i18n.t('literals.cimzettek-2')}
+          {recipients.length}
+          {i18n.t('literals.lit-4')}
+          {MAX_RECIPIENTS}
+          {i18n.t('literals.lit-2')}
         </div>
         <div className="divide-y divide-gray-100">
           {recipients.length === 0 && (
-            <div className="px-3 py-4 text-sm text-gray-500">Nincs beállított címzett.</div>
+            <div className="px-3 py-4 text-sm text-gray-500">
+              {i18n.t('literals.nincs-beallitott-cimzett')}
+            </div>
           )}
           {recipients.map((recipient) => (
             <div
@@ -141,7 +147,7 @@ export default function IncomeProofRecipientsPanel() {
                 disabled={saving}
               >
                 <Trash2 size={14} />
-                Törlés
+                {i18n.t('literals.torles')}
               </button>
             </div>
           ))}
@@ -165,7 +171,7 @@ export default function IncomeProofRecipientsPanel() {
           disabled={saving}
         >
           <Plus size={14} />
-          Hozzáadás
+          {i18n.t('literals.hozzaadas')}
         </button>
       </div>
 

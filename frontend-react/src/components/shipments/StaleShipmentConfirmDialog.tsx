@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { ShipmentRequest } from '../../services/api/index'
+import i18n from '../../i18n'
 
 interface Props {
   shipment: ShipmentRequest
@@ -56,19 +57,23 @@ export default function StaleShipmentConfirmDialog({ shipment, onConfirm, onCanc
     >
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <h2 id="stale-shipment-dialog-title" className="text-lg font-bold text-amber-900">
-          Régi szállítmány átvételének megerősítése
+          {i18n.t('literals.regi-szallitmany-atvetelenek-megerosites')}
         </h2>
         <div
           id="stale-shipment-dialog-description"
           className="mt-3 space-y-3 text-sm text-gray-700"
         >
-          <p>Ez a tétel több mint {shipment.staleThresholdHours ?? 48} órája vár átvételre.</p>
+          <p>
+            {i18n.t('literals.ez-a-tetel-tobb-mint')}
+            {shipment.staleThresholdHours ?? 48}
+            {i18n.t('literals.oraja-var-atvetelre')}
+          </p>
           <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 rounded border border-amber-200 bg-amber-50 p-3">
-            <dt className="font-semibold">Bizonylatszám:</dt>
+            <dt className="font-semibold">{i18n.t('literals.bizonylatszam')}</dt>
             <dd className="font-mono font-semibold">{shipment.requestNumber}</dd>
-            <dt className="font-semibold">Létrehozva:</dt>
+            <dt className="font-semibold">{i18n.t('literals.letrehozva')}</dt>
             <dd>{formatRequestedAt(shipment.requestedAt)}</dd>
-            <dt className="font-semibold">Összeg:</dt>
+            <dt className="font-semibold">{i18n.t('literals.osszeg-2')}</dt>
             <dd>
               <ul>
                 {(shipment.items ?? []).map((item) => (
@@ -80,7 +85,7 @@ export default function StaleShipmentConfirmDialog({ shipment, onConfirm, onCanc
             </dd>
           </dl>
           <p className="font-semibold text-amber-900">
-            A tétel nincs már más módon (például kézi kasszabevéttel) rendezve?
+            {i18n.t('literals.a-tetel-nincs-mar-mas-modon-peldaul-kezi')}
           </p>
         </div>
         <div className="mt-5 flex justify-end gap-2">
@@ -90,7 +95,7 @@ export default function StaleShipmentConfirmDialog({ shipment, onConfirm, onCanc
             onClick={onCancel}
             className="rounded border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            Mégse
+            {i18n.t('literals.megse')}
           </button>
           <button
             ref={confirmRef}
@@ -98,7 +103,7 @@ export default function StaleShipmentConfirmDialog({ shipment, onConfirm, onCanc
             onClick={onConfirm}
             className="rounded bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
-            Igen, folytatás
+            {i18n.t('literals.igen-folytatas')}
           </button>
         </div>
       </div>

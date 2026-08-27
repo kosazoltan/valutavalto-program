@@ -9,6 +9,7 @@ import {
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 const toAdminCompanyUpdate = (data: Partial<OwnCompany>) => ({
   name: data.name,
@@ -145,7 +146,9 @@ export default function OwnCompanyPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Betöltés...</div>
+    return (
+      <div className="flex items-center justify-center h-64">{i18n.t('literals.betoltes')}</div>
+    )
   }
 
   return (
@@ -272,7 +275,7 @@ export default function OwnCompanyPage() {
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="form-label">IBAN</label>
+                  <label className="form-label">{i18n.t('literals.iban')}</label>
                   <input
                     type="text"
                     className="form-input"
@@ -281,7 +284,7 @@ export default function OwnCompanyPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">SWIFT</label>
+                  <label className="form-label">{i18n.t('literals.swift')}</label>
                   <input
                     type="text"
                     className="form-input"
@@ -340,7 +343,7 @@ export default function OwnCompanyPage() {
               <th>{t('common.name')}</th>
               <th>{t('common.taxNumber')}</th>
               <th>{t('common.companyRegNumber')}</th>
-              <th>Admin statisztika</th>
+              <th>{i18n.t('literals.admin-statisztika')}</th>
               <th>{t('common.email')}</th>
               <th>{t('common.phone')}</th>
               <th>{t('common.status')}</th>
@@ -368,12 +371,23 @@ export default function OwnCompanyPage() {
                           className="text-xs text-gray-700"
                           data-testid={`company-admin-stats-${c.id}`}
                         >
-                          <div>{details.activeBranchCount} aktív fiók</div>
-                          <div>{details.totalWorkerCount} dolgozó</div>
-                          <div>{details.dailyTurnoverHuf.toLocaleString('hu-HU')} HUF ma</div>
+                          <div>
+                            {details.activeBranchCount}
+                            {i18n.t('literals.aktiv-fiok')}
+                          </div>
+                          <div>
+                            {details.totalWorkerCount}
+                            {i18n.t('literals.dolgozo')}
+                          </div>
+                          <div>
+                            {details.dailyTurnoverHuf.toLocaleString('hu-HU')}
+                            {i18n.t('literals.huf-ma')}
+                          </div>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400">Nincs admin adat</span>
+                        <span className="text-xs text-gray-400">
+                          {i18n.t('literals.nincs-admin-adat')}
+                        </span>
                       )}
                     </td>
                     <td>{c.email || '-'}</td>
@@ -429,15 +443,24 @@ export default function OwnCompanyPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-2 text-sm">
                   <div>
-                    <span className="text-gray-500">{t('common.companyRegNumber')}:</span>{' '}
+                    <span className="text-gray-500">
+                      {t('common.companyRegNumber')}
+                      {i18n.t('literals.lit-7')}
+                    </span>{' '}
                     {company.registrationNumber || '-'}
                   </div>
                   <div>
-                    <span className="text-gray-500">{t('common.email')}:</span>{' '}
+                    <span className="text-gray-500">
+                      {t('common.email')}
+                      {i18n.t('literals.lit-7')}
+                    </span>{' '}
                     {company.email || '-'}
                   </div>
                   <div>
-                    <span className="text-gray-500">{t('common.phone')}:</span>{' '}
+                    <span className="text-gray-500">
+                      {t('common.phone')}
+                      {i18n.t('literals.lit-7')}
+                    </span>{' '}
                     {company.phone || '-'}
                   </div>
                 </div>
@@ -446,15 +469,24 @@ export default function OwnCompanyPage() {
                     className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"
                     data-testid={`company-admin-stats-mobile-${company.id}`}
                   >
-                    <div className="font-semibold">Admin statisztika</div>
+                    <div className="font-semibold">{i18n.t('literals.admin-statisztika')}</div>
                     <div className="mt-1 grid grid-cols-1 gap-1">
-                      <span>{details.activeBranchCount} aktív fiók</span>
-                      <span>{details.totalWorkerCount} dolgozó</span>
-                      <span>{details.dailyTurnoverHuf.toLocaleString('hu-HU')} HUF ma</span>
+                      <span>
+                        {details.activeBranchCount}
+                        {i18n.t('literals.aktiv-fiok')}
+                      </span>
+                      <span>
+                        {details.totalWorkerCount}
+                        {i18n.t('literals.dolgozo')}
+                      </span>
+                      <span>
+                        {details.dailyTurnoverHuf.toLocaleString('hu-HU')}
+                        {i18n.t('literals.huf-ma')}
+                      </span>
                     </div>
                     {details.branches?.length > 0 && (
                       <div className="mt-2 text-xs">
-                        Fiókok:{' '}
+                        {i18n.t('literals.fiokok')}{' '}
                         {details.branches
                           .slice(0, 3)
                           .map((branch) => branch.code || branch.name)

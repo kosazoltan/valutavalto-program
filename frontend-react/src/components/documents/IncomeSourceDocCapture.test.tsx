@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../ui/toaster', () => ({ toast: mocks.toast }))
 vi.mock('../../utils/logger', () => ({ logger: mocks.logger }))
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 

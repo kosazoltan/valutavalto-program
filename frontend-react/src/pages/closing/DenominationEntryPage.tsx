@@ -18,9 +18,8 @@ import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { isAllowedFaceValue } from '../../utils/denominationRules'
-import {
-  resolveClosingDenominationExitRoute,
-} from './closingDenominationMenu'
+import { resolveClosingDenominationExitRoute } from './closingDenominationMenu'
+import i18n from '../../i18n'
 
 /**
  * FK-078 — kozos, kategoria-tudatos becimletezo oldal.
@@ -86,8 +85,7 @@ export default function DenominationEntryPage() {
    */
   const isVaultContext = Boolean(hasCanonicalRole?.(['ertektar', 'foertektar']))
 
-  const exitRoute =
-    returnToRoute ?? resolveClosingDenominationExitRoute(isVaultContext)
+  const exitRoute = returnToRoute ?? resolveClosingDenominationExitRoute(isVaultContext)
 
   const selectedCashDeskId = worker?.branchId ?? ''
 
@@ -300,7 +298,7 @@ export default function DenominationEntryPage() {
             {CATEGORY_TITLES[category]}
           </h1>
           <p className="text-sm text-secondary-500 mt-0.5">
-            Napközben, korlátlanul menthető — a mentés nem indít zárási folyamatot.
+            {i18n.t('literals.napkozben-korlatlanul-mentheto-a-mentes')}
           </p>
         </div>
       </div>
@@ -320,7 +318,7 @@ export default function DenominationEntryPage() {
         <div className="form-panel bg-yellow-50 border-yellow-200 flex items-center gap-2">
           <AlertCircle className="text-yellow-600" size={18} />
           <span className="text-sm text-yellow-800">
-            Pénztár kiválasztása szükséges a címletezéshez!
+            {i18n.t('literals.penztar-kivalasztasa-szukseges-a-cimlete')}
           </span>
         </div>
       )}
@@ -328,7 +326,7 @@ export default function DenominationEntryPage() {
       <div className="form-panel space-y-3">
         <div className="flex items-center gap-2">
           <label htmlFor="denomination-entry-currency" className="text-sm font-medium">
-            Valuta
+            {i18n.t('literals.valuta')}
           </label>
           <select
             id="denomination-entry-currency"
@@ -346,16 +344,16 @@ export default function DenominationEntryPage() {
         </div>
 
         {loading ? (
-          <p className="text-sm text-secondary-500">Betöltés…</p>
+          <p className="text-sm text-secondary-500">{i18n.t('literals.betoltes-3')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left">
-                  <th className="p-2">Címlet</th>
-                  <th className="p-2">Típus</th>
-                  <th className="p-2">Darab</th>
-                  <th className="p-2 text-right">Összeg</th>
+                  <th className="p-2">{i18n.t('literals.cimlet')}</th>
+                  <th className="p-2">{i18n.t('literals.tipus')}</th>
+                  <th className="p-2">{i18n.t('literals.darab')}</th>
+                  <th className="p-2 text-right">{i18n.t('literals.osszeg')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -398,7 +396,7 @@ export default function DenominationEntryPage() {
               <tfoot className="bg-gray-50 font-bold">
                 <tr>
                   <td colSpan={3} className="text-right pr-4 p-2">
-                    Összesen
+                    {i18n.t('literals.osszesen')}
                   </td>
                   <td className="text-right p-2">
                     <span
@@ -418,9 +416,11 @@ export default function DenominationEntryPage() {
       {/* FKH-039 FR-8/FR-9/FR-10: önellenőrzés EVENING + HANDLING_FEE; explicit elvárt összeg. */}
       {selfCheckEnabled && selfCheck && selfCheck.length > 0 && (
         <div className="form-panel space-y-2" data-testid="denomination-entry-selfcheck">
-          <h2 className="text-sm font-bold text-secondary-900">Önellenőrzés</h2>
+          <h2 className="text-sm font-bold text-secondary-900">
+            {i18n.t('literals.onellenorzes')}
+          </h2>
           <p className="text-xs text-secondary-500">
-            Tájékoztató jellegű: az eltérés a mentést nem akadályozza.
+            {i18n.t('literals.tajekoztato-jellegu-az-elteres-a-mentest')}
           </p>
           <ul className="space-y-1">
             {selfCheck.map((row) => (
@@ -439,12 +439,11 @@ export default function DenominationEntryPage() {
                 <span className="font-mono font-bold">{row.currencyCode}</span>
                 <span>{row.matches ? 'Egyezik' : 'Nem egyezik'}</span>
                 <span className="font-mono text-xs">
-                  (becímletezett: {formatDecimal(Number(row.denominatedAmount), 2, 2)}, elvárt:{' '}
-                  {formatDecimal(Number(row.expectedBalance), 2, 2)}
-                  {!row.matches
-                    ? `, eltérés: ${formatDecimal(Number(row.difference), 2, 2)}`
-                    : ''}
-                  )
+                  {i18n.t('literals.becimletezett')}
+                  {formatDecimal(Number(row.denominatedAmount), 2, 2)}
+                  {i18n.t('literals.elvart')} {formatDecimal(Number(row.expectedBalance), 2, 2)}
+                  {!row.matches ? `, eltérés: ${formatDecimal(Number(row.difference), 2, 2)}` : ''}
+                  {i18n.t('literals.lit-2')}
                 </span>
               </li>
             ))}
@@ -461,7 +460,7 @@ export default function DenominationEntryPage() {
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow transition-colors flex items-center gap-2"
         >
           <Save size={16} />
-          Mentés
+          {i18n.t('literals.mentes-2')}
         </button>
         {/* FKH-039 FR-2/FR-3: Mentés és visszalépés csak pénztári kontextusban. */}
         {!isVaultContext && (
@@ -473,7 +472,7 @@ export default function DenominationEntryPage() {
             className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow transition-colors flex items-center gap-2"
           >
             <Save size={16} />
-            Mentés és visszalépés
+            {i18n.t('literals.mentes-es-visszalepes')}
           </button>
         )}
         <button
@@ -484,7 +483,7 @@ export default function DenominationEntryPage() {
           className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow transition-colors flex items-center gap-2"
         >
           <PlayCircle size={16} />
-          Napi zárás végrehajtása
+          {i18n.t('literals.napi-zaras-vegrehajtasa')}
         </button>
         <button
           type="button"
@@ -493,7 +492,7 @@ export default function DenominationEntryPage() {
           data-testid="denomination-entry-exit"
           className="px-4 py-2 bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-white text-sm font-bold rounded-lg shadow transition-colors"
         >
-          Kilépés
+          {i18n.t('literals.kilepes')}
         </button>
       </div>
     </div>

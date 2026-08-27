@@ -252,7 +252,9 @@ describe('DenominationEntryPage — FK-078', () => {
 
     await user.click(await screen.findByTestId('denomination-entry-save'))
 
-    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'HANDLING_FEE'))
+    await waitFor(() =>
+      expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'HANDLING_FEE'),
+    )
     const row = await screen.findByTestId('denomination-entry-selfcheck-HUF')
     expect(row).toHaveTextContent('Egyezik')
     expect(row).toHaveTextContent('elvárt')

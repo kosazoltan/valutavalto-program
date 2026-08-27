@@ -6,6 +6,7 @@ import { toast } from '../../components/ui/toaster'
 import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { getElectronAPI } from '../../utils/electron'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 interface Circular {
   id: number
@@ -447,9 +448,11 @@ export default function CircularPage() {
           <div className="flex items-center gap-2">
             <Megaphone className="h-5 w-5 text-slate-700" />
             <div>
-              <h1 className="text-lg font-semibold text-slate-900">Körlevelek és szabályzatok</h1>
+              <h1 className="text-lg font-semibold text-slate-900">
+                {i18n.t('literals.korlevelek-es-szabalyzatok')}
+              </h1>
               <div className="text-xs text-slate-500">
-                Központi dokumentumok, nyugtázás és archiválás
+                {i18n.t('literals.kozponti-dokumentumok-nyugtazas-es-archi')}
               </div>
             </div>
           </div>
@@ -458,7 +461,7 @@ export default function CircularPage() {
             className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
           >
             <Plus size={15} />
-            Új dokumentum
+            {i18n.t('literals.uj-dokumentum')}
           </button>
         </div>
       </div>
@@ -467,7 +470,8 @@ export default function CircularPage() {
         {unacknowledged.length > 0 && (
           <section className="rounded-md border border-amber-200 bg-amber-50 p-3">
             <div className="mb-2 text-sm font-semibold text-amber-800">
-              Elolvasásra vár: {unacknowledged.length}
+              {i18n.t('literals.elolvasasra-var')}
+              {unacknowledged.length}
             </div>
             <div className="space-y-2">
               {unacknowledged.map((circular) => (
@@ -488,13 +492,13 @@ export default function CircularPage() {
                       onClick={() => void openCircularDetails(circular)}
                       className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
                     >
-                      Megnyitás
+                      {i18n.t('literals.megnyitas-2')}
                     </button>
                     <button
                       onClick={() => void handleAcknowledge(circular.id)}
                       className="rounded bg-green-600 px-2 py-1 text-xs font-semibold text-white hover:bg-green-700"
                     >
-                      Értettem
+                      {i18n.t('literals.ertettem')}
                     </button>
                   </div>
                 </div>
@@ -506,7 +510,8 @@ export default function CircularPage() {
         {legacyUnacknowledged.length > 0 && (
           <section className="rounded-md border border-blue-200 bg-blue-50 p-3">
             <div className="mb-2 text-sm font-semibold text-blue-800">
-              Globálisan nem nyugtázott körlevelek: {legacyUnacknowledged.length}
+              {i18n.t('literals.globalisan-nem-nyugtazott-korlevelek')}
+              {legacyUnacknowledged.length}
             </div>
             <div className="grid gap-2 md:grid-cols-2">
               {legacyUnacknowledged.slice(0, 4).map((circular) => (
@@ -527,7 +532,7 @@ export default function CircularPage() {
                     onClick={() => void handleGlobalAcknowledge(circular.id)}
                     className="rounded border border-blue-300 px-2 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-50"
                   >
-                    Globális nyugtázás
+                    {i18n.t('literals.globalis-nyugtazas')}
                   </button>
                 </div>
               ))}
@@ -566,12 +571,14 @@ export default function CircularPage() {
               onClick={() => void handleServerSearch()}
               className="rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Iktatószám keresés
+              {i18n.t('literals.iktatoszam-kereses')}
             </button>
           </div>
           {serverSearchActive && (
             <div className="mt-2 text-xs text-slate-500">
-              Backend iktatószám keresés eredménye: {filteredCirculars.length} dokumentum
+              {i18n.t('literals.backend-iktatoszam-kereses-eredmenye')}
+              {filteredCirculars.length}
+              {i18n.t('literals.dokumentum')}
             </div>
           )}
           {activeTab === 'category' && (
@@ -580,7 +587,7 @@ export default function CircularPage() {
                 htmlFor="circular-category-filter"
                 className="flex min-w-[180px] flex-col gap-1 text-xs font-semibold text-slate-600"
               >
-                Kategória szűrő
+                {i18n.t('literals.kategoria-szuro')}
                 <select
                   id="circular-category-filter"
                   value={categoryFilter}
@@ -599,10 +606,11 @@ export default function CircularPage() {
                 onClick={() => void loadCirculars()}
                 className="rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
               >
-                Kategória betöltése
+                {i18n.t('literals.kategoria-betoltese')}
               </button>
               <span className="text-xs text-slate-500">
-                Backend kategória nézet: {categoryFilter}
+                {i18n.t('literals.backend-kategoria-nezet')}
+                {categoryFilter}
               </span>
             </div>
           )}
@@ -612,7 +620,7 @@ export default function CircularPage() {
                 htmlFor="circular-archive-year"
                 className="flex min-w-[160px] flex-col gap-1 text-xs font-semibold text-slate-600"
               >
-                Archív év
+                {i18n.t('literals.archiv-ev')}
                 <input
                   id="circular-archive-year"
                   type="number"
@@ -628,10 +636,11 @@ export default function CircularPage() {
                 onClick={() => void loadCirculars()}
                 className="rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
               >
-                Év betöltése
+                {i18n.t('literals.ev-betoltese')}
               </button>
               <span className="text-xs text-slate-500">
-                Backend éves archívum: {archiveYear || '-'}
+                {i18n.t('literals.backend-eves-archivum')}
+                {archiveYear || '-'}
               </span>
             </div>
           )}
@@ -641,27 +650,27 @@ export default function CircularPage() {
           <table className="min-w-[1040px] w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase text-slate-500">
               <tr>
-                <th className="px-3 py-2 text-left">Szám</th>
-                <th className="px-3 py-2 text-left">Cím</th>
-                <th className="px-3 py-2 text-left">Típus</th>
-                <th className="px-3 py-2 text-left">Prioritás</th>
-                <th className="px-3 py-2 text-left">Készítő</th>
-                <th className="px-3 py-2 text-left">Dátum</th>
-                <th className="px-3 py-2 text-right">Nyugtázás</th>
-                <th className="px-3 py-2 text-right">Művelet</th>
+                <th className="px-3 py-2 text-left">{i18n.t('literals.szam')}</th>
+                <th className="px-3 py-2 text-left">{i18n.t('literals.cim')}</th>
+                <th className="px-3 py-2 text-left">{i18n.t('literals.tipus')}</th>
+                <th className="px-3 py-2 text-left">{i18n.t('literals.prioritas')}</th>
+                <th className="px-3 py-2 text-left">{i18n.t('literals.keszito')}</th>
+                <th className="px-3 py-2 text-left">{i18n.t('literals.datum-2')}</th>
+                <th className="px-3 py-2 text-right">{i18n.t('literals.nyugtazas')}</th>
+                <th className="px-3 py-2 text-right">{i18n.t('literals.muvelet')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
-                    Betöltés...
+                    {i18n.t('literals.betoltes')}
                   </td>
                 </tr>
               ) : filteredCirculars.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
-                    Nincs dokumentum ebben a nézetben
+                    {i18n.t('literals.nincs-dokumentum-ebben-a-nezetben')}
                   </td>
                 </tr>
               ) : (
@@ -704,14 +713,14 @@ export default function CircularPage() {
                           onClick={() => void openCircularDetails(circular)}
                           className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
                         >
-                          Megtekint
+                          {i18n.t('literals.megtekint')}
                         </button>
                         {!circular.archived && (
                           <button
                             onClick={() => void handleArchive(circular.id)}
                             className="rounded border px-2 py-1 text-xs hover:bg-slate-50"
                           >
-                            Archivál
+                            {i18n.t('literals.archival')}
                           </button>
                         )}
                       </div>
@@ -731,7 +740,7 @@ export default function CircularPage() {
             className="w-full max-w-3xl rounded-md bg-white p-4 shadow-xl"
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Új körlevél</h2>
+              <h2 className="text-lg font-semibold">{i18n.t('literals.uj-korlevel')}</h2>
               <button type="button" onClick={closeCreateDialog}>
                 <X size={20} />
               </button>
@@ -742,7 +751,7 @@ export default function CircularPage() {
                   htmlFor="circular-title"
                   className="mb-1 block text-xs font-semibold text-slate-600"
                 >
-                  Cím
+                  {i18n.t('literals.cim')}
                 </label>
                 <input
                   id="circular-title"
@@ -757,7 +766,7 @@ export default function CircularPage() {
                   htmlFor="circular-type"
                   className="mb-1 block text-xs font-semibold text-slate-600"
                 >
-                  Típus
+                  {i18n.t('literals.tipus')}
                 </label>
                 <select
                   id="circular-type"
@@ -776,7 +785,9 @@ export default function CircularPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">Sürgős</label>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">
+                  {i18n.t('literals.surgos')}
+                </label>
                 <label
                   htmlFor="circular-urgent"
                   className="flex h-[38px] items-center gap-2 rounded border px-3 text-sm"
@@ -787,12 +798,12 @@ export default function CircularPage() {
                     checked={formData.urgent}
                     onChange={(e) => setFormData({ ...formData, urgent: e.target.checked })}
                   />
-                  Azonnali nyugtázás
+                  {i18n.t('literals.azonnali-nyugtazas')}
                 </label>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Kötelező nyugtázás
+                  {i18n.t('literals.kotelezo-nyugtazas')}
                 </label>
                 <label
                   htmlFor="circular-requires-acknowledgment"
@@ -806,12 +817,12 @@ export default function CircularPage() {
                       setFormData({ ...formData, requiresAcknowledgment: e.target.checked })
                     }
                   />
-                  Tranzakció-blokkoló
+                  {i18n.t('literals.tranzakcio-blokkolo')}
                 </label>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Válasz engedélyezése
+                  {i18n.t('literals.valasz-engedelyezese')}
                 </label>
                 <label
                   htmlFor="circular-allows-reply"
@@ -823,7 +834,7 @@ export default function CircularPage() {
                     checked={formData.allowsReply}
                     onChange={(e) => setFormData({ ...formData, allowsReply: e.target.checked })}
                   />
-                  Kétirányú válasz
+                  {i18n.t('literals.ketiranyu-valasz')}
                 </label>
               </div>
               <div className="col-span-2">
@@ -831,7 +842,7 @@ export default function CircularPage() {
                   htmlFor="circular-content"
                   className="mb-1 block text-xs font-semibold text-slate-600"
                 >
-                  Tartalom
+                  {i18n.t('literals.tartalom')}
                 </label>
                 <textarea
                   id="circular-content"
@@ -843,7 +854,7 @@ export default function CircularPage() {
               </div>
               <div className="col-span-2">
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Csatolmány
+                  {i18n.t('literals.csatolmany')}
                 </label>
                 <label className="flex cursor-pointer items-center gap-2 rounded border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
                   <Upload size={16} />
@@ -865,13 +876,13 @@ export default function CircularPage() {
                 onClick={closeCreateDialog}
                 className="rounded border px-4 py-2 text-sm hover:bg-slate-50"
               >
-                Mégse
+                {i18n.t('literals.megse')}
               </button>
               <button
                 type="submit"
                 className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
-                Létrehozás
+                {i18n.t('literals.letrehozas')}
               </button>
             </div>
           </form>
@@ -910,7 +921,7 @@ export default function CircularPage() {
             </div>
             {detailLoading && (
               <div className="mb-3 rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-                Backend részletek betöltése...
+                {i18n.t('literals.backend-reszletek-betoltese')}
               </div>
             )}
             <div className="max-h-[46vh] overflow-y-auto whitespace-pre-wrap rounded border border-slate-200 bg-slate-50 p-3 text-sm leading-6">
@@ -922,11 +933,12 @@ export default function CircularPage() {
                 data-testid="circular-acknowledgment-summary"
               >
                 <div className="mb-2 text-xs font-semibold uppercase text-slate-500">
-                  Nyugtázási állapot
+                  {i18n.t('literals.nyugtazasi-allapot')}
                 </div>
                 {acknowledgmentStatus && (
                   <div className="mb-2 font-medium text-slate-900">
-                    Összes nyugtázás: {acknowledgmentStatus.totalAcknowledged ?? 0}
+                    {i18n.t('literals.osszes-nyugtazas')}
+                    {acknowledgmentStatus.totalAcknowledged ?? 0}
                   </div>
                 )}
                 {Object.keys(acknowledgmentBreakdown).length > 0 && (
@@ -949,7 +961,9 @@ export default function CircularPage() {
                 className="mt-3 rounded border border-slate-200 bg-white p-3 text-sm"
                 data-testid="circular-reply-section"
               >
-                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Válaszok</div>
+                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">
+                  {i18n.t('literals.valaszok')}
+                </div>
                 {replies.length > 0 && (
                   <div className="mb-3 space-y-2">
                     {replies.map((reply) => (
@@ -958,8 +972,8 @@ export default function CircularPage() {
                         className="rounded border border-slate-100 bg-slate-50 px-3 py-2"
                       >
                         <div className="text-xs text-slate-500">
-                          {reply.workerName ?? `Dolgozó #${reply.workerId ?? '?'}`} ·{' '}
-                          {formatDate(reply.createdAt)}
+                          {reply.workerName ?? `Dolgozó #${reply.workerId ?? '?'}`}
+                          {i18n.t('literals.lit-29')} {formatDate(reply.createdAt)}
                         </div>
                         <div className="mt-1 whitespace-pre-wrap text-sm text-slate-900">
                           {reply.replyText}
@@ -983,7 +997,7 @@ export default function CircularPage() {
                     disabled={!replyText.trim()}
                     className="self-end rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                   >
-                    Küldés
+                    {i18n.t('literals.kuldes')}
                   </button>
                 </div>
               </section>
@@ -1005,7 +1019,7 @@ export default function CircularPage() {
                 onClick={() => setShowViewDialog(false)}
                 className="rounded border px-4 py-2 text-sm hover:bg-slate-50"
               >
-                Bezárás
+                {i18n.t('literals.bezaras')}
               </button>
               {!selectedCircular.acknowledged && !selectedCircular.archived && (
                 <button
@@ -1016,7 +1030,7 @@ export default function CircularPage() {
                   className="inline-flex items-center gap-1 rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
                 >
                   <CheckCircle2 size={16} />
-                  Elolvastam és megértettem
+                  {i18n.t('literals.elolvastam-es-megertettem')}
                 </button>
               )}
             </div>

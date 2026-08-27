@@ -6,6 +6,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { roleDisplayName } from '../../utils/appModeRoles'
 import type { components } from '@valuta/shared-api'
+import i18n from '../../i18n'
 
 // FK-026: read-only Dolgozói Törzs Adatbázis lista. A backend GET /api/v1/workers
 // most már tartalmazza a region és roleCodes mezőket (WorkerDto bővítés).
@@ -98,24 +99,28 @@ function GroupSection({ group, rows }: GroupSectionProps) {
       >
         {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         {group.label}
-        <span className="text-sm font-normal text-gray-500">({rows.length} dolgozó)</span>
+        <span className="text-sm font-normal text-gray-500">
+          {i18n.t('literals.lit-19')}
+          {rows.length}
+          {i18n.t('literals.dolgozo-3')}
+        </span>
       </button>
       {open && (
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th>Kód</th>
-              <th>Teljes név</th>
-              <th>Terület</th>
-              <th>Munkakör</th>
-              <th>Státusz</th>
+              <th>{i18n.t('literals.kod-3')}</th>
+              <th>{i18n.t('literals.teljes-nev')}</th>
+              <th>{i18n.t('literals.terulet')}</th>
+              <th>{i18n.t('literals.munkakor')}</th>
+              <th>{i18n.t('literals.statusz')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="text-center text-gray-500 py-4">
-                  Nincs dolgozó ebben a csoportban
+                  {i18n.t('literals.nincs-dolgozo-ebben-a-csoportban')}
                 </td>
               </tr>
             ) : (
@@ -210,7 +215,7 @@ export default function WorkersDatabasePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Betöltés...</div>
+        <div className="text-gray-500">{i18n.t('literals.betoltes')}</div>
       </div>
     )
   }
@@ -220,9 +225,11 @@ export default function WorkersDatabasePage() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <Users />
-          Dolgozói Törzs Adatbázis
+          {i18n.t('literals.dolgozoi-torzs-adatbazis')}
           <span className="text-sm font-normal text-gray-500" data-testid="worker-count">
-            ({filteredWorkers.length} dolgozó)
+            {i18n.t('literals.lit-19')}
+            {filteredWorkers.length}
+            {i18n.t('literals.dolgozo-3')}
           </span>
         </h1>
       </div>
@@ -255,7 +262,7 @@ export default function WorkersDatabasePage() {
             onChange={(e) => setTerritoryFilter(e.target.value)}
             aria-label="Területi szűrő"
           >
-            <option value="">Összes terület</option>
+            <option value="">{i18n.t('literals.osszes-terulet')}</option>
             {territories.map((r) => (
               <option key={r} value={r}>
                 {r}

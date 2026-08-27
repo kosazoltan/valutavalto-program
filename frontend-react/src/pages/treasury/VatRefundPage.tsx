@@ -18,6 +18,7 @@ import { TableSkeleton } from './LoadingSkeleton'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 const VOUCHER_TYPE_LABELS: Record<VatRefundType, string> = {
   AK: 'Külföldi ügyfél ÁFA',
@@ -551,7 +552,8 @@ export default function VatRefundPage() {
                   >
                     {VAT_PERCENT_OPTIONS.map((p) => (
                       <option key={p} value={p}>
-                        {p}%
+                        {p}
+                        {i18n.t('literals.lit-30')}
                       </option>
                     ))}
                   </select>
@@ -693,7 +695,7 @@ export default function VatRefundPage() {
             </h2>
             {detailLoading && (
               <div className="mb-3 rounded border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-600">
-                Részletadatok frissítése...
+                {i18n.t('literals.reszletadatok-frissitese')}
               </div>
             )}
             <div className="space-y-2 text-sm">
@@ -781,8 +783,9 @@ export default function VatRefundPage() {
               {stornoTarget.serialNumber} {t('treasury.sztornozasa')}
             </p>
             <p className="text-sm font-semibold text-secondary-800 mb-3">
-              {VOUCHER_TYPE_LABELS[stornoTarget.voucherType]} —{' '}
-              {formatCurrency(stornoTarget.grossAmount)} {t('common.ft')}
+              {VOUCHER_TYPE_LABELS[stornoTarget.voucherType]}
+              {i18n.t('literals.lit-28')} {formatCurrency(stornoTarget.grossAmount)}{' '}
+              {t('common.ft')}
             </p>
             <div className="flex gap-3">
               <button className="form-button flex-1" onClick={() => setStornoTarget(null)}>

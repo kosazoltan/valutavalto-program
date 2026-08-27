@@ -16,6 +16,7 @@ vi.mock('../../services/api/index', () => ({
   documentScannerApi: { getCustomerDocuments: mocks.getCustomerDocuments },
 }))
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 

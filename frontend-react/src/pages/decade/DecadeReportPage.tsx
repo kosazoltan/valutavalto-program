@@ -16,6 +16,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   OPEN: { label: 'Nyitott', color: 'bg-blue-100 text-blue-700', icon: Clock },
@@ -152,8 +153,8 @@ export default function DecadeReportPage() {
               onChange={(e) => setGenDecade(Number(e.target.value))}
               className="input-field text-sm"
             >
-              <option value={1}>1. dekád (1–10.)</option>
-              <option value={2}>2. dekád (11–20.)</option>
+              <option value={1}>{i18n.t('literals.1-dekad-1-10')}</option>
+              <option value={2}>{i18n.t('literals.2-dekad-11-20')}</option>
               <option value={3}>{t('decade.3Dekad21hoVege')}</option>
             </select>
           </div>
@@ -168,7 +169,9 @@ export default function DecadeReportPage() {
         </div>
       </div>
 
-      {loading && <div className="text-center py-8 text-gray-400">Betöltés...</div>}
+      {loading && (
+        <div className="text-center py-8 text-gray-400">{i18n.t('literals.betoltes')}</div>
+      )}
 
       {!loading && (
         <div className="grid grid-cols-3 gap-3">
@@ -199,7 +202,9 @@ export default function DecadeReportPage() {
                   <div className="flex items-center gap-2">
                     <Calendar size={14} className="text-gray-400" />
                     <span className="font-medium text-sm">
-                      {r.year}. {decadeLabel(r.decade)}
+                      {r.year}
+                      {i18n.t('literals.lit-31')}
+                      {decadeLabel(r.decade)}
                     </span>
                     <StatusBadge status={r.status} />
                   </div>
@@ -237,7 +242,9 @@ export default function DecadeReportPage() {
               <div className="p-3 border rounded space-y-2">
                 <h3 className="font-medium text-sm">
                   {t('darius.reszletek')}
-                  {selected.year}. {decadeLabel(selected.decade)}
+                  {selected.year}
+                  {i18n.t('literals.lit-31')}
+                  {decadeLabel(selected.decade)}
                 </h3>
                 <div className="text-xs space-y-1">
                   <div>

@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface CurrencyGroupItem {
   id: string | number
@@ -181,7 +182,7 @@ export default function CurrencyGroupPage() {
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div>
               <label htmlFor="currency-group-code" className="form-label">
-                Kód
+                {i18n.t('literals.kod-3')}
               </label>
               <input
                 id="currency-group-code"
@@ -195,7 +196,7 @@ export default function CurrencyGroupPage() {
             </div>
             <div>
               <label htmlFor="currency-group-name" className="form-label">
-                Név
+                {i18n.t('literals.nev')}
               </label>
               <input
                 id="currency-group-name"
@@ -208,7 +209,7 @@ export default function CurrencyGroupPage() {
             </div>
             <div>
               <label htmlFor="currency-group-description" className="form-label">
-                Leírás
+                {i18n.t('literals.leiras')}
               </label>
               <input
                 id="currency-group-description"
@@ -223,7 +224,7 @@ export default function CurrencyGroupPage() {
             </div>
             <div>
               <label htmlFor="currency-group-currency-ids" className="form-label">
-                Valuta ID-k JSON
+                {i18n.t('literals.valuta-id-k-json')}
               </label>
               <input
                 id="currency-group-currency-ids"
@@ -247,7 +248,7 @@ export default function CurrencyGroupPage() {
                   )
                 }
               />
-              Aktív
+              {i18n.t('literals.aktiv-2')}
             </label>
           </div>
           <div className="flex gap-2">
@@ -260,7 +261,7 @@ export default function CurrencyGroupPage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -300,7 +301,7 @@ export default function CurrencyGroupPage() {
                 {t('competitors.nev')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Kód
+                {i18n.t('literals.kod-3')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('currencies.leiras')}
@@ -320,7 +321,7 @@ export default function CurrencyGroupPage() {
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -365,7 +366,9 @@ export default function CurrencyGroupPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

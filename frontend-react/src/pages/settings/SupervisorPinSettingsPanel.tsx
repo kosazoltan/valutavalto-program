@@ -3,6 +3,7 @@ import { KeyRound, Trash2 } from 'lucide-react'
 import { supervisorPinApi } from '../../services/api/settings'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 const PIN_PATTERN = /^\d{4,6}$/
 
@@ -43,7 +44,11 @@ export default function SupervisorPinSettingsPanel() {
       setPin('')
       setPinConfirm('')
     } catch (err) {
-      logger.error('SupervisorPinSettingsPanel', 'Supervisor PIN beállítás sikertelen', getErrorMessage(err))
+      logger.error(
+        'SupervisorPinSettingsPanel',
+        'Supervisor PIN beállítás sikertelen',
+        getErrorMessage(err),
+      )
       setError('Supervisor PIN beállítása sikertelen.')
     } finally {
       setSaving(false)
@@ -62,7 +67,11 @@ export default function SupervisorPinSettingsPanel() {
       setPin('')
       setPinConfirm('')
     } catch (err) {
-      logger.error('SupervisorPinSettingsPanel', 'Supervisor PIN törlés sikertelen', getErrorMessage(err))
+      logger.error(
+        'SupervisorPinSettingsPanel',
+        'Supervisor PIN törlés sikertelen',
+        getErrorMessage(err),
+      )
       setError('Supervisor PIN törlése sikertelen.')
     } finally {
       setClearing(false)
@@ -74,11 +83,10 @@ export default function SupervisorPinSettingsPanel() {
       <div className="mb-4">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <KeyRound size={18} />
-          Supervisor PIN
+          {i18n.t('literals.supervisor-pin')}
         </h2>
         <p className="mt-1 text-sm text-gray-600">
-          Saját telefonos jóváhagyási PIN beállítása vagy törlése. A művelethez a jelenlegi jelszó
-          szükséges.
+          {i18n.t('literals.sajat-telefonos-jovahagyasi-pin-beallita')}
         </p>
       </div>
 
@@ -95,7 +103,9 @@ export default function SupervisorPinSettingsPanel() {
 
       <div className="grid gap-3 md:grid-cols-3">
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700">Jelenlegi jelszó</span>
+          <span className="mb-1 block font-medium text-gray-700">
+            {i18n.t('literals.jelenlegi-jelszo')}
+          </span>
           <input
             type="password"
             autoComplete="current-password"
@@ -105,7 +115,7 @@ export default function SupervisorPinSettingsPanel() {
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700">Új PIN</span>
+          <span className="mb-1 block font-medium text-gray-700">{i18n.t('literals.uj-pin')}</span>
           <input
             type="password"
             inputMode="numeric"
@@ -117,7 +127,9 @@ export default function SupervisorPinSettingsPanel() {
           />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700">PIN ismét</span>
+          <span className="mb-1 block font-medium text-gray-700">
+            {i18n.t('literals.pin-ismet')}
+          </span>
           <input
             type="password"
             inputMode="numeric"

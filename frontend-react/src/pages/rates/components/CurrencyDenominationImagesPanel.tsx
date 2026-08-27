@@ -10,6 +10,7 @@ import {
   type CurrencyDenominationSide,
   type CurrencyDenominationType,
 } from '../../../services/api/exchange-rates'
+import i18n from '../../../i18n'
 
 interface CurrencyDenominationImagesPanelProps {
   currency: Currency | null
@@ -196,7 +197,7 @@ export default function CurrencyDenominationImagesPanel({
         className="rounded-md border border-dashed border-gray-300 p-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
         data-testid="denomination-images-empty"
       >
-        Válassz valutát a címletképek kezeléséhez
+        {i18n.t('literals.valassz-valutat-a-cimletkepek-kezelesehe')}
       </div>
     )
   }
@@ -205,17 +206,20 @@ export default function CurrencyDenominationImagesPanel({
     <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold">Címletképek — {currency.code}</div>
+          <div className="text-sm font-semibold">
+            {i18n.t('literals.cimletkepek')}
+            {currency.code}
+          </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            JPEG/PNG elő- és hátoldali képek kezelése
+            {i18n.t('literals.jpeg-png-elo-es-hatoldali-kepek-kezelese')}
           </div>
         </div>
-        {loading && <span className="text-xs text-gray-500">Betöltés...</span>}
+        {loading && <span className="text-xs text-gray-500">{i18n.t('literals.betoltes')}</span>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
         <div>
-          <label className="text-xs block mb-0.5">Címlet *</label>
+          <label className="text-xs block mb-0.5">{i18n.t('literals.cimlet-3')}</label>
           <input
             type="number"
             min="0"
@@ -227,7 +231,7 @@ export default function CurrencyDenominationImagesPanel({
           />
         </div>
         <div>
-          <label className="text-xs block mb-0.5">Típus *</label>
+          <label className="text-xs block mb-0.5">{i18n.t('literals.tipus-3')}</label>
           <select
             value={denominationType}
             onChange={(event) =>
@@ -236,24 +240,24 @@ export default function CurrencyDenominationImagesPanel({
             className="form-input w-full"
             data-testid="denomination-type"
           >
-            <option value="BANKNOTE">Bankjegy</option>
-            <option value="COIN">Érme</option>
+            <option value="BANKNOTE">{i18n.t('literals.bankjegy')}</option>
+            <option value="COIN">{i18n.t('literals.erme')}</option>
           </select>
         </div>
         <div>
-          <label className="text-xs block mb-0.5">Oldal *</label>
+          <label className="text-xs block mb-0.5">{i18n.t('literals.oldal-3')}</label>
           <select
             value={side}
             onChange={(event) => setSide(event.target.value as CurrencyDenominationSide)}
             className="form-input w-full"
             data-testid="denomination-side"
           >
-            <option value="FRONT">Előlap</option>
-            <option value="BACK">Hátlap</option>
+            <option value="FRONT">{i18n.t('literals.elolap')}</option>
+            <option value="BACK">{i18n.t('literals.hatlap')}</option>
           </select>
         </div>
         <div>
-          <label className="text-xs block mb-0.5">Kép *</label>
+          <label className="text-xs block mb-0.5">{i18n.t('literals.kep')}</label>
           <input
             key={fileInputKey}
             ref={fileInputRef}
@@ -279,7 +283,7 @@ export default function CurrencyDenominationImagesPanel({
       <div className="space-y-2">
         {images.length === 0 && !loading ? (
           <div className="rounded border border-gray-200 p-3 text-xs text-gray-500 dark:border-gray-700">
-            Nincs címletkép ehhez a valutához
+            {i18n.t('literals.nincs-cimletkep-ehhez-a-valutahoz')}
           </div>
         ) : null}
         {images.map((image) => (
@@ -296,25 +300,31 @@ export default function CurrencyDenominationImagesPanel({
               />
             ) : (
               <div className="flex h-20 w-20 items-center justify-center rounded border border-gray-200 bg-gray-50 text-xs text-gray-400">
-                Kép...
+                {i18n.t('literals.kep-2')}
               </div>
             )}
             <div className="space-y-1">
               <div className="font-semibold">
-                {image.faceValue} {currency.code} — {getTypeLabel(image.denominationType)} /{' '}
-                {getSideLabel(image.side)}
+                {image.faceValue} {currency.code}
+                {i18n.t('literals.lit-18')}
+                {getTypeLabel(image.denominationType)}
+                {i18n.t('literals.lit-40')} {getSideLabel(image.side)}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {image.mimeType} · {formatFileSize(image.fileSizeBytes)}
+                {image.mimeType}
+                {i18n.t('literals.lit-9')}
+                {formatFileSize(image.fileSizeBytes)}
               </div>
               <div>
                 {image.active ? (
                   <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400 text-xs">
-                    <Check size={14} /> aktív
+                    <Check size={14} />
+                    {i18n.t('literals.aktiv-3')}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-gray-500 text-xs">
-                    <Ban size={14} /> inaktív
+                    <Ban size={14} />
+                    {i18n.t('literals.inaktiv-2')}
                   </span>
                 )}
               </div>

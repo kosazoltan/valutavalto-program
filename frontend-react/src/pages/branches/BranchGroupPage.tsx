@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger'
 import { safeArray } from '@/utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface GroupForm {
   code: string
@@ -262,7 +263,7 @@ export default function BranchGroupPage() {
 
       <div className="form-panel">
         {loading ? (
-          <div>Betöltés...</div>
+          <div>{i18n.t('literals.betoltes')}</div>
         ) : safeArray<BranchGroup>(groups).length === 0 ? (
           <div className="text-center text-gray-500 py-4">{t('branches.nincsFiokcsoport')}</div>
         ) : (

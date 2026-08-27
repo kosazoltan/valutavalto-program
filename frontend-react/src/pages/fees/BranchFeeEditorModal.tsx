@@ -3,6 +3,7 @@ import { branchFeeConfigApi, type BranchFeeConfigRow } from '../../services/api/
 import { roundHuf } from '../../utils/rounding'
 import { logger } from '../../utils/logger'
 import FeeConfirmDialog from './FeeConfirmDialog'
+import i18n from '../../i18n'
 
 interface Props {
   row: BranchFeeConfigRow
@@ -97,17 +98,21 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
     >
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <h2 className="text-lg font-bold text-gray-900">
-          Kezelési díj — {row.branchCode} ({row.branchName})
+          {i18n.t('literals.kezelesi-dij-2')}
+          {row.branchCode}
+          {i18n.t('literals.lit')}
+          {row.branchName}
+          {i18n.t('literals.lit-2')}
         </h2>
 
         {row.liveFeeMode === 'NONE' && (
           <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            Jelenleg nincs kezelési díj beállítva (örökölt érték) — válassz módot a küldéshez.
+            {i18n.t('literals.jelenleg-nincs-kezelesi-dij-beallitva-or')}
           </div>
         )}
 
         <fieldset className="mt-4">
-          <legend className="text-sm font-medium text-gray-700">Díjmód</legend>
+          <legend className="text-sm font-medium text-gray-700">{i18n.t('literals.dijmod')}</legend>
           <label className="mt-2 inline-flex items-center gap-2">
             <input
               type="radio"
@@ -116,7 +121,7 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
               checked={feeMode === 'BRACKET'}
               onChange={() => setFeeMode('BRACKET')}
             />
-            Sávos (közös sávok)
+            {i18n.t('literals.savos-kozos-savok')}
           </label>
           <label className="mt-1 inline-flex items-center gap-2 pl-6">
             <input
@@ -126,14 +131,14 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
               checked={feeMode === 'PER_MILLE'}
               onChange={() => setFeeMode('PER_MILLE')}
             />
-            Ezrelékes
+            {i18n.t('literals.ezrelekes')}
           </label>
         </fieldset>
 
         {feeMode === 'PER_MILLE' && (
           <div className="mt-4 grid grid-cols-2 gap-4">
             <label className="text-sm">
-              <span className="text-gray-600">Mérték (‰)</span>
+              <span className="text-gray-600">{i18n.t('literals.mertek')}</span>
               <input
                 type="number"
                 min="0"
@@ -145,7 +150,7 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
               />
             </label>
             <label className="text-sm">
-              <span className="text-gray-600">Maximum (Ft)</span>
+              <span className="text-gray-600">{i18n.t('literals.maximum-ft')}</span>
               <input
                 type="number"
                 min="0"
@@ -157,7 +162,9 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
               />
               {capPreview != null && (
                 <span className="mt-1 block text-xs text-gray-500">
-                  5 Ft-ra kerekítve: {capPreview.toLocaleString('hu-HU')} Ft
+                  {i18n.t('literals.5-ft-ra-kerekitve')}
+                  {capPreview.toLocaleString('hu-HU')}
+                  {i18n.t('literals.ft')}
                 </span>
               )}
             </label>
@@ -172,7 +179,7 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
             onClick={onClose}
             className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            Bezárás
+            {i18n.t('literals.bezaras')}
           </button>
           <button
             type="button"
@@ -188,7 +195,7 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
             disabled={publishDisabled}
             className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
           >
-            Küldés
+            {i18n.t('literals.kuldes')}
           </button>
         </div>
       </div>

@@ -20,6 +20,7 @@ import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 interface OccHealth {
   id: number
@@ -376,7 +377,10 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Al-nyilvántartások — {employeeName}</h2>
+          <h2 className="text-lg font-bold">
+            {i18n.t('literals.al-nyilvantartasok')}
+            {employeeName}
+          </h2>
           <button onClick={onClose} className="form-button p-1" title="Bezárás">
             <X className="h-5 w-5" />
           </button>
@@ -392,16 +396,16 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
         <section className="mb-4 rounded border border-blue-100 bg-blue-50 p-3">
           <h3 className="mb-2 flex items-center gap-2 font-semibold text-blue-950">
             <Clock className="h-4 w-4" />
-            Vezetői dolgozókezelés
+            {i18n.t('literals.vezetoi-dolgozokezeles')}
           </h3>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded border border-blue-100 bg-white p-2">
               <div className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-900">
                 <Clock className="h-4 w-4" />
-                Jelenlét napló
+                {i18n.t('literals.jelenlet-naplo')}
               </div>
               {attendance.length === 0 ? (
-                <p className="text-sm text-gray-500">Nincs jelenléti rekord.</p>
+                <p className="text-sm text-gray-500">{i18n.t('literals.nincs-jelenleti-rekord')}</p>
               ) : (
                 <div className="space-y-2">
                   {attendance.slice(0, 3).map((row) => (
@@ -420,7 +424,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
             <div className="rounded border border-blue-100 bg-white p-2">
               <div className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-900">
                 <Coffee className="h-4 w-4" />
-                Szünet kezelés
+                {i18n.t('literals.szunet-kezeles')}
               </div>
               <input
                 className="form-input mb-2 w-full"
@@ -437,7 +441,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                   className="form-button-primary justify-center text-xs"
                   data-testid="worker-break-start"
                 >
-                  Indítás
+                  {i18n.t('literals.inditas')}
                 </button>
                 <button
                   type="button"
@@ -446,14 +450,14 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                   className="form-button justify-center text-xs"
                   data-testid="worker-break-end"
                 >
-                  Lezárás
+                  {i18n.t('literals.lezaras')}
                 </button>
               </div>
             </div>
             <div className="rounded border border-blue-100 bg-white p-2">
               <div className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-900">
                 <KeyRound className="h-4 w-4" />
-                Jelszó reset
+                {i18n.t('literals.jelszo-reset')}
               </div>
               <input
                 className="form-input mb-2 w-full"
@@ -464,7 +468,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                 data-testid="worker-new-password"
               />
               <p className="mb-2 text-xs text-gray-500">
-                8-128 karakter, legalább egy nagybetű és egy szám.
+                {i18n.t('literals.8-128-karakter-legalabb-egy-nagybetu-es')}
               </p>
               <button
                 type="button"
@@ -473,7 +477,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                 className="form-button-primary w-full justify-center text-xs"
                 data-testid="worker-reset-password"
               >
-                Jelszó módosítása
+                {i18n.t('literals.jelszo-modositasa')}
               </button>
               <button
                 type="button"
@@ -483,14 +487,16 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                 data-testid="worker-setup-token-issue"
               >
                 <Copy className="h-4 w-4" />
-                Setup-token kiállítása
+                {i18n.t('literals.setup-token-kiallitasa')}
               </button>
               {setupTokenResponse?.token && (
                 <div
                   className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950"
                   data-testid="worker-setup-token-result"
                 >
-                  <div className="font-semibold">Egyszer látható setup-token</div>
+                  <div className="font-semibold">
+                    {i18n.t('literals.egyszer-lathato-setup-token')}
+                  </div>
                   <div className="mt-1 break-all font-mono">{setupTokenResponse.token}</div>
                   <div className="mt-1 text-amber-800">
                     {setupTokenResponse.workerCode ?? ''}
@@ -504,10 +510,12 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
             <div className="rounded border border-blue-100 bg-white p-2">
               <div className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-900">
                 <ShieldCheck className="h-4 w-4" />
-                Operatív szerepkörök
+                {i18n.t('literals.operativ-szerepkorok')}
               </div>
               {workerRoles.length === 0 ? (
-                <p className="mb-2 text-sm text-gray-500">Nincs szerepkör hozzárendelve.</p>
+                <p className="mb-2 text-sm text-gray-500">
+                  {i18n.t('literals.nincs-szerepkor-hozzarendelve')}
+                </p>
               ) : (
                 <div className="mb-2 flex flex-wrap gap-1" data-testid="worker-role-list">
                   {workerRoles.map((roleCode) => (
@@ -557,7 +565,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                 data-testid="worker-unlock-login"
               >
                 <LockOpen className="h-4 w-4" />
-                Login zárolás feloldása
+                {i18n.t('literals.login-zarolas-feloldasa')}
               </button>
             </div>
           </div>
@@ -567,7 +575,8 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
         <div className="mb-4">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="flex items-center gap-2 font-semibold">
-              <GraduationCap className="h-4 w-4" /> Szakmai bizonyítványok
+              <GraduationCap className="h-4 w-4" />
+              {i18n.t('literals.szakmai-bizonyitvanyok')}
             </h3>
             <button
               onClick={() => void saveCerts()}
@@ -630,7 +639,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
           <h3 className="mb-2 flex items-center justify-between font-semibold">
             <span className="flex items-center gap-1">
               <Stethoscope className="h-4 w-4" />
-              Üzemorvosi vizsgálat
+              {i18n.t('literals.uzemorvosi-vizsgalat')}
             </span>
             <button
               onClick={() => void downloadOccupationalHealthCsv()}
@@ -638,13 +647,13 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
               title="CSV letöltés — cég összes dolgozója"
             >
               <Download className="h-3 w-3" />
-              CSV export
+              {i18n.t('literals.csv-export')}
             </button>
           </h3>
           <div className="space-y-2 md:hidden">
             {occHealth.length === 0 ? (
               <div className="rounded border border-gray-200 bg-white p-3 text-center text-sm text-gray-500">
-                Nincs üzemorvosi rekord.
+                {i18n.t('literals.nincs-uzemorvosi-rekord')}
               </div>
             ) : (
               occHealth.map((o) => (
@@ -656,7 +665,10 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div>
                       <div className="font-semibold text-gray-900">{o.status ?? '-'}</div>
-                      <div className="text-xs text-gray-500">Vizsgálat: {o.examDate ?? '-'}</div>
+                      <div className="text-xs text-gray-500">
+                        {i18n.t('literals.vizsgalat')}
+                        {o.examDate ?? '-'}
+                      </div>
                     </div>
                     <button
                       onClick={() => del(`occupational-health/${o.id}`)}
@@ -667,7 +679,9 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                     </button>
                   </div>
                   <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                    <div className="text-[10px] uppercase text-gray-500">Eredmény</div>
+                    <div className="text-[10px] uppercase text-gray-500">
+                      {i18n.t('literals.eredmeny')}
+                    </div>
                     <div>{o.result ?? '-'}</div>
                   </div>
                 </article>
@@ -677,9 +691,9 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
           <table className="hidden w-full text-sm md:table">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-1 text-left">Állapot</th>
-                <th className="p-1 text-left">Vizsgálat dátuma</th>
-                <th className="p-1 text-left">Eredmény</th>
+                <th className="p-1 text-left">{i18n.t('literals.allapot')}</th>
+                <th className="p-1 text-left">{i18n.t('literals.vizsgalat-datuma')}</th>
+                <th className="p-1 text-left">{i18n.t('literals.eredmeny')}</th>
                 <th className="p-1"></th>
               </tr>
             </thead>
@@ -687,7 +701,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
               {occHealth.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="p-2 text-center text-gray-500">
-                    Nincs üzemorvosi rekord.
+                    {i18n.t('literals.nincs-uzemorvosi-rekord')}
                   </td>
                 </tr>
               ) : (
@@ -739,7 +753,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
           <h3 className="mb-2 flex items-center justify-between font-semibold">
             <span className="flex items-center gap-1">
               <CalendarDays className="h-4 w-4" />
-              Szabadságok
+              {i18n.t('literals.szabadsagok')}
             </span>
             <button
               onClick={() => void downloadVacationsCsv()}
@@ -747,13 +761,13 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
               title="CSV letöltés — cég összes dolgozója"
             >
               <Download className="h-3 w-3" />
-              CSV export
+              {i18n.t('literals.csv-export')}
             </button>
           </h3>
           <div className="space-y-2 md:hidden">
             {vacations.length === 0 ? (
               <div className="rounded border border-gray-200 bg-white p-3 text-center text-sm text-gray-500">
-                Nincs szabadság-sor.
+                {i18n.t('literals.nincs-szabadsag-sor')}
               </div>
             ) : (
               vacations.map((v) => (
@@ -774,11 +788,15 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                   </div>
                   <dl className="grid grid-cols-2 gap-2">
                     <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                      <dt className="text-[10px] uppercase text-gray-500">Szabadság</dt>
+                      <dt className="text-[10px] uppercase text-gray-500">
+                        {i18n.t('literals.szabadsag')}
+                      </dt>
                       <dd className="font-mono">{v.vacationDays}</dd>
                     </div>
                     <div className="rounded border border-gray-100 bg-gray-50 px-2 py-1">
-                      <dt className="text-[10px] uppercase text-gray-500">Kivett</dt>
+                      <dt className="text-[10px] uppercase text-gray-500">
+                        {i18n.t('literals.kivett')}
+                      </dt>
                       <dd className="font-mono">{v.takenVacation}</dd>
                     </div>
                   </dl>
@@ -789,9 +807,9 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
           <table className="hidden w-full text-sm md:table">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-1 text-left">Év</th>
-                <th className="p-1 text-right">Szabadság</th>
-                <th className="p-1 text-right">Kivett</th>
+                <th className="p-1 text-left">{i18n.t('literals.ev')}</th>
+                <th className="p-1 text-right">{i18n.t('literals.szabadsag')}</th>
+                <th className="p-1 text-right">{i18n.t('literals.kivett')}</th>
                 <th className="p-1"></th>
               </tr>
             </thead>
@@ -799,7 +817,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
               {vacations.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="p-2 text-center text-gray-500">
-                    Nincs szabadság-sor.
+                    {i18n.t('literals.nincs-szabadsag-sor')}
                   </td>
                 </tr>
               ) : (
@@ -843,12 +861,12 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
         <section>
           <h3 className="mb-2 flex items-center gap-1 font-semibold">
             <Baby className="h-4 w-4" />
-            Gyerekek
+            {i18n.t('literals.gyerekek')}
           </h3>
           <div className="space-y-2 md:hidden">
             {children.length === 0 ? (
               <div className="rounded border border-gray-200 bg-white p-3 text-center text-sm text-gray-500">
-                Nincs gyermek-rekord.
+                {i18n.t('literals.nincs-gyermek-rekord')}
               </div>
             ) : (
               children.map((c) => (
@@ -861,7 +879,8 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
                     <div>
                       <div className="font-semibold text-gray-900">{c.name}</div>
                       <div className="text-xs text-gray-500">
-                        Születési dátum: {c.birthDate ?? '-'}
+                        {i18n.t('literals.szuletesi-datum-2')}
+                        {c.birthDate ?? '-'}
                       </div>
                     </div>
                     <button
@@ -879,8 +898,8 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
           <table className="hidden w-full text-sm md:table">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-1 text-left">Név</th>
-                <th className="p-1 text-left">Születési dátum</th>
+                <th className="p-1 text-left">{i18n.t('literals.nev')}</th>
+                <th className="p-1 text-left">{i18n.t('literals.szuletesi-datum')}</th>
                 <th className="p-1"></th>
               </tr>
             </thead>
@@ -888,7 +907,7 @@ export default function EmployeeSubRecordsModal({ employeeId, employeeName, onCl
               {children.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="p-2 text-center text-gray-500">
-                    Nincs gyermek-rekord.
+                    {i18n.t('literals.nincs-gyermek-rekord')}
                   </td>
                 </tr>
               ) : (

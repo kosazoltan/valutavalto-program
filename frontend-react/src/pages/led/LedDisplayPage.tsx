@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface LedDisplayItem {
   branchId: string
@@ -211,7 +212,11 @@ export default function LedDisplayPage() {
   const renderSerialStatus = (branchId: string) => {
     const status = serialStatuses[branchId]
     if (!status) {
-      return <p className="text-sm text-gray-500">Nincs részletes fizikai státusz.</p>
+      return (
+        <p className="text-sm text-gray-500">
+          {i18n.t('literals.nincs-reszletes-fizikai-statusz')}
+        </p>
+      )
     }
     return (
       <dl
@@ -219,13 +224,13 @@ export default function LedDisplayPage() {
         data-testid="led-serial-status-panel"
       >
         <div className="rounded border border-gray-100 bg-gray-50 px-3 py-2">
-          <dt className="text-[10px] uppercase text-gray-500">Telephely</dt>
+          <dt className="text-[10px] uppercase text-gray-500">{i18n.t('literals.telephely')}</dt>
           <dd className="break-words font-semibold text-gray-900">
             {status.branchName ?? status.branchId}
           </dd>
         </div>
         <div className="rounded border border-gray-100 bg-gray-50 px-3 py-2">
-          <dt className="text-[10px] uppercase text-gray-500">Kapcsolat</dt>
+          <dt className="text-[10px] uppercase text-gray-500">{i18n.t('literals.kapcsolat')}</dt>
           <dd
             className={
               status.connected ? 'font-semibold text-green-700' : 'font-semibold text-gray-700'
@@ -235,11 +240,13 @@ export default function LedDisplayPage() {
           </dd>
         </div>
         <div className="rounded border border-gray-100 bg-gray-50 px-3 py-2">
-          <dt className="text-[10px] uppercase text-gray-500">Utolsó frissítés</dt>
+          <dt className="text-[10px] uppercase text-gray-500">
+            {i18n.t('literals.utolso-frissites-2')}
+          </dt>
           <dd>{fmtDate(status.lastRefresh)}</dd>
         </div>
         <div className="rounded border border-gray-100 bg-gray-50 px-3 py-2">
-          <dt className="text-[10px] uppercase text-gray-500">Hiba</dt>
+          <dt className="text-[10px] uppercase text-gray-500">{i18n.t('literals.hiba-3')}</dt>
           <dd className="break-words">{status.lastError ?? '-'}</dd>
         </div>
       </dl>
@@ -249,17 +256,29 @@ export default function LedDisplayPage() {
   const renderContentPreview = (branchId: string) => {
     const lines = displayContent[branchId] ?? []
     if (lines.length === 0) {
-      return <p className="text-sm text-gray-500">Nincs kijelző tartalom előnézet.</p>
+      return (
+        <p className="text-sm text-gray-500">
+          {i18n.t('literals.nincs-kijelzo-tartalom-elonezet')}
+        </p>
+      )
     }
     return (
       <div className="overflow-x-auto rounded border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left font-medium text-gray-600">Valuta</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600">Vétel</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600">Eladás</th>
-              <th className="px-3 py-2 text-right font-medium text-gray-600">Egység</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-600">
+                {i18n.t('literals.valuta')}
+              </th>
+              <th className="px-3 py-2 text-right font-medium text-gray-600">
+                {i18n.t('literals.vetel')}
+              </th>
+              <th className="px-3 py-2 text-right font-medium text-gray-600">
+                {i18n.t('literals.eladas')}
+              </th>
+              <th className="px-3 py-2 text-right font-medium text-gray-600">
+                {i18n.t('literals.egyseg')}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
@@ -363,18 +382,18 @@ export default function LedDisplayPage() {
             className="form-button-primary flex items-center gap-1"
           >
             <RefreshCw className="h-4 w-4" />
-            Összes frissítése
+            {i18n.t('literals.osszes-frissitese')}
           </button>
         </div>
       </div>
 
       {configForm && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">LED konfiguráció</h2>
+          <h2 className="text-base font-semibold">{i18n.t('literals.led-konfiguracio')}</h2>
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
             <div>
               <label htmlFor="led-display-type" className="form-label">
-                Kapcsolat típus
+                {i18n.t('literals.kapcsolat-tipus')}
               </label>
               <select
                 id="led-display-type"
@@ -386,14 +405,14 @@ export default function LedDisplayPage() {
                 }
                 className="form-input w-full"
               >
-                <option value="NETWORK">NETWORK</option>
-                <option value="SERIAL">SERIAL</option>
-                <option value="USB">USB</option>
+                <option value="NETWORK">{i18n.t('literals.network')}</option>
+                <option value="SERIAL">{i18n.t('literals.serial')}</option>
+                <option value="USB">{i18n.t('literals.usb')}</option>
               </select>
             </div>
             <div>
               <label htmlFor="led-connection" className="form-label">
-                Kapcsolat
+                {i18n.t('literals.kapcsolat')}
               </label>
               <input
                 id="led-connection"
@@ -408,7 +427,7 @@ export default function LedDisplayPage() {
             </div>
             <div>
               <label htmlFor="led-refresh-interval" className="form-label">
-                Frissítés mp
+                {i18n.t('literals.frissites-mp')}
               </label>
               <input
                 id="led-refresh-interval"
@@ -424,7 +443,7 @@ export default function LedDisplayPage() {
             </div>
             <div>
               <label htmlFor="led-com-ports" className="form-label">
-                COM portok
+                {i18n.t('literals.com-portok')}
               </label>
               <input
                 id="led-com-ports"
@@ -439,7 +458,7 @@ export default function LedDisplayPage() {
             </div>
             <div>
               <label htmlFor="led-currencies" className="form-label">
-                Valuták
+                {i18n.t('literals.valutak')}
               </label>
               <input
                 id="led-currencies"
@@ -454,7 +473,7 @@ export default function LedDisplayPage() {
             </div>
             <div>
               <label htmlFor="led-speed" className="form-label">
-                Sebesség
+                {i18n.t('literals.sebesseg')}
               </label>
               <input
                 id="led-speed"
@@ -470,7 +489,7 @@ export default function LedDisplayPage() {
             </div>
             <div>
               <label htmlFor="led-end-markers" className="form-label">
-                Záró bájtok
+                {i18n.t('literals.zaro-bajtok')}
               </label>
               <input
                 id="led-end-markers"
@@ -485,7 +504,7 @@ export default function LedDisplayPage() {
             </div>
             <div>
               <label htmlFor="led-decimal" className="form-label">
-                Tizedesjel
+                {i18n.t('literals.tizedesjel')}
               </label>
               <input
                 id="led-decimal"
@@ -503,7 +522,7 @@ export default function LedDisplayPage() {
             </div>
             <div>
               <label htmlFor="led-display-ids" className="form-label">
-                Kijelző ID-k
+                {i18n.t('literals.kijelzo-id-k')}
               </label>
               <input
                 id="led-display-ids"
@@ -526,12 +545,12 @@ export default function LedDisplayPage() {
                   )
                 }
               />
-              Aktív
+              {i18n.t('literals.aktiv-2')}
             </label>
           </div>
           <div>
             <label htmlFor="led-custom-text" className="form-label">
-              Egyéni szöveg
+              {i18n.t('literals.egyeni-szoveg')}
             </label>
             <textarea
               id="led-custom-text"
@@ -546,11 +565,15 @@ export default function LedDisplayPage() {
             />
           </div>
           <div>
-            <h3 className="mb-2 text-sm font-semibold text-gray-700">Fizikai státusz</h3>
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">
+              {i18n.t('literals.fizikai-statusz')}
+            </h3>
             {renderSerialStatus(configForm.branchId)}
           </div>
           <div>
-            <h3 className="mb-2 text-sm font-semibold text-gray-700">Kijelző tartalom előnézet</h3>
+            <h3 className="mb-2 text-sm font-semibold text-gray-700">
+              {i18n.t('literals.kijelzo-tartalom-elonezet')}
+            </h3>
             {renderContentPreview(configForm.branchId)}
           </div>
           <div className="flex gap-2">
@@ -569,10 +592,10 @@ export default function LedDisplayPage() {
               className="form-button flex items-center gap-1"
             >
               <Send className="h-4 w-4" />
-              Szöveg küldése
+              {i18n.t('literals.szoveg-kuldese')}
             </button>
             <button type="button" onClick={() => setConfigForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -607,7 +630,7 @@ export default function LedDisplayPage() {
       <div className="space-y-3 md:hidden">
         {loading ? (
           <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
-            Betöltés...
+            {i18n.t('literals.betoltes')}
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded border border-gray-200 bg-white p-4 text-center text-sm text-gray-500">
@@ -632,11 +655,11 @@ export default function LedDisplayPage() {
               </div>
               <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                 <div>
-                  <dt className="text-gray-500">Utolsó frissítés</dt>
+                  <dt className="text-gray-500">{i18n.t('literals.utolso-frissites-2')}</dt>
                   <dd className="text-gray-900">{fmtDate(item.lastRefresh)}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Hiba</dt>
+                  <dt className="text-gray-500">{i18n.t('literals.hiba-3')}</dt>
                   <dd className="text-gray-900">{item.lastError ?? '-'}</dd>
                 </div>
               </dl>
@@ -672,10 +695,10 @@ export default function LedDisplayPage() {
                 {t('common.online')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Utolsó frissítés
+                {i18n.t('literals.utolso-frissites-2')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Hiba
+                {i18n.t('literals.hiba-3')}
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                 {t('competitors.muveletek')}
@@ -686,7 +709,7 @@ export default function LedDisplayPage() {
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -726,7 +749,10 @@ export default function LedDisplayPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        Összesen: {filtered.length} / {items.length}
+        {i18n.t('literals.osszesen-2')}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

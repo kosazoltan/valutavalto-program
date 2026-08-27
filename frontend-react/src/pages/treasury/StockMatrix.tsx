@@ -16,6 +16,7 @@ import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 /** Branch aggregated data for the matrix */
 interface BranchRow {
@@ -155,7 +156,10 @@ export default function StockMatrix() {
             {autoRefresh ? (
               <span>
                 {t('treasury.autoRefresh')}
-                <strong>{countdown}s</strong>
+                <strong>
+                  {countdown}
+                  {i18n.t('literals.s')}
+                </strong>
               </span>
             ) : (
               <span className="text-warning-600">{t('treasury.szuneteltetve')}</span>
@@ -185,7 +189,8 @@ export default function StockMatrix() {
           >
             <option value="all">
               {t('treasury.mind')}
-              {branchRows.length})
+              {branchRows.length}
+              {i18n.t('literals.lit-2')}
             </option>
             {branchRows.map((b) => (
               <option key={b.id} value={b.id}>
@@ -203,7 +208,8 @@ export default function StockMatrix() {
           >
             <option value="all">
               {t('treasury.mind')}
-              {currencies.length})
+              {currencies.length}
+              {i18n.t('literals.lit-2')}
             </option>
             <option value="top8">{t('treasury.top8')}</option>
             {currencies

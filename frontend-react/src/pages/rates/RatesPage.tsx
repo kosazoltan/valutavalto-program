@@ -47,6 +47,7 @@ import { useAppMode } from '../../hooks/useAppMode'
 import { useTranslation } from 'react-i18next'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
+import i18n from '../../i18n'
 
 // 2026-04-29 B2 fix: a /rates oldalt a penztaros (mode='penztar') NEM
 // szerkesztheti — csak a foertektar/ugyvezeto az ARFOLYAM/Arfolyam.exe legacy
@@ -813,7 +814,7 @@ export default function RatesPage() {
                         rowSpan={2}
                         className="sticky left-0 z-10 bg-gray-100 px-3 py-2 text-left align-bottom font-semibold uppercase tracking-wide"
                       >
-                        Valuta
+                        {i18n.t('literals.valuta')}
                       </th>
                       {territoryGroups.map((g) => (
                         <th
@@ -835,7 +836,7 @@ export default function RatesPage() {
                         rowSpan={2}
                         className="px-3 py-2 text-right align-bottom font-semibold uppercase tracking-wide text-gray-400"
                       >
-                        MNB
+                        {i18n.t('literals.mnb')}
                       </th>
                     </tr>
                     <tr className="border-b-2 border-gray-300 bg-gray-50">
@@ -887,7 +888,9 @@ export default function RatesPage() {
                                       <span className="text-green-700">
                                         {fmtRate(cr.baseBuyRate)}
                                       </span>
-                                      <span className="mx-1 text-gray-300">/</span>
+                                      <span className="mx-1 text-gray-300">
+                                        {i18n.t('literals.lit-4')}
+                                      </span>
                                       <span className="text-red-700">
                                         {fmtRate(cr.baseSellRate)}
                                       </span>
@@ -896,36 +899,37 @@ export default function RatesPage() {
                                       {cr.limit1Amount != null &&
                                         (cr.limit1BuyRate != null || cr.limit1SellRate != null) && (
                                           <div className="whitespace-nowrap font-mono text-[10.5px] text-gray-500">
-                                            ≥{formatHuf(cr.limit1Amount)}{' '}
-                                            {fmtRate(cr.limit1BuyRate)} /{' '}
-                                            {fmtRate(cr.limit1SellRate)}
+                                            {i18n.t('literals.lit-46')}
+                                            {formatHuf(cr.limit1Amount)} {fmtRate(cr.limit1BuyRate)}
+                                            {i18n.t('literals.lit-40')} {fmtRate(cr.limit1SellRate)}
                                           </div>
                                         )}
                                       {cr.limit2Amount != null &&
                                         (cr.limit2BuyRate != null || cr.limit2SellRate != null) && (
                                           <div className="whitespace-nowrap font-mono text-[10.5px] text-gray-500">
-                                            ≥{formatHuf(cr.limit2Amount)}{' '}
-                                            {fmtRate(cr.limit2BuyRate)} /{' '}
-                                            {fmtRate(cr.limit2SellRate)}
+                                            {i18n.t('literals.lit-46')}
+                                            {formatHuf(cr.limit2Amount)} {fmtRate(cr.limit2BuyRate)}
+                                            {i18n.t('literals.lit-40')} {fmtRate(cr.limit2SellRate)}
                                           </div>
                                         )}
                                       {cr.limit3Amount != null &&
                                         (cr.limit3BuyRate != null || cr.limit3SellRate != null) && (
                                           <div className="whitespace-nowrap font-mono text-[10.5px] text-gray-500">
-                                            ≥{formatHuf(cr.limit3Amount)}{' '}
-                                            {fmtRate(cr.limit3BuyRate)} /{' '}
-                                            {fmtRate(cr.limit3SellRate)}
+                                            {i18n.t('literals.lit-46')}
+                                            {formatHuf(cr.limit3Amount)} {fmtRate(cr.limit3BuyRate)}
+                                            {i18n.t('literals.lit-40')} {fmtRate(cr.limit3SellRate)}
                                           </div>
                                         )}
                                     </div>
                                     {cr.validTime && (
                                       <div className="mt-1 text-[10px] text-gray-400">
-                                        frissítve {cr.validTime}
+                                        {i18n.t('literals.frissitve-2')}
+                                        {cr.validTime}
                                       </div>
                                     )}
                                   </>
                                 ) : (
-                                  <span className="text-gray-300">—</span>
+                                  <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                                 )}
                               </td>
                             )
@@ -958,7 +962,7 @@ export default function RatesPage() {
               <thead>
                 <tr className="border-b-2 border-gray-300 bg-gray-100 text-gray-600">
                   <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide">
-                    Valuta
+                    {i18n.t('literals.valuta')}
                   </th>
                   <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-green-700">
                     {t('rates.vetel')}
@@ -982,10 +986,10 @@ export default function RatesPage() {
                     </th>
                   )}
                   <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-gray-400">
-                    MNB
+                    {i18n.t('literals.mnb')}
                   </th>
                   <th className="px-3 py-2 text-right font-semibold uppercase tracking-wide text-gray-400">
-                    Frissítve
+                    {i18n.t('literals.frissitve-3')}
                   </th>
                 </tr>
               </thead>
@@ -1011,7 +1015,7 @@ export default function RatesPage() {
                       <span className="ml-2 text-gray-500">{rate.name}</span>
                       {rate.isStale && (
                         <span className="badge badge-red ml-2 align-middle">
-                          Elavult árfolyam
+                          {i18n.t('literals.elavult-arfolyam')}
                           {typeof rate.ageHours === 'number' ? ` (${rate.ageHours} órás)` : ''}
                         </span>
                       )}
@@ -1020,14 +1024,14 @@ export default function RatesPage() {
                       {rate.hasRate ? (
                         formatDecimal(rate.buyRate, 2, 2)
                       ) : (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                       )}
                     </td>
                     <td className="px-3 py-2 text-right font-mono text-base font-semibold tabular-nums text-red-700">
                       {rate.hasRate ? (
                         formatDecimal(rate.sellRate, 2, 2)
                       ) : (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                       )}
                     </td>
                     {showTier1 && (
@@ -1117,15 +1121,16 @@ export default function RatesPage() {
             <div className="rounded border border-gray-200 bg-white p-3">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase text-gray-500">
-                  Polling státusz
+                  {i18n.t('literals.polling-statusz')}
                 </span>
                 <span className={`badge ${pollingStatusClass}`}>{pollingStatusLabel}</span>
               </div>
               <div className="text-sm text-gray-900">
-                Forrás: {pollingStatus?.lastPollSource || '-'}
+                {i18n.t('literals.forras')}
+                {pollingStatus?.lastPollSource || '-'}
               </div>
               <div className="text-xs text-gray-500">
-                Utolsó futás:{' '}
+                {i18n.t('literals.utolso-futas')}{' '}
                 {pollingStatus?.lastPollTime
                   ? new Date(pollingStatus.lastPollTime).toLocaleString('hu-HU')
                   : '-'}
@@ -1137,21 +1142,29 @@ export default function RatesPage() {
             </div>
             <div className="rounded border border-gray-200 bg-white p-3">
               <div className="text-xs font-semibold uppercase text-gray-500">
-                Frissített tételek
+                {i18n.t('literals.frissitett-tetelek')}
               </div>
               <div className="mt-1 text-2xl font-bold text-gray-900">
                 {pollingStatus?.lastPollUpdatedCount ?? 0}
               </div>
-              <div className="text-xs text-gray-500">utolsó polling futásban</div>
+              <div className="text-xs text-gray-500">
+                {i18n.t('literals.utolso-polling-futasban')}
+              </div>
             </div>
             <div className="rounded border border-gray-200 bg-white p-3">
-              <div className="text-xs font-semibold uppercase text-gray-500">Árfolyam források</div>
+              <div className="text-xs font-semibold uppercase text-gray-500">
+                {i18n.t('literals.arfolyam-forrasok')}
+              </div>
               <div className="mt-1 text-2xl font-bold text-gray-900">
-                {activePollingSources} / {pollingSources.length}
+                {activePollingSources}
+                {i18n.t('literals.lit-10')}
+                {pollingSources.length}
               </div>
               <div className="mt-2 flex flex-wrap gap-1">
                 {pollingSources.length === 0 ? (
-                  <span className="text-xs text-gray-500">Nincs forrásadat.</span>
+                  <span className="text-xs text-gray-500">
+                    {i18n.t('literals.nincs-forrasadat')}
+                  </span>
                 ) : (
                   pollingSources.slice(0, 4).map((source) => (
                     <span
@@ -1203,7 +1216,7 @@ export default function RatesPage() {
             >
               <div className="mb-1 flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase text-gray-500">
-                  Piaci összehasonlítás
+                  {i18n.t('literals.piaci-osszehasonlitas')}
                 </span>
                 <span className={`badge ${marketRateError ? 'badge-red' : 'badge-green'}`}>
                   {marketRateError ? 'Nem elérhető' : `${marketCurrencyCount} deviza`}
@@ -1215,25 +1228,31 @@ export default function RatesPage() {
                 <>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded bg-blue-50 px-2 py-1">
-                      <div className="text-[10px] uppercase text-blue-700">Bank ráták</div>
+                      <div className="text-[10px] uppercase text-blue-700">
+                        {i18n.t('literals.bank-ratak')}
+                      </div>
                       <div className="font-semibold text-blue-900">
-                        {currentBankRates.length} / {bankRates.length}
+                        {currentBankRates.length}
+                        {i18n.t('literals.lit-10')}
+                        {bankRates.length}
                       </div>
                     </div>
                     <div className="rounded bg-amber-50 px-2 py-1">
-                      <div className="text-[10px] uppercase text-amber-700">Versenytárs</div>
+                      <div className="text-[10px] uppercase text-amber-700">
+                        {i18n.t('literals.versenytars-2')}
+                      </div>
                       <div className="font-semibold text-amber-900">{competitorRates.length}</div>
                     </div>
                   </div>
                   <div className="mt-2 space-y-1 text-xs text-gray-600">
                     <div>
-                      Bank:{' '}
+                      {i18n.t('literals.bank-4')}{' '}
                       {latestBankRate
                         ? `${latestBankRate.bankCode ?? latestBankRate.bankName} ${latestBankRate.currencyCode} ${formatDecimal(numericAmount(latestBankRate.buyRate), 2, 4)} / ${formatDecimal(numericAmount(latestBankRate.sellRate), 2, 4)}`
                         : '-'}
                     </div>
                     <div>
-                      Versenytárs:{' '}
+                      {i18n.t('literals.versenytars-3')}{' '}
                       {latestCompetitorRate
                         ? `${latestCompetitorRate.competitorCode ?? latestCompetitorRate.competitorName} ${latestCompetitorRate.currencyCode} ${formatDecimal(numericAmount(latestCompetitorRate.buyRate), 2, 4)} / ${formatDecimal(numericAmount(latestCompetitorRate.sellRate), 2, 4)}`
                         : '-'}
@@ -1251,10 +1270,10 @@ export default function RatesPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="text-xs font-semibold uppercase text-gray-500">
-                    Árfolyam polling vezérlés
+                    {i18n.t('literals.arfolyam-polling-vezerles')}
                   </div>
                   <div className="text-xs text-gray-600">
-                    MNB polling indítás, margin alkalmazás és forráskonfiguráció.
+                    {i18n.t('literals.mnb-polling-inditas-margin-alkalmazas-es')}
                   </div>
                 </div>
                 <button
@@ -1270,11 +1289,11 @@ export default function RatesPage() {
               <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
                 <div className="rounded border border-gray-200 bg-white p-3">
                   <div className="text-xs font-semibold uppercase text-gray-500">
-                    Margin alkalmazás
+                    {i18n.t('literals.margin-alkalmazas')}
                   </div>
                   <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_110px_auto] sm:items-end lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_110px_auto]">
                     <div>
-                      <label className="form-label">Devizanem</label>
+                      <label className="form-label">{i18n.t('literals.devizanem')}</label>
                       <select
                         className="form-input h-9"
                         value={marginCurrencyId}
@@ -1284,14 +1303,16 @@ export default function RatesPage() {
                       >
                         {rates.map((rate) => (
                           <option key={rate.currencyId} value={rate.currencyId}>
-                            {rate.code} - {rate.name}
+                            {rate.code}
+                            {i18n.t('literals.lit-17')}
+                            {rate.name}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div>
                       <label className="form-label" htmlFor="polling-margin-spread">
-                        Spread
+                        {i18n.t('literals.spread-2')}
                       </label>
                       <NumberInput
                         id="polling-margin-spread"
@@ -1309,16 +1330,20 @@ export default function RatesPage() {
                       onClick={() => void handleApplyMargins()}
                       disabled={pollingActionLoading === 'apply-margins'}
                     >
-                      Alkalmaz
+                      {i18n.t('literals.alkalmaz')}
                     </button>
                   </div>
                 </div>
 
                 <div className="rounded border border-gray-200 bg-white p-3">
-                  <div className="text-xs font-semibold uppercase text-gray-500">Források</div>
+                  <div className="text-xs font-semibold uppercase text-gray-500">
+                    {i18n.t('literals.forrasok')}
+                  </div>
                   <div className="mt-2 space-y-2">
                     {pollingSources.length === 0 ? (
-                      <div className="text-xs text-gray-500">Nincs módosítható polling forrás.</div>
+                      <div className="text-xs text-gray-500">
+                        {i18n.t('literals.nincs-modosithato-polling-forras')}
+                      </div>
                     ) : (
                       pollingSources.map((source) => (
                         <div
@@ -1342,7 +1367,7 @@ export default function RatesPage() {
                                 })
                               }
                             />
-                            Aktív
+                            {i18n.t('literals.aktiv-2')}
                           </label>
                           <select
                             className="form-input h-8 text-xs"
@@ -1357,7 +1382,8 @@ export default function RatesPage() {
                           >
                             {[15, 30, 60, 180, 360, 720, 1440].map((minutes) => (
                               <option key={minutes} value={minutes}>
-                                {minutes} perc
+                                {minutes}
+                                {i18n.t('literals.perc')}
                               </option>
                             ))}
                           </select>
@@ -1383,10 +1409,10 @@ export default function RatesPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <div className="text-xs font-semibold uppercase text-gray-500">
-                      GETARF árfolyamfájl
+                      {i18n.t('literals.getarf-arfolyamfajl')}
                     </div>
                     <div className="text-xs text-gray-600">
-                      Legacy árfolyamfájl előnézet és célzott import a backend parseren keresztül.
+                      {i18n.t('literals.legacy-arfolyamfajl-elonezet-es-celzott')}
                     </div>
                   </div>
                   <span className={`badge ${parsedRateFile ? 'badge-green' : 'badge-gray'}`}>
@@ -1396,7 +1422,7 @@ export default function RatesPage() {
                 <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
                   <div>
                     <label className="form-label" htmlFor="rate-file-input">
-                      Árfolyamfájl
+                      {i18n.t('literals.arfolyamfajl')}
                     </label>
                     <input
                       id="rate-file-input"
@@ -1415,7 +1441,7 @@ export default function RatesPage() {
                     disabled={rateFileLoading || !rateFile}
                   >
                     <Eye size={14} />
-                    Előnézet
+                    {i18n.t('literals.elonezet')}
                   </button>
                   <button
                     type="button"
@@ -1424,7 +1450,7 @@ export default function RatesPage() {
                     disabled={rateFileLoading || !rateFile}
                   >
                     <Upload size={14} />
-                    Import
+                    {i18n.t('literals.import')}
                   </button>
                 </div>
                 {(rateFileMessage || rateFileError) && (
@@ -1439,12 +1465,12 @@ export default function RatesPage() {
                     <table className="data-grid min-w-full text-xs">
                       <thead>
                         <tr>
-                          <th>Deviza</th>
-                          <th>Vétel</th>
-                          <th>Eladás</th>
-                          <th>MNB</th>
-                          <th>Kedv. vétel</th>
-                          <th>Kedv. eladás</th>
+                          <th>{i18n.t('literals.deviza-2')}</th>
+                          <th>{i18n.t('literals.vetel')}</th>
+                          <th>{i18n.t('literals.eladas')}</th>
+                          <th>{i18n.t('literals.mnb')}</th>
+                          <th>{i18n.t('literals.kedv-vetel')}</th>
+                          <th>{i18n.t('literals.kedv-eladas')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1483,12 +1509,12 @@ export default function RatesPage() {
         <div className="form-panel">
           <div className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-800">
             <Calculator size={16} />
-            Árfolyam kalkulátor
+            {i18n.t('literals.arfolyam-kalkulator')}
           </div>
           <div className="grid gap-3 xl:grid-cols-[1.4fr_1fr_1fr]">
             <div className="grid gap-2 sm:grid-cols-[1fr_110px_110px_90px_auto] sm:items-end">
               <div>
-                <label className="form-label">Összeg</label>
+                <label className="form-label">{i18n.t('literals.osszeg')}</label>
                 <NumberInput
                   value={calculatorAmount}
                   onChange={setCalculatorAmount}
@@ -1499,7 +1525,7 @@ export default function RatesPage() {
                 />
               </div>
               <div>
-                <label className="form-label">Forrás</label>
+                <label className="form-label">{i18n.t('literals.forras-2')}</label>
                 <select
                   className="form-input h-9"
                   value={calculatorFrom}
@@ -1514,7 +1540,7 @@ export default function RatesPage() {
                 </select>
               </div>
               <div>
-                <label className="form-label">Cél</label>
+                <label className="form-label">{i18n.t('literals.cel')}</label>
                 <select
                   className="form-input h-9"
                   value={calculatorTo}
@@ -1529,7 +1555,7 @@ export default function RatesPage() {
                 </select>
               </div>
               <div>
-                <label className="form-label">Irány</label>
+                <label className="form-label">{i18n.t('literals.irany')}</label>
                 <select
                   className="form-input h-9"
                   value={calculatorDirection}
@@ -1537,8 +1563,8 @@ export default function RatesPage() {
                     setCalculatorDirection(event.target.value as CalculatorDirection)
                   }
                 >
-                  <option value="BUY">BUY</option>
-                  <option value="SELL">SELL</option>
+                  <option value="BUY">{i18n.t('literals.buy')}</option>
+                  <option value="SELL">{i18n.t('literals.sell')}</option>
                 </select>
               </div>
               <button
@@ -1547,13 +1573,13 @@ export default function RatesPage() {
                 onClick={() => void handleConvert()}
                 disabled={calculatorLoading}
               >
-                Számol
+                {i18n.t('literals.szamol')}
               </button>
             </div>
 
             <div className="grid gap-2 sm:grid-cols-[1fr_110px_auto] sm:items-end xl:grid-cols-[1fr_90px_auto]">
               <div>
-                <label className="form-label">HUF keret</label>
+                <label className="form-label">{i18n.t('literals.huf-keret')}</label>
                 <NumberInput
                   value={reverseHufAmount}
                   onChange={setReverseHufAmount}
@@ -1564,7 +1590,7 @@ export default function RatesPage() {
                 />
               </div>
               <div>
-                <label className="form-label">Deviza</label>
+                <label className="form-label">{i18n.t('literals.deviza-2')}</label>
                 <select
                   className="form-input h-9"
                   value={reverseCurrency}
@@ -1583,19 +1609,25 @@ export default function RatesPage() {
                 onClick={() => void handleReverse()}
                 disabled={reverseLoading}
               >
-                Fordított
+                {i18n.t('literals.forditott')}
               </button>
             </div>
 
             <div className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs">
-              <div className="font-semibold text-gray-700">Cross-rate mátrix</div>
+              <div className="font-semibold text-gray-700">
+                {i18n.t('literals.cross-rate-matrix')}
+              </div>
               {matrixPreview.length === 0 ? (
-                <div className="mt-1 text-gray-500">Nincs mátrix adat.</div>
+                <div className="mt-1 text-gray-500">{i18n.t('literals.nincs-matrix-adat')}</div>
               ) : (
                 <div className="mt-1 grid grid-cols-2 gap-1">
                   {matrixPreview.map((item) => (
                     <div key={`${item.from}-${item.to}`} className="font-mono text-gray-700">
-                      {item.from}/{item.to}: {formatDecimal(Number(item.value), 6, 6)}
+                      {item.from}
+                      {i18n.t('literals.lit-4')}
+                      {item.to}
+                      {i18n.t('literals.lit-22')}
+                      {formatDecimal(Number(item.value), 6, 6)}
                     </div>
                   ))}
                 </div>
@@ -1607,23 +1639,28 @@ export default function RatesPage() {
             <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
               {calculatorResult && (
                 <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900">
-                  <div className="font-semibold">Átváltás eredménye</div>
+                  <div className="font-semibold">{i18n.t('literals.atvaltas-eredmenye')}</div>
                   <div>
-                    {calculatorResult.fromAmount} {calculatorResult.fromCurrency} →{' '}
+                    {calculatorResult.fromAmount} {calculatorResult.fromCurrency}
+                    {i18n.t('literals.lit-37')}{' '}
                     {formatDecimal(Number(calculatorResult.toAmount), 2, 4)}{' '}
                     {calculatorResult.toCurrency}
                   </div>
                   <div>
-                    Árfolyam: {formatDecimal(Number(calculatorResult.appliedRate), 2, 6)} · Díj:{' '}
-                    {formatDecimal(Number(calculatorResult.commission), 0, 0)} Ft
+                    {i18n.t('literals.arfolyam-3')}
+                    {formatDecimal(Number(calculatorResult.appliedRate), 2, 6)}
+                    {i18n.t('literals.dij-2')}{' '}
+                    {formatDecimal(Number(calculatorResult.commission), 0, 0)}
+                    {i18n.t('literals.ft')}
                   </div>
                 </div>
               )}
               {reverseResult && (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
-                  <div className="font-semibold">Fordított kalkuláció</div>
+                  <div className="font-semibold">{i18n.t('literals.forditott-kalkulacio')}</div>
                   <div>
-                    {formatDecimal(Number(reverseResult.hufAmount), 0, 0)} HUF →{' '}
+                    {formatDecimal(Number(reverseResult.hufAmount), 0, 0)}
+                    {i18n.t('literals.huf-3')}{' '}
                     {formatDecimal(Number(reverseResult.foreignAmount), 2, 4)}{' '}
                     {reverseResult.currency}
                   </div>
@@ -1643,14 +1680,14 @@ export default function RatesPage() {
         <div className="form-panel" data-testid="rounding-rules-panel">
           <div className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-800">
             <Calculator size={16} />
-            Kerekítési szabályok
+            {i18n.t('literals.kerekitesi-szabalyok')}
           </div>
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
             <div className="space-y-2">
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {roundingRules.length === 0 ? (
                   <div className="rounded border border-gray-200 bg-white p-3 text-xs text-gray-500">
-                    Nincs kerekítési szabályadat.
+                    {i18n.t('literals.nincs-kerekitesi-szabalyadat')}
                   </div>
                 ) : (
                   roundingRules.slice(0, 6).map((rule) => (
@@ -1669,16 +1706,22 @@ export default function RatesPage() {
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded bg-emerald-50 px-2 py-1">
-                          <div className="text-[10px] uppercase text-emerald-700">Kis összeg</div>
+                          <div className="text-[10px] uppercase text-emerald-700">
+                            {i18n.t('literals.kis-osszeg')}
+                          </div>
                           <div className="font-mono font-semibold text-emerald-900">
-                            &lt; {formatDecimal(numericAmount(rule.smallThreshold), 0, 2)}
+                            {i18n.t('literals.lit-47')}
+                            {formatDecimal(numericAmount(rule.smallThreshold), 0, 2)}
                           </div>
                           <div className="text-[11px] text-emerald-700">{rule.smallRounding}</div>
                         </div>
                         <div className="rounded bg-amber-50 px-2 py-1">
-                          <div className="text-[10px] uppercase text-amber-700">Nagy összeg</div>
+                          <div className="text-[10px] uppercase text-amber-700">
+                            {i18n.t('literals.nagy-osszeg')}
+                          </div>
                           <div className="font-mono font-semibold text-amber-900">
-                            &gt; {formatDecimal(numericAmount(rule.largeThreshold), 0, 2)}
+                            {i18n.t('literals.lit-48')}
+                            {formatDecimal(numericAmount(rule.largeThreshold), 0, 2)}
                           </div>
                           <div className="text-[11px] text-amber-700">{rule.largeRounding}</div>
                         </div>
@@ -1689,16 +1732,19 @@ export default function RatesPage() {
               </div>
               {roundingRules.length > 6 && (
                 <div className="text-[11px] text-gray-500">
-                  További szabályok: {roundingRules.length - 6}
+                  {i18n.t('literals.tovabbi-szabalyok')}
+                  {roundingRules.length - 6}
                 </div>
               )}
             </div>
 
             <div className="rounded border border-gray-200 bg-gray-50 p-3">
-              <div className="text-xs font-semibold uppercase text-gray-500">Kerekítési próba</div>
+              <div className="text-xs font-semibold uppercase text-gray-500">
+                {i18n.t('literals.kerekitesi-proba')}
+              </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_92px_92px] lg:grid-cols-1">
                 <div>
-                  <label className="form-label">Összeg</label>
+                  <label className="form-label">{i18n.t('literals.osszeg')}</label>
                   <NumberInput
                     value={roundingAmount}
                     onChange={setRoundingAmount}
@@ -1709,7 +1755,7 @@ export default function RatesPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label">Deviza</label>
+                  <label className="form-label">{i18n.t('literals.deviza-2')}</label>
                   <select
                     className="form-input h-9"
                     value={roundingCurrency}
@@ -1726,7 +1772,7 @@ export default function RatesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Irány</label>
+                  <label className="form-label">{i18n.t('literals.irany')}</label>
                   <select
                     className="form-input h-9"
                     value={roundingDirection}
@@ -1734,8 +1780,8 @@ export default function RatesPage() {
                       setRoundingDirection(event.target.value as RoundingDirection)
                     }
                   >
-                    <option value="BUY">BUY</option>
-                    <option value="SELL">SELL</option>
+                    <option value="BUY">{i18n.t('literals.buy')}</option>
+                    <option value="SELL">{i18n.t('literals.sell')}</option>
                   </select>
                 </div>
               </div>
@@ -1745,23 +1791,25 @@ export default function RatesPage() {
                 onClick={() => void handleRoundingProbe()}
                 disabled={roundingLoading}
               >
-                Kerekítés próba
+                {i18n.t('literals.kerekites-proba')}
               </button>
               {(roundingRule || roundingResult || roundingError) && (
                 <div className="mt-3 space-y-2 text-xs">
                   {roundingRule && (
                     <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900">
                       <div className="font-semibold">
-                        Aktív szabály: {roundingRule.currencyCode}
+                        {i18n.t('literals.aktiv-szabaly')}
+                        {roundingRule.currencyCode}
                       </div>
                       <div>
-                        Precízió: {formatDecimal(numericAmount(roundingRule.precisionValue), 0, 4)}
+                        {i18n.t('literals.precizio')}
+                        {formatDecimal(numericAmount(roundingRule.precisionValue), 0, 4)}
                       </div>
                     </div>
                   )}
                   {roundingResult && (
                     <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
-                      <div className="font-semibold">Kerekített eredmény</div>
+                      <div className="font-semibold">{i18n.t('literals.kerekitett-eredmeny')}</div>
                       <div>
                         {formatDecimal(numericAmount(roundingResult.original), 0, 4)}
                         {' → '}
@@ -1790,29 +1838,40 @@ export default function RatesPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="font-mono text-sm font-bold text-blue-700">
-                    {rate.code} - {rate.name}
+                    {rate.code}
+                    {i18n.t('literals.lit-17')}
+                    {rate.name}
                   </div>
                   <div className="text-[11px] text-gray-500">
-                    Frissítve: {rate.lastUpdate || '-'}
+                    {i18n.t('literals.frissitve-4')}
+                    {rate.lastUpdate || '-'}
                   </div>
                 </div>
-                {!rate.hasRate && <span className="badge badge-gray">Nincs árfolyam</span>}
+                {!rate.hasRate && (
+                  <span className="badge badge-gray">{i18n.t('literals.nincs-arfolyam')}</span>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="rounded border border-gray-200 bg-white px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">Vétel</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.vetel')}
+                  </div>
                   <div className="font-mono font-semibold text-green-700">
                     {rate.hasRate ? formatDecimal(rate.buyRate, 2, 2) : '-'}
                   </div>
                 </div>
                 <div className="rounded border border-gray-200 bg-white px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">Eladás</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.eladas')}
+                  </div>
                   <div className="font-mono font-semibold text-red-700">
                     {rate.hasRate ? formatDecimal(rate.sellRate, 2, 2) : '-'}
                   </div>
                 </div>
                 <div className="rounded border border-gray-200 bg-white px-2 py-1">
-                  <div className="text-[10px] uppercase text-gray-500">MNB</div>
+                  <div className="text-[10px] uppercase text-gray-500">
+                    {i18n.t('literals.mnb')}
+                  </div>
                   <div className="font-mono font-semibold text-gray-700">
                     {rate.mnbRate > 0 ? formatDecimal(rate.mnbRate, 2, 2) : '-'}
                   </div>
@@ -1823,12 +1882,12 @@ export default function RatesPage() {
                   {showTier1 && (
                     <div className="flex justify-between rounded bg-emerald-50 px-2 py-1">
                       <span>
-                        1. sáv{' '}
+                        {i18n.t('literals.1-sav')}{' '}
                         {rate.limit1Amount != null ? `>= ${formatHuf(rate.limit1Amount)} Ft` : ''}
                       </span>
                       <span className="font-mono">
                         {rate.limit1BuyRate != null ? formatDecimal(rate.limit1BuyRate, 2, 2) : '-'}{' '}
-                        /{' '}
+                        {i18n.t('literals.lit-4')}{' '}
                         {rate.limit1SellRate != null
                           ? formatDecimal(rate.limit1SellRate, 2, 2)
                           : '-'}
@@ -1838,12 +1897,12 @@ export default function RatesPage() {
                   {showTier2 && (
                     <div className="flex justify-between rounded bg-amber-50 px-2 py-1">
                       <span>
-                        2. sáv{' '}
+                        {i18n.t('literals.2-sav')}{' '}
                         {rate.limit2Amount != null ? `>= ${formatHuf(rate.limit2Amount)} Ft` : ''}
                       </span>
                       <span className="font-mono">
                         {rate.limit2BuyRate != null ? formatDecimal(rate.limit2BuyRate, 2, 2) : '-'}{' '}
-                        /{' '}
+                        {i18n.t('literals.lit-4')}{' '}
                         {rate.limit2SellRate != null
                           ? formatDecimal(rate.limit2SellRate, 2, 2)
                           : '-'}
@@ -1853,12 +1912,12 @@ export default function RatesPage() {
                   {showTier3 && (
                     <div className="flex justify-between rounded bg-purple-50 px-2 py-1">
                       <span>
-                        3. sáv{' '}
+                        {i18n.t('literals.3-sav')}{' '}
                         {rate.limit3Amount != null ? `>= ${formatHuf(rate.limit3Amount)} Ft` : ''}
                       </span>
                       <span className="font-mono">
                         {rate.limit3BuyRate != null ? formatDecimal(rate.limit3BuyRate, 2, 2) : '-'}{' '}
-                        /{' '}
+                        {i18n.t('literals.lit-4')}{' '}
                         {rate.limit3SellRate != null
                           ? formatDecimal(rate.limit3SellRate, 2, 2)
                           : '-'}
@@ -1874,7 +1933,7 @@ export default function RatesPage() {
                   className="form-button flex h-8 w-full items-center justify-center gap-1 text-xs"
                 >
                   <Edit size={12} />
-                  Szerkesztés
+                  {i18n.t('literals.szerkesztes-2')}
                 </button>
               )}
             </div>
@@ -1929,7 +1988,7 @@ export default function RatesPage() {
                   rowSpan={2}
                   className="px-1 py-0.5 text-center text-[10px] uppercase text-gray-500 w-14 font-semibold"
                 >
-                  MNB
+                  {i18n.t('literals.mnb')}
                 </th>
                 {canEdit && (
                   <th
@@ -2023,7 +2082,7 @@ export default function RatesPage() {
                         {formatDecimal(rate.buyRate, 2, 2)}
                       </span>
                     ) : (
-                      <span className="text-gray-300">&mdash;</span>
+                      <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                     )}
                   </td>
 
@@ -2049,7 +2108,7 @@ export default function RatesPage() {
                         {formatDecimal(rate.sellRate, 2, 2)}
                       </span>
                     ) : (
-                      <span className="text-gray-300">&mdash;</span>
+                      <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                     )}
                   </td>
 
@@ -2066,7 +2125,7 @@ export default function RatesPage() {
                           {formatDecimal(rate.limit1BuyRate, 2, 2)}
                         </span>
                       ) : (
-                        <span className="text-gray-300">&mdash;</span>
+                        <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                       )}
                     </td>
                   )}
@@ -2083,7 +2142,7 @@ export default function RatesPage() {
                           {formatDecimal(rate.limit1SellRate, 2, 2)}
                         </span>
                       ) : (
-                        <span className="text-gray-300">&mdash;</span>
+                        <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                       )}
                     </td>
                   )}
@@ -2101,7 +2160,7 @@ export default function RatesPage() {
                           {formatDecimal(rate.limit2BuyRate, 2, 2)}
                         </span>
                       ) : (
-                        <span className="text-gray-300">&mdash;</span>
+                        <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                       )}
                     </td>
                   )}
@@ -2118,7 +2177,7 @@ export default function RatesPage() {
                           {formatDecimal(rate.limit2SellRate, 2, 2)}
                         </span>
                       ) : (
-                        <span className="text-gray-300">&mdash;</span>
+                        <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                       )}
                     </td>
                   )}
@@ -2136,7 +2195,7 @@ export default function RatesPage() {
                           {formatDecimal(rate.limit3BuyRate, 2, 2)}
                         </span>
                       ) : (
-                        <span className="text-gray-300">&mdash;</span>
+                        <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                       )}
                     </td>
                   )}
@@ -2153,7 +2212,7 @@ export default function RatesPage() {
                           {formatDecimal(rate.limit3SellRate, 2, 2)}
                         </span>
                       ) : (
-                        <span className="text-gray-300">&mdash;</span>
+                        <span className="text-gray-300">{i18n.t('literals.lit-8')}</span>
                       )}
                     </td>
                   )}
@@ -2221,17 +2280,25 @@ export default function RatesPage() {
                 )
                 .map((r) => (
                   <span key={r.code} className="font-mono">
-                    {r.code}:
+                    {r.code}
+                    {i18n.t('literals.lit-7')}
                     {r.limit1Amount != null && (
                       <span className="text-emerald-700 ml-0.5">
-                        1.≥{formatHuf(r.limit1Amount)}
+                        {i18n.t('literals.1')}
+                        {formatHuf(r.limit1Amount)}
                       </span>
                     )}
                     {r.limit2Amount != null && (
-                      <span className="text-amber-700 ml-0.5">2.≥{formatHuf(r.limit2Amount)}</span>
+                      <span className="text-amber-700 ml-0.5">
+                        {i18n.t('literals.2')}
+                        {formatHuf(r.limit2Amount)}
+                      </span>
                     )}
                     {r.limit3Amount != null && (
-                      <span className="text-purple-700 ml-0.5">3.≥{formatHuf(r.limit3Amount)}</span>
+                      <span className="text-purple-700 ml-0.5">
+                        {i18n.t('literals.3')}
+                        {formatHuf(r.limit3Amount)}
+                      </span>
                     )}
                   </span>
                 ))}

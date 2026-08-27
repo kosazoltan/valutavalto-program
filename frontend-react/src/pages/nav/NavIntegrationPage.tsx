@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { toast } from '../../components/ui/toaster'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface NavResult {
   success: boolean
@@ -172,7 +173,7 @@ export default function NavIntegrationPage() {
         <div className="grid grid-cols-1 gap-3 border-t pt-3 md:grid-cols-3">
           <div className="md:col-span-2">
             <label className="form-label" htmlFor="nav-qr-code">
-              QR kód
+              {i18n.t('literals.qr-kod')}
             </label>
             <input
               id="nav-qr-code"
@@ -243,9 +244,9 @@ export default function NavIntegrationPage() {
                     <td className="font-mono">{h.receiptNumber || '-'}</td>
                     <td>
                       {h.success ? (
-                        <span className="badge badge-green">OK</span>
+                        <span className="badge badge-green">{i18n.t('literals.ok')}</span>
                       ) : (
-                        <span className="badge badge-red">HIBA</span>
+                        <span className="badge badge-red">{i18n.t('literals.hiba-4')}</span>
                       )}
                     </td>
                     <td className="text-sm text-red-600">{h.error || '-'}</td>

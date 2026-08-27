@@ -27,6 +27,7 @@ import { getCompanyType } from '../../utils/localQueue'
 import type { PrintReceiptData } from '../../types/receipt'
 import ShipmentCalendarPanel from './ShipmentCalendarPanel'
 import StaleShipmentConfirmDialog from '../../components/shipments/StaleShipmentConfirmDialog'
+import i18n from '../../i18n'
 
 interface ShipmentEditDraft {
   deliveryDate: string
@@ -466,7 +467,7 @@ export default function ShipmentListPage() {
             title="Új készpénz ÁTADÁS — Értéktárból a Pénztárnak"
           >
             <ArrowUpFromLine size={16} />
-            Új ÁTADÁS
+            {i18n.t('literals.uj-atadas')}
           </Link>
           <Link
             to="/shipments/new?direction=inbound"
@@ -474,7 +475,7 @@ export default function ShipmentListPage() {
             title="Új készpénz ÁTVÉTEL — Pénztárból az Értéktárba"
           >
             <ArrowDownToLine size={16} />
-            Új ÁTVÉTEL
+            {i18n.t('literals.uj-atvetel')}
           </Link>
         </div>
       </div>
@@ -553,7 +554,8 @@ export default function ShipmentListPage() {
                 })}
               </h2>
               <p className="text-sm text-blue-900">
-                {selectedShipment.requestingBranchName || selectedShipment.requestingBranchId} →{' '}
+                {selectedShipment.requestingBranchName || selectedShipment.requestingBranchId}
+                {i18n.t('literals.lit-37')}{' '}
                 {selectedShipment.targetBranchName || selectedShipment.targetBranchId}
               </p>
             </div>
@@ -696,7 +698,9 @@ export default function ShipmentListPage() {
       {/* FR-2..FR-4: "Ma" fül — csak aznapi bizonylatok, teljes műveleti paletta. */}
       {activeTab === 'today' &&
         (loading ? (
-          <div className="form-panel text-center py-8 text-gray-500">Betöltés...</div>
+          <div className="form-panel text-center py-8 text-gray-500">
+            {i18n.t('literals.betoltes')}
+          </div>
         ) : todaysShipments.length === 0 ? (
           <div className="form-panel text-center py-8 text-gray-500">
             {t('shipments.nincsenekSzallitmanyigenyek')}
@@ -718,7 +722,9 @@ export default function ShipmentListPage() {
           </div>
           <div className="md:col-span-3">
             {pastLoading ? (
-              <div className="form-panel text-center py-8 text-gray-500">Betöltés...</div>
+              <div className="form-panel text-center py-8 text-gray-500">
+                {i18n.t('literals.betoltes')}
+              </div>
             ) : !selectedDate ? (
               <div
                 className="form-panel text-center py-8 text-gray-500"

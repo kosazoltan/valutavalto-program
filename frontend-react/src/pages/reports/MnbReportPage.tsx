@@ -20,6 +20,7 @@ import { downloadBlob } from '../../utils/downloadBlob'
 import { safeArray } from '../../utils/safeArray'
 import { asArray } from '../../utils/asArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 // Fix 2026-04-24 (Codex PR #183 P2): backend MnbReportDto tenyleges mezoi
 // (NEM periodStart/periodEnd, hanem reportDate + egyeb)
@@ -165,7 +166,7 @@ export default function MnbReportPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="flex-1">
               <label className="form-label" htmlFor="mnb-report-date">
-                MNB ellenőrzési nap
+                {i18n.t('literals.mnb-ellenorzesi-nap')}
               </label>
               <input
                 id="mnb-report-date"
@@ -182,7 +183,7 @@ export default function MnbReportPage() {
               className="form-button justify-center"
             >
               <CalendarCheck className={`h-4 w-4 ${summaryLoading ? 'animate-spin' : ''}`} />
-              Read-only ellenőrzés
+              {i18n.t('literals.read-only-ellenorzes')}
             </button>
             <button
               type="button"
@@ -191,24 +192,24 @@ export default function MnbReportPage() {
               className="form-button justify-center"
             >
               <Download className={`h-4 w-4 ${dailyXmlLoading ? 'animate-pulse' : ''}`} />
-              Napi XML
+              {i18n.t('literals.napi-xml')}
             </button>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
-              <div className="text-xs text-emerald-700">Napi tranzakció</div>
+              <div className="text-xs text-emerald-700">{i18n.t('literals.napi-tranzakcio')}</div>
               <div className="text-xl font-semibold text-emerald-900">
                 {formatNumber(dailyReport?.totalTransactions)}
               </div>
             </div>
             <div className="rounded border border-blue-200 bg-blue-50 p-3">
-              <div className="text-xs text-blue-700">Havi tranzakció</div>
+              <div className="text-xs text-blue-700">{i18n.t('literals.havi-tranzakcio')}</div>
               <div className="text-xl font-semibold text-blue-900">
                 {formatNumber(monthlyReport?.totalTransactions)}
               </div>
             </div>
             <div className="rounded border border-amber-200 bg-amber-50 p-3">
-              <div className="text-xs text-amber-700">Validációs üzenet</div>
+              <div className="text-xs text-amber-700">{i18n.t('literals.validacios-uzenet')}</div>
               <div className="text-xl font-semibold text-amber-900">
                 {validationMessages.length}
               </div>
@@ -224,28 +225,32 @@ export default function MnbReportPage() {
         </div>
 
         <div className="rounded border border-gray-200 bg-white p-3">
-          <div className="text-sm font-semibold text-gray-900">Riport részlet</div>
+          <div className="text-sm font-semibold text-gray-900">
+            {i18n.t('literals.riport-reszlet')}
+          </div>
           {selectedReport ? (
             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-gray-500">Típus</dt>
+              <dt className="text-gray-500">{i18n.t('literals.tipus')}</dt>
               <dd className="font-medium text-gray-900">{selectedReport.reportType ?? '-'}</dd>
-              <dt className="text-gray-500">Dátum</dt>
+              <dt className="text-gray-500">{i18n.t('literals.datum-2')}</dt>
               <dd className="font-medium text-gray-900">{selectedReport.reportDate ?? '-'}</dd>
-              <dt className="text-gray-500">Vétel HUF</dt>
+              <dt className="text-gray-500">{i18n.t('literals.vetel-huf')}</dt>
               <dd className="font-medium text-gray-900">
                 {formatNumber(selectedReport.totalBuyHuf)}
               </dd>
-              <dt className="text-gray-500">Eladás HUF</dt>
+              <dt className="text-gray-500">{i18n.t('literals.eladas-huf')}</dt>
               <dd className="font-medium text-gray-900">
                 {formatNumber(selectedReport.totalSellHuf)}
               </dd>
-              <dt className="text-gray-500">Sorok</dt>
+              <dt className="text-gray-500">{i18n.t('literals.sorok')}</dt>
               <dd className="font-medium text-gray-900">{selectedReport.lines?.length ?? 0}</dd>
-              <dt className="text-gray-500">Elutasítás oka</dt>
+              <dt className="text-gray-500">{i18n.t('literals.elutasitas-oka')}</dt>
               <dd className="font-medium text-gray-900">{selectedReport.rejectionReason ?? '-'}</dd>
             </dl>
           ) : (
-            <p className="mt-3 text-sm text-gray-500">Válassz riportot a listából.</p>
+            <p className="mt-3 text-sm text-gray-500">
+              {i18n.t('literals.valassz-riportot-a-listabol')}
+            </p>
           )}
         </div>
       </div>
@@ -285,7 +290,7 @@ export default function MnbReportPage() {
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -314,7 +319,7 @@ export default function MnbReportPage() {
                       <Eye
                         className={`h-3.5 w-3.5 ${detailLoadingId === item.id ? 'animate-pulse' : ''}`}
                       />
-                      Részletek
+                      {i18n.t('literals.reszletek-2')}
                     </button>
                   </td>
                 </tr>
@@ -326,7 +331,9 @@ export default function MnbReportPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

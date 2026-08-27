@@ -6,6 +6,7 @@ import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { turnoverApi, branchApi, currencyApi, type BranchInfo } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 // FK-045 FR-11: a backend TurnoverReportDto TÉNYLEGES struktúrája (nem a régi, soha össze nem
 // hangolt `TurnoverData`). A vak `as TurnoverData` cast megszűnt — proper típus-leképezés.
@@ -216,7 +217,7 @@ export default function DailyTurnoverPage() {
       {/* FR-2 Dátum + FR-3/4/5 egység szűrők */}
       <div className="form-panel flex gap-3 items-end flex-wrap">
         <div>
-          <label className="form-label">Év</label>
+          <label className="form-label">{i18n.t('literals.ev')}</label>
           <select
             className="form-input"
             aria-label="Év"
@@ -231,7 +232,7 @@ export default function DailyTurnoverPage() {
           </select>
         </div>
         <div>
-          <label className="form-label">Hónap</label>
+          <label className="form-label">{i18n.t('literals.honap')}</label>
           <select
             className="form-input"
             aria-label="Hónap"
@@ -246,7 +247,7 @@ export default function DailyTurnoverPage() {
           </select>
         </div>
         <div>
-          <label className="form-label">Nap (tól)</label>
+          <label className="form-label">{i18n.t('literals.nap-tol')}</label>
           <input
             className="form-input w-20"
             aria-label="Nap (tól)"
@@ -258,7 +259,7 @@ export default function DailyTurnoverPage() {
           />
         </div>
         <div>
-          <label className="form-label">Nap (ig)</label>
+          <label className="form-label">{i18n.t('literals.nap-ig')}</label>
           <input
             className="form-input w-20"
             aria-label="Nap (ig)"
@@ -270,28 +271,28 @@ export default function DailyTurnoverPage() {
           />
         </div>
         <div>
-          <label className="form-label">Egység</label>
+          <label className="form-label">{i18n.t('literals.egyseg')}</label>
           <select
             className="form-input"
             aria-label="Egység"
             value={unitMode}
             onChange={(e) => setUnitMode(e.target.value as UnitMode)}
           >
-            <option value="company">Teljes cég</option>
-            <option value="territory">Terület</option>
-            <option value="branch">Pénztár</option>
+            <option value="company">{i18n.t('literals.teljes-ceg')}</option>
+            <option value="territory">{i18n.t('literals.terulet')}</option>
+            <option value="branch">{i18n.t('literals.penztar-2')}</option>
           </select>
         </div>
         {unitMode === 'territory' && (
           <div>
-            <label className="form-label">Terület</label>
+            <label className="form-label">{i18n.t('literals.terulet')}</label>
             <select
               className="form-input"
               aria-label="Terület"
               value={territoryId}
               onChange={(e) => setTerritoryId(e.target.value === '' ? '' : Number(e.target.value))}
             >
-              <option value="">— válasszon —</option>
+              <option value="">{i18n.t('literals.valasszon-2')}</option>
               {territories.map((tr) => (
                 <option key={tr.id} value={tr.id}>
                   {tr.name}
@@ -302,17 +303,19 @@ export default function DailyTurnoverPage() {
         )}
         {unitMode === 'branch' && (
           <div>
-            <label className="form-label">Pénztár</label>
+            <label className="form-label">{i18n.t('literals.penztar-2')}</label>
             <select
               className="form-input"
               aria-label="Pénztár"
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
             >
-              <option value="">— válasszon —</option>
+              <option value="">{i18n.t('literals.valasszon-2')}</option>
               {cashierBranches.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.code} — {b.name}
+                  {b.code}
+                  {i18n.t('literals.lit-18')}
+                  {b.name}
                 </option>
               ))}
             </select>
@@ -324,7 +327,7 @@ export default function DailyTurnoverPage() {
           className="form-button-primary"
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-          Időszak rendben
+          {i18n.t('literals.idoszak-rendben')}
         </button>
       </div>
 
@@ -339,22 +342,24 @@ export default function DailyTurnoverPage() {
           {/* FR-6 valutánkénti táblázat */}
           <div className="form-panel">
             <h2 className="font-semibold mb-2">
-              {t('reports.devizankentiForgalom')} — {data.period}
+              {t('reports.devizankentiForgalom')}
+              {i18n.t('literals.lit-18')}
+              {data.period}
             </h2>
             {(data?.byCurrency.length ?? 0) === 0 ? (
               <div className="text-center text-gray-500 py-4">
-                Nincs forgalmi adat a megadott időszakra
+                {i18n.t('literals.nincs-forgalmi-adat-a-megadott-idoszakra')}
               </div>
             ) : (
               <table className="data-grid w-full text-sm">
                 <thead>
                   <tr>
                     <th>{t('common.deviza')}</th>
-                    <th className="text-right">Elszámolási árfolyam (100/Ft)</th>
-                    <th className="text-right">Vásárlás (mennyiség)</th>
-                    <th className="text-right">Vásárlás (Ft)</th>
-                    <th className="text-right">Eladás (mennyiség)</th>
-                    <th className="text-right">Eladás (Ft)</th>
+                    <th className="text-right">{i18n.t('literals.elszamolasi-arfolyam-100-ft')}</th>
+                    <th className="text-right">{i18n.t('literals.vasarlas-mennyiseg')}</th>
+                    <th className="text-right">{i18n.t('literals.vasarlas-ft')}</th>
+                    <th className="text-right">{i18n.t('literals.eladas-mennyiseg')}</th>
+                    <th className="text-right">{i18n.t('literals.eladas-ft')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -378,12 +383,12 @@ export default function DailyTurnoverPage() {
             <div className="form-panel text-center bg-green-50">
               <TrendingUp size={24} className="mx-auto text-green-600 mb-1" />
               <div className="text-lg font-bold text-green-700">{fmtHuf(data.totalBuy)}</div>
-              <div className="text-sm text-gray-500">VETT összesen</div>
+              <div className="text-sm text-gray-500">{i18n.t('literals.vett-osszesen')}</div>
             </div>
             <div className="form-panel text-center bg-blue-50">
               <TrendingDown size={24} className="mx-auto text-blue-600 mb-1" />
               <div className="text-lg font-bold text-blue-700">{fmtHuf(data.totalSell)}</div>
-              <div className="text-sm text-gray-500">ELADOTT összesen</div>
+              <div className="text-sm text-gray-500">{i18n.t('literals.eladott-osszesen')}</div>
             </div>
           </div>
         </>

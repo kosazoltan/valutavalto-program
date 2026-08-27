@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Save, X, Check } from 'lucide-react'
 import type { RateWorkgroupSaveDTO } from '../../services/api/index'
+import i18n from '../../i18n'
 
 /**
  * FK-02 — megosztott munkacsoport-karbantartó primitívek.
@@ -129,7 +130,7 @@ export function ConfirmDialog({ state, onCancel }: { state: ConfirmState; onCanc
       <p className="text-sm text-gray-600 mb-4">{state.message}</p>
       <div className="flex justify-end gap-2">
         <button className="form-button-secondary px-3 py-1.5 text-sm" onClick={onCancel}>
-          Mégse
+          {i18n.t('literals.megse')}
         </button>
         <button
           className={`px-3 py-1.5 text-sm rounded-md text-white ${state.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primary/90'}`}
@@ -168,7 +169,7 @@ export function WorkgroupEditor({
       </h3>
       <div className="space-y-3">
         <div>
-          <label className="text-sm font-medium">Név</label>
+          <label className="text-sm font-medium">{i18n.t('literals.nev')}</label>
           <input
             className="form-input w-full"
             value={draft.name}
@@ -180,7 +181,7 @@ export function WorkgroupEditor({
             (GROUP_NN). A felhasználó csak a sorszámot adja meg (az „Új munkacsoport"-nál előtöltve
             a következő szabad értékkel). */}
         <div>
-          <label className="text-sm font-medium">Sorszám</label>
+          <label className="text-sm font-medium">{i18n.t('literals.sorszam')}</label>
           <input
             className="form-input w-full"
             type="number"
@@ -196,14 +197,15 @@ export function WorkgroupEditor({
             }}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Üresen hagyva a rendszer a következő szabad sorszámot adja. A kódot automatikusan
-            generálja
-            {/* eslint-disable-next-line i18next/no-literal-string */} a sorszámból (pl.{' '}
-            <span className="font-mono">GROUP_03</span>).
+            {i18n.t('literals.uresen-hagyva-a-rendszer-a-kovetkezo-sza')}
+            { }
+            {i18n.t('literals.a-sorszambol-pl')}{' '}
+            <span className="font-mono">{i18n.t('literals.group-03')}</span>
+            {i18n.t('literals.lit-51')}
           </p>
         </div>
         <div>
-          <label className="text-sm font-medium">Csempeszín</label>
+          <label className="text-sm font-medium">{i18n.t('literals.csempeszin')}</label>
           <div className="flex flex-wrap gap-2 mt-1">
             {TILE_PALETTE.map((p) => (
               <button
@@ -221,15 +223,16 @@ export function WorkgroupEditor({
         {/* FK-04/D: Kedvezményhatárok (3 forint-küszöb). Üres input = nincs határ
             (a backend null-ra tartja a meglévő értéket; ha 0-t küldünk, az 0 lesz). */}
         <div>
-          <label className="text-sm font-medium">Kedvezményhatárok (Ft)</label>
+          <label className="text-sm font-medium">{i18n.t('literals.kedvezmenyhatarok-ft')}</label>
           <p className="text-xs text-gray-500 mb-1">
-            A kedvezményes vételi/eladási sávok határai HUF-ban. Üres mező = változatlan.
+            {i18n.t('literals.a-kedvezmenyes-veteli-eladasi-savok-hata')}
           </p>
           <div className="grid grid-cols-3 gap-2">
             {(['limit1Boundary', 'limit2Boundary', 'limit3Boundary'] as const).map((key, idx) => (
               <div key={key}>
                 <label className="text-xs text-gray-600">
-                  {idx === 0 ? 'Alsó' : idx === 1 ? 'Középső' : 'Felső'} határ
+                  {idx === 0 ? 'Alsó' : idx === 1 ? 'Középső' : 'Felső'}
+                  {i18n.t('literals.hatar')}
                 </label>
                 <input
                   className="form-input w-full"
@@ -256,13 +259,15 @@ export function WorkgroupEditor({
           className="form-button-secondary inline-flex items-center gap-1 px-3 py-1.5 text-sm"
           onClick={onCancel}
         >
-          <X className="h-4 w-4" /> Mégse
+          <X className="h-4 w-4" />
+          {i18n.t('literals.megse-2')}
         </button>
         <button
           className="form-button inline-flex items-center gap-1 px-3 py-1.5 text-sm"
           onClick={onSave}
         >
-          <Save className="h-4 w-4" /> Mentés
+          <Save className="h-4 w-4" />
+          {i18n.t('literals.mentes-3')}
         </button>
       </div>
     </Overlay>

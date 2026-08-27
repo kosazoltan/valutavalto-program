@@ -182,11 +182,7 @@ describe('ComplianceTransactionsPage', () => {
     await user.click(screen.getByTestId('search-button'))
 
     await waitFor(() => {
-      expect(mocks.search).toHaveBeenCalledWith(
-        { beneficialOwnerName: 'Kovács Tulaj Béla' },
-        0,
-        50,
-      )
+      expect(mocks.search).toHaveBeenCalledWith({ beneficialOwnerName: 'Kovács Tulaj Béla' }, 0, 50)
     })
   })
 

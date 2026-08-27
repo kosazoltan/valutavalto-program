@@ -8,6 +8,7 @@ import {
 } from '../../services/api/territoryReconciliation'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 const fmt = (n: number | string | undefined | null) =>
   `${Number(n ?? 0).toLocaleString('hu-HU', { maximumFractionDigits: 0 })} Ft`
@@ -168,7 +169,7 @@ export default function TerritoryReconciliationPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="form-title flex min-w-0 items-center gap-2 text-base sm:text-xl">
             <Scale className="h-6 w-6 shrink-0" />
-            <span>Területi reconciliation</span>
+            <span>{i18n.t('literals.teruleti-reconciliation')}</span>
           </h1>
           <button
             type="button"
@@ -177,19 +178,19 @@ export default function TerritoryReconciliationPage() {
             className="form-button-secondary inline-flex min-h-10 items-center justify-center gap-1"
           >
             <RefreshCw className={`h-4 w-4 ${territoryLoading ? 'animate-spin' : ''}`} />
-            Területek frissítése
+            {i18n.t('literals.teruletek-frissitese')}
           </button>
         </div>
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
           <section className="rounded border border-slate-200 bg-white p-3">
             <h2 className="mb-3 text-sm font-semibold text-slate-800">
-              Terület kiválasztása és havi ellenőrzés
+              {i18n.t('literals.terulet-kivalasztasa-es-havi-ellenorzes')}
             </h2>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_auto] sm:items-end">
               <div>
                 <label className="form-label" htmlFor="territory-select">
-                  Terület
+                  {i18n.t('literals.terulet')}
                 </label>
                 <select
                   id="territory-select"
@@ -201,17 +202,25 @@ export default function TerritoryReconciliationPage() {
                     if (Number.isInteger(parsed)) void loadTerritoryContext(parsed)
                   }}
                 >
-                  {territories.length === 0 && <option value={territoryId}>#{territoryId}</option>}
+                  {territories.length === 0 && (
+                    <option value={territoryId}>
+                      {i18n.t('literals.lit-12')}
+                      {territoryId}
+                    </option>
+                  )}
                   {territories.map((territory) => (
                     <option key={territory.id} value={territory.id}>
-                      {territory.name} (#{territory.id})
+                      {territory.name}
+                      {i18n.t('literals.lit-54')}
+                      {territory.id}
+                      {i18n.t('literals.lit-2')}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
                 <label className="form-label" htmlFor="territory-month">
-                  Hónap
+                  {i18n.t('literals.honap')}
                 </label>
                 <input
                   id="territory-month"
@@ -228,7 +237,7 @@ export default function TerritoryReconciliationPage() {
                 className="form-button-primary inline-flex min-h-10 items-center justify-center gap-1"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Lekérdez
+                {i18n.t('literals.lekerdez')}
               </button>
             </div>
 
@@ -250,11 +259,13 @@ export default function TerritoryReconciliationPage() {
           </section>
 
           <section className="rounded border border-slate-200 bg-white p-3">
-            <h2 className="mb-3 text-sm font-semibold text-slate-800">Új terület</h2>
+            <h2 className="mb-3 text-sm font-semibold text-slate-800">
+              {i18n.t('literals.uj-terulet')}
+            </h2>
             <div className="space-y-2">
               <div>
                 <label className="form-label" htmlFor="new-territory-name">
-                  Név
+                  {i18n.t('literals.nev')}
                 </label>
                 <input
                   id="new-territory-name"
@@ -267,7 +278,7 @@ export default function TerritoryReconciliationPage() {
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 <div>
                   <label className="form-label" htmlFor="new-base-capital">
-                    Alaptőke
+                    {i18n.t('literals.alaptoke')}
                   </label>
                   <input
                     id="new-base-capital"
@@ -280,7 +291,7 @@ export default function TerritoryReconciliationPage() {
                 </div>
                 <div>
                   <label className="form-label" htmlFor="new-approved-at">
-                    Jóváhagyás dátuma
+                    {i18n.t('literals.jovahagyas-datuma')}
                   </label>
                   <input
                     id="new-approved-at"
@@ -314,7 +325,9 @@ export default function TerritoryReconciliationPage() {
 
       {profitSummary && (
         <section className="form-panel space-y-3">
-          <h2 className="text-sm font-semibold text-slate-800">Területi WAC profit összesítő</h2>
+          <h2 className="text-sm font-semibold text-slate-800">
+            {i18n.t('literals.teruleti-wac-profit-osszesito')}
+          </h2>
           <div className="grid gap-3 sm:grid-cols-4">
             <InfoCell label="Összprofit" value={fmt(profitSummary.totalProfit)} />
             <InfoCell label="Tranzakció" value={profitSummary.transactionCount} />
@@ -360,7 +373,9 @@ export default function TerritoryReconciliationPage() {
             {data.cashiers.map((cashier) => (
               <div key={cashier.branchId} className="rounded border border-slate-200 bg-white p-3">
                 <div className="text-sm font-semibold text-slate-900">
-                  {cashier.branchCode} - {cashier.branchName}
+                  {cashier.branchCode}
+                  {i18n.t('literals.lit-17')}
+                  {cashier.branchName}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                   <InfoCell label="WAC-marzs" value={fmt(cashier.realizedMargin)} />
@@ -380,16 +395,16 @@ export default function TerritoryReconciliationPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                    Pénztár
+                    {i18n.t('literals.penztar-2')}
                   </th>
                   <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                    Tiszta WAC-marzs
+                    {i18n.t('literals.tiszta-wac-marzs')}
                   </th>
                   <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                    Allokált átértékelés
+                    {i18n.t('literals.allokalt-atertekeles')}
                   </th>
                   <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                    Összhaszon
+                    {i18n.t('literals.osszhaszon')}
                   </th>
                 </tr>
               </thead>
@@ -397,7 +412,9 @@ export default function TerritoryReconciliationPage() {
                 {data.cashiers.map((cashier) => (
                   <tr key={cashier.branchId}>
                     <td className="px-3 py-2 text-sm">
-                      {cashier.branchCode} - {cashier.branchName}
+                      {cashier.branchCode}
+                      {i18n.t('literals.lit-17')}
+                      {cashier.branchName}
                     </td>
                     <td className="px-3 py-2 text-right font-mono text-sm">
                       {fmt(cashier.realizedMargin)}
@@ -422,19 +439,19 @@ export default function TerritoryReconciliationPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                      Valuta
+                      {i18n.t('literals.valuta')}
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      Értéktári készlet
+                      {i18n.t('literals.ertektari-keszlet')}
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      WAC
+                      {i18n.t('literals.wac')}
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      MNB
+                      {i18n.t('literals.mnb')}
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      Átértékelés
+                      {i18n.t('literals.atertekeles')}
                     </th>
                   </tr>
                 </thead>

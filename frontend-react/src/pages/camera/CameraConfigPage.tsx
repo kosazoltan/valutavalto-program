@@ -3,6 +3,7 @@ import { Settings, Plus, Trash2, Save } from 'lucide-react'
 import { api } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 const isElectron = () => !!window.electronAPI
 
@@ -146,7 +147,11 @@ export default function CameraConfigPage() {
               {localDevices.map((d, i) => (
                 <p key={d.deviceId || i} className="text-sm text-muted-foreground">
                   {d.label || `Kamera ${i + 1}`}{' '}
-                  <span className="text-xs">({d.deviceId?.slice(0, 12)}...)</span>
+                  <span className="text-xs">
+                    {i18n.t('literals.lit-19')}
+                    {d.deviceId?.slice(0, 12)}
+                    {i18n.t('literals.lit-20')}
+                  </span>
                 </p>
               ))}
             </div>
@@ -173,7 +178,7 @@ export default function CameraConfigPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">FPS</label>
+                <label className="text-sm font-medium">{i18n.t('literals.fps')}</label>
                 <input
                   className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
                   type="number"
@@ -240,7 +245,7 @@ export default function CameraConfigPage() {
 
       {/* Config list */}
       {loading ? (
-        <p>Betöltés...</p>
+        <p>{i18n.t('literals.betoltes')}</p>
       ) : configs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           {t('camera.nincsKonfiguraltKamera')}
@@ -263,11 +268,16 @@ export default function CameraConfigPage() {
                       {config.enabled ? t('common.active') : t('common.inactive')}
                     </span>
                   </div>
-                  {/* eslint-disable i18next/no-literal-string */}
+                  { }
                   <p className="text-sm text-muted-foreground">
-                    {config.resolutionWidth}x{config.resolutionHeight} @ {config.fps} FPS
+                    {config.resolutionWidth}
+                    {i18n.t('literals.x')}
+                    {config.resolutionHeight}
+                    {i18n.t('literals.lit-21')}
+                    {config.fps}
+                    {i18n.t('literals.fps-2')}
                   </p>
-                  {/* eslint-enable i18next/no-literal-string */}
+                  { }
                   <p className="text-xs text-muted-foreground">
                     {t('camera.utvonal')}
                     {config.localStoragePath}

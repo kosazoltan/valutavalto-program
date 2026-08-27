@@ -11,6 +11,7 @@ import { downloadBlob } from '../../utils/downloadBlob'
 import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { logger } from '../../utils/logger'
+import i18n from '../../i18n'
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -140,12 +141,12 @@ export default function SuspiciousCustomersPanel() {
   return (
     <div className="mb-6 overflow-hidden rounded bg-white shadow">
       <div className="bg-purple-100 px-4 py-2 text-purple-900 font-semibold">
-        Gyanús ügyfél minták
+        {i18n.t('literals.gyanus-ugyfel-mintak')}
       </div>
       <form onSubmit={handleSubmit} className="space-y-4 p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
           <div>
-            <label className="form-label">Kezdő dátum</label>
+            <label className="form-label">{i18n.t('literals.kezdo-datum')}</label>
             <input
               type="date"
               value={form.startDate}
@@ -155,7 +156,7 @@ export default function SuspiciousCustomersPanel() {
             />
           </div>
           <div>
-            <label className="form-label">Záró dátum</label>
+            <label className="form-label">{i18n.t('literals.zaro-datum')}</label>
             <input
               type="date"
               value={form.endDate}
@@ -197,7 +198,7 @@ export default function SuspiciousCustomersPanel() {
                 checked={form.byTransactionCount}
                 onChange={(event) => updateCheckbox('byTransactionCount', event)}
               />
-              Nagy tranzakciószám
+              {i18n.t('literals.nagy-tranzakcioszam')}
             </span>
             <input
               type="number"
@@ -215,7 +216,7 @@ export default function SuspiciousCustomersPanel() {
                 checked={form.byTotalValue}
                 onChange={(event) => updateCheckbox('byTotalValue', event)}
               />
-              Magas össz tranzakciós érték
+              {i18n.t('literals.magas-ossz-tranzakcios-ertek')}
             </span>
             <input
               type="number"
@@ -233,7 +234,7 @@ export default function SuspiciousCustomersPanel() {
                 checked={form.byBranchCount}
                 onChange={(event) => updateCheckbox('byBranchCount', event)}
               />
-              Sok váltóponton váltott
+              {i18n.t('literals.sok-valtoponton-valtott')}
             </span>
             <input
               type="number"
@@ -260,7 +261,7 @@ export default function SuspiciousCustomersPanel() {
         <div className="border-t border-slate-200">
           {rows.length === 0 ? (
             <div className="p-6 text-center text-sm text-gray-500">
-              Nincs találat a megadott szűrőkkel.
+              {i18n.t('literals.nincs-talalat-a-megadott-szurokkel')}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -270,11 +271,11 @@ export default function SuspiciousCustomersPanel() {
               >
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left">Ügyfél</th>
-                    <th className="px-4 py-2 text-right">Tranzakciószám</th>
-                    <th className="px-4 py-2 text-right">Össz. érték (Ft)</th>
-                    <th className="px-4 py-2 text-right">Váltópontok</th>
-                    <th className="px-4 py-2 text-left">Találati minta</th>
+                    <th className="px-4 py-2 text-left">{i18n.t('literals.ugyfel-2')}</th>
+                    <th className="px-4 py-2 text-right">{i18n.t('literals.tranzakcioszam')}</th>
+                    <th className="px-4 py-2 text-right">{i18n.t('literals.ossz-ertek-ft')}</th>
+                    <th className="px-4 py-2 text-right">{i18n.t('literals.valtopontok')}</th>
+                    <th className="px-4 py-2 text-left">{i18n.t('literals.talalati-minta')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -304,7 +305,10 @@ export default function SuspiciousCustomersPanel() {
           )}
           <div className="flex items-center justify-between px-4 py-3 text-sm">
             <span>
-              {currentPage} / {totalPages} oldal
+              {currentPage}
+              {i18n.t('literals.lit-10')}
+              {totalPages}
+              {i18n.t('literals.oldal-2')}
             </span>
             <div className="space-x-2">
               <button
@@ -313,7 +317,7 @@ export default function SuspiciousCustomersPanel() {
                 onClick={() => goToPage(Math.max(0, page - 1))}
                 className="rounded border px-3 py-1 disabled:opacity-50"
               >
-                Előző
+                {i18n.t('literals.elozo-2')}
               </button>
               <button
                 type="button"
@@ -321,7 +325,7 @@ export default function SuspiciousCustomersPanel() {
                 onClick={() => goToPage(page + 1)}
                 className="rounded border px-3 py-1 disabled:opacity-50"
               >
-                Következő
+                {i18n.t('literals.kovetkezo-2')}
               </button>
             </div>
           </div>

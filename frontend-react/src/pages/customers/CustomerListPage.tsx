@@ -16,6 +16,7 @@ import { customerApi, Customer, CustomerRanking } from '../../services/api/trans
 import { getErrorMessage } from '../../utils/errorHandling'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface CustomerHighlights {
   vip: Customer[]
@@ -209,7 +210,7 @@ export default function CustomerListPage() {
             onClick={() => handlePendingReviewFilter()}
             className={`form-button ${pendingOnly ? 'border-amber-300 bg-amber-50 text-amber-800' : ''}`}
           >
-            Átnézésre váró
+            {i18n.t('literals.atnezesre-varo')}
           </button>
           {pendingOnly && (
             <button
@@ -220,7 +221,7 @@ export default function CustomerListPage() {
               }}
               className="form-button"
             >
-              Összes aktív
+              {i18n.t('literals.osszes-aktiv')}
             </button>
           )}
         </div>
@@ -283,7 +284,7 @@ export default function CustomerListPage() {
         {loading ? (
           <div className="flex items-center justify-center py-8 text-gray-500 gap-2">
             <Loader2 size={18} className="animate-spin" />
-            Betöltés...
+            {i18n.t('literals.betoltes')}
           </div>
         ) : customers.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -311,12 +312,12 @@ export default function CustomerListPage() {
                     {c.name}
                     {c.isVip && (
                       <span className="ml-1 text-xs bg-yellow-100 text-yellow-700 px-1 rounded">
-                        VIP
+                        {i18n.t('literals.vip')}
                       </span>
                     )}
                     {c.reviewStatus === 'PENDING_REVIEW' && (
                       <span className="ml-1 text-xs bg-amber-100 text-amber-800 px-1 rounded">
-                        Átnézésre vár
+                        {i18n.t('literals.atnezesre-var')}
                       </span>
                     )}
                   </td>
@@ -357,7 +358,7 @@ export default function CustomerListPage() {
                           className="toolbar-button text-red-500"
                           title="Inaktiválás"
                         >
-                          ×
+                          {i18n.t('literals.lit-34')}
                         </button>
                       )}
                       {!c.active && (

@@ -3,6 +3,7 @@ import { api } from '../../services/api/client'
 import { stornoApi, StornoApproval } from '../../services/api/index'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 /**
  * Sztornó telefonos supervisor-PIN jóváhagyás modal (egyszemélyes iroda üzleti döntés,
@@ -136,14 +137,13 @@ export default function StornoPinApprovalModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="storno-pin-approval-title" className="mb-2 text-lg font-bold">
-          Telefonos supervisor-jóváhagyás
+          {i18n.t('literals.telefonos-supervisor-jovahagyas')}
         </h2>
         <p className="mb-4 text-sm text-gray-600">
-          Hívja fel a supervisort, válassza ki a nevét, majd írja be a telefonon bediktált 4-6
-          számjegyű PIN-t.
+          {i18n.t('literals.hivja-fel-a-supervisort-valassza-ki-a-ne')}
         </p>
 
-        <label className="form-label">Jóváhagyó supervisor</label>
+        <label className="form-label">{i18n.t('literals.jovahagyo-supervisor')}</label>
         <select
           value={selectedId ?? ''}
           onChange={(e) => {
@@ -157,12 +157,15 @@ export default function StornoPinApprovalModal({
           <option value="">{loading ? 'Betöltés…' : '— Válasszon —'}</option>
           {approvers.map((a) => (
             <option key={a.id} value={a.id}>
-              {approverLabel(a)} ({a.role})
+              {approverLabel(a)}
+              {i18n.t('literals.lit')}
+              {a.role}
+              {i18n.t('literals.lit-2')}
             </option>
           ))}
         </select>
 
-        <label className="form-label">Supervisor PIN</label>
+        <label className="form-label">{i18n.t('literals.supervisor-pin')}</label>
         <input
           ref={pinRef}
           type="password"
@@ -189,7 +192,7 @@ export default function StornoPinApprovalModal({
             disabled={submitting}
             className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
-            Mégse
+            {i18n.t('literals.megse')}
           </button>
           <button
             onClick={() => void handleSubmit(pin)}
@@ -201,8 +204,7 @@ export default function StornoPinApprovalModal({
         </div>
 
         <p className="mt-4 text-xs text-gray-500">
-          3 hibás próbálkozás után 5 perc lockout lép életbe. A jóváhagyó nem lehet a kérelmező és
-          nem lehet a bejelentkezett dolgozó (4-szem-elv).
+          {i18n.t('literals.3-hibas-probalkozas-utan-5-perc-lockout')}
         </p>
       </div>
     </div>

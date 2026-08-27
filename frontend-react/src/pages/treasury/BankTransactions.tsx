@@ -30,6 +30,7 @@ import { getLocalPendingBankTransactions } from '../../utils/localQueue'
 import { logger } from '../../utils/logger'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 export default function BankTransactions() {
   const { t } = useTranslation()
@@ -324,7 +325,7 @@ export default function BankTransactions() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th className="w-16">ID</th>
+              <th className="w-16">{i18n.t('literals.id')}</th>
               <th className="w-20">{t('common.type')}</th>
               <th className="w-16">{t('common.currency')}</th>
               <th className="text-right w-28">{t('cashdesk.mennyiseg')}</th>
@@ -346,7 +347,10 @@ export default function BankTransactions() {
             )}
             {filtered.map((tx) => (
               <tr key={tx.id}>
-                <td className="font-mono text-xs">#{tx.id}</td>
+                <td className="font-mono text-xs">
+                  {i18n.t('literals.lit-12')}
+                  {tx.id}
+                </td>
                 <td>
                   <span
                     className={`badge ${tx.transactionType === 'BUY' ? 'badge-blue' : 'badge-orange'}`}
@@ -388,9 +392,11 @@ export default function BankTransactions() {
       <section className="form-panel space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-secondary-900">Bank-törzs</h2>
+            <h2 className="text-sm font-semibold text-secondary-900">
+              {i18n.t('literals.bank-torzs')}
+            </h2>
             <p className="text-xs text-secondary-500">
-              Banki átadás-átvétel célbankjai, területi szűréssel.
+              {i18n.t('literals.banki-atadas-atvetel-celbankjai-teruleti')}
             </p>
           </div>
           <button
@@ -399,7 +405,7 @@ export default function BankTransactions() {
             className="form-button h-8 text-xs"
           >
             <RefreshCw size={14} />
-            Frissít
+            {i18n.t('literals.frissit')}
           </button>
         </div>
 
@@ -414,7 +420,9 @@ export default function BankTransactions() {
           className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
         >
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-semibold text-secondary-600">Bank neve</span>
+            <span className="mb-1 block text-xs font-semibold text-secondary-600">
+              {i18n.t('literals.bank-neve')}
+            </span>
             <input
               value={bankMasterName}
               onChange={(event) => setBankMasterName(event.target.value)}
@@ -423,7 +431,9 @@ export default function BankTransactions() {
             />
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-semibold text-secondary-600">Területkód</span>
+            <span className="mb-1 block text-xs font-semibold text-secondary-600">
+              {i18n.t('literals.teruletkod')}
+            </span>
             <input
               value={bankMasterRegionCode}
               onChange={(event) => setBankMasterRegionCode(event.target.value)}
@@ -437,7 +447,7 @@ export default function BankTransactions() {
             className="form-button-primary self-end"
           >
             <Plus size={16} />
-            Felvétel
+            {i18n.t('literals.felvetel-2')}
           </button>
         </form>
 
@@ -445,8 +455,8 @@ export default function BankTransactions() {
           <table className="data-grid w-full">
             <thead>
               <tr>
-                <th>Bank</th>
-                <th className="w-28">Terület</th>
+                <th>{i18n.t('literals.bank-5')}</th>
+                <th className="w-28">{i18n.t('literals.terulet')}</th>
                 <th className="w-20"></th>
               </tr>
             </thead>
@@ -454,7 +464,7 @@ export default function BankTransactions() {
               {banks.length === 0 && (
                 <tr>
                   <td colSpan={3} className="py-4 text-center text-sm text-secondary-400">
-                    Nincs bank-törzs adat.
+                    {i18n.t('literals.nincs-bank-torzs-adat')}
                   </td>
                 </tr>
               )}
@@ -549,7 +559,9 @@ export default function BankTransactions() {
                     .filter((c) => c.code !== 'HUF')
                     .map((c) => (
                       <option key={c.code} value={c.code}>
-                        {c.code} — {c.name}
+                        {c.code}
+                        {i18n.t('literals.lit-18')}
+                        {c.name}
                       </option>
                     ))}
                 </select>

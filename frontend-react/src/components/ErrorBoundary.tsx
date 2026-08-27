@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { sendErrorReport } from './ErrorReporter'
+import i18n from '../i18n'
 
 interface Props {
   children: ReactNode
@@ -60,10 +61,10 @@ export default class ErrorBoundary extends Component<Props, State> {
               </svg>
             </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Váratlan hiba történt
+              {i18n.t('literals.varatlan-hiba-tortent')}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              Az alkalmazás egy nem várt hibába ütközött. Kérjük, próbálja újra.
+              {i18n.t('literals.az-alkalmazas-egy-nem-vart-hibaba-utkozo')}
             </p>
             {this.state.error && (
               <pre className="mb-4 max-h-32 overflow-auto rounded bg-gray-100 dark:bg-gray-700 p-3 text-left text-xs text-gray-600 dark:text-gray-300">
@@ -75,7 +76,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleReset}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
               >
-                Újrapróbálás
+                {i18n.t('literals.ujraprobalas')}
               </button>
               <button
                 onClick={() => {
@@ -83,7 +84,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 }}
                 className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
-                Főoldal
+                {i18n.t('literals.fooldal')}
               </button>
             </div>
           </div>

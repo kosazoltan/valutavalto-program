@@ -158,7 +158,9 @@ describe('TransferCreatePage — szerepkör szerinti típusok és offline queue'
 
     await screen.findByRole('option', { name: /BR001 - Budapesti értéktár/ })
 
-    expect(screen.getByRole('option', { name: 'ERB — Fixing valuta mozgás RB' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', { name: 'ERB — Fixing valuta mozgás RB' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'FRB — Forint mozgás RB' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'TRB — Egyedi kötés RB' })).toBeInTheDocument()
     expect(
@@ -188,7 +190,9 @@ describe('TransferCreatePage — szerepkör szerinti típusok és offline queue'
     fireEvent.change(screen.getByPlaceholderText('Szállító neve...'), {
       target: { value: 'Teszt Szállító Kft' },
     })
-    fireEvent.change(screen.getByPlaceholderText('Plombaszám...'), { target: { value: 'PL-12345' } })
+    fireEvent.change(screen.getByPlaceholderText('Plombaszám...'), {
+      target: { value: 'PL-12345' },
+    })
     fireEvent.click(screen.getByText('Átadás létrehozása'))
 
     await waitFor(() => expect(mocks.saveAndSyncPendingTransfer).toHaveBeenCalledTimes(1))

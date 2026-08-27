@@ -3,6 +3,7 @@ import { Grid3x3, Save, RefreshCw, AlertTriangle, CheckCircle2, Shield, Search }
 import { permissionApi, roleApi, type Permission, type Role } from '../../services/api/users'
 import { logger } from '../../utils/logger'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 // Role.permissions backend-ben string[] (permission NEV-ek), a matrix edit-hez
 // permission ID-kra kell valtanunk. Ezt a rolePermissionMap tartja.
@@ -217,7 +218,7 @@ export default function PermissionMatrixPage() {
       {/* Matrix */}
       <div className="form-panel overflow-x-auto">
         {loading ? (
-          <div className="p-8 text-center text-secondary-400">Betoltes...</div>
+          <div className="p-8 text-center text-secondary-400">{i18n.t('literals.betoltes-4')}</div>
         ) : (
           <table className="w-full">
             <thead className="bg-secondary-50 sticky top-0">

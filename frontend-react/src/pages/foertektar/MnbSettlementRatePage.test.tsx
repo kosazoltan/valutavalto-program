@@ -35,7 +35,9 @@ vi.mock('../../services/api/index', () => ({
 }))
 
 vi.mock('../../stores/authStore', () => ({
-  useAuthStore: (selector: (state: { hasCanonicalRole: (roles: string | string[]) => boolean }) => unknown) =>
+  useAuthStore: (
+    selector: (state: { hasCanonicalRole: (roles: string | string[]) => boolean }) => unknown,
+  ) =>
     selector({
       hasCanonicalRole: (roles: string | string[]) => {
         const requested = Array.isArray(roles) ? roles : [roles]
@@ -100,13 +102,17 @@ describe('FK-028 — MNB árfolyamok rögzítése oldal', () => {
   it('input-szerkesztés után a Rögzítés csak a módosult nem-HUF sort küldi', async () => {
     await renderLoaded()
 
-    fireEvent.change(await screen.findByLabelText('EUR árfolyam'), { target: { value: '401.2500' } })
+    fireEvent.change(await screen.findByLabelText('EUR árfolyam'), {
+      target: { value: '401.2500' },
+    })
     fireEvent.click(screen.getByRole('button', { name: /^Rögzítés$/ }))
 
     await waitFor(() => {
       expect(mocks.update).toHaveBeenCalledWith([{ currencyCode: 'EUR', officialRate: 401.25 }])
     })
-    expect(mocks.update).not.toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ currencyCode: 'HUF' })]))
+    expect(mocks.update).not.toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ currencyCode: 'HUF' })]),
+    )
     expect(mocks.toastSuccess).toHaveBeenCalledWith('MNB árfolyamok rögzítve')
   })
 
@@ -132,7 +138,9 @@ describe('FK-028 — MNB árfolyamok rögzítése oldal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'MNB letöltés' }))
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('MNB letöltés sikertelen', 'MNB nem elérhető'))
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith('MNB letöltés sikertelen', 'MNB nem elérhető'),
+    )
     expect(screen.getByLabelText('EUR árfolyam')).toHaveValue('400.0000')
     expect(screen.getByLabelText('USD árfolyam')).toHaveValue('300.0000')
   })
@@ -140,7 +148,9 @@ describe('FK-028 — MNB árfolyamok rögzítése oldal', () => {
   it('±10% figyelmeztetés: >10% igen, pontosan 10% és prev=0 nem', async () => {
     await renderLoaded()
 
-    fireEvent.change(await screen.findByLabelText('EUR árfolyam'), { target: { value: '440.1000' } })
+    fireEvent.change(await screen.findByLabelText('EUR árfolyam'), {
+      target: { value: '440.1000' },
+    })
     fireEvent.blur(screen.getByLabelText('EUR árfolyam'))
     expect(await screen.findByTestId('rate-warning-EUR')).toBeInTheDocument()
 
@@ -166,7 +176,9 @@ describe('FK-028 — MNB árfolyamok rögzítése oldal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rögzítés + Küldés irodáknak' }))
 
     await waitFor(() => expect(mocks.publish).toHaveBeenCalledWith([]))
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('MNB árfolyamok rögzítve és kiküldve az irodáknak')
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      'MNB árfolyamok rögzítve és kiküldve az irodáknak',
+    )
   })
 
   it('read-only mód belső ellenőrnek: inputok és gombok tiltottak', async () => {

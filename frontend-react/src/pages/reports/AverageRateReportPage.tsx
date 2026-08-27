@@ -6,6 +6,7 @@ import { logger } from '../../utils/logger'
 import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 /**
  * FK-027 — Átlag árfolyam riport (legacy ATLAGARF / Atlagarfolyam.xls parity).
@@ -114,17 +115,16 @@ export default function AverageRateReportPage() {
       <div>
         <h1 className="form-title flex items-center gap-2">
           <TrendingUp className="h-6 w-6" />
-          Átlag árfolyam riport
+          {i18n.t('literals.atlag-arfolyam-riport')}
         </h1>
         <p className="text-xs text-gray-500 mt-1">
-          HUF-súlyozott átlagárfolyam, területenkénti és összesített Vétel/Eladás bontásban.
+          {i18n.t('literals.huf-sulyozott-atlagarfolyam-teruletenken')}
         </p>
         <p
           className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1"
           data-testid="average-rate-export-notice"
         >
-          Az Excel export mindig a teljes, minden irodát tartalmazó struktúrát (8 terület +
-          összesítő) tölti le — az „Iroda” szűrő csak a képernyőn látható táblázatra hat.
+          {i18n.t('literals.az-excel-export-mindig-a-teljes-minden-i')}
         </p>
       </div>
 
@@ -138,7 +138,7 @@ export default function AverageRateReportPage() {
       <div className="bg-white rounded shadow p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
         <div>
           <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-from">
-            Tól
+            {i18n.t('literals.tol')}
           </label>
           <input
             id="ar-from"
@@ -150,7 +150,7 @@ export default function AverageRateReportPage() {
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-to">
-            Ig
+            {i18n.t('literals.ig')}
           </label>
           <input
             id="ar-to"
@@ -162,7 +162,7 @@ export default function AverageRateReportPage() {
         </div>
         <div>
           <label className="block text-xs text-gray-500 mb-1" htmlFor="ar-branch">
-            Iroda
+            {i18n.t('literals.iroda')}
           </label>
           <select
             id="ar-branch"
@@ -171,10 +171,12 @@ export default function AverageRateReportPage() {
             className="form-input w-full text-sm"
             aria-label="Iroda szűrő"
           >
-            <option value="">Összes iroda</option>
+            <option value="">{i18n.t('literals.osszes-iroda')}</option>
             {visibleBranches.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.code} - {b.name}
+                {b.code}
+                {i18n.t('literals.lit-17')}
+                {b.name}
               </option>
             ))}
           </select>
@@ -204,7 +206,11 @@ export default function AverageRateReportPage() {
         </div>
       </div>
 
-      {loading && <div className="text-center text-sm text-gray-500 py-8">Betöltés…</div>}
+      {loading && (
+        <div className="text-center text-sm text-gray-500 py-8">
+          {i18n.t('literals.betoltes-3')}
+        </div>
+      )}
       {!loading && data && currencyRows.length > 0 && (
         <div className="bg-white rounded shadow">
           {/* FK-031 "ablak rögzítése" (freeze panes) + FK-033 regresszió-javítás: a táblázat saját, belső
@@ -225,7 +231,7 @@ export default function AverageRateReportPage() {
                   rowSpan={2}
                   className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500 border sticky left-0 top-0 z-30 bg-gray-50 border-r-2 border-r-gray-300"
                 >
-                  Valuta
+                  {i18n.t('literals.valuta')}
                 </th>
                 {groups.map((g) => (
                   <th
@@ -288,13 +294,13 @@ export default function AverageRateReportPage() {
 
       {!loading && queried && (!data || currencyRows.length === 0) && !error && (
         <div className="text-center text-sm text-gray-500 py-8">
-          Nincs megjeleníthető adat erre az időszakra.
+          {i18n.t('literals.nincs-megjelenitheto-adat-erre-az-idosza')}
         </div>
       )}
 
       {!loading && !queried && (
         <div className="text-center text-sm text-gray-500 py-8">
-          Adj meg egy dátum-intervallumot és kattints a „Lekérdezés" gombra.
+          {i18n.t('literals.adj-meg-egy-datum-intervallumot-es-katti')}
         </div>
       )}
     </div>

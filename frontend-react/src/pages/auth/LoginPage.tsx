@@ -28,6 +28,7 @@ import {
 import type { AppMode } from '../../types/appMode'
 import { useTranslation } from 'react-i18next'
 import { reportLoginScreenIdleForUpdate } from '../../hooks/reportLoginScreenIdleForUpdate'
+import i18n from '../../i18n'
 
 /**
  * Setup wizard altal elmentett config (localStorage / Electron config).
@@ -636,12 +637,14 @@ export default function LoginPage() {
         <div className="bg-form-bg border border-form-border shadow-lg">
           <div className="header-bar flex items-center gap-2 h-8">
             <Shield size={16} />
-            <span>Ki dolgozik most? — {vaultBranchName || 'Értéktár'}</span>
+            <span>
+              {i18n.t('literals.ki-dolgozik-most')}
+              {vaultBranchName || 'Értéktár'}
+            </span>
           </div>
           <div className="p-4">
             <p className="text-sm text-gray-600 mb-3">
-              Válaszd ki a neved a listából, majd add meg a saját jelszavad. Így minden művelet
-              hozzád köthető lesz.
+              {i18n.t('literals.valaszd-ki-a-neved-a-listabol-majd-add-m')}
             </p>
             {vaultError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
@@ -651,8 +654,7 @@ export default function LoginPage() {
 
             {vaultWorkers.length === 0 ? (
               <div className="text-sm text-gray-600 mb-4">
-                Ehhez az értéktárhoz még nincs felvett személyes dolgozó. Kérj segítséget az
-                adminisztrátortól, vagy lépj be újra a közös fiókkal és vegyél fel munkatársat.
+                {i18n.t('literals.ehhez-az-ertektarhoz-meg-nincs-felvett-s')}
               </div>
             ) : (
               <div className="space-y-1.5 mb-3 max-h-52 overflow-auto">
@@ -685,7 +687,7 @@ export default function LoginPage() {
                 }}
               >
                 <label className="block mb-3">
-                  <span className="form-label">Jelszó</span>
+                  <span className="form-label">{i18n.t('literals.jelszo')}</span>
                   <input
                     type="password"
                     className="form-input"
@@ -703,7 +705,7 @@ export default function LoginPage() {
                     className="text-xs text-primary hover:underline"
                     onClick={() => setShowVaultForgot(true)}
                   >
-                    Elfelejtett jelszó?
+                    {i18n.t('literals.elfelejtett-jelszo')}
                   </button>
                   <button
                     type="submit"
@@ -718,14 +720,13 @@ export default function LoginPage() {
 
             {showVaultForgot && (
               <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs p-2.5 rounded">
-                Az elfelejtett jelszó visszaállítását az adminisztrátor végzi. Kérj tőle új jelszót
-                — a felületen nincs önkiszolgáló visszaállítás.
+                {i18n.t('literals.az-elfelejtett-jelszo-visszaallitasat-az')}
                 <button
                   type="button"
                   className="block mt-1.5 text-primary hover:underline"
                   onClick={() => setShowVaultForgot(false)}
                 >
-                  Értem
+                  {i18n.t('literals.ertem')}
                 </button>
               </div>
             )}
@@ -745,7 +746,7 @@ export default function LoginPage() {
                   setShowVaultForgot(false)
                 }}
               >
-                Mégse / vissza
+                {i18n.t('literals.megse-vissza')}
               </button>
             </div>
           </div>
@@ -760,12 +761,11 @@ export default function LoginPage() {
         <div className="bg-form-bg border border-form-border shadow-lg">
           <div className="header-bar flex items-center gap-2 h-8">
             <Shield size={16} />
-            <span>Melyik programba lép be?</span>
+            <span>{i18n.t('literals.melyik-programba-lep-be')}</span>
           </div>
           <div className="p-4">
             <p className="text-sm text-gray-600 mb-3">
-              A munkaköröd alapján több programba is beléphetsz. Válaszd ki, melyikkel szeretnél
-              dolgozni.
+              {i18n.t('literals.a-munkakorod-alapjan-tobb-programba-is-b')}
             </p>
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-2 rounded mb-3">
@@ -785,12 +785,12 @@ export default function LoginPage() {
                   <span className="font-semibold">{appModeLabel(m)}</span>
                   {m === 'penztar' && (
                     <span className="block text-xs text-gray-500">
-                      Valutaváltó pénztár — vétel/eladás/konverzió, pénztár-ellenőrzés
+                      {i18n.t('literals.valutavalto-penztar-vetel-eladas-konverz')}
                     </span>
                   )}
                   {m === 'ertektar' && (
                     <span className="block text-xs text-gray-500">
-                      Értéktár — készletek, átadás-átvétel, zárások
+                      {i18n.t('literals.ertektar-keszletek-atadas-atvetel-zaraso')}
                     </span>
                   )}
                 </button>
@@ -824,12 +824,11 @@ export default function LoginPage() {
         <div className="bg-form-bg border border-form-border shadow-lg">
           <div className="header-bar flex items-center gap-2 h-8">
             <Shield size={16} />
-            <span>MFA ellenőrzés</span>
+            <span>{i18n.t('literals.mfa-ellenorzes')}</span>
           </div>
           <div className="p-4">
             <p className="text-sm text-gray-600 mb-3">
-              Add meg az authenticator app 6 számjegyű kódját, vagy válts egyszer használható backup
-              kódra.
+              {i18n.t('literals.add-meg-az-authenticator-app-6-szamjegyu')}
             </p>
             {mfaError && (
               <div

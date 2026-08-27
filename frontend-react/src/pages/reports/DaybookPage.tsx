@@ -8,6 +8,7 @@ import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
 import { dailyReportApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 /**
  * FKH-027 FR-4: a nyomtatási kép cégfejléce. A `HufDaybookPdfService.COMPANY_HEADER`
@@ -145,22 +146,25 @@ export default function DaybookPage() {
             <div className="text-sm">{report.branchName}</div>
             {report.branchAddress && <div className="text-sm">{report.branchAddress}</div>}
             <div className="mt-2 text-sm font-semibold">
-              Naplókönyv (HUF) — Dátum: {report.date}
+              {i18n.t('literals.naplokonyv-huf-datum')}
+              {report.date}
             </div>
           </div>
 
           {report.rows.length === 0 ? (
-            <div className="text-center text-gray-500 py-4">Nincs tétel erre a napra.</div>
+            <div className="text-center text-gray-500 py-4">
+              {i18n.t('literals.nincs-tetel-erre-a-napra')}
+            </div>
           ) : (
             <table className="data-grid w-full text-sm">
               <thead>
                 <tr>
-                  <th>Sorszám</th>
-                  <th>Bizonylat</th>
-                  <th>Partner</th>
+                  <th>{i18n.t('literals.sorszam')}</th>
+                  <th>{i18n.t('literals.bizonylat')}</th>
+                  <th>{i18n.t('literals.partner')}</th>
                   <th>{t('misc.ido')}</th>
-                  <th className="text-right">Átadás (HUF)</th>
-                  <th className="text-right">Átvétel (HUF)</th>
+                  <th className="text-right">{i18n.t('literals.atadas-huf')}</th>
+                  <th className="text-right">{i18n.t('literals.atvetel-huf')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +178,7 @@ export default function DaybookPage() {
                       {row.receiptNumber}
                       {row.storno && (
                         <span data-testid="daybook-storno-badge" className="ml-2 font-bold">
-                          SZTORNÓ
+                          {i18n.t('literals.sztorno-2')}
                         </span>
                       )}
                     </td>
@@ -191,7 +195,7 @@ export default function DaybookPage() {
               </tbody>
               <tfoot>
                 <tr className="font-semibold">
-                  <td colSpan={4}>Összesen</td>
+                  <td colSpan={4}>{i18n.t('literals.osszesen')}</td>
                   <td className="text-right">{fmtHuf(report.totalAtadasHuf)}</td>
                   <td className="text-right">{fmtHuf(report.totalAtvetelHuf)}</td>
                 </tr>
@@ -206,22 +210,24 @@ export default function DaybookPage() {
               data-testid="daybook-opening-balance"
               className="flex justify-between border border-gray-400 px-3 py-2 text-sm"
             >
-              <span className="font-semibold">Nyitó egyenleg:</span>
+              <span className="font-semibold">{i18n.t('literals.nyito-egyenleg')}</span>
               <span>{fmtHuf(report.openingBalanceHuf)}</span>
             </div>
             <div className="flex justify-between border border-gray-400 px-3 py-2 text-sm">
               <span data-testid="daybook-total-atadas" className="font-semibold">
-                Átadás összesen: {fmtHuf(report.totalAtadasHuf)}
+                {i18n.t('literals.atadas-osszesen')}
+                {fmtHuf(report.totalAtadasHuf)}
               </span>
               <span data-testid="daybook-total-atvetel" className="font-semibold">
-                Átvétel összesen: {fmtHuf(report.totalAtvetelHuf)}
+                {i18n.t('literals.atvetel-osszesen')}
+                {fmtHuf(report.totalAtvetelHuf)}
               </span>
             </div>
             <div
               data-testid="daybook-closing-balance"
               className="flex justify-between border border-gray-400 px-3 py-2 text-sm"
             >
-              <span className="font-semibold">Záró egyenleg:</span>
+              <span className="font-semibold">{i18n.t('literals.zaro-egyenleg')}</span>
               <span>{fmtHuf(report.closingBalanceHuf)}</span>
             </div>
           </div>
@@ -231,8 +237,12 @@ export default function DaybookPage() {
             data-testid="daybook-signatures"
             className="grid grid-cols-2 gap-8 pt-12 text-center text-sm"
           >
-            <div className="border-t border-gray-500 pt-1">Pénztáros aláírása</div>
-            <div className="border-t border-gray-500 pt-1">Ellenőrző aláírása</div>
+            <div className="border-t border-gray-500 pt-1">
+              {i18n.t('literals.penztaros-alairasa')}
+            </div>
+            <div className="border-t border-gray-500 pt-1">
+              {i18n.t('literals.ellenorzo-alairasa')}
+            </div>
           </div>
         </div>
       )}

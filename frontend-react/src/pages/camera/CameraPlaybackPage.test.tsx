@@ -5,6 +5,7 @@ import CameraPlaybackPage from './CameraPlaybackPage'
 import { api, branchApi } from '../../services/api/index'
 
 vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty' },
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
@@ -198,7 +199,6 @@ describe('CameraPlaybackPage backend kapcsolatok', () => {
     ).toBeInTheDocument()
   })
 })
-
 
 describe('CameraPlaybackPage FS-14 review integráció', () => {
   beforeEach(() => {

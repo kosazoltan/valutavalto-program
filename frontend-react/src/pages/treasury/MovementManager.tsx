@@ -43,6 +43,7 @@ import { safeArray } from '../../utils/safeArray'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 const MOVEMENT_TYPES = [
   {
@@ -364,7 +365,8 @@ export default function MovementManager() {
           <h2 className="text-lg font-bold text-secondary-900 mb-4 flex items-center gap-2">
             <Clock size={20} className="text-warning-500" />
             {t('treasury.fuggoMozgasok')}
-            {pendingTransfers.length})
+            {pendingTransfers.length}
+            {i18n.t('literals.lit-2')}
           </h2>
           <div className="space-y-3">
             {pendingTransfers.map((mov) => (
@@ -375,7 +377,10 @@ export default function MovementManager() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="font-bold text-secondary-900">#{mov.transferNumber}</span>
+                      <span className="font-bold text-secondary-900">
+                        {i18n.t('literals.lit-12')}
+                        {mov.transferNumber}
+                      </span>
                       <span className="badge badge-yellow">
                         {MOVEMENT_TYPE_LABELS[mov.transferType] ?? mov.transferTypeDisplay}
                       </span>
@@ -474,7 +479,7 @@ export default function MovementManager() {
         <table className="data-grid w-full">
           <thead>
             <tr>
-              <th className="w-20">ID</th>
+              <th className="w-20">{i18n.t('literals.id')}</th>
               <th className="w-20">{t('misc.ido')}</th>
               <th className="w-32">{t('common.type')}</th>
               <th className="w-48">{t('common.office')}</th>
@@ -494,7 +499,10 @@ export default function MovementManager() {
             )}
             {filteredTransfers.map((mov) => (
               <tr key={mov.id}>
-                <td className="font-mono text-xs">#{mov.transferNumber}</td>
+                <td className="font-mono text-xs">
+                  {i18n.t('literals.lit-12')}
+                  {mov.transferNumber}
+                </td>
                 {/* FKH-037 FR-6: teljes dátum-idő (nem csak óra:perc). */}
                 <td className="text-xs">{formatDateTime(mov.createdAt)}</td>
                 <td className="text-xs">
@@ -507,7 +515,10 @@ export default function MovementManager() {
                 <td className="text-xs">
                   {mov.fromBranchName}
                   {mov.toBranchName && (
-                    <span className="text-secondary-400"> → {mov.toBranchName}</span>
+                    <span className="text-secondary-400">
+                      {i18n.t('literals.lit-56')}
+                      {mov.toBranchName}
+                    </span>
                   )}
                 </td>
                 <td className={`font-bold ${currencyColorClass(mov.currencyCode)}`}>
@@ -605,7 +616,9 @@ export default function MovementManager() {
                             .filter((b) => b.isActive !== false)
                             .map((b) => (
                               <option key={b.id} value={b.id}>
-                                {b.code} - {b.name}
+                                {b.code}
+                                {i18n.t('literals.lit-17')}
+                                {b.name}
                               </option>
                             ))}
                         </optgroup>
@@ -617,7 +630,9 @@ export default function MovementManager() {
                             .filter((b) => b.isActive !== false)
                             .map((b) => (
                               <option key={b.id} value={b.id}>
-                                {b.code} - {b.name}
+                                {b.code}
+                                {i18n.t('literals.lit-17')}
+                                {b.name}
                               </option>
                             ))}
                         </optgroup>
@@ -630,7 +645,9 @@ export default function MovementManager() {
                             .filter((b) => b.isActive !== false)
                             .map((b) => (
                               <option key={b.id} value={b.id}>
-                                {b.code} - {b.name}
+                                {b.code}
+                                {i18n.t('literals.lit-17')}
+                                {b.name}
                               </option>
                             ))}
                         </optgroup>
@@ -638,7 +655,7 @@ export default function MovementManager() {
                     </>
                   ) : (
                     <option value="" disabled>
-                      Partnerek betöltése...
+                      {i18n.t('literals.partnerek-betoltese')}
                     </option>
                   )}
                 </select>
@@ -668,7 +685,9 @@ export default function MovementManager() {
                     <option value={0}>{t('treasury.valasszValutat2')}</option>
                     {currencies.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.code} — {c.name}
+                        {c.code}
+                        {i18n.t('literals.lit-18')}
+                        {c.name}
                       </option>
                     ))}
                   </select>
@@ -700,7 +719,8 @@ export default function MovementManager() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="form-label">
-                    Szállító neve <span className="text-red-500">*</span>
+                    {i18n.t('literals.szallito-neve')}
+                    <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
                   </label>
                   <input
                     type="text"
@@ -713,7 +733,8 @@ export default function MovementManager() {
                 </div>
                 <div>
                   <label className="form-label">
-                    Plombaszám <span className="text-red-500">*</span>
+                    {i18n.t('literals.plombaszam-2')}
+                    <span className="text-red-500">{i18n.t('literals.lit-3')}</span>
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -735,7 +756,7 @@ export default function MovementManager() {
                       ) : (
                         <Wand2 size={16} />
                       )}
-                      <span>Generálás</span>
+                      <span>{i18n.t('literals.generalas')}</span>
                     </button>
                   </div>
                 </div>

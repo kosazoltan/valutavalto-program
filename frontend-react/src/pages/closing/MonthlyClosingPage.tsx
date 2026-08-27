@@ -16,6 +16,7 @@ import { getBlobErrorMessage, getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useAuthStore } from '../../stores/authStore'
 import { downloadBlob } from '../../utils/downloadBlob'
+import i18n from '../../i18n'
 
 // FK-040 (2026-06-22): a HRK (horvát kuna) pénztár-bank készletmozgás 2025-01-01 óta
 // nem forgalmazott — a havi zárásban sem számolni, sem nyilvántartani nem kell vele.
@@ -190,15 +191,17 @@ export default function MonthlyClosingPage() {
       >
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-base font-bold text-amber-950">Havi zárás végrehajtása</h2>
+            <h2 className="text-base font-bold text-amber-950">
+              {i18n.t('literals.havi-zaras-vegrehajtasa')}
+            </h2>
             <p className="mt-1 text-sm text-amber-900">
-              A kiválasztott hónapot a bejelentkezett dolgozó irodájára zárja.
+              {i18n.t('literals.a-kivalasztott-honapot-a-bejelentkezett')}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div>
               <label htmlFor="monthly-closing-year-month" className="form-label">
-                Zárandó hónap
+                {i18n.t('literals.zarando-honap')}
               </label>
               <input
                 id="monthly-closing-year-month"
@@ -237,7 +240,9 @@ export default function MonthlyClosingPage() {
             <div>
               <h2 className="text-base font-bold">{selectedMonthlyReport.yearMonth}</h2>
               <div className="text-xs text-blue-700">
-                {t('monthlyClose.branch')}: {selectedMonthlyReport.branchName ?? branchId}
+                {t('monthlyClose.branch')}
+                {i18n.t('literals.lit-22')}
+                {selectedMonthlyReport.branchName ?? branchId}
               </div>
             </div>
             <div className="rounded bg-white px-2 py-1 text-xs font-semibold text-blue-800">
@@ -258,25 +263,25 @@ export default function MonthlyClosingPage() {
               </div>
             </div>
             <div className="rounded bg-white p-2">
-              <div className="text-xs text-blue-700">Tranzakció</div>
+              <div className="text-xs text-blue-700">{i18n.t('literals.tranzakcio')}</div>
               <div className="font-semibold">{selectedMonthlyReport.transactionCount ?? 0}</div>
             </div>
             <div className="rounded bg-white p-2">
-              <div className="text-xs text-blue-700">Kezelési díj</div>
+              <div className="text-xs text-blue-700">{i18n.t('literals.kezelesi-dij')}</div>
               <div className="font-semibold">
                 {formatHuf(selectedMonthlyReport.totalHandlingFee)}
               </div>
             </div>
             <div className="rounded bg-white p-2">
-              <div className="text-xs text-blue-700">Vétel HUF</div>
+              <div className="text-xs text-blue-700">{i18n.t('literals.vetel-huf')}</div>
               <div className="font-semibold">{formatHuf(selectedMonthlyReport.totalBuyHuf)}</div>
             </div>
             <div className="rounded bg-white p-2">
-              <div className="text-xs text-blue-700">Eladás HUF</div>
+              <div className="text-xs text-blue-700">{i18n.t('literals.eladas-huf')}</div>
               <div className="font-semibold">{formatHuf(selectedMonthlyReport.totalSellHuf)}</div>
             </div>
             <div className="rounded bg-white p-2 md:col-span-2">
-              <div className="text-xs text-blue-700">Valuta bontás</div>
+              <div className="text-xs text-blue-700">{i18n.t('literals.valuta-bontas')}</div>
               <div
                 className="truncate font-mono text-xs"
                 title={selectedMonthlyReport.currencyBreakdown ?? ''}
@@ -345,7 +350,7 @@ export default function MonthlyClosingPage() {
                       <Eye
                         className={`h-4 w-4 ${monthlyReportLoadingKey === String(item.id) ? 'animate-pulse' : ''}`}
                       />
-                      Részletek
+                      {i18n.t('literals.reszletek-2')}
                     </button>
                     <button
                       type="button"
@@ -354,7 +359,7 @@ export default function MonthlyClosingPage() {
                       className="form-button inline-flex items-center gap-2 text-xs"
                     >
                       <Download className="h-4 w-4" />
-                      PDF
+                      {i18n.t('literals.pdf')}
                     </button>
                   </td>
                 </tr>
@@ -365,7 +370,11 @@ export default function MonthlyClosingPage() {
       </div>
 
       <div className="text-sm text-gray-500">
-        {t('common.total')}: {filtered.length} / {items.length}
+        {t('common.total')}
+        {i18n.t('literals.lit-22')}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

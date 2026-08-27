@@ -15,6 +15,7 @@ import { safeArray } from '../../utils/safeArray'
 import { useGridNavigation } from '../../hooks/useGridNavigation'
 import { useUndoStack } from '../../hooks/useUndoStack'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 /**
  * Arfolyam rogzites — Legacy: arfdata.dat adatbevitel.
@@ -362,7 +363,9 @@ export default function SettlementRateEntry() {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Árfolyamok betöltése...</span>
+        <span className="ml-2 text-muted-foreground">
+          {i18n.t('literals.arfolyamok-betoltese')}
+        </span>
       </div>
     )
   }
@@ -381,7 +384,10 @@ export default function SettlementRateEntry() {
           >
             {workgroups.map((wg) => (
               <option key={wg.id} value={wg.id}>
-                {wg.name} ({wg.code})
+                {wg.name}
+                {i18n.t('literals.lit')}
+                {wg.code}
+                {i18n.t('literals.lit-2')}
               </option>
             ))}
           </select>
@@ -452,12 +458,15 @@ export default function SettlementRateEntry() {
         <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm">
           <div className="font-medium text-destructive mb-2">
             {t('ratemanagement.validaciosHibak')}
-            {validationErrors.length}):
+            {validationErrors.length}
+            {i18n.t('literals.lit-43')}
           </div>
           <ul className="list-disc list-inside space-y-1 text-destructive/90">
             {validationErrors.map((ve, i) => (
               <li key={i}>
-                <span className="font-mono font-bold">{ve.code}</span>: {ve.message}
+                <span className="font-mono font-bold">{ve.code}</span>
+                {i18n.t('literals.lit-22')}
+                {ve.message}
               </li>
             ))}
           </ul>
@@ -744,8 +753,8 @@ export default function SettlementRateEntry() {
       {/* Bottom actions */}
       <div className="flex justify-between items-center">
         <span className="text-xs text-muted-foreground">
-          {rates.filter((r) => r.baseBuyRate.trim() && r.baseSellRate.trim()).length} /{' '}
-          {rates.length} {t('ratemanagement.valutaKitoltve')}
+          {rates.filter((r) => r.baseBuyRate.trim() && r.baseSellRate.trim()).length}
+          {i18n.t('literals.lit-40')} {rates.length} {t('ratemanagement.valutaKitoltve')}
         </span>
         <button
           className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"

@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface PoliceRequestItem {
   id: string | number
@@ -167,11 +168,11 @@ export default function PoliceRequestPage() {
 
       {form && (
         <div className="rounded border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-base font-semibold">Új rendőrségi megkeresés</h2>
+          <h2 className="text-base font-semibold">{i18n.t('literals.uj-rendorsegi-megkereses')}</h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div>
               <label htmlFor="police-request-number" className="form-label">
-                Iktatószám
+                {i18n.t('literals.iktatoszam')}
               </label>
               <input
                 id="police-request-number"
@@ -186,7 +187,7 @@ export default function PoliceRequestPage() {
             </div>
             <div>
               <label htmlFor="police-request-date" className="form-label">
-                Dátum
+                {i18n.t('literals.datum-2')}
               </label>
               <input
                 id="police-request-date"
@@ -202,7 +203,7 @@ export default function PoliceRequestPage() {
             </div>
             <div>
               <label htmlFor="police-requested-by" className="form-label">
-                Előadó
+                {i18n.t('literals.eloado')}
               </label>
               <input
                 id="police-requested-by"
@@ -217,7 +218,7 @@ export default function PoliceRequestPage() {
             </div>
             <div>
               <label htmlFor="police-customer-name" className="form-label">
-                Ügyfél neve
+                {i18n.t('literals.ugyfel-neve')}
               </label>
               <input
                 id="police-customer-name"
@@ -232,7 +233,7 @@ export default function PoliceRequestPage() {
             </div>
             <div>
               <label htmlFor="police-document-number" className="form-label">
-                Okmányszám
+                {i18n.t('literals.okmanyszam')}
               </label>
               <input
                 id="police-document-number"
@@ -247,7 +248,7 @@ export default function PoliceRequestPage() {
             </div>
             <div>
               <label htmlFor="police-date-from" className="form-label">
-                Időszak kezdete
+                {i18n.t('literals.idoszak-kezdete')}
               </label>
               <input
                 id="police-date-from"
@@ -263,7 +264,7 @@ export default function PoliceRequestPage() {
             </div>
             <div>
               <label htmlFor="police-date-to" className="form-label">
-                Időszak vége
+                {i18n.t('literals.idoszak-vege')}
               </label>
               <input
                 id="police-date-to"
@@ -293,7 +294,7 @@ export default function PoliceRequestPage() {
               {saving ? 'Mentés...' : 'Mentés'}
             </button>
             <button type="button" onClick={() => setForm(null)} className="form-button">
-              Mégse
+              {i18n.t('literals.megse')}
             </button>
           </div>
         </div>
@@ -329,34 +330,41 @@ export default function PoliceRequestPage() {
         <div className="rounded border border-gray-200 bg-white p-4 text-sm">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-base font-semibold">
-              Megkeresés részletei: {details.requestNumber}
+              {i18n.t('literals.megkereses-reszletei')}
+              {details.requestNumber}
             </h2>
             <button type="button" onClick={() => setDetails(null)} className="form-button">
-              Bezárás
+              {i18n.t('literals.bezaras')}
             </button>
           </div>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <span className="text-gray-500">Előadó:</span> {details.requestedBy ?? '-'}
+              <span className="text-gray-500">{i18n.t('literals.eloado-2')}</span>{' '}
+              {details.requestedBy ?? '-'}
             </div>
             <div>
-              <span className="text-gray-500">Ügyfél:</span> {details.customerName ?? '-'}
+              <span className="text-gray-500">{i18n.t('literals.ugyfel')}</span>{' '}
+              {details.customerName ?? '-'}
             </div>
             <div>
-              <span className="text-gray-500">Okmányszám:</span> {details.documentNumber ?? '-'}
+              <span className="text-gray-500">{i18n.t('literals.okmanyszam-2')}</span>{' '}
+              {details.documentNumber ?? '-'}
             </div>
             <div>
-              <span className="text-gray-500">Státusz:</span> {details.status ?? '-'}
+              <span className="text-gray-500">{i18n.t('literals.statusz-2')}</span>{' '}
+              {details.status ?? '-'}
             </div>
             <div>
-              <span className="text-gray-500">Időszak:</span> {details.dateRangeFrom ?? '-'} -{' '}
-              {details.dateRangeTo ?? '-'}
+              <span className="text-gray-500">{i18n.t('literals.idoszak-3')}</span>{' '}
+              {details.dateRangeFrom ?? '-'}
+              {i18n.t('literals.lit-39')} {details.dateRangeTo ?? '-'}
             </div>
             <div>
-              <span className="text-gray-500">Rögzítette:</span> {details.createdByName ?? '-'}
+              <span className="text-gray-500">{i18n.t('literals.rogzitette')}</span>{' '}
+              {details.createdByName ?? '-'}
             </div>
             <div>
-              <span className="text-gray-500">Lezárva:</span>{' '}
+              <span className="text-gray-500">{i18n.t('literals.lezarva-2')}</span>{' '}
               {details.completedAt ? new Date(details.completedAt).toLocaleString('hu-HU') : '-'}
             </div>
           </div>
@@ -385,10 +393,10 @@ export default function PoliceRequestPage() {
                 {t('police.eloado')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Ügyfél
+                {i18n.t('literals.ugyfel-2')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Okmányszám
+                {i18n.t('literals.okmanyszam')}
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                 {t('common.actions')}
@@ -399,7 +407,7 @@ export default function PoliceRequestPage() {
             {loading ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Betöltés...
+                  {i18n.t('literals.betoltes')}
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
@@ -446,7 +454,9 @@ export default function PoliceRequestPage() {
 
       <div className="text-sm text-gray-500">
         {t('audit.osszesen')}
-        {filtered.length} / {items.length}
+        {filtered.length}
+        {i18n.t('literals.lit-10')}
+        {items.length}
       </div>
     </div>
   )

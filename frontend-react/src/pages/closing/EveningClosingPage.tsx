@@ -21,6 +21,7 @@ import { closingWizardApi, eveningClosingApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
 import VaultClosingChecklistPanel from '../../components/closing/VaultClosingChecklistPanel'
 import type { ClosingWizardStatus } from '../../services/api/transactions'
+import i18n from '../../i18n'
 
 /**
  * FKH-036 FR-1: a backend DailyDataPackage kibővített alakja. A JsonInclude.NON_NULL
@@ -221,7 +222,7 @@ export default function EveningClosingPage() {
           ELŐTT, nem blokkoló. A kezelési díj CTA a checklist UTÁN van (FR-14). */}
       {closingStatus?.vaultContext && (
         <div data-testid="fkh036-denomination-cta" className="form-panel space-y-2">
-          <h2 className="font-semibold">Becímletezés</h2>
+          <h2 className="font-semibold">{i18n.t('literals.becimletezes')}</h2>
           <div className="text-sm">
             {closingStatus.denominationRecorded
               ? closingStatus.exactMatch
@@ -231,7 +232,8 @@ export default function EveningClosingPage() {
           </div>
           {(closingStatus.requiredCurrencies?.length ?? 0) > 0 && (
             <div className="text-sm" data-testid="fkh036-required-currencies">
-              Kötelezően becímletezendő: {closingStatus.requiredCurrencies!.join(', ')}
+              {i18n.t('literals.kotelezoen-becimletezendo')}
+              {closingStatus.requiredCurrencies!.join(', ')}
             </div>
           )}
           <div className="flex gap-2">
@@ -239,7 +241,7 @@ export default function EveningClosingPage() {
               to={`/closing/denomination-entry/EVENING?returnTo=${encodeURIComponent('/evening-closing')}`}
               className="form-button-primary"
             >
-              Esti zárás címletezése
+              {i18n.t('literals.esti-zaras-cimletezese')}
             </Link>
           </div>
         </div>
@@ -251,13 +253,13 @@ export default function EveningClosingPage() {
       {/* FKH-036 kieg. #2 FR-14: kezelesi dij CTA a checklist UTAN, csak aznapi KK mozgas eseten. */}
       {closingStatus?.vaultContext && closingStatus.handlingFeeRequired && (
         <div data-testid="fkh036-handling-fee-cta" className="form-panel space-y-2">
-          <h2 className="font-semibold">Kezelési díj becímletezése</h2>
+          <h2 className="font-semibold">{i18n.t('literals.kezelesi-dij-becimletezese')}</h2>
           <div className="flex gap-2">
             <Link
               to={`/closing/denomination-entry/HANDLING_FEE?returnTo=${encodeURIComponent('/evening-closing')}`}
               className="form-button"
             >
-              Kezelési díj címletezése
+              {i18n.t('literals.kezelesi-dij-cimletezese')}
             </Link>
           </div>
         </div>
@@ -265,13 +267,13 @@ export default function EveningClosingPage() {
 
       {closingStatus?.vaultContext && (
         <div data-testid="fkh040-vat-supply-cta" className="form-panel space-y-2">
-          <h2 className="font-semibold">ÁFA átadás-átvétel becímletezése</h2>
+          <h2 className="font-semibold">{i18n.t('literals.afa-atadas-atvetel-becimletezese')}</h2>
           <div className="flex gap-2">
             <Link
               to={`/closing/denomination-entry/VAT?returnTo=${encodeURIComponent('/evening-closing')}`}
               className="form-button"
             >
-              ÁFA átadás-átvétel becímletezése
+              {i18n.t('literals.afa-atadas-atvetel-becimletezese')}
             </Link>
           </div>
         </div>
@@ -293,30 +295,30 @@ export default function EveningClosingPage() {
         <div className="form-panel" data-testid="evening-closing-report-panel">
           <h2 className="font-semibold mb-3 flex items-center gap-1">
             <BarChart3 size={16} />
-            Napi jelentés
+            {i18n.t('literals.napi-jelentes')}
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div className="text-center rounded bg-gray-50 p-2">
               <div className="text-lg font-bold">{report.totalTransactionCount}</div>
-              <div className="text-xs text-gray-500">Tranzakció</div>
+              <div className="text-xs text-gray-500">{i18n.t('literals.tranzakcio')}</div>
             </div>
             <div className="text-center rounded bg-green-50 p-2">
               <div className="text-lg font-bold text-green-700">{fmtHuf(report.totalBuyHuf)}</div>
-              <div className="text-xs text-gray-500">Vétel</div>
+              <div className="text-xs text-gray-500">{i18n.t('literals.vetel')}</div>
             </div>
             <div className="text-center rounded bg-blue-50 p-2">
               <div className="text-lg font-bold text-blue-700">{fmtHuf(report.totalSellHuf)}</div>
-              <div className="text-xs text-gray-500">Eladás</div>
+              <div className="text-xs text-gray-500">{i18n.t('literals.eladas')}</div>
             </div>
             <div className="text-center rounded bg-orange-50 p-2">
               <div className="text-lg font-bold text-orange-700">
                 {fmtHuf(report.totalHandlingFees)}
               </div>
-              <div className="text-xs text-gray-500">Kezelési díj</div>
+              <div className="text-xs text-gray-500">{i18n.t('literals.kezelesi-dij')}</div>
             </div>
             <div className="text-center rounded bg-purple-50 p-2">
               <div className="text-lg font-bold text-purple-700">{fmtHuf(report.netTurnover)}</div>
-              <div className="text-xs text-gray-500">Nettó</div>
+              <div className="text-xs text-gray-500">{i18n.t('literals.netto')}</div>
             </div>
           </div>
           <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -328,8 +330,13 @@ export default function EveningClosingPage() {
             ))}
           </div>
           <div className="mt-3 text-xs text-gray-500">
-            Vétel: {report.buyCount} | Eladás: {report.sellCount} | Sztornó: {report.reversalCount}{' '}
-            | Konverzió: {report.conversionCount}
+            {i18n.t('literals.vetel-2')}
+            {report.buyCount}
+            {i18n.t('literals.eladas-2')}
+            {report.sellCount}
+            {i18n.t('literals.sztorno')}
+            {report.reversalCount} {i18n.t('literals.konverzio')}
+            {report.conversionCount}
           </div>
         </div>
       )}
@@ -368,7 +375,9 @@ export default function EveningClosingPage() {
               )}
             </span>
             <span className="text-sm text-gray-500">
-              {preview.branchName} — {preview.date}
+              {preview.branchName}
+              {i18n.t('literals.lit-18')}
+              {preview.date}
             </span>
           </div>
 
@@ -381,7 +390,8 @@ export default function EveningClosingPage() {
               </div>
               {(preview.warnings ?? []).map((w) => (
                 <div key={w} className="text-sm text-yellow-600">
-                  • {w}
+                  {i18n.t('literals.lit-25')}
+                  {w}
                 </div>
               ))}
             </div>

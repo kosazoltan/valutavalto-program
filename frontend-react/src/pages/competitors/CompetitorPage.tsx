@@ -16,6 +16,7 @@ import { safeArray } from '../../utils/safeArray'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 import { toast } from '../../components/ui/toaster'
+import i18n from '../../i18n'
 
 interface CompetitorItem {
   id: string | number
@@ -353,7 +354,8 @@ export default function CompetitorPage() {
           onClick={() => setActiveView('competitions')}
           className={activeView === 'competitions' ? 'form-button-primary' : 'form-button'}
         >
-          <Trophy className="h-4 w-4" /> Pénztáros versenyek
+          <Trophy className="h-4 w-4" />
+          {i18n.t('literals.penztaros-versenyek')}
         </button>
       </div>
 
@@ -361,8 +363,12 @@ export default function CompetitorPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Pénztáros versenyek</h2>
-              <p className="text-sm text-gray-500">Versenyidőszakok, pontszámítás és ranglista</p>
+              <h2 className="text-base font-semibold text-gray-900">
+                {i18n.t('literals.penztaros-versenyek-2')}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {i18n.t('literals.versenyidoszakok-pontszamitas-es-ranglis')}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -377,7 +383,7 @@ export default function CompetitorPage() {
                 className="form-button-primary flex items-center gap-1"
               >
                 <Plus className="h-4 w-4" />
-                Új verseny
+                {i18n.t('literals.uj-verseny')}
               </button>
             </div>
           </div>
@@ -385,7 +391,7 @@ export default function CompetitorPage() {
           {competitionFormOpen && (
             <div className="grid gap-3 rounded border border-gray-200 bg-white p-3 md:grid-cols-[1fr_auto_auto_1fr_auto] md:items-end">
               <label className="block">
-                <span className="form-label">Verseny neve</span>
+                <span className="form-label">{i18n.t('literals.verseny-neve')}</span>
                 <input
                   id="competition-name"
                   type="text"
@@ -400,7 +406,7 @@ export default function CompetitorPage() {
                 />
               </label>
               <label className="block">
-                <span className="form-label">Kezdés</span>
+                <span className="form-label">{i18n.t('literals.kezdes')}</span>
                 <input
                   id="competition-start"
                   type="date"
@@ -412,7 +418,7 @@ export default function CompetitorPage() {
                 />
               </label>
               <label className="block">
-                <span className="form-label">Zárás</span>
+                <span className="form-label">{i18n.t('literals.zaras')}</span>
                 <input
                   id="competition-end"
                   type="date"
@@ -424,7 +430,7 @@ export default function CompetitorPage() {
                 />
               </label>
               <label className="block">
-                <span className="form-label">Szabályok</span>
+                <span className="form-label">{i18n.t('literals.szabalyok')}</span>
                 <input
                   id="competition-rules"
                   type="text"
@@ -441,7 +447,7 @@ export default function CompetitorPage() {
                 disabled={competitionSaving}
                 className="form-button-primary"
               >
-                Létrehozás
+                {i18n.t('literals.letrehozas')}
               </button>
             </div>
           )}
@@ -452,16 +458,16 @@ export default function CompetitorPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Név
+                      {i18n.t('literals.nev')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Időszak
+                      {i18n.t('literals.idoszak')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Státusz
+                      {i18n.t('literals.statusz')}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
-                      Művelet
+                      {i18n.t('literals.muvelet')}
                     </th>
                   </tr>
                 </thead>
@@ -469,7 +475,7 @@ export default function CompetitorPage() {
                   {competitionLoading ? (
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
-                        Betöltés...
+                        {i18n.t('literals.betoltes')}
                       </td>
                     </tr>
                   ) : competitions.length === 0 ? (
@@ -497,7 +503,9 @@ export default function CompetitorPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm font-mono text-xs">
-                          {competition.startDate} - {competition.endDate}
+                          {competition.startDate}
+                          {i18n.t('literals.lit-17')}
+                          {competition.endDate}
                         </td>
                         <td className="px-4 py-3 text-sm">{competition.status ?? '-'}</td>
                         <td className="px-4 py-3 text-right">
@@ -506,13 +514,13 @@ export default function CompetitorPage() {
                               onClick={() => void loadLeaderboard(competition.id)}
                               className="form-button text-xs"
                             >
-                              Ranglista
+                              {i18n.t('literals.ranglista')}
                             </button>
                             <button
                               onClick={() => void calculateCompetition(competition.id)}
                               className="form-button-primary text-xs"
                             >
-                              Számítás
+                              {i18n.t('literals.szamitas')}
                             </button>
                           </div>
                         </td>
@@ -525,22 +533,22 @@ export default function CompetitorPage() {
 
             <section className="data-grid overflow-x-auto">
               <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700">
-                Ranglista
+                {i18n.t('literals.ranglista')}
               </div>
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                      #
+                      {i18n.t('literals.lit-12')}
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                      Dolgozó
+                      {i18n.t('literals.dolgozo-2')}
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      Forgalom
+                      {i18n.t('literals.forgalom')}
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      Pont
+                      {i18n.t('literals.pont')}
                     </th>
                   </tr>
                 </thead>
@@ -548,7 +556,7 @@ export default function CompetitorPage() {
                   {leaderboard.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-3 py-8 text-center text-sm text-gray-500">
-                        Nincs ranglista adat
+                        {i18n.t('literals.nincs-ranglista-adat')}
                       </td>
                     </tr>
                   ) : (
@@ -586,7 +594,7 @@ export default function CompetitorPage() {
                 />
               </label>
               <label className="block">
-                <span className="form-label">Weboldal</span>
+                <span className="form-label">{i18n.t('literals.weboldal')}</span>
                 <input
                   type="url"
                   className="form-input"
@@ -595,7 +603,7 @@ export default function CompetitorPage() {
                 />
               </label>
               <label className="block">
-                <span className="form-label">Telephely ID</span>
+                <span className="form-label">{i18n.t('literals.telephely-id')}</span>
                 <input
                   type="text"
                   className="form-input"
@@ -612,7 +620,7 @@ export default function CompetitorPage() {
                       setForm((current) => ({ ...current, isActive: e.target.checked }))
                     }
                   />
-                  Aktív
+                  {i18n.t('literals.aktiv-2')}
                 </label>
                 <button
                   type="button"
@@ -662,10 +670,10 @@ export default function CompetitorPage() {
                     {t('competitors.nev')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                    Weboldal
+                    {i18n.t('literals.weboldal')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                    Telephely ID
+                    {i18n.t('literals.telephely-id')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                     {t('competitors.aktiv')}
@@ -679,7 +687,7 @@ export default function CompetitorPage() {
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
-                      Betöltés...
+                      {i18n.t('literals.betoltes')}
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
@@ -725,7 +733,9 @@ export default function CompetitorPage() {
 
           <div className="text-sm text-gray-500">
             {t('audit.osszesen')}
-            {filtered.length} / {items.length}
+            {filtered.length}
+            {i18n.t('literals.lit-10')}
+            {items.length}
           </div>
         </>
       )}

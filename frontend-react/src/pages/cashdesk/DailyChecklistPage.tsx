@@ -16,6 +16,7 @@ import { excludeBankPartners } from '../../utils/bankPartners'
 import { useAuthStore } from '../../stores/authStore'
 import { api, dailyChecklistApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
+import i18n from '../../i18n'
 
 interface ChecklistItem {
   itemNumber: number
@@ -270,7 +271,7 @@ export default function DailyChecklistPage() {
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
               <MonitorCheck size={16} />
-              Központi státusz
+              {i18n.t('literals.kozponti-statusz')}
             </div>
             <button
               onClick={() => void loadOverview()}
@@ -321,7 +322,7 @@ export default function DailyChecklistPage() {
       {/* Dátum és betöltés */}
       <div className="form-panel flex gap-3 items-end">
         <div>
-          <label className="form-label">Fiók</label>
+          <label className="form-label">{i18n.t('literals.fiok')}</label>
           <select
             className="form-input min-w-[260px]"
             value={branchId}
@@ -374,11 +375,18 @@ export default function DailyChecklistPage() {
               <div className="flex gap-2 items-center">
                 {getStatusBadge(checklist.status)}
                 <span className="text-sm text-gray-500">
-                  {checklist.branchName} — {checklist.date}
+                  {checklist.branchName}
+                  {i18n.t('literals.lit-18')}
+                  {checklist.date}
                 </span>
               </div>
               <span className="font-mono text-sm">
-                {checklist.completedCount}/{checklist.totalCount} ({progressPct}%)
+                {checklist.completedCount}
+                {i18n.t('literals.lit-4')}
+                {checklist.totalCount}
+                {i18n.t('literals.lit')}
+                {progressPct}
+                {i18n.t('literals.lit-24')}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
@@ -458,13 +466,13 @@ export default function DailyChecklistPage() {
                               }}
                               className="form-button text-xs"
                             >
-                              OK
+                              {i18n.t('literals.ok')}
                             </button>
                             <button
                               onClick={() => setEditingNote(null)}
                               className="form-button text-xs"
                             >
-                              X
+                              {i18n.t('literals.x-2')}
                             </button>
                           </div>
                         ) : (
@@ -499,7 +507,8 @@ export default function DailyChecklistPage() {
                   </div>
                   {pending.map((p) => (
                     <div key={p.itemNumber} className="text-sm text-yellow-600 ml-5">
-                      • {p.title}
+                      {i18n.t('literals.lit-25')}
+                      {p.title}
                     </div>
                   ))}
                 </div>

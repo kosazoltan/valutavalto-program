@@ -31,6 +31,7 @@ import {
   getHardLimitMessage,
 } from '../../utils/rateBands'
 import RateAuthDialog from './components/RateAuthDialog'
+import i18n from '../../i18n'
 
 export default function TransactionPage() {
   // FK-071 FR-4: a /transactions/:id route READ-ONLY nézetet ad (a 👁 gomb célja),
@@ -636,7 +637,8 @@ function TransactionEntryPage() {
               {t('transactions.vetel')}
               <div className="text-xs font-normal">
                 {t('transactions.ugyfelElad')}
-                {selectedCurrency?.code || 'devizát'})
+                {selectedCurrency?.code || 'devizát'}
+                {i18n.t('literals.lit-2')}
               </div>
             </button>
             <button
@@ -657,7 +659,8 @@ function TransactionEntryPage() {
               {t('transactions.eladas')}
               <div className="text-xs font-normal">
                 {t('transactions.ugyfelVesz')}
-                {selectedCurrency?.code || 'devizát'})
+                {selectedCurrency?.code || 'devizát'}
+                {i18n.t('literals.lit-2')}
               </div>
             </button>
           </div>
@@ -749,7 +752,7 @@ function TransactionEntryPage() {
 
           {/* Devizastátusz választó */}
           <div className="form-group-box pt-4">
-            <span className="form-group-box-title">Devizastátusz</span>
+            <span className="form-group-box-title">{i18n.t('literals.devizastatusz')}</span>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -760,7 +763,7 @@ function TransactionEntryPage() {
                     : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
                 }`}
               >
-                Külföldi
+                {i18n.t('literals.kulfoldi')}
               </button>
               <button
                 type="button"
@@ -771,7 +774,7 @@ function TransactionEntryPage() {
                     : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
                 }`}
               >
-                Belföldi
+                {i18n.t('literals.belfoldi')}
               </button>
             </div>
           </div>

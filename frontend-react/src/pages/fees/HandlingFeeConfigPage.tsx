@@ -11,6 +11,7 @@ import { logger } from '../../utils/logger'
 import CashierFeeCard from './CashierFeeCard'
 import BranchFeeEditorModal from './BranchFeeEditorModal'
 import CommonBracketEditor from './CommonBracketEditor'
+import i18n from '../../i18n'
 
 const formatHuf = (value: number) => `${value.toLocaleString('hu-HU')} Ft`
 
@@ -100,7 +101,9 @@ function AdminView({ canEdit }: { canEdit: boolean }) {
     <div className="p-6">
       <div className="flex items-center gap-2">
         <Wallet size={20} />
-        <h1 className="text-lg font-semibold text-gray-900">Kezelési költség beállítások</h1>
+        <h1 className="text-lg font-semibold text-gray-900">
+          {i18n.t('literals.kezelesi-koltseg-beallitasok')}
+        </h1>
       </div>
 
       {error && (
@@ -120,7 +123,7 @@ function AdminView({ canEdit }: { canEdit: boolean }) {
 
       <div className="mt-4 flex items-center gap-3">
         <label className="text-sm text-gray-600" htmlFor="region-filter">
-          Terület
+          {i18n.t('literals.terulet')}
         </label>
         <select
           id="region-filter"
@@ -128,7 +131,7 @@ function AdminView({ canEdit }: { canEdit: boolean }) {
           onChange={(event) => setRegionFilter(event.target.value)}
           className="rounded border border-gray-300 px-2 py-1 text-sm"
         >
-          <option value="all">Mind</option>
+          <option value="all">{i18n.t('literals.mind')}</option>
           {regions.map((region) => (
             <option key={region} value={region}>
               {region}
@@ -140,12 +143,12 @@ function AdminView({ canEdit }: { canEdit: boolean }) {
       <table className="mt-4 w-full text-left text-sm">
         <thead>
           <tr className="border-b text-gray-500">
-            <th className="py-2 pr-3 font-medium">Kód</th>
-            <th className="py-2 pr-3 font-medium">Terület</th>
-            <th className="py-2 pr-3 font-medium">KK típus</th>
-            <th className="py-2 pr-3 font-medium">Mérték</th>
-            <th className="py-2 pr-3 font-medium">Maximum</th>
-            <th className="py-2 font-medium">Piszkozat</th>
+            <th className="py-2 pr-3 font-medium">{i18n.t('literals.kod-3')}</th>
+            <th className="py-2 pr-3 font-medium">{i18n.t('literals.terulet')}</th>
+            <th className="py-2 pr-3 font-medium">{i18n.t('literals.kk-tipus')}</th>
+            <th className="py-2 pr-3 font-medium">{i18n.t('literals.mertek-2')}</th>
+            <th className="py-2 pr-3 font-medium">{i18n.t('literals.maximum')}</th>
+            <th className="py-2 font-medium">{i18n.t('literals.piszkozat')}</th>
           </tr>
         </thead>
         <tbody>
