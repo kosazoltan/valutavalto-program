@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-26T20:03:08.511Z",
+  "generated_at": "2026-08-27T02:02:59.760Z",
   "source_count": 1076,
   "sources": [
     {
@@ -8122,7 +8122,7 @@
     },
     {
       "path": "docs/specs/fk096-fk097-branch-handling-fee.md",
-      "sha256": "e364d0cbde837ffae0c0a0a0d3f4434c97143f8513cc18063acbbeb3eb07ccfc",
+      "sha256": "7e44d055a179edf8d380630bfc6ea4f2db9e7bad5e4499033f2a37e343f8c727",
       "type": "semantic-reference",
       "areas": [
         "database",

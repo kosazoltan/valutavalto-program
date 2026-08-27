@@ -17,13 +17,21 @@ A kezelési díj (sávos vagy ezrelékes) eddig kizárólag cégszinten (`system
 | Végpont | Mód | RBAC | Visszaad |
 |---|---|---|---|
 | `GET /api/v1/branch-fee-config` | admin lista | UGYVEZETO / FOERTEKTAR / ADMIN | `BranchFeeConfigListDto` |
-| `POST /api/v1/branch-fee-config/{branchId}/draft` | piszkozat upsert | UGYVEZETO / FOERTEKTAR / ADMIN | `BranchFeeConfigDto` |
-| `POST /api/v1/branch-fee-config/{branchId}/publish` | DRAFT→LIVE | UGYVEZETO / FOERTEKTAR / ADMIN | `BranchFeeConfigDto` |
+| `POST /api/v1/branch-fee-config/{branchId}/draft` | piszkozat upsert | UGYVEZETO / FOERTEKTAR / ADMIN | `BranchFeeConfigRowDto` (sor-alakú) |
+| `POST /api/v1/branch-fee-config/{branchId}/publish` | DRAFT→LIVE | UGYVEZETO / FOERTEKTAR / ADMIN | `BranchFeeConfigRowDto` (sor-alakú) |
 | `GET /api/v1/branch-fee-config/own` | saját iroda LIVE | isAuthenticated | `BranchFeeConfigLiveDto` |
 | `GET /api/v1/branch-fee-config/{branchId}/live` | LIVE olvasás | isAuthenticated, csak saját iroda, különben 404 | `BranchFeeConfigLiveDto` |
 | `GET /api/v1/handling-fee-bracket` | közös sávtábla | UGYVEZETO / FOERTEKTAR / ADMIN | `BracketSetDto {live[],draft[]}` |
 | `POST /api/v1/handling-fee-bracket/draft` | sáv-piszkozat | UGYVEZETO / FOERTEKTAR / ADMIN | `BracketSetDto` |
 | `POST /api/v1/handling-fee-bracket/publish` | sávok LIVE-cseréje | UGYVEZETO / FOERTEKTAR / ADMIN | `BracketSetDto` |
+
+Round 2 (ITEM 5): a `draft` és `publish` végpontok **sor-alakú**
+`BranchFeeConfigRowDto`-val térnek vissza (`branchId, branchCode, branchName,
+region, liveFeeMode, livePerMilleRate, livePerMilleCap, hasDraft, draftFeeMode,
+draftPerMilleRate, draftPerMilleCap, version`) — pontosan azzal az alakkal, amit
+az admin tábla renderel. Így publikálás után a LIVE oszlopok az új értéket
+mutatják teljes újratöltés/refetch nélkül; a korábbi `BranchFeeConfigDto`
+(élő oszlopok nélkül) hazug kontraktus volt, ezért törölve.
 
 A publish body-ja **kötelezően** tartalmazza az optimistic-lock verziót:
 
@@ -75,7 +83,12 @@ egy új `FEE` kategória láthatatlan lenne. A specificitást az action-nevek ho
 
 - `BRANCH_FEE_CONFIG_PUBLISHED` — iroda-szintű publikálás (ki, mikor, előtte/utána értékek)
 - `HANDLING_FEE_BRACKET_PUBLISHED` — közös sávtábla publikálása
-- `BRANCH_FEE_CONFIG_ACCESS_DENIED` — RBAC/cross-tenant megtagadás (FR-12/FR-13)
+- `BRANCH_FEE_CONFIG_ACCESS_DENIED` — RBAC/cross-tenant megtagadás (FR-12/FR-13);
+  round 2 (ITEM 2) óta **mindkét 404-helyen** ténylegesen íródik: a
+  `findBranchInCompany` tenant-guard miss-nél (`reason: CROSS_TENANT_BRANCH`)
+  és a `/live` saját-iroda guardnál (`reason: FOREIGN_BRANCH_LIVE_READ`),
+  `REQUIRES_NEW` tranzakcióban a hívó tenantjába — túléli a rollbacket.
+  Payload: `KAT:AUTH`, `error_code: VV-AUTH-001`, `reason`, `branch_id`, `company_id`.
 
 Minden publikálás auditálva, előtte/utána értékkel (NFR-4, NFR-5: egyetlen DB-tranzakció).
 
@@ -96,7 +109,16 @@ Megjegyzések:
 - Az Ügyvezető write-joga **szándékos kivétel** a modul alap-RBAC overlaye fölött
   (TBD-2): itt az Ügyvezető a tényleges jóváhagyó fél.
 - Az új végpontok szűkítik a jogosultsági kört a korábbi `HandlingFeeConfigController`
-  class-level `@PreAuthorize`-ához képest; a legacy végpont kompatibilitásból érintetlen (TBD-4).
+  class-level `@PreAuthorize`-ához képest. Round 2 (ITEM 1): a legacy végpont
+  **ratchet** alatt áll — a TBD-4 kompatibilitásért az URL megmarad, de az
+  ÉLŐ sáv-írás és a bővített szerepkör-kör írási joga **nem**: a `PUT` és a
+  `POST /brackets` method-szintű `@PreAuthorize`-a pontosan
+  `UGYVEZETO`/`FOERTEKTAR`/`ADMIN` (`IRODAVEZETO`, `BELSO_ELLENOR` **és**
+  `MANAGER` írásból kizárva — a MANAGER-vesztés szándékos: az FR-12 csak a három
+  szerepet sorolja, és a legacy alias nem lehet hátsó kapu az élő díjváltáshoz).
+  A sáv-fej DRAFT-ként mentődik (`saveBracketDraft` delegáció), élesítés csak
+  `POST /api/v1/handling-fee-bracket/publish`-csal. A GET pénztáros read-only
+  elérhetősége (FK-KEZDIJ B.1) változatlan. Ez a ratchet csak szigorodhat.
 - Cross-tenant: más cég `branch_id`-jével írási kísérlet → **404** (nem 403, ne árulja el a
   létezést) + audit-bejegyzés (FR-13).
 
@@ -151,7 +173,7 @@ mint a V383 (D6): aktív cég-sor → aktív globális sor → kód-default.
 5. **Küldés** → megerősítő dialógus → a sor LIVE-vá válik, audit-bejegyzés készül.
 6. Ellenőrzés: a lista „Mérték/Maximum" oszlopai az új értéket mutatják.
 
-### 9.2 Legacy végpontok (D16)
+### 9.2 Legacy végpontok (D16 + round 2 ITEM 1)
 
 - `GET /api/v1/handling-fee-config` mostantól **csak LIVE sávokat** ad vissza (a bracket-keresés
   status-szűrőt kapott) — az első DRAFT sáv mentése után sem szivárog ki publikálatlan érték.
@@ -159,8 +181,22 @@ mint a V383 (D6): aktív cég-sor → aktív globális sor → kód-default.
 - `PUT /api/v1/handling-fee-config` **deprecált**: továbbra is írja a `HANDLING_FEE_*`
   `system_parameter` kulcsokat és 200-zal tér vissza, de **ezek a kulcsok többé nem
   befolyásolják a díjszámítást**. A díj beállításához a `/branch-fee-config` végpontokat
-  (illetve az admin felületet) kell használni. A végpont `@Deprecated` jelölést és
-  `log.warn` sort kapott, hogy a csapda megfigyelhető legyen a logokban.
+  (illetve az admin felületet) kell használni. Round 2 (ITEM 1) óta a törzsben
+  küldött sávok **NEM kerülnek LIVE-ba**: a sáv-fej `saveBracketDraft`-ba delegál,
+  vagyis **DRAFT-ként** mentődik, és csak `POST /api/v1/handling-fee-bracket/publish`-csal
+  élesíthető. Érvénytelen sáv-lista (null/zero/negatív felső határ vagy díj) az egész
+  PUT-ot 400-zal elutasítja — a `system_parameter` upsertök atomikusan visszagörgetnek.
+  Az írási RBAC method-szinten pontosan `UGYVEZETO`/`FOERTEKTAR`/`ADMIN`
+  (`IRODAVEZETO`, `BELSO_ELLENOR`, `MANAGER` írásból kizárva). A controller két
+  feltételes `log.warn` sort ír: a system_parameter-félre mindig, a sáv-félre csak
+  akkor, ha a törzs tényleg hozott sávokat (az üzenet így tényeket mond az adott
+  requestről).
+- `POST /api/v1/handling-fee-config/brackets` **deprecált**: round 2 (ITEM 1) óta
+  ez is `saveBracketDraft`-ba delegál — a válasz alakja (`List<HandlingFeeBracketDto>`)
+  byte-kompatibilis marad a TBD-4 külső fogyasztónak, de a sorok **DRAFT**-ként
+  mentődnek; élesítés kizárólag `POST /api/v1/handling-fee-bracket/publish`.
+  Ugyanaz a három szerepkör írhatja; érvénytelen sáv-lista → 400, kötegelt
+  hibalistával (minden hibás sor indexszel, egy válaszban).
 
 ### 9.3 Ismert eltérés: kliens ezrelékes tükör (W7)
 

@@ -1,4 +1,4 @@
-generated_at: 2026-08-26T20:03:08.511Z
+generated_at: 2026-08-27T02:02:59.760Z
 schema_version: 1
 source_count: 1076
 short_term:
@@ -7417,7 +7417,7 @@ long_term:
     title: "FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv)"
     type: semantic-reference
     path: docs/specs/fk096-fk097-branch-handling-fee.md
-    sha256: e364d0cbde837ffae0c0a0a0d3f4434c97143f8513cc18063acbbeb3eb07ccfc
+    sha256: 7e44d055a179edf8d380630bfc6ea4f2db9e7bad5e4499033f2a37e343f8c727
     summary: "# FK-096 + FK-097 — Iroda-szintű kezelési díj (döntésnapló + üzemeltetői kézikönyv) > Pipeline job: `20260826-fk096-fk097-branch-fee`, base `76bb1188`, branch `pipeline/20260826-fk096-fk097-branch-fee`. > Spec-ek: FK-096 (14 FR), FK-097 (8 FR). Terv: `.hermes/pipeline/20260826-fk096-fk097-branch-fee/round-1/10-plan.md`. > Ebben a batchben a frontend-változás a közös `frontend-react` bundle-t érinti, ezért **MINDKÉT t"
     areas: [database, ertektar, frontend, installer, legacy, penztar, security, specifikacio, sync, tenant]
     keywords: [096, 097, iroda, szintu, kezelesi, dij, dontesnaplo, uzemeltetoi, kezikonyv, pipeline, job, 20260826]
