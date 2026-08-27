@@ -2,6 +2,7 @@ package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDraftRequest;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDto;
+import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeBracketDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.BranchHandlingFeeConfig;
 import hu.puzzleir.valuta.entity.FeeConfigStatus;
@@ -12,6 +13,7 @@ import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchHandlingFeeConfigRepository;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -65,6 +67,7 @@ class BranchHandlingFeeConfigServiceTest {
     @Mock private BranchRepository branchRepository;
     @Mock private HandlingFeeBracketRepository bracketRepository;
     @Mock private SystemParameterRepository systemParameterRepository;
+    @Mock private CompanyRepository companyRepository;
     @Mock private AuditLogService auditLogService;
 
     @InjectMocks
@@ -393,6 +396,164 @@ class BranchHandlingFeeConfigServiceTest {
         assertThat(seeded.getStatus()).isEqualTo(FeeConfigStatus.LIVE);
         assertThat(seeded.getActive()).isTrue();
         assertThat(seeded.getCreatedBy()).isEqualTo("SYSTEM");
+    }
+
+    // =====================================================================
+    // ITEM 2 (round 2) — ACCESS_DENIED audit mindkét 404-helyen
+    // =====================================================================
+    @Test
+    @DisplayName("ITEM 2: cross-tenant publish → 404 + BRANCH_FEE_CONFIG_ACCESS_DENIED audit (REQUIRES_NEW, túléli a rollbacket)")
+    void publishCrossTenant_ACCESS_DENIED_auditotIr() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.publish(BRANCH_ID, 0L))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            ArgumentCaptor<String> changesCaptor = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService).logInNewTransaction(
+                    eq("BRANCH_FEE_CONFIG_ACCESS_DENIED"), eq("BranchHandlingFeeConfig"),
+                    eq(BRANCH_ID.toString()), any(), any(), eq(BRANCH_ID.toString()), any(),
+                    changesCaptor.capture(), eq(COMPANY_ID));
+            String changes = changesCaptor.getValue();
+            assertThat(changes).contains("\"KAT\":\"AUTH\"");
+            assertThat(changes).contains("\"error_code\":\"VV-AUTH-001\"");
+            assertThat(changes).contains("\"reason\":\"CROSS_TENANT_BRANCH\"");
+            verify(configRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("ITEM 2: idegen iroda /live olvasása → 404 + FOREIGN_BRANCH_LIVE_READ audit, tenant-guard nélkül")
+    void getLiveForBranch_IdegenIroda_ACCESS_DENIED_auditotIr() {
+        UUID otherBranchId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentBranchId).thenReturn(otherBranchId);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.getLiveForBranch(BRANCH_ID))
+                    .isInstanceOf(ResourceNotFoundException.class);
+
+            ArgumentCaptor<String> changesCaptor = ArgumentCaptor.forClass(String.class);
+            verify(auditLogService).logInNewTransaction(
+                    eq("BRANCH_FEE_CONFIG_ACCESS_DENIED"), eq("BranchHandlingFeeConfig"),
+                    eq(BRANCH_ID.toString()), any(), any(), eq(BRANCH_ID.toString()), any(),
+                    changesCaptor.capture(), eq(COMPANY_ID));
+            assertThat(changesCaptor.getValue()).contains("\"reason\":\"FOREIGN_BRANCH_LIVE_READ\"");
+            // A saját-iroda guard a tenant-guard ELŐTT dob — cég-lookup soha nem történik.
+            verify(branchRepository, never()).findByIdAndCompanyId(any(), any());
+        }
+    }
+
+    // =====================================================================
+    // ITEM 4 (round 2) — PER_MILLE draft null/negatív mértékkel → 400
+    // =====================================================================
+    @Test
+    @DisplayName("ITEM 4: saveDraft PER_MILLE módban üres (null) mértékkel → ValidationException, írás nélkül")
+    void saveDraft_PerMilleUresMertekkel_400() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(branch()));
+            when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
+                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.DRAFT))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.saveDraft(BRANCH_ID,
+                    draftRequest("PER_MILLE", null, null)))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("mérték");
+
+            verify(configRepository, never()).save(any());
+            verify(configRepository, never()).saveAndFlush(any());
+        }
+    }
+
+    @Test
+    @DisplayName("ITEM 4: saveDraft PER_MILLE módban negatív mértékkel → ValidationException, írás nélkül")
+    void saveDraft_PerMilleNegativMertekkel_400() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(branch()));
+            when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
+                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.DRAFT))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.saveDraft(BRANCH_ID,
+                    draftRequest("PER_MILLE", new BigDecimal("-1"), null)))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("mérték");
+
+            verify(configRepository, never()).save(any());
+            verify(configRepository, never()).saveAndFlush(any());
+        }
+    }
+
+    // =====================================================================
+    // ITEM 3 (round 2) — sáv-piszkozat validáció (null/negatív/zero → 400)
+    // =====================================================================
+    @Test
+    @DisplayName("ITEM 3: saveBracketDraft negatív díjjal → ValidationException, save soha nem hívódik")
+    void saveBracketDraft_NegativDijat_Elutasit() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    HandlingFeeBracketDto.builder()
+                            .upperLimit(new BigDecimal("100000"))
+                            .feeAmount(new BigDecimal("-500"))
+                            .build())))
+                    .isInstanceOf(ValidationException.class);
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("ITEM 3: saveBracketDraft üres sorral ([{}]) → ValidationException, nem DataIntegrityViolationException")
+    void saveBracketDraft_UresSort_Elutasit() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(new HandlingFeeBracketDto())))
+                    .isInstanceOf(ValidationException.class)
+                    .isNotInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("ITEM 3: saveBracketDraft MINDEN hibás sort EGY hibaüzenetben jelent (batch)")
+    void saveBracketDraft_MindenHibasSortEgyszerreJelent() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    HandlingFeeBracketDto.builder()
+                            .upperLimit(BigDecimal.ZERO)
+                            .feeAmount(new BigDecimal("100"))
+                            .build(),
+                    HandlingFeeBracketDto.builder()
+                            .upperLimit(new BigDecimal("100000"))
+                            .feeAmount(null)
+                            .build())))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("1.")
+                    .hasMessageContaining("2.");
+
+            verify(bracketRepository, never()).save(any());
+        }
     }
 
     // ============================ HELPEREK ============================
