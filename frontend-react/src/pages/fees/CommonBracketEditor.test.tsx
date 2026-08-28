@@ -82,7 +82,7 @@ describe('CommonBracketEditor', () => {
     // A hu-HU ezres-elválasztója NBSP (U+00A0), a testing-library alap normalizere
     // viszont az NBSP-t sima szóközzé összevonja — ezért saját normalizerrel
     // bájt-pontos összehasonlítást végzünk (locale-elválasztó-független).
-    const exact = (text: string) => ({ normalizer: (t: string) => t })
+    const exact = (_text: string) => ({ normalizer: (t: string) => t })
     expect(screen.getAllByText(`${(0).toLocaleString('hu-HU')} Ft`, exact('0'))).toHaveLength(2)
     expect(
       screen.getAllByText(`${(100001).toLocaleString('hu-HU')} Ft`, exact('100001')),
