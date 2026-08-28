@@ -29,4 +29,9 @@ public class BranchFeeConfigRowDto {
      * DRAFT hiányában a LIVE sor verziója.
      */
     private Long version;
+    /** FK-098 FR-5: audit origin of the CURRENTLY LIVE configuration (null when no LIVE row). */
+    private String createdBy;
+    private String publishedBy;
+    private java.time.LocalDateTime publishedAt;
+    private java.time.LocalDate validFrom;
 }

@@ -245,6 +245,19 @@ function hasSecretLikeEnvAssignment(text) {
       /^([A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)\s*=\s*(.+)$/,
     )
     if (!match) continue
+    // FP-class exclusion (2026-08-28): a QUOTED enumeration of secret VARIABLE
+    // NAMES (e.g. deploy-hetzner.yml `SHARED_SECRETS="JWT_SECRET ENCRYPTION_KEY ..."`,
+    // PR #1654) is a name list, not a value. The RHS is a value only when it is
+    // something other than bare uppercase identifiers. Unquoted name lists and
+    // any lowercase content are still treated as literal values.
+    // FK-098 review tightening (sourcery+copilot+codex): the exemption applies ONLY to
+    // the known enumeration variable name SHARED_SECRETS (deploy-hetzner.yml, PR #1654).
+    // Any OTHER quoted uppercase multi-token value is treated as a literal secret value
+    // and goes through the normal length/placeholder checks (fail-closed default).
+    if (
+      match[1] === 'SHARED_SECRETS' &&
+      /^(['"])[A-Z0-9_]+(?:\s+[A-Z0-9_]+)+\1$/.test(match[2].trim())
+    ) continue
     const value = match[1] && match[2] ? match[2].trim().replace(/^['"]|['"]$/g, '') : ''
     if (!value) continue
     const normalized = value.toLowerCase()

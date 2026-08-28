@@ -1,10 +1,13 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigDraftRequest;
+import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigListDto;
 import hu.puzzleir.valuta.dto.handlingfee.BranchFeeConfigRowDto;
 import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeBracketDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.BranchHandlingFeeConfig;
+import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.FeeConfigStatus;
 import hu.puzzleir.valuta.entity.HandlingFeeBracket;
 import hu.puzzleir.valuta.entity.HandlingFeeType;
@@ -14,6 +17,7 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchHandlingFeeConfigRepository;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
+import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -29,6 +33,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,6 +75,7 @@ class BranchHandlingFeeConfigServiceTest {
     @Mock private SystemParameterRepository systemParameterRepository;
     @Mock private CompanyRepository companyRepository;
     @Mock private AuditLogService auditLogService;
+    @Mock private DictionaryRepository dictionaryRepository;
 
     @InjectMocks
     private BranchHandlingFeeConfigService service;
@@ -658,6 +665,368 @@ class BranchHandlingFeeConfigServiceTest {
         }
     }
 
+    // =====================================================================
+    // FK-098 — region-feloldas (FR-1), audit mezok (FR-5), vault-kizaras (FR-8),
+    // sav-monotonitas (FR-6), reszlegesen kitoltott sav (FR-7 backend regresszio)
+    // =====================================================================
+
+    @Test
+    @DisplayName("FK-098 T-B1: FR-1 — a region a REGION dictionary name_hu-ja (SZEGED -> Szeged)")
+    void listForCompany_RegionASzotarSzerintOldodikFel() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(COMPANY_ID))
+                    .thenReturn(List.of(branch("B01", "Szeged fo ter", "SZEGED")));
+            when(configRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of());
+            stubRegionDictionary();
+
+            BranchFeeConfigListDto result = service.listForCompany();
+
+            assertThat(result.getRows()).hasSize(1);
+            assertThat(result.getRows().get(0).getRegion()).isEqualTo("Szeged");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B2: FR-1 — dictionary-talalat nelkul a nyers kod jelenik meg (nem kivetel)")
+    void listForCompany_RegionDictionaryMiss_NyersKod() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(COMPANY_ID))
+                    .thenReturn(List.of(branch("B01", "Ismeretlen iroda", "MARS")));
+            when(configRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of());
+            stubRegionDictionary();
+
+            BranchFeeConfigListDto result = service.listForCompany();
+
+            assertThat(result.getRows()).hasSize(1);
+            assertThat(result.getRows().get(0).getRegion()).isEqualTo("MARS");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B3: FR-1 — null es ures (whitespace) region -> null (soha nem ures string)")
+    void listForCompany_RegionNullEsUres_NullMarad() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(COMPANY_ID))
+                    .thenReturn(List.of(
+                            branch("B01", "Nincs region", null),
+                            branch("B02", "Ures region", "   ")));
+            when(configRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of());
+            stubRegionDictionary();
+
+            BranchFeeConfigListDto result = service.listForCompany();
+
+            assertThat(result.getRows()).hasSize(2);
+            assertThat(result.getRows().get(0).getRegion()).isNull();
+            assertThat(result.getRows().get(1).getRegion()).isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B4: FR-1 — az irasi valasz utjan is (currentRow): saveDraft valasz region = Szeged")
+    void saveDraft_ValaszRegionIsFeloldott() {
+        BranchHandlingFeeConfig live = liveConfig(HandlingFeeType.PER_MILLE,
+                new BigDecimal("3"), null, 0L);
+        AtomicReference<BranchHandlingFeeConfig> savedDraft = new AtomicReference<>();
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            Branch branch = branch("B01", "Test branch", "SZEGED");
+            branch.setId(BRANCH_ID);
+            when(branchRepository.findByIdAndCompanyId(BRANCH_ID, COMPANY_ID))
+                    .thenReturn(Optional.of(branch));
+            when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
+                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.LIVE))
+                    .thenReturn(Optional.of(live));
+            when(configRepository.findByCompanyIdAndBranchIdAndStatusAndActiveTrue(
+                    COMPANY_ID, BRANCH_ID, FeeConfigStatus.DRAFT))
+                    .thenReturn(Optional.empty())
+                    .thenAnswer(inv -> Optional.ofNullable(savedDraft.get()));
+            when(configRepository.saveAndFlush(any(BranchHandlingFeeConfig.class)))
+                    .thenAnswer(inv -> {
+                        savedDraft.set(inv.getArgument(0));
+                        return inv.getArgument(0);
+                    });
+            stubRegionDictionary();
+
+            BranchFeeConfigRowDto result = service.saveDraft(BRANCH_ID,
+                    draftRequest("PER_MILLE", new BigDecimal("5"), new BigDecimal("1000")));
+
+            assertThat(result.getRegion()).isEqualTo("Szeged");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B5: NFR-1 — a REGION dictionary egyetlen lekerdezessel olvasodik (nincs N+1)")
+    void listForCompany_RegionDictionaryEgyszerOlvasodik() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(COMPANY_ID))
+                    .thenReturn(List.of(
+                            branch("B01", "Elso iroda", "SZEGED"),
+                            branch("B02", "Masodik iroda", "IRODA"),
+                            branch("B03", "Harmadik iroda", "SZEGED")));
+            when(configRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of());
+            stubRegionDictionary();
+
+            service.listForCompany();
+
+            verify(dictionaryRepository, times(1)).findByCategoryAndIsActiveTrue("REGION");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 review: tort felso hatar (100.1/100.2) — elutasitva (NUMERIC(15,0) skala)")
+    void saveBracketDraft_TortHatar_Elutasit() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    bracketDto(new BigDecimal("100000"), new BigDecimal("200")),
+                    bracketDto(new BigDecimal("100.50"), new BigDecimal("300")))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("egész forint");
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 review: reszleges sor (felso hatar van, dij null) — csak egy hibauzenet, nem ketto")
+    void saveBracketDraft_ReszlegesSor_EgyHiba() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    bracketDto(new BigDecimal("100000"), null),
+                    bracketDto(new BigDecimal("200000"), new BigDecimal("300")))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("1. sáv");
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B6a: FR-6 — csokkeno felso hatarok -> ValidationException, nincs mentes")
+    void saveBracketDraft_CsokkenoHatarok_Elutasit() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    bracketDto(new BigDecimal("100000"), new BigDecimal("200")),
+                    bracketDto(new BigDecimal("50000"), new BigDecimal("300")))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("2.")
+                    .hasMessageContaining("nagyobbnak");
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B6b: FR-6 — egyenlo felso hatarok (hatareset) -> ValidationException, nincs mentes")
+    void saveBracketDraft_EgyenloHatarok_Elutasit() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    bracketDto(new BigDecimal("100000"), new BigDecimal("200")),
+                    bracketDto(new BigDecimal("100000"), new BigDecimal("300")))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("2.");
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B6c: FR-6 — szigorian novekvo felso hatarok elfogadva (3 sav mentve)")
+    void saveBracketDraft_NovekvoHatarok_Elfogad() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+
+            service.saveBracketDraft(List.of(
+                    bracketDto(new BigDecimal("100000"), new BigDecimal("200")),
+                    bracketDto(new BigDecimal("500000"), new BigDecimal("400")),
+                    bracketDto(new BigDecimal("1000000"), new BigDecimal("900"))));
+
+            verify(bracketRepository, times(3)).save(any(HandlingFeeBracket.class));
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B7: FR-6 + D8 — ures sor csak EGY uzenetet ad (nincs duplikalt 'nagyobbnak' hiba)")
+    void saveBracketDraft_UresSorEgyetlenUzenet() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    new HandlingFeeBracketDto(),
+                    bracketDto(new BigDecimal("100000"), new BigDecimal("200")))))
+                    .isInstanceOf(ValidationException.class)
+                    .satisfies(e -> {
+                        String message = e.getMessage();
+                        assertThat(message).contains("1.");
+                        assertThat(message).doesNotContain("nagyobbnak");
+                        // Pontosan egy "1." emlitest varunk (az elso sor assertValid-hibaja).
+                        assertThat(message.indexOf("1.")).isEqualTo(message.lastIndexOf("1."));
+                    });
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B8: FR-7 backend regresszio — reszlegesen kitoltott sav -> 400, egyertelmu uzenet, nincs mentes")
+    void saveBracketDraft_ReszlegesenKitoltottSor_400() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    HandlingFeeBracketDto.builder()
+                            .upperLimit(new BigDecimal("100000"))
+                            .build())))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("díja");
+            verify(bracketRepository, never()).save(any());
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    HandlingFeeBracketDto.builder()
+                            .feeAmount(new BigDecimal("500"))
+                            .build())))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("felső határa");
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B9 + D16: FR-6 — a publish is fail-closed (egyenlo hatarok -> 400), a zar elotte megy. "
+            + "D16 ismert korlatozas: vault branchId API-szinten elerheto marad — nem defekt.")
+    void publishBrackets_MonotonitasFailClosed_ZarElotte() {
+        HandlingFeeBracket draft1 = HandlingFeeBracket.builder()
+                .id(1L)
+                .bracketOrder(1)
+                .upperLimit(new BigDecimal("100000"))
+                .feeAmount(new BigDecimal("200"))
+                .active(true)
+                .status(FeeConfigStatus.DRAFT)
+                .build();
+        HandlingFeeBracket draft2 = HandlingFeeBracket.builder()
+                .id(2L)
+                .bracketOrder(2)
+                .upperLimit(new BigDecimal("100000"))
+                .feeAmount(new BigDecimal("300"))
+                .active(true)
+                .status(FeeConfigStatus.DRAFT)
+                .build();
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            when(bracketRepository.lockAllForCompany(COMPANY_ID)).thenReturn(List.of());
+            when(bracketRepository.findByCompanyIdAndStatusAndActiveOrderByBracketOrder(
+                    COMPANY_ID, FeeConfigStatus.DRAFT, true))
+                    .thenReturn(List.of(draft1, draft2));
+
+            assertThatThrownBy(() -> service.publishBrackets())
+                    .isInstanceOf(ValidationException.class);
+
+            verify(bracketRepository).lockAllForCompany(COMPANY_ID);
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B10: FR-5 — a LIVE konfiguracio audit-eredete (createdBy/publishedBy/publishedAt/validFrom) a soron van; LIVE nelkul mind null")
+    void listForCompany_AuditMezokALiveSorbol() {
+        BranchHandlingFeeConfig live = BranchHandlingFeeConfig.builder()
+                .id(UUID.randomUUID())
+                .companyId(COMPANY_ID)
+                .branchId(BRANCH_ID)
+                .feeMode(HandlingFeeType.PER_MILLE)
+                .perMilleRate(new BigDecimal("3"))
+                .status(FeeConfigStatus.LIVE)
+                .active(true)
+                .createdBy("KOSA")
+                .publishedBy("EDIT")
+                .publishedAt(LocalDateTime.of(2026, 8, 26, 19, 4, 11))
+                .validFrom(LocalDate.of(2026, 8, 26))
+                .build();
+        Branch withLive = branch("B01", "Iroda live konfiggal", "SZEGED");
+        withLive.setId(BRANCH_ID);
+        Branch withoutLive = branch("B02", "Iroda live konfiguracio nelkul", "IRODA");
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(COMPANY_ID))
+                    .thenReturn(List.of(withLive, withoutLive));
+            when(configRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of(live));
+            stubRegionDictionary();
+
+            BranchFeeConfigListDto result = service.listForCompany();
+
+            assertThat(result.getRows()).hasSize(2);
+            BranchFeeConfigRowDto rowWithLive = result.getRows().get(0);
+            assertThat(rowWithLive.getCreatedBy()).isEqualTo("KOSA");
+            assertThat(rowWithLive.getPublishedBy()).isEqualTo("EDIT");
+            assertThat(rowWithLive.getPublishedAt()).isEqualTo(LocalDateTime.of(2026, 8, 26, 19, 4, 11));
+            assertThat(rowWithLive.getValidFrom()).isEqualTo(LocalDate.of(2026, 8, 26));
+            BranchFeeConfigRowDto rowWithoutLive = result.getRows().get(1);
+            assertThat(rowWithoutLive.getCreatedBy()).isNull();
+            assertThat(rowWithoutLive.getPublishedBy()).isNull();
+            assertThat(rowWithoutLive.getPublishedAt()).isNull();
+            assertThat(rowWithoutLive.getValidFrom()).isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B11: FR-8 — a lista az uj vault-kizaro metódust hívja, a 8 fogyasztos régit soha")
+    void listForCompany_UjVaultKizaroMetodustHasznalja() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(COMPANY_ID))
+                    .thenReturn(List.of(branch("B01", "Test branch", "SZEGED")));
+            when(configRepository.findByCompanyIdAndActiveTrue(COMPANY_ID)).thenReturn(List.of());
+            stubRegionDictionary();
+
+            service.listForCompany();
+
+            verify(branchRepository).findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(COMPANY_ID);
+            verify(branchRepository, never()).findByCompanyIdAndIsActiveTrueExcludingCounterparties(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-B12: cross-tenant — az iroda-lekerdezes a SAJAT companyId-vel megy; a REGION dictionary globalis (a szignatura nem fogad companyId-t)")
+    void listForCompany_IrodaLekerdezesTenantSzuru_DictionaryGlobalis() {
+        UUID companyB = UUID.fromString("99999999-9999-9999-9999-999999999999");
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyB);
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(companyB))
+                    .thenReturn(List.of());
+            when(configRepository.findByCompanyIdAndActiveTrue(companyB)).thenReturn(List.of());
+            stubRegionDictionary();
+
+            service.listForCompany();
+
+            verify(branchRepository).findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(companyB);
+            verify(dictionaryRepository).findByCategoryAndIsActiveTrue("REGION");
+        }
+    }
     // ============================ HELPEREK ============================
 
     private static BranchFeeConfigDraftRequest draftRequest(String feeMode,
@@ -715,5 +1084,30 @@ class BranchHandlingFeeConfigServiceTest {
         parameter.setParameterValue(value);
         parameter.setIsActive(true);
         return parameter;
+    }
+
+    // ============================ FK-098 HELPEREK ============================
+
+    private static Branch branch(String code, String name, String region) {
+        return Branch.builder()
+                .id(UUID.randomUUID())
+                .code(code)
+                .name(name)
+                .region(region)
+                .build();
+    }
+
+    private static HandlingFeeBracketDto bracketDto(BigDecimal upperLimit, BigDecimal feeAmount) {
+        return HandlingFeeBracketDto.builder()
+                .upperLimit(upperLimit)
+                .feeAmount(feeAmount)
+                .build();
+    }
+
+    /** FK-098: a globalis REGION dictionary stub (SZEGED + IRODA, mind active). */
+    private void stubRegionDictionary() {
+        when(dictionaryRepository.findByCategoryAndIsActiveTrue("REGION")).thenReturn(List.of(
+                Dictionary.builder().category("REGION").code("SZEGED").nameHu("Szeged").isActive(true).build(),
+                Dictionary.builder().category("REGION").code("IRODA").nameHu("Iroda").isActive(true).build()));
     }
 }

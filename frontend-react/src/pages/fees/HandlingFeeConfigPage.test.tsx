@@ -247,6 +247,61 @@ describe('HandlingFeeConfigPage — admin nézet', () => {
     expect(within(tableRow).getByText('✎ van')).toBeInTheDocument()
     expect(mocks.list).toHaveBeenCalledTimes(1)
   })
+
+  it('FR-3: megjelenik a Pénztár neve oszlop, és a sor tartalmazza az iroda nevét', async () => {
+    renderPage()
+    await screen.findByText('B01')
+
+    expect(screen.getByRole('columnheader', { name: 'Pénztár neve' })).toBeInTheDocument()
+    const tableRow = screen.getByRole('row', { name: /B01/ })
+    expect(within(tableRow).getByText('Budapest 1')).toBeInTheDocument()
+  })
+
+  it('FR-1/FR-2: ember által olvasható terület-nevek a szűrőben (Szeged/Debrecen)', async () => {
+    const user = userEvent.setup()
+    mocks.list.mockResolvedValue({
+      summary: SUMMARY,
+      rows: [
+        {
+          ...ROWS[0],
+          branchId: 'sz1',
+          branchCode: 'S01',
+          branchName: 'Szeged 1',
+          region: 'Szeged',
+        },
+        {
+          ...ROWS[1],
+          branchId: 'db1',
+          branchCode: 'D02',
+          branchName: 'Debrecen 2',
+          region: 'Debrecen',
+        },
+      ],
+    })
+    renderPage()
+    await screen.findByText('S01')
+
+    const select = screen.getByLabelText('Terület')
+    expect(within(select).getByRole('option', { name: 'Szeged' })).toBeInTheDocument()
+    expect(within(select).getByRole('option', { name: 'Debrecen' })).toBeInTheDocument()
+
+    await user.selectOptions(select, 'Szeged')
+    expect(screen.getByText('S01')).toBeInTheDocument()
+    expect(screen.queryByText('D02')).not.toBeInTheDocument()
+  })
+
+  it('FR-1: null terület esetén a cella kötőjeles, és nem jelenik meg üres szűrő-opció', async () => {
+    mocks.list.mockResolvedValue({
+      summary: { ...SUMMARY, totalBranches: 1, configuredBranches: 1 },
+      rows: [{ ...ROWS[0], branchId: 'n1', branchCode: 'N01', region: null }],
+    })
+    renderPage()
+
+    const tableRow = await screen.findByRole('row', { name: /N01/ })
+    expect(within(tableRow).getByText('—')).toBeInTheDocument()
+    const select = screen.getByLabelText('Terület')
+    expect(within(select).getAllByRole('option')).toHaveLength(1)
+  })
 })
 
 describe('HandlingFeeConfigPage — pénztár mód (FR-14)', () => {

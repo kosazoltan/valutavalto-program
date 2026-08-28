@@ -571,6 +571,35 @@ public class BranchService {
             java.util.Map.entry("KAPOSVAR",   "145")
     );
 
+    /**
+     * FK-098 FR-9: IRODA (central office) is a legal, active REGION dictionary entry
+     * (V145 seed) with NO physical KESZLEX district. It maps to a null region_code instead
+     * of a placeholder number, because a fake numeric code would leak into the region scope
+     * filters (AccessScopeService.vaultRegionCodeOrNull, BankService region filtering) and
+     * create a phantom district.
+     */
+    private static final String REGION_CENTRAL_OFFICE = "IRODA";
+
+    /** Returns the numeric KESZLEX code, or null for the exempt IRODA region. */
+    private static String toKeszlexRegionCode(String dictRegionCode) {
+        if (REGION_CENTRAL_OFFICE.equals(dictRegionCode)) {
+            return null;
+        }
+        String mapped = REGION_DICT_TO_KESZLEX.get(dictRegionCode);
+        if (mapped == null) {
+            throw new ValidationException(
+                    "A(z) " + dictRegionCode + " régióhoz nincs KESZLEX-területi-kód mappelve. "
+                            + "Engedélyezett régiók: " + allowedRegionCodes());
+        }
+        return mapped;
+    }
+
+    private static java.util.Set<String> allowedRegionCodes() {
+        java.util.Set<String> codes = new java.util.TreeSet<>(REGION_DICT_TO_KESZLEX.keySet());
+        codes.add(REGION_CENTRAL_OFFICE);
+        return codes;
+    }
+
     public BranchDto createSimpleCashier(hu.puzzleir.valuta.dto.CreateSimpleCashierBranchDto dto) {
         log.info("Creating simple cashier branch with code: {}", dto.getCode());
 
@@ -600,18 +629,24 @@ public class BranchService {
         // Copilot P0: a kliens-küldött szöveges régió-kódot KESZLEX numerikusra mappeljük,
         // hogy a `Branch.regionCode` konzisztens legyen a meglévő ÉRTÉKTÁR seed-ekkel
         // (V145/V239: region_code='20'/'40'/...). NÉLKÜLE a területi scope NEM matchelne.
-        final String keszlexRegionCode = REGION_DICT_TO_KESZLEX.get(dto.getRegionCode());
-        if (keszlexRegionCode == null) {
-            throw new ValidationException(
-                    "A(z) " + dto.getRegionCode() + " régióhoz nincs KESZLEX-területi-kód mappelve. "
-                            + "Engedélyezett régiók: " + REGION_DICT_TO_KESZLEX.keySet());
-        }
+        final String keszlexRegionCode = toKeszlexRegionCode(dto.getRegionCode());
 
         // P0 self-review #891 fix + Codex P1: ERTEKTAR (területi értéktáros) csak a saját
         // KESZLEX-régiójához tartozó pénztárt rögzíthet fel. A vaultRegionCodeOrNull() a
         // user `branch.region_code`-jából jön — numerikus érték. Egyezés-ellenőrzés a
         // numerikus KESZLEX-kóddal.
+        // FK-098 (2026-08-28, user directive): a region-less vault keeper (e.g. ERTEKTAR
+        // seated in the Central Administrative Office, IRODA) has NO geographic region, so
+        // it must FAIL CLOSED — it must never silently gain company-wide branch-creation
+        // rights. Only FOERTEKTAR (national) may create branches anywhere.
         String userVaultRegion = accessScopeService.vaultRegionCodeOrNull();
+        if (userVaultRegion == null && accessScopeService.isVaultContext()) {
+            log.warn("Region-less vault-keeper branch-create blocked: requested-region=({}), code={}",
+                    dto.getRegionCode(), normalizedCode);
+            throw new ValidationException(
+                    "Az értéktárosnak területhez kell tartoznia — a Központi Iroda nem területi egység. "
+                            + "A pénztár létrehozásához használja a főértéktáros fiókot.");
+        }
         if (userVaultRegion != null && !userVaultRegion.equals(keszlexRegionCode)) {
             log.warn("Cross-region branch-create blocked: user-keszlex={}, requested-keszlex={} ({}), code={}",
                     userVaultRegion, keszlexRegionCode, dto.getRegionCode(), normalizedCode);
@@ -839,12 +874,7 @@ public class BranchService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Ismeretlen régió kód: " + dto.getRegionCode()
                                     + " (a Beállítások → Törzsadatok → Régiók listából válasszon)"));
-            String keszlexRegionCode = REGION_DICT_TO_KESZLEX.get(dto.getRegionCode());
-            if (keszlexRegionCode == null) {
-                throw new ValidationException(
-                        "A(z) " + dto.getRegionCode() + " régióhoz nincs KESZLEX-területi-kód mappelve. "
-                                + "Engedélyezett régiók: " + REGION_DICT_TO_KESZLEX.keySet());
-            }
+            String keszlexRegionCode = toKeszlexRegionCode(dto.getRegionCode());
             branch.setRegionCode(keszlexRegionCode);
             branch.setRegion(dto.getRegionCode());
         }

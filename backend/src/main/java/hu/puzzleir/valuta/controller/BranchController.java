@@ -251,12 +251,14 @@ public class BranchController {
      * a service kitölti a default-okat (HU/PENZTAR/ACTIVE/today). A multi-tenant scope
      * automatikus (a jelenlegi felhasználó cége).</p>
      *
-     * <p>Engedélyezett role-ok: az értéktáros (ERTEKTAR) / főértéktáros (FOERTEKTAR) is
-     * felrögzíthet új területéhez tartozó pénztárt, hogy a területi szűrt listáiban
-     * (FK-005/B4) automatikusan megjelenjen. ADMIN / UGYVEZETO ugyanúgy.</p>
+     * <p>Engedélyezett role-ok (FK-098, user directive 2026-08-28): a főértéktáros
+     * (FOERTEKTAR, országos — bármelyik régióban rögzíthet) és a területi értéktáros
+     * (ERTEKTAR — kizárólag a saját földrajzi területén, a service-beli fail-closed
+     * guarddal). A Központi Iroda (ADMIN/UGYVEZETO) NEM hozhat létre valutaváltó
+     * irodát (pénztárt) — ők könyvelési/háttérirodai szerepkörök.</p>
      */
     @PostMapping("/simple-cashier")
-    @PreAuthorize("hasAnyRole('ADMIN', 'FOERTEKTAR', 'UGYVEZETO', 'ERTEKTAR')")
+    @PreAuthorize("hasAnyRole('FOERTEKTAR', 'ERTEKTAR')")
     public ResponseEntity<BranchDto> createSimpleCashier(@Valid @RequestBody CreateSimpleCashierBranchDto dto) {
         log.info("POST /api/v1/branches/simple-cashier - code: {}, region: {}", dto.getCode(), dto.getRegionCode());
         BranchDto created = branchService.createSimpleCashier(dto);

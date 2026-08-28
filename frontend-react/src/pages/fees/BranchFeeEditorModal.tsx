@@ -11,6 +11,12 @@ interface Props {
   onChanged: (row: BranchFeeConfigRow) => void
 }
 
+const DASH = '—'
+// FK-098 FR-5: deterministic formatter — a LocalDateTime string has no timezone,
+// new Date() would shift it by the local offset.
+const formatStamp = (value?: string | null) => (value ? value.slice(0, 16).replace('T', ' ') : DASH)
+const formatDay = (value?: string | null) => value ?? DASH
+
 /**
  * FK-096 WU-10 — iroda-szerkesztő modal.
  *
@@ -109,6 +115,19 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
           <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
             {i18n.t('literals.jelenleg-nincs-kezelesi-dij-beallitva-or')}
           </div>
+        )}
+
+        {row.liveFeeMode && (
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+            <dt className="font-medium">{i18n.t('literals.letrehozta')}</dt>
+            <dd>{row.createdBy ?? DASH}</dd>
+            <dt className="font-medium">{i18n.t('literals.elesitette')}</dt>
+            <dd>{row.publishedBy ?? DASH}</dd>
+            <dt className="font-medium">{i18n.t('literals.publikalva')}</dt>
+            <dd>{formatStamp(row.publishedAt)}</dd>
+            <dt className="font-medium">{i18n.t('literals.ervenyes-tol')}</dt>
+            <dd>{formatDay(row.validFrom)}</dd>
+          </dl>
         )}
 
         <fieldset className="mt-4">
