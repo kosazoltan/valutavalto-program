@@ -1013,6 +1013,13 @@ export interface BranchFeeConfigRow {
   draftPerMilleCap: number | null
   /** A DRAFT sor verziója (publish expectedVersion); DRAFT nélkül a LIVE verziója. */
   version: number
+  /** FK-098 FR-5: audit origin of the LIVE config; absent from JSON when null (Jackson NON_NULL). */
+  createdBy?: string | null
+  publishedBy?: string | null
+  /** ISO LocalDateTime, e.g. "2026-08-26T19:04:11" — no timezone, render verbatim. */
+  publishedAt?: string | null
+  /** ISO LocalDate, e.g. "2026-08-26". */
+  validFrom?: string | null
 }
 
 export interface BranchFeeSummary {

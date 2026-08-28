@@ -144,6 +144,7 @@ function AdminView({ canEdit }: { canEdit: boolean }) {
         <thead>
           <tr className="border-b text-gray-500">
             <th className="py-2 pr-3 font-medium">{i18n.t('literals.kod-3')}</th>
+            <th className="py-2 pr-3 font-medium">{i18n.t('literals.penztar-neve')}</th>
             <th className="py-2 pr-3 font-medium">{i18n.t('literals.terulet')}</th>
             <th className="py-2 pr-3 font-medium">{i18n.t('literals.kk-tipus')}</th>
             <th className="py-2 pr-3 font-medium">{i18n.t('literals.mertek-2')}</th>
@@ -163,6 +164,7 @@ function AdminView({ canEdit }: { canEdit: boolean }) {
               }
             >
               <td className="py-2 pr-3 font-medium">{row.branchCode}</td>
+              <td className="py-2 pr-3">{row.branchName}</td>
               <td className="py-2 pr-3">{row.region ?? '—'}</td>
               <td className="py-2 pr-3">
                 {row.liveFeeMode ? (MODE_LABEL[row.liveFeeMode] ?? row.liveFeeMode) : 'Nincs'}
