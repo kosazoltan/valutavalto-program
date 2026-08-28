@@ -250,7 +250,7 @@ function hasSecretLikeEnvAssignment(text) {
     // PR #1654) is a name list, not a value. The RHS is a value only when it is
     // something other than bare uppercase identifiers. Unquoted name lists and
     // any lowercase content are still treated as literal values.
-    if (/^(['"])[A-Z0-9_]+(?:\s+[A-Z0-9_]+)*\1$/.test(match[2].trim())) continue
+    if (/^(['"])[A-Z0-9_]+(?:\s+[A-Z0-9_]+)+\1$/.test(match[2].trim())) continue
     const value = match[1] && match[2] ? match[2].trim().replace(/^['"]|['"]$/g, '') : ''
     if (!value) continue
     const normalized = value.toLowerCase()
