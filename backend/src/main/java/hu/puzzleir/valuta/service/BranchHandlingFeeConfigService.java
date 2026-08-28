@@ -374,6 +374,10 @@ public class BranchHandlingFeeConfigService {
             throw new ValidationException("Nincs publikálandó sáv-piszkozat.");
         }
 
+        // FK-098 FR-6: publish is fail-closed on its own. DRAFT rows persisted before FK-098
+        // were never monotonicity checked, so validate inside the lock before any write.
+        validateBracketRows(drafts.stream().map(this::toBracketDto).toList());
+
         int liveCountBefore = 0;
         for (HandlingFeeBracket bracket : locked) {
             if (bracket.getStatus() == FeeConfigStatus.LIVE && Boolean.TRUE.equals(bracket.getActive())) {
@@ -500,6 +504,21 @@ public class BranchHandlingFeeConfigService {
             } catch (ValidationException e) {
                 errors.add((i + 1) + ". sáv: " + e.getMessage());
             }
+        }
+        // FK-098 FR-6: the shared bracket upper limits must be strictly increasing. Rows that
+        // already failed assertValid are skipped so one empty row does not raise two messages.
+        BigDecimal previousUpper = null;
+        for (int i = 0; i < rows.size(); i++) {
+            HandlingFeeBracketDto row = rows.get(i);
+            BigDecimal upper = (row != null) ? row.getUpperLimit() : null;
+            if (upper == null || upper.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            if (previousUpper != null && upper.compareTo(previousUpper) <= 0) {
+                errors.add((i + 1) + ". sáv: a felső határnak nagyobbnak kell lennie az előző sáv "
+                        + "felső határánál (" + previousUpper.toPlainString() + ").");
+            }
+            previousUpper = upper;
         }
         if (!errors.isEmpty()) {
             throw new ValidationException("Érvénytelen sáv-készlet — " + String.join(" ", errors));
