@@ -520,6 +520,27 @@ class BranchServiceTest {
             verify(branchRepository, never()).save(any());
         }
     }
+    @Test
+    @DisplayName("FK-098 T-S3: FR-9 — createSimpleCashier regionCode=IRODA: regionCode=null mentve, region=IRODA (központi iroda)")
+    void testCreateSimpleCashierAcceptsIrodaRegion() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            su.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+            stubDictionaries();
+            lenient().when(branchRepository.existsByCode("BR999")).thenReturn(false);
+            lenient().when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+            lenient().when(accessScopeService.vaultRegionCodeOrNull()).thenReturn(null);
+            lenient().when(branchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.createSimpleCashier(simpleDto("IRODA"));
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            assertThat(captor.getValue().getRegionCode()).isNull();
+            assertThat(captor.getValue().getRegion()).isEqualTo("IRODA");
+        }
+    }
 
     @Test
     @DisplayName("Pénztár Törzs (V293): create átviszi a short_name + szolgáltatás-flageket az entitásra")
@@ -833,15 +854,37 @@ class BranchServiceTest {
     }
 
     @Test
-    @DisplayName("FK-022: update dict-ben létező, de KESZLEX-mappolatlan régió (IRODA) → ValidationException")
-    void testUpdateRejectsUnmappedRegion() {
+    @DisplayName("FK-098 T-S1: FR-9 — update regionCode=IRODA elfogadva (KESZLEX-kód null, region=IRODA), nincs kivétel")
+    void testUpdateAcceptsIrodaRegionWithoutKeszlexCode() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
+            when(branchRepository.save(any(Branch.class))).thenAnswer(inv -> inv.getArgument(0));
+            stubMapperFromEntityState();
+
+            UpdateBranchDto dto = new UpdateBranchDto();
+            dto.setRegionCode("IRODA");
+
+            service.update(BRANCH_ID, dto);
+
+            ArgumentCaptor<Branch> captor = ArgumentCaptor.forClass(Branch.class);
+            verify(branchRepository).save(captor.capture());
+            assertThat(captor.getValue().getRegionCode()).isNull();
+            assertThat(captor.getValue().getRegion()).isEqualTo("IRODA");
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 T-S2: FR-9 — a valóban mappolatlan régió (MISKOLC) továbbra is ValidationException (reject-ág lefedése megmarad)")
+    void testUpdateRejectsTrulyUnmappedRegion() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
             su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
             stubDictionaries();
             when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(existingEditableBranch()));
 
             UpdateBranchDto dto = new UpdateBranchDto();
-            dto.setRegionCode("IRODA");
+            dto.setRegionCode("MISKOLC");
 
             assertThatThrownBy(() -> service.update(BRANCH_ID, dto))
                     .isInstanceOf(ValidationException.class)
