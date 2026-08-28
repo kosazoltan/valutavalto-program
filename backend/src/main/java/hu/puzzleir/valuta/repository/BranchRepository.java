@@ -193,6 +193,20 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
     List<Branch> findByCompanyIdAndIsActiveTrueExcludingCounterparties(@Param("companyId") UUID companyId);
 
     /**
+     * FK-098 FR-8: the handling-fee admin page data source — active, real cashier branches
+     * within the company. Extends {@link #findByCompanyIdAndIsActiveTrueExcludingCounterparties(UUID)}
+     * with a vault exclusion (b.isVault): a vault has no buy/sell turnover, therefore no
+     * handling fee. The older method is intentionally left untouched (8 live consumers).
+     * LEFT JOIN + IS NULL guards keep defensively-null branchType / isVault rows visible.
+     */
+    @Query("SELECT b FROM Branch b LEFT JOIN b.branchType bt "
+        + "WHERE b.company.id = :companyId AND b.isActive = true "
+        + "AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY') "
+        + "AND (b.isVault IS NULL OR b.isVault = false) ORDER BY b.name")
+    List<Branch> findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(
+        @Param("companyId") UUID companyId);
+
+    /**
      * FK02-C (2026-06-01): Árfolyamkészítő munkacsoporthoz választható irodák — KIZÁRÓLAG aktív,
      * cégen belüli, lakossági PÉNZTÁR típusú egységek (branchType.code = 'PENZTAR'). Az értéktár
      * (isVault = true) és a VAULT_COUNTERPARTY banki/speciális partnerek kizárva. Az „Irodák kezelése"
