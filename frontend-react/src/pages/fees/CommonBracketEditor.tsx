@@ -5,12 +5,32 @@ import {
   type HandlingFeeBracketConfig,
 } from '../../services/api/settings'
 import { logger } from '../../utils/logger'
+import { getErrorMessage } from '../../utils/errorHandling'
 import FeeConfirmDialog from './FeeConfirmDialog'
 import i18n from '../../i18n'
 
 const formatHuf = (value: number) => `${value.toLocaleString('hu-HU')} Ft`
 
 const EMPTY_ROW = { bracketOrder: 0, upperLimit: 0, feeAmount: 0, active: true }
+
+/** FK-098 FR-4: display-only lower bound — 0 for the first bracket, previous upper + 1 after. */
+export function lowerBoundOf(
+  rows: Pick<HandlingFeeBracketConfig, 'upperLimit'>[],
+  index: number,
+): number {
+  return index === 0 ? 0 : (rows[index - 1]?.upperLimit ?? 0) + 1
+}
+
+/** FK-098 FR-7: a partially filled row must block the save, never disappear silently. */
+export function collectIncompleteRowErrors(rows: HandlingFeeBracketConfig[]): string[] {
+  return rows
+    .map((row, index) =>
+      row.upperLimit > 0 && row.feeAmount >= 0
+        ? null
+        : `${index + 1}. sáv: ${i18n.t('literals.toltsd-ki-a-savot-vagy-torold')}`,
+    )
+    .filter((message): message is string => message !== null)
+}
 
 /**
  * FK-096 WU-10 — közös (cégszintű) sáv-szerkesztő: LIVE + DRAFT tábla,
@@ -45,15 +65,19 @@ export default function CommonBracketEditor() {
   }
 
   const handleSaveDraft = async () => {
+    const problems = collectIncompleteRowErrors(draftRows)
+    if (problems.length > 0) {
+      setError(problems.join(' '))
+      return
+    }
     setSaving(true)
     setError(null)
     try {
-      const updated = await handlingFeeBracketApi.saveDraft(
-        draftRows.filter((row) => row.upperLimit > 0 && row.feeAmount >= 0),
-      )
+      const updated = await handlingFeeBracketApi.saveDraft(draftRows)
       setSet(updated)
     } catch (err) {
-      setError('A sáv-piszkozat mentése nem sikerült.')
+      const message = getErrorMessage(err)
+      setError(message !== '' ? message : 'A sáv-piszkozat mentése nem sikerült.')
       logger.error('CommonBracketEditor', 'saveDraft hiba', err)
     } finally {
       setSaving(false)
@@ -85,14 +109,16 @@ export default function CommonBracketEditor() {
           <thead>
             <tr className="border-b text-gray-500">
               <th className="py-1 pr-2 font-medium">{i18n.t('literals.sav')}</th>
+              <th className="py-1 pr-2 font-medium">{i18n.t('literals.tol-ft')}</th>
               <th className="py-1 pr-2 font-medium">{i18n.t('literals.felso-hatar')}</th>
               <th className="py-1 font-medium">{i18n.t('literals.dij')}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <tr key={row.bracketOrder} className="border-b last:border-0">
                 <td className="py-1 pr-2">{row.bracketOrder}</td>
+                <td className="py-1 pr-2">{formatHuf(lowerBoundOf(rows, index))}</td>
                 <td className="py-1 pr-2">{formatHuf(row.upperLimit)}</td>
                 <td className="py-1">{formatHuf(row.feeAmount)}</td>
               </tr>
@@ -118,14 +144,17 @@ export default function CommonBracketEditor() {
           <thead>
             <tr className="border-b text-gray-500">
               <th className="py-1 pr-2 font-medium">{i18n.t('literals.sav')}</th>
+              <th className="py-1 pr-2 font-medium">{i18n.t('literals.tol-ft')}</th>
               <th className="py-1 pr-2 font-medium">{i18n.t('literals.felso-hatar-ft')}</th>
               <th className="py-1 font-medium">{i18n.t('literals.dij-ft')}</th>
+              <th className="py-1 pl-2 font-medium">{i18n.t('literals.torles')}</th>
             </tr>
           </thead>
           <tbody>
             {draftRows.map((row, index) => (
               <tr key={index} className="border-b last:border-0">
                 <td className="py-1 pr-2">{index + 1}</td>
+                <td className="py-1 pr-2">{formatHuf(lowerBoundOf(draftRows, index))}</td>
                 <td className="py-1 pr-2">
                   <input
                     type="number"
@@ -145,6 +174,16 @@ export default function CommonBracketEditor() {
                     className="w-28 rounded border border-gray-300 px-1 py-0.5"
                     aria-label={`${index + 1}. sáv díja`}
                   />
+                </td>
+                <td className="py-1 pl-2">
+                  <button
+                    type="button"
+                    onClick={() => setDraftRows((rows) => rows.filter((_, i) => i !== index))}
+                    className="rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                    aria-label={`${index + 1}. ${i18n.t('literals.sor-torlese')}`}
+                  >
+                    {i18n.t('literals.torles')}
+                  </button>
                 </td>
               </tr>
             ))}
