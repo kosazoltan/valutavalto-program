@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.dto.handlingfee.HandlingFeeBracketDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.BranchHandlingFeeConfig;
 import hu.puzzleir.valuta.entity.Company;
+import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.FeeConfigStatus;
 import hu.puzzleir.valuta.entity.HandlingFeeBracket;
 import hu.puzzleir.valuta.entity.HandlingFeeType;
@@ -19,6 +20,7 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchHandlingFeeConfigRepository;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
+import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.repository.HandlingFeeBracketRepository;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -69,6 +71,7 @@ public class BranchHandlingFeeConfigService {
     private final SystemParameterRepository systemParameterRepository;
     private final CompanyRepository companyRepository;
     private final AuditLogService auditLogService;
+    private final DictionaryRepository dictionaryRepository;
 
     private static final String ACTION_PUBLISHED = "BRANCH_FEE_CONFIG_PUBLISHED";
     private static final String ACTION_BRACKET_PUBLISHED = "HANDLING_FEE_BRACKET_PUBLISHED";
@@ -84,7 +87,7 @@ public class BranchHandlingFeeConfigService {
     public BranchFeeConfigListDto listForCompany() {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
-        List<Branch> branches = branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId);
+        List<Branch> branches = branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterpartiesAndVaults(companyId);
         Map<UUID, BranchHandlingFeeConfig> liveByBranch = new HashMap<>();
         Map<UUID, BranchHandlingFeeConfig> draftByBranch = new HashMap<>();
         for (BranchHandlingFeeConfig config : configRepository.findByCompanyIdAndActiveTrue(companyId)) {
@@ -95,6 +98,7 @@ public class BranchHandlingFeeConfigService {
             }
         }
 
+        Map<String, String> regionNames = regionNameByCode();
         long configured = 0;
         long bracketCount = 0;
         long perMilleCount = 0;
@@ -112,7 +116,7 @@ public class BranchHandlingFeeConfigService {
                 }
             }
 
-            rows.add(buildRow(branch, live, draft));
+            rows.add(buildRow(branch, live, draft, regionNames));
         }
 
         BranchFeeSummaryDto summary = BranchFeeSummaryDto.builder()
@@ -402,18 +406,48 @@ public class BranchHandlingFeeConfigService {
     // ============================ SEGÉDMETÓDUSOK ============================
 
     /**
+     * FK-098 FR-1 / NFR-1: single read of the global REGION dictionary, keyed by uppercase code.
+     * Dictionary is master data with no company_id, therefore not tenant scoped.
+     */
+    private Map<String, String> regionNameByCode() {
+        Map<String, String> names = new HashMap<>();
+        for (Dictionary entry : dictionaryRepository.findByCategoryAndIsActiveTrue("REGION")) {
+            if (entry.getCode() != null) {
+                names.put(entry.getCode().trim().toUpperCase(Locale.ROOT), entry.getNameHu());
+            }
+        }
+        return names;
+    }
+
+    /**
+     * FK-098 FR-1: branch.region (text code, populated on every branch) resolved to the
+     * human readable dictionary name. Fallback ladder: blank -> null (UI renders a dash),
+     * dictionary hit -> name_hu, dictionary miss -> the raw code. Never throws.
+     */
+    static String resolveRegionDisplayName(String rawRegion, Map<String, String> regionNames) {
+        if (rawRegion == null || rawRegion.isBlank()) {
+            return null;
+        }
+        String trimmed = rawRegion.trim();
+        String nameHu = regionNames.get(trimmed.toUpperCase(Locale.ROOT));
+        return (nameHu != null && !nameHu.isBlank()) ? nameHu : trimmed;
+    }
+
+    /**
      * ITEM 5 (R2-D8): SOR-alakú DTO — a listForCompany sor-mappingjével bit-azonos
-     * (15 mező-értékadás, R2-WU-8 egyetlen megengedett kivonása), így a draft/publish
-     * válasz és az admin lista egy alakot kódol.
+     * (16 mező-értékadás), így a draft/publish válasz és az admin lista egy alakot kódol.
+     * FK-098 FR-1: a region forrása a branch.region, a REGION dictionary name_hu-jára
+     * feloldva (resolveRegionDisplayName). FR-5: az audit-mezők CSAK a LIVE sorból jönnek.
      */
     private static BranchFeeConfigRowDto buildRow(Branch branch,
                                                   BranchHandlingFeeConfig live,
-                                                  BranchHandlingFeeConfig draft) {
+                                                  BranchHandlingFeeConfig draft,
+                                                  Map<String, String> regionNames) {
         return BranchFeeConfigRowDto.builder()
                 .branchId(branch.getId())
                 .branchCode(branch.getCode())
                 .branchName(branch.getName())
-                .region(branch.getRegionCode())
+                .region(resolveRegionDisplayName(branch.getRegion(), regionNames))
                 .liveFeeMode(live != null ? live.getFeeMode().name() : null)
                 .livePerMilleRate(live != null ? live.getPerMilleRate() : null)
                 .livePerMilleCap(live != null ? live.getPerMilleCap() : null)
@@ -423,6 +457,10 @@ public class BranchHandlingFeeConfigService {
                 .draftPerMilleCap(draft != null ? draft.getPerMilleCap() : null)
                 .version(draft != null ? draft.getVersion()
                         : (live != null ? live.getVersion() : null))
+                .createdBy(live != null ? live.getCreatedBy() : null)
+                .publishedBy(live != null ? live.getPublishedBy() : null)
+                .publishedAt(live != null ? live.getPublishedAt() : null)
+                .validFrom(live != null ? live.getValidFrom() : null)
                 .build();
     }
 
@@ -437,7 +475,7 @@ public class BranchHandlingFeeConfigService {
         BranchHandlingFeeConfig draft = configRepository
                 .findByCompanyIdAndBranchIdAndStatusAndActiveTrue(companyId, branch.getId(), FeeConfigStatus.DRAFT)
                 .orElse(null);
-        return buildRow(branch, live, draft);
+        return buildRow(branch, live, draft, regionNameByCode());
     }
 
     /**
