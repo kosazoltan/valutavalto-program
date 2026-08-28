@@ -142,7 +142,9 @@ describe('BranchFeeEditorModal', () => {
       validFrom: '2026-08-26',
     })
 
-    expect(screen.getByText('Élő konfiguráció eredete')).toBeInTheDocument()
+    // FK-098 review-fix: a dátumok helyes címkéhez párosítva — publishedAt a
+    // "Publikálva" (időbélyeg), validFrom az "Érvényes" (nap) mellé kerül; a régi
+    // félrevezető "Élő konfiguráció eredete" címke-dátum páros megszűnt.
     expect(screen.getByText('KOSA')).toBeInTheDocument()
     expect(screen.getByText('EDIT')).toBeInTheDocument()
     expect(screen.getByText('2026-08-26 19:04')).toBeInTheDocument()
@@ -152,13 +154,14 @@ describe('BranchFeeEditorModal', () => {
   it('FR-5: hiányzó audit-adatoknál a címkék kötőjellel jelennek meg (nincs crash, nincs Invalid Date)', () => {
     renderModal()
 
-    expect(screen.getByText('Élő konfiguráció eredete')).toBeInTheDocument()
+    // determinista: a Létrehozta/Élesítette címkék i18n-alapúak — a '—' dash-count marad a fő assert
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(4)
     expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument()
   })
 
   it('FR-5: LIVE mód nélkül (null) az audit-blokk rejtve marad', () => {
     renderModal({ ...ROW, liveFeeMode: null })
-    expect(screen.queryByText('Élő konfiguráció eredete')).not.toBeInTheDocument()
+    expect(screen.queryByText('KOSA')).not.toBeInTheDocument()
+    expect(screen.queryByText('Élesítette')).not.toBeInTheDocument()
   })
 })

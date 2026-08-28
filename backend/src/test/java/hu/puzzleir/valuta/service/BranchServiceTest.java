@@ -222,6 +222,44 @@ class BranchServiceTest {
     }
 
     @Test
+    @DisplayName("FK-098: ERTEKTAR terület nélkül (IRODA/Központi Iroda) — FAIL-CLOSED, nem kap országos jogot")
+    void testCreateSimpleCashierBlockedForRegionlessVaultKeeper() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            lenient().when(branchRepository.existsByCode("BR999")).thenReturn(false);
+            // ERTEKTAR aktív (vault-kontextus), de nincs területe (null) → blokkolva
+            when(accessScopeService.vaultRegionCodeOrNull()).thenReturn(null);
+            when(accessScopeService.isVaultContext()).thenReturn(true);
+
+            assertThatThrownBy(() -> service.createSimpleCashier(simpleDto("SZEGED")))
+                    .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+                    .hasMessageContaining("területhez kell tartoznia");
+            verify(branchRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098: cég-szintű user (nem vault-kontextus, pl. FOERTEKTAR) — null területtel is rögzíthet")
+    void testCreateSimpleCashierCompanyLevelUserStillAllowedWithNullRegion() {
+        try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {
+            su.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            stubDictionaries();
+            lenient().when(branchRepository.existsByCode("BR999")).thenReturn(false);
+            lenient().when(companyRepository.findById(COMPANY_ID))
+                    .thenReturn(Optional.of(Company.builder().id(COMPANY_ID).build()));
+            // FOERTEKTAR: nem vault-kontextus → null terület = országos, marad a régi jog
+            when(accessScopeService.vaultRegionCodeOrNull()).thenReturn(null);
+            when(accessScopeService.isVaultContext()).thenReturn(false);
+            lenient().when(branchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            service.createSimpleCashier(simpleDto("DEBRECEN"));
+
+            verify(branchRepository).save(any(Branch.class));
+        }
+    }
+
+    @Test
     @DisplayName("createSimpleCashier — ERTEKTAR same-region: létrejön a pénztár (saját területéhez)")
     void testCreateSimpleCashierAllowedSameRegionForErtektar() {
         try (MockedStatic<SecurityUtils> su = mockStatic(SecurityUtils.class)) {

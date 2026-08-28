@@ -779,6 +779,40 @@ class BranchHandlingFeeConfigServiceTest {
     }
 
     @Test
+    @DisplayName("FK-098 review: tort felso hatar (100.1/100.2) — elutasitva (NUMERIC(15,0) skala)")
+    void saveBracketDraft_TortHatar_Elutasit() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    bracketDto(new BigDecimal("100000"), new BigDecimal("200")),
+                    bracketDto(new BigDecimal("100.50"), new BigDecimal("300")))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("egész forint");
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
+    @DisplayName("FK-098 review: reszleges sor (felso hatar van, dij null) — csak egy hibauzenet, nem ketto")
+    void saveBracketDraft_ReszlegesSor_EgyHiba() {
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            sec.when(SecurityUtils::getCurrentWorkerCode).thenReturn("KOSA");
+
+            assertThatThrownBy(() -> service.saveBracketDraft(List.of(
+                    bracketDto(new BigDecimal("100000"), null),
+                    bracketDto(new BigDecimal("200000"), new BigDecimal("300")))))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("1. sáv");
+
+            verify(bracketRepository, never()).save(any());
+        }
+    }
+
+    @Test
     @DisplayName("FK-098 T-B6a: FR-6 — csokkeno felso hatarok -> ValidationException, nincs mentes")
     void saveBracketDraft_CsokkenoHatarok_Elutasit() {
         try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {

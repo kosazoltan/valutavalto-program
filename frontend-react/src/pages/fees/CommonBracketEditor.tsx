@@ -92,7 +92,9 @@ export default function CommonBracketEditor() {
       setSet(updated)
       setConfirmOpen(false)
     } catch (err) {
-      setError('A sávok publikálása nem sikerült.')
+      // FK-098 review: a backend 400-as validációs üzenetét (pl. sáv-sorrend/skála)
+      // jelenítsük meg, ne a generikus szöveget — same pattern as handleSaveDraft.
+      setError(getErrorMessage(err))
       logger.error('CommonBracketEditor', 'publish hiba', err)
     } finally {
       setPublishing(false)

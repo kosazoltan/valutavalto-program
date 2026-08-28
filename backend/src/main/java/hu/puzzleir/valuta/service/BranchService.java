@@ -635,7 +635,18 @@ public class BranchService {
         // KESZLEX-régiójához tartozó pénztárt rögzíthet fel. A vaultRegionCodeOrNull() a
         // user `branch.region_code`-jából jön — numerikus érték. Egyezés-ellenőrzés a
         // numerikus KESZLEX-kóddal.
+        // FK-098 (2026-08-28, user directive): a region-less vault keeper (e.g. ERTEKTAR
+        // seated in the Central Administrative Office, IRODA) has NO geographic region, so
+        // it must FAIL CLOSED — it must never silently gain company-wide branch-creation
+        // rights. Only FOERTEKTAR (national) may create branches anywhere.
         String userVaultRegion = accessScopeService.vaultRegionCodeOrNull();
+        if (userVaultRegion == null && accessScopeService.isVaultContext()) {
+            log.warn("Region-less vault-keeper branch-create blocked: requested-region=({}), code={}",
+                    dto.getRegionCode(), normalizedCode);
+            throw new ValidationException(
+                    "Az értéktárosnak területhez kell tartoznia — a Központi Iroda nem területi egység. "
+                            + "A pénztár létrehozásához használja a főértéktáros fiókot.");
+        }
         if (userVaultRegion != null && !userVaultRegion.equals(keszlexRegionCode)) {
             log.warn("Cross-region branch-create blocked: user-keszlex={}, requested-keszlex={} ({}), code={}",
                     userVaultRegion, keszlexRegionCode, dto.getRegionCode(), normalizedCode);

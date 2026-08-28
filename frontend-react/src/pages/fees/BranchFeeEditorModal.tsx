@@ -119,14 +119,14 @@ export default function BranchFeeEditorModal({ row, onClose, onChanged }: Props)
 
         {row.liveFeeMode && (
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
-            <dt className="font-medium">{i18n.t('literals.elo-konfiguracio-eredete')}</dt>
-            <dd>{formatDay(row.validFrom)}</dd>
             <dt className="font-medium">{i18n.t('literals.letrehozta')}</dt>
             <dd>{row.createdBy ?? DASH}</dd>
             <dt className="font-medium">{i18n.t('literals.elesitette')}</dt>
             <dd>{row.publishedBy ?? DASH}</dd>
-            <dt className="font-medium">{i18n.t('literals.ervenyes-tol')}</dt>
+            <dt className="font-medium">{i18n.t('literals.publikalva')}</dt>
             <dd>{formatStamp(row.publishedAt)}</dd>
+            <dt className="font-medium">{i18n.t('literals.ervenyes-tol')}</dt>
+            <dd>{formatDay(row.validFrom)}</dd>
           </dl>
         )}
 

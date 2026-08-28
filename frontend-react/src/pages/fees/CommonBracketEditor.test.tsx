@@ -158,4 +158,27 @@ describe('CommonBracketEditor', () => {
 
     expect(await screen.findByText(backendMessage)).toBeInTheDocument()
   })
+
+  it('FR-6 review-fix: publish 400 hibája is a backend üzenetét mutatja, nem a generikusat', async () => {
+    const user = userEvent.setup()
+    const backendMessage =
+      'Érvénytelen sáv-készlet — 2. sáv: a felső határnak nagyobbnak kell lennie.'
+    mocks.publish.mockRejectedValue(
+      new AxiosError(
+        'Request failed with status code 400',
+        'ERR_BAD_REQUEST',
+        undefined as never,
+        undefined as never,
+        { data: { message: backendMessage } } as never,
+      ),
+    )
+    render(<CommonBracketEditor />)
+    await screen.findByText('Éles (LIVE) sávok')
+
+    await user.click(screen.getByRole('button', { name: 'Küldés' }))
+    await user.click(await screen.findByRole('button', { name: 'Küldés megerősítése' }))
+
+    expect(await screen.findByText(backendMessage)).toBeInTheDocument()
+    expect(screen.queryByText('A sávok publikálása nem sikerült.')).not.toBeInTheDocument()
+  })
 })

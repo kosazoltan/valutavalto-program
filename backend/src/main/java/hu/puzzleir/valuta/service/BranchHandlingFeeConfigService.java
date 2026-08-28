@@ -507,11 +507,20 @@ public class BranchHandlingFeeConfigService {
         }
         // FK-098 FR-6: the shared bracket upper limits must be strictly increasing. Rows that
         // already failed assertValid are skipped so one empty row does not raise two messages.
+        // (review fix: skip is decided by the FULL assertValid semantics — a row with a valid
+        // upperLimit but a missing/negative/fractional fee must not seed the monotonicity chain.)
         BigDecimal previousUpper = null;
         for (int i = 0; i < rows.size(); i++) {
             HandlingFeeBracketDto row = rows.get(i);
-            BigDecimal upper = (row != null) ? row.getUpperLimit() : null;
-            if (upper == null || upper.compareTo(BigDecimal.ZERO) <= 0) {
+            if (row == null || row.getUpperLimit() == null || row.getFeeAmount() == null) {
+                continue;
+            }
+            BigDecimal upper = row.getUpperLimit();
+            boolean rowInvalid = upper.compareTo(BigDecimal.ZERO) <= 0
+                    || row.getFeeAmount().compareTo(BigDecimal.ZERO) < 0
+                    || upper.stripTrailingZeros().scale() > 0
+                    || row.getFeeAmount().stripTrailingZeros().scale() > 0;
+            if (rowInvalid) {
                 continue;
             }
             if (previousUpper != null && upper.compareTo(previousUpper) <= 0) {

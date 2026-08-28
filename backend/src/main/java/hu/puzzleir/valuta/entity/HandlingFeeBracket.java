@@ -82,5 +82,15 @@ public class HandlingFeeBracket {
         if (feeAmount == null || feeAmount.compareTo(BigDecimal.ZERO) < 0) {
             throw new ValidationException("A sáv díja kötelező és nem lehet negatív.");
         }
+        // FK-098 (review P1): upper_limit/fee_amount are NUMERIC(15,0) — whole forints.
+        // Fractional values (e.g. 100.1 / 100.2) would collapse to the same stored
+        // integer and make the later bracket unreachable in first-match lookup, so
+        // they are rejected here at the boundary.
+        if (upperLimit.stripTrailingZeros().scale() > 0) {
+            throw new ValidationException("A sáv felső határa csak egész forint lehet.");
+        }
+        if (feeAmount.stripTrailingZeros().scale() > 0) {
+            throw new ValidationException("A sáv díja csak egész forint lehet.");
+        }
     }
 }
