@@ -11,6 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
+import type { AppMode } from '../../types/appMode'
 
 const isOpenMock = vi.fn()
 const getCurrentMock = vi.fn()
@@ -64,6 +65,17 @@ vi.mock('../../utils/electron', () => ({
   }),
 }))
 
+// FKH-041: a hook appMode-tudatos — a teszt az alapértelmezett penztar módban
+// futtatja a meglévő eseteket (viselkedésük változatlan), az appMode-ágakat
+// pedig külön, átírt mockkal vizsgálja.
+const appModeMock = vi.fn((): { mode: AppMode; isLoading: boolean } => ({
+  mode: 'penztar',
+  isLoading: false,
+}))
+vi.mock('../useAppMode', () => ({
+  useAppMode: () => appModeMock(),
+}))
+
 const { useSuiteUpdate, mapSessionToShiftState } = await import('../useSuiteUpdate')
 
 describe('mapSessionToShiftState — fail-safe leképezés', () => {
@@ -97,6 +109,8 @@ describe('useSuiteUpdate — jelentés a main processnek', () => {
     statusMock.mockClear()
     onReadyMock.mockClear()
     isElectronMock.mockReturnValue(true)
+    appModeMock.mockReset()
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     readyCallback = null
   })
 
@@ -169,5 +183,111 @@ describe('useSuiteUpdate — jelentés a main processnek', () => {
     await waitFor(() => expect(result.current.readyUpdate?.version).toBe('2.28.80'))
     // Nyitott műszak alatt nem telepíthető.
     expect(result.current.readyUpdate?.installableNow).toBe(false)
+  })
+})
+
+describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
+  beforeEach(() => {
+    isOpenMock.mockReset()
+    getCurrentMock.mockReset()
+    setShiftStateMock.mockClear()
+    statusMock.mockClear()
+    onReadyMock.mockClear()
+    isElectronMock.mockReturnValue(true)
+    appModeMock.mockReset()
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    readyCallback = null
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('C1: ertektar mod + nincs nyitott session + getCurrent hibazik -> SHIFT_OPEN, soha IDLE_BEFORE_OPEN', async () => {
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('C2: ertektar mod + CLOSED session -> SHIFT_OPEN (soha CLOSED_AFTER_DAY_END)', async () => {
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockResolvedValue({ status: 'CLOSED', closedAt: '2026-08-12T18:00:00Z' })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('CLOSED_AFTER_DAY_END')
+  })
+
+  it('C3: ertektar modban a napi-session API-t NEM hivjuk (felesleges backend-kör nem kell)', async () => {
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(isOpenMock).not.toHaveBeenCalled()
+    expect(getCurrentMock).not.toHaveBeenCalled()
+  })
+
+  it('C4: ertektar mod + isOpen hibazik -> SHIFT_OPEN (fail-safe valtozatlan)', async () => {
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    isOpenMock.mockRejectedValue(new Error('serverUnreachable'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+  })
+
+  it('C5: full mod -> SHIFT_OPEN', async () => {
+    appModeMock.mockReturnValue({ mode: 'full' as const, isLoading: false })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+  })
+
+  it('C6: rate-maker mod -> SHIFT_OPEN', async () => {
+    appModeMock.mockReturnValue({ mode: 'rate-maker' as const, isLoading: false })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+  })
+
+  it('C7: penztar mod + nincs session + getCurrent hibazik -> IDLE_BEFORE_OPEN (penztar valtozatlan)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+  })
+
+  it('C8: penztar mod + nyitott session -> SHIFT_OPEN (valtozatlan)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    isOpenMock.mockResolvedValue(true)
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+  })
+
+  it('C9: ertektar mod nem-Electron kornyezetben -> NEM jelent', async () => {
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    isElectronMock.mockReturnValue(false)
+    renderHook(() => useSuiteUpdate())
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(setShiftStateMock).not.toHaveBeenCalled()
+  })
+
+  it('R3: appMode atmenet penztar -> ertektar -> ujra-jelentes SHIFT_OPEN-nal (korrekciós mechanizmus, D6)', async () => {
+    // Indulas: penztar mod, nincs nyitott session -> IDLE_BEFORE_OPEN.
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    const { rerender } = renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+
+    // Az SQLite app_mode feloldas utan a terminal ertektar modra valt:
+    // a hooknak ujra kell jelentenie, es a SHIFT_OPEN felulirja az IDLE-t.
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    rerender()
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).toHaveBeenLastCalledWith('SHIFT_OPEN')
   })
 })

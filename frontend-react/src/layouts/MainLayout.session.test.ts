@@ -17,6 +17,72 @@ describe('MainLayout daily session gate', () => {
   })
 })
 
+describe('MainLayout daily session gate — role-aware (FKH-041 FR-2)', () => {
+  it('B1: penztar mod + ertektar aktiv szerep -> NINCS napnyitas-kapu', () => {
+    expect(shouldRequireDailySession('penztar', 'ertektar')).toBe(false)
+  })
+
+  it('B2: penztar mod + penztar aktiv szerep -> kapu él', () => {
+    expect(shouldRequireDailySession('penztar', 'penztar')).toBe(true)
+  })
+
+  it('B3: penztar mod + foertektar aktiv szerep -> NINCS kapu', () => {
+    expect(shouldRequireDailySession('penztar', 'foertektar')).toBe(false)
+  })
+
+  it('B4: penztar mod + ertekszallito aktiv szerep -> NINCS kapu', () => {
+    expect(shouldRequireDailySession('penztar', 'ertekszallito')).toBe(false)
+  })
+
+  it('B5: penztar mod + CASHIER legacy szerep -> kapu él (kanonizacio: penztar)', () => {
+    expect(shouldRequireDailySession('penztar', 'CASHIER')).toBe(true)
+  })
+
+  it('B6: penztar mod + TREASURY_MANAGER legacy szerep -> NINCS kapu (kanonizacio: ertektar)', () => {
+    expect(shouldRequireDailySession('penztar', 'TREASURY_MANAGER')).toBe(false)
+  })
+
+  it('B7: penztar mod, null szerep -> kapu él (ismeretlen => nem gyengitunk)', () => {
+    expect(shouldRequireDailySession('penztar', null)).toBe(true)
+  })
+
+  it('B8: penztar mod, undefined szerep -> kapu él', () => {
+    expect(shouldRequireDailySession('penztar', undefined)).toBe(true)
+  })
+
+  it('B9: penztar mod, ures string szerep -> kapu él', () => {
+    expect(shouldRequireDailySession('penztar', '')).toBe(true)
+  })
+
+  it('B10: penztar mod, whitespace szerep -> kapu él (trim -> ures)', () => {
+    expect(shouldRequireDailySession('penztar', '  ')).toBe(true)
+  })
+
+  it('B11: ertektar mod + penztar szerep -> NINCS kapu (a mod-kapu nyer)', () => {
+    expect(shouldRequireDailySession('ertektar', 'penztar')).toBe(false)
+  })
+
+  it('B12: ertektar mod + ertektar szerep -> NINCS kapu', () => {
+    expect(shouldRequireDailySession('ertektar', 'ertektar')).toBe(false)
+  })
+
+  it('B13: full mod + penztar szerep -> NINCS kapu', () => {
+    expect(shouldRequireDailySession('full', 'penztar')).toBe(false)
+  })
+
+  it('B14: rate-maker mod + foertektar szerep -> NINCS kapu', () => {
+    expect(shouldRequireDailySession('rate-maker', 'foertektar')).toBe(false)
+  })
+
+  it('B15: egyargumentumu visszamenoleges kompatibilitas: penztar -> kapu él', () => {
+    expect(shouldRequireDailySession('penztar')).toBe(true)
+  })
+
+  it('B16: egyargumentumu visszamenoleges kompatibilitas: ertektar -> NINCS kapu', () => {
+    expect(shouldRequireDailySession('ertektar')).toBe(false)
+  })
+})
+
 describe('MainLayout logout', () => {
   it('calls backend logout before local logout and login navigation', async () => {
     const calls: string[] = []
