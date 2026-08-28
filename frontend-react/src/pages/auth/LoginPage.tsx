@@ -52,10 +52,18 @@ function readSetupConfig(): { companyCode?: string; workerCode?: string; workerN
 export default function LoginPage() {
   const { t } = useTranslation()
 
-  // Hideg indítás: IDLE (telepíthető). Logout után: SHIFT_OPEN (ne szakítson műszakot).
+  // FKH-041 D8: az appMode a jelentés ELŐTT kell feloldódjon (useAppMode Electronban
+  // aszinkron tölt az SQLite config store-ból) — ezért a hook-hívás az effekt ELŐTT áll.
+  const { mode: appMode, isLoading: appModeLoading } = useAppMode()
+
+  // Hideg indítás pénztár módban: IDLE (telepíthető). Logout után: SHIFT_OPEN.
+  // FKH-041 FR-3 / C6: értéktár módban SOHA nem IDLE — a belépés előtti csendes
+  // telepítés szakította meg a bejelentkezést. Amíg az appMode nem oldódott fel
+  // (appModeLoading), NEM jelentünk: a korai IDLE épp a javított hibát nyitná újra.
   useEffect(() => {
-    void reportLoginScreenIdleForUpdate()
-  }, [])
+    if (appModeLoading) return
+    void reportLoginScreenIdleForUpdate(undefined, undefined, appMode)
+  }, [appMode, appModeLoading])
 
   // v2.3.0: pre-fill a setup wizard altal beallitott kivalasztott dolgozoval
   const setupConfig = readSetupConfig()
@@ -204,8 +212,6 @@ export default function LoginPage() {
     if (canonical === 'ertektar') return '/treasury'
     return '/dashboard'
   }
-
-  const { mode: appMode, isLoading: appModeLoading } = useAppMode()
 
   // HIBA 2026-05-26: csak a lokál terminál (penztar-client, nincs flavor + Electron) ajánl
   // program-mód választót. Böngészőben (full) és a kozponti/rate-maker flavor-buildekben nem.
