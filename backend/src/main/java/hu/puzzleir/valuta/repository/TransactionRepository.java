@@ -2027,20 +2027,31 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      * CONVERSION sor financial_effective = false, egy query-szintű szűrő
      * eldobná a konverzió alapját (D5, pitfall 2).</p>
      *
+     * <p>Round-2 D19 (FR-16 csoport-szint): a status-predikátum NEM közös —
+     * az önálló ágon sor-szintű (COMPLETED), a konverzió-ágon CSAK a childokra
+     * vonatkozik: a parent CONVERSION sor BÁRMELY státusszal látszik
+     * ({@code t.status = COMPLETED OR t.transactionType = CONVERSION}), hogy a
+     * fold megkülönböztesse a sztornózott (nem-COMPLETED parent ⇒ a csoport
+     * 0 illeték) és a ténylegesen hiányzó parent alakot. A vetület 10 oszlopos:
+     * a status-oszlop (row[9]) viszi a parent státuszát a foldnak.</p>
+     *
      * <p>Visszaad: [transactionDate, branchId, branchCode, branchName,
-     * transactionType, hufAmount, conversionGroupId, financialEffective, customerId]</p>
+     * transactionType, hufAmount, conversionGroupId, financialEffective, customerId, status]</p>
      */
     @Query("SELECT t.transactionDate, b.id, b.code, b.name, t.transactionType, t.hufAmount, " +
-           "t.conversionGroupId, t.financialEffective, t.customerId " +
+           "t.conversionGroupId, t.financialEffective, t.customerId, t.status " +
            "FROM Transaction t JOIN t.branch b " +
            "WHERE t.company.id = :companyId " +
            "AND t.transactionDate BETWEEN :from AND :to " +
-           "AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED " +
            "AND (:branchId IS NULL OR b.id = :branchId) " +
            "AND ((t.transactionType IN (hu.puzzleir.valuta.entity.TransactionType.BUY, " +
            "                            hu.puzzleir.valuta.entity.TransactionType.SELL) " +
-           "      AND t.conversionGroupId IS NULL AND t.financialEffective = true) " +
-           "     OR t.conversionGroupId IS NOT NULL) " +
+           "      AND t.conversionGroupId IS NULL " +
+           "      AND t.financialEffective = true " +
+           "      AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED) " +
+           "     OR (t.conversionGroupId IS NOT NULL " +
+           "         AND (t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED " +
+           "              OR t.transactionType = hu.puzzleir.valuta.entity.TransactionType.CONVERSION))) " +
            "ORDER BY t.transactionDate ASC, b.code ASC")
     List<Object[]> findTransactionLevySourceRows(
             @Param("companyId") UUID companyId,

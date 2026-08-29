@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.levy.MonthlySummaryDto;
 import hu.puzzleir.valuta.dto.levy.TransactionLevyReportDto;
 import hu.puzzleir.valuta.dto.levy.TypeGroupDto;
 import hu.puzzleir.valuta.entity.TransactionLevyRateHistory;
+import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -85,6 +86,8 @@ public class TransactionLevyReportService {
     private static final int IDX_HUF_AMOUNT = 5;
     private static final int IDX_CONVERSION_GROUP_ID = 6;
     private static final int IDX_CUSTOMER_ID = 8;
+    /** Round-2 D19: a parent CONVERSION sor státusza (row[9]) — FR-16 csoport-szint. */
+    private static final int IDX_STATUS = 9;
 
     private final TransactionRepository transactionRepository;
     private final TransactionLevyRateHistoryRepository rateHistoryRepository;
@@ -179,6 +182,14 @@ public class TransactionLevyReportService {
                 .filter(row -> row.type() == TransactionType.SELL)
                 .findFirst().orElse(null);
 
+        // D18/FR-16 (csoport-szint): sztornózott (vagy bármely nem-COMPLETED) parent → az EGÉSZ
+        // csoport 0 illetéket ad, a flag FALSE ágon is. A parent TELJES hiánya ettől külön eset (D20).
+        if (parent != null && parent.status() != TransactionStatus.COMPLETED) {
+            log.info("FK-099: konverzió-csoport kihagyva, a parent nem COMPLETED: group={}, status={}",
+                    parent.conversionGroupId(), parent.status());
+            return;
+        }
+
         // D6: az illeték-alap a parent CONVERSION hufAmountja; parent nélkül a convBuy-é.
         SourceRowData baseRow = parent != null ? parent : convBuy;
         if (baseRow == null) {
@@ -255,7 +266,7 @@ public class TransactionLevyReportService {
 
     private record SourceRowData(LocalDate date, UUID branchId, String branchCode, String branchName,
                                  TransactionType type, BigDecimal hufAmount, UUID conversionGroupId,
-                                 String customerId) {
+                                 String customerId, TransactionStatus status) {
         static SourceRowData of(Object[] row) {
             return new SourceRowData(
                     (LocalDate) row[IDX_DATE],
@@ -265,7 +276,8 @@ public class TransactionLevyReportService {
                     (TransactionType) row[IDX_TYPE],
                     (BigDecimal) row[IDX_HUF_AMOUNT],
                     (UUID) row[IDX_CONVERSION_GROUP_ID],
-                    (String) row[IDX_CUSTOMER_ID]);
+                    (String) row[IDX_CUSTOMER_ID],
+                    (TransactionStatus) row[IDX_STATUS]);
         }
     }
 
