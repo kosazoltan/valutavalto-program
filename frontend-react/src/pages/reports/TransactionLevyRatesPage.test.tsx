@@ -53,12 +53,30 @@ vi.mock('../../stores/authStore', () => ({
 }))
 
 const RATES_DESC = [
-  { id: 'r2', effectiveFrom: '2026-08-15', baseRatePercent: 0.3, baseRateCapHuf: 15000,
-    supplementRatePercent: 0.3, supplementRateCapHuf: 15000, conversionSingleSideFlag: true,
-    createdBy: 'WK001', createdAt: '2026-08-14T10:00:00Z', thresholdHuf: 5000000 },
-  { id: 'r1', effectiveFrom: '2013-01-01', baseRatePercent: 0.45, baseRateCapHuf: 20000,
-    supplementRatePercent: 0.45, supplementRateCapHuf: 20000, conversionSingleSideFlag: true,
-    createdBy: 'V384', createdAt: '2026-08-01T00:00:00Z', thresholdHuf: 4444445 },
+  {
+    id: 'r2',
+    effectiveFrom: '2026-08-15',
+    baseRatePercent: 0.3,
+    baseRateCapHuf: 15000,
+    supplementRatePercent: 0.3,
+    supplementRateCapHuf: 15000,
+    conversionSingleSideFlag: true,
+    createdBy: 'WK001',
+    createdAt: '2026-08-14T10:00:00Z',
+    thresholdHuf: 5000000,
+  },
+  {
+    id: 'r1',
+    effectiveFrom: '2013-01-01',
+    baseRatePercent: 0.45,
+    baseRateCapHuf: 20000,
+    supplementRatePercent: 0.45,
+    supplementRateCapHuf: 20000,
+    conversionSingleSideFlag: true,
+    createdBy: 'V384',
+    createdAt: '2026-08-01T00:00:00Z',
+    thresholdHuf: 4444445,
+  },
 ]
 
 describe('TransactionLevyRatesPage — FK-099', () => {

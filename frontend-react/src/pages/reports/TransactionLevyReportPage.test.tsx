@@ -74,16 +74,38 @@ function emptyReport() {
   return {
     from: '2026-08-01',
     to: '2026-08-31',
-    appliedRates: [{ effectiveFrom: '2013-01-01', baseRatePercent: 0.45, baseRateCapHuf: 20000,
-      supplementRatePercent: 0.45, supplementRateCapHuf: 20000,
-      conversionSingleSideFlag: true, thresholdHuf: 4444445 }],
+    appliedRates: [
+      {
+        effectiveFrom: '2013-01-01',
+        baseRatePercent: 0.45,
+        baseRateCapHuf: 20000,
+        supplementRatePercent: 0.45,
+        supplementRateCapHuf: 20000,
+        conversionSingleSideFlag: true,
+        thresholdHuf: 4444445,
+      },
+    ],
     rows: [],
-    totals: { date: null, branchId: null, branchCode: null, branchName: null,
-      buy: { ...zeroGroup }, sell: { ...zeroGroup }, conversion: { ...zeroGroup },
-      largeBaseHuf: 0, levyTotal: 0 },
-    monthlySummary: { buyCount: 0, sellCount: 0, customerCount: 0,
-      belowThresholdBuyHuf: 0, belowThresholdSellHuf: 0,
-      aboveThresholdBuyHuf: 0, aboveThresholdSellHuf: 0 },
+    totals: {
+      date: null,
+      branchId: null,
+      branchCode: null,
+      branchName: null,
+      buy: { ...zeroGroup },
+      sell: { ...zeroGroup },
+      conversion: { ...zeroGroup },
+      largeBaseHuf: 0,
+      levyTotal: 0,
+    },
+    monthlySummary: {
+      buyCount: 0,
+      sellCount: 0,
+      customerCount: 0,
+      belowThresholdBuyHuf: 0,
+      belowThresholdSellHuf: 0,
+      aboveThresholdBuyHuf: 0,
+      aboveThresholdSellHuf: 0,
+    },
   }
 }
 
@@ -91,32 +113,85 @@ function fixtureReport(totalsLevyTotal = 67000) {
   return {
     from: '2026-08-01',
     to: '2026-08-31',
-    appliedRates: [{ effectiveFrom: '2013-01-01', baseRatePercent: 0.45, baseRateCapHuf: 20000,
-      supplementRatePercent: 0.45, supplementRateCapHuf: 20000,
-      conversionSingleSideFlag: true, thresholdHuf: 4444445 }],
-    rows: [
-      { date: '2026-08-03', branchId: 'b1', branchCode: '001', branchName: 'Fő utca',
-        buy: { normalBaseLevy: 13500, normalSupplementLevy: 13500, aboveThresholdCount: 0,
-          aboveThresholdBaseLevy: 0, aboveThresholdSupplementLevy: 0 },
-        sell: { ...zeroGroup }, conversion: { ...zeroGroup },
-        largeBaseHuf: 0, levyTotal: 27000 },
-      { date: '2026-08-04', branchId: 'b2', branchCode: '002', branchName: 'Mellék',
-        buy: { ...zeroGroup },
-        sell: { normalBaseLevy: 0, normalSupplementLevy: 0, aboveThresholdCount: 1,
-          aboveThresholdBaseLevy: 20000, aboveThresholdSupplementLevy: 20000 },
-        conversion: { ...zeroGroup },
-        largeBaseHuf: 5000000, levyTotal: 40000 },
+    appliedRates: [
+      {
+        effectiveFrom: '2013-01-01',
+        baseRatePercent: 0.45,
+        baseRateCapHuf: 20000,
+        supplementRatePercent: 0.45,
+        supplementRateCapHuf: 20000,
+        conversionSingleSideFlag: true,
+        thresholdHuf: 4444445,
+      },
     ],
-    totals: { date: null, branchId: null, branchCode: null, branchName: null,
-      buy: { normalBaseLevy: 13500, normalSupplementLevy: 13500, aboveThresholdCount: 0,
-        aboveThresholdBaseLevy: 0, aboveThresholdSupplementLevy: 0 },
-      sell: { normalBaseLevy: 0, normalSupplementLevy: 0, aboveThresholdCount: 1,
-        aboveThresholdBaseLevy: 20000, aboveThresholdSupplementLevy: 20000 },
+    rows: [
+      {
+        date: '2026-08-03',
+        branchId: 'b1',
+        branchCode: '001',
+        branchName: 'Fő utca',
+        buy: {
+          normalBaseLevy: 13500,
+          normalSupplementLevy: 13500,
+          aboveThresholdCount: 0,
+          aboveThresholdBaseLevy: 0,
+          aboveThresholdSupplementLevy: 0,
+        },
+        sell: { ...zeroGroup },
+        conversion: { ...zeroGroup },
+        largeBaseHuf: 0,
+        levyTotal: 27000,
+      },
+      {
+        date: '2026-08-04',
+        branchId: 'b2',
+        branchCode: '002',
+        branchName: 'Mellék',
+        buy: { ...zeroGroup },
+        sell: {
+          normalBaseLevy: 0,
+          normalSupplementLevy: 0,
+          aboveThresholdCount: 1,
+          aboveThresholdBaseLevy: 20000,
+          aboveThresholdSupplementLevy: 20000,
+        },
+        conversion: { ...zeroGroup },
+        largeBaseHuf: 5000000,
+        levyTotal: 40000,
+      },
+    ],
+    totals: {
+      date: null,
+      branchId: null,
+      branchCode: null,
+      branchName: null,
+      buy: {
+        normalBaseLevy: 13500,
+        normalSupplementLevy: 13500,
+        aboveThresholdCount: 0,
+        aboveThresholdBaseLevy: 0,
+        aboveThresholdSupplementLevy: 0,
+      },
+      sell: {
+        normalBaseLevy: 0,
+        normalSupplementLevy: 0,
+        aboveThresholdCount: 1,
+        aboveThresholdBaseLevy: 20000,
+        aboveThresholdSupplementLevy: 20000,
+      },
       conversion: { ...zeroGroup },
-      largeBaseHuf: 5000000, levyTotal: totalsLevyTotal },
-    monthlySummary: { buyCount: 12, sellCount: 7, customerCount: 5,
-      belowThresholdBuyHuf: 3000000, belowThresholdSellHuf: 1000000,
-      aboveThresholdBuyHuf: 5000000, aboveThresholdSellHuf: 4444445 },
+      largeBaseHuf: 5000000,
+      levyTotal: totalsLevyTotal,
+    },
+    monthlySummary: {
+      buyCount: 12,
+      sellCount: 7,
+      customerCount: 5,
+      belowThresholdBuyHuf: 3000000,
+      belowThresholdSellHuf: 1000000,
+      aboveThresholdBuyHuf: 5000000,
+      aboveThresholdSellHuf: 4444445,
+    },
   }
 }
 
@@ -208,9 +283,7 @@ describe('TransactionLevyReportPage — FK-099', () => {
 
     fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: '2026-02' } })
 
-    await waitFor(() =>
-      expect(mockGetReport).toHaveBeenCalledWith('2026-02-01', '2026-02-28'),
-    )
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledWith('2026-02-01', '2026-02-28'))
   })
 
   it('F7: getReport hiba → a szerver üzenet jelenik meg, a táblázat nem', async () => {

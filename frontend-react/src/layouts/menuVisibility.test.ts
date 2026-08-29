@@ -522,11 +522,7 @@ describe('menuVisibility — FK-099: tranzakciós illeték riport + ráta-beáll
         `riport-item rejtve: ${role}`,
       ).toBe(true)
       expect(
-        isMenuItemVisible(
-          itemByPath(riportok, '/reports/transaction-levy-rates'),
-          riportok,
-          ctx,
-        ),
+        isMenuItemVisible(itemByPath(riportok, '/reports/transaction-levy-rates'), riportok, ctx),
         `rata-item rejtve: ${role}`,
       ).toBe(true)
     }
@@ -545,7 +541,9 @@ describe('menuVisibility — FK-099: tranzakciós illeték riport + ráta-beáll
     ).toBe(false)
 
     expect(
-      [...(effectiveCanonicalRolesForPath(menuGroups, '/reports/transaction-levy-rates') ?? [])].sort(),
+      [
+        ...(effectiveCanonicalRolesForPath(menuGroups, '/reports/transaction-levy-rates') ?? []),
+      ].sort(),
     ).toEqual(['belso_ellenor', 'foertektar', 'ugyvezeto'])
   })
 })

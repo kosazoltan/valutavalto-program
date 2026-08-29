@@ -28,23 +28,20 @@ export default function TransactionLevyReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(
-    async (selectedMonth: string) => {
-      const { from, to } = monthRange(selectedMonth)
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await transactionLevyApi.getReport(from, to)
-        setReport(data)
-      } catch (err) {
-        setReport(null)
-        setError(extractMessage(err, t('reports.transactionLevy.loading')))
-      } finally {
-        setLoading(false)
-      }
-    },
-    [],
-  )
+  const load = useCallback(async (selectedMonth: string) => {
+    const { from, to } = monthRange(selectedMonth)
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await transactionLevyApi.getReport(from, to)
+      setReport(data)
+    } catch (err) {
+      setReport(null)
+      setError(extractMessage(err, t('reports.transactionLevy.loading')))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     void load(month)
@@ -90,9 +87,7 @@ export default function TransactionLevyReportPage() {
 
       {loading && <p>{t('reports.transactionLevy.loading')}</p>}
       {error && (
-        <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-red-700">
-          {error}
-        </div>
+        <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-red-700">{error}</div>
       )}
 
       {!loading && !error && report && report.rows.length === 0 && (
@@ -121,9 +116,9 @@ export default function TransactionLevyReportPage() {
                 </th>
               </tr>
               <tr>
-                {[0, 1, 2].map(() => (
-                  <SubHeaders key={`${Math.random()}`} t={t} />
-                ))}
+                <SubHeaders keyPrefix="buy" t={t} />
+                <SubHeaders keyPrefix="sell" t={t} />
+                <SubHeaders keyPrefix="conversion" t={t} />
               </tr>
             </thead>
             <tbody>
@@ -176,22 +171,28 @@ function GroupHeader({ label, t }: { label: string; t: (k: string) => string }) 
   )
 }
 
-function SubHeaders({ t }: { t: (k: string) => string }) {
+function SubHeaders({ keyPrefix, t }: { keyPrefix: string; t: (k: string) => string }) {
   return (
     <>
-      <th className="border border-gray-300 px-2 py-1 text-right">
+      <th key={`${keyPrefix}-normalBase`} className="border border-gray-300 px-2 py-1 text-right">
         {t('reports.transactionLevy.table.normalBase')}
       </th>
-      <th className="border border-gray-300 px-2 py-1 text-right">
+      <th
+        key={`${keyPrefix}-normalSupplement`}
+        className="border border-gray-300 px-2 py-1 text-right"
+      >
         {t('reports.transactionLevy.table.normalSupplement')}
       </th>
-      <th className="border border-gray-300 px-2 py-1 text-right">
+      <th key={`${keyPrefix}-aboveCount`} className="border border-gray-300 px-2 py-1 text-right">
         {t('reports.transactionLevy.table.aboveCount')}
       </th>
-      <th className="border border-gray-300 px-2 py-1 text-right">
+      <th key={`${keyPrefix}-aboveBase`} className="border border-gray-300 px-2 py-1 text-right">
         {t('reports.transactionLevy.table.aboveBase')}
       </th>
-      <th className="border border-gray-300 px-2 py-1 text-right">
+      <th
+        key={`${keyPrefix}-aboveSupplement`}
+        className="border border-gray-300 px-2 py-1 text-right"
+      >
         {t('reports.transactionLevy.table.aboveSupplement')}
       </th>
     </>
@@ -217,7 +218,9 @@ function RowCells({
       <GroupCells group={row.buy} fmt={fmt} />
       <GroupCells group={row.sell} fmt={fmt} />
       <GroupCells group={row.conversion} fmt={fmt} />
-      <td className="border border-gray-300 px-2 py-1 text-right">{fmt.format(row.largeBaseHuf)}</td>
+      <td className="border border-gray-300 px-2 py-1 text-right">
+        {fmt.format(row.largeBaseHuf)}
+      </td>
       <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
         {fmt.format(row.levyTotal)}
       </td>
@@ -266,7 +269,9 @@ function TotalsRow({
       <td className="border border-gray-300 px-2 py-1 text-right">
         {fmt.format(totals.largeBaseHuf)}
       </td>
-      <td className="border border-gray-300 px-2 py-1 text-right">{fmt.format(totals.levyTotal)}</td>
+      <td className="border border-gray-300 px-2 py-1 text-right">
+        {fmt.format(totals.levyTotal)}
+      </td>
     </tr>
   )
 }
@@ -285,8 +290,14 @@ function MonthlyPanel({
     <section className="mt-6 rounded border border-gray-200 bg-gray-50 p-4">
       <h2 className="mb-3 text-lg font-semibold">{t('reports.transactionLevy.monthly.title')}</h2>
       <dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm md:grid-cols-3">
-        <Metric label={t('reports.transactionLevy.monthly.buyCount')} value={fmt.format(summary.buyCount)} />
-        <Metric label={t('reports.transactionLevy.monthly.sellCount')} value={fmt.format(summary.sellCount)} />
+        <Metric
+          label={t('reports.transactionLevy.monthly.buyCount')}
+          value={fmt.format(summary.buyCount)}
+        />
+        <Metric
+          label={t('reports.transactionLevy.monthly.sellCount')}
+          value={fmt.format(summary.sellCount)}
+        />
         <Metric
           label={t('reports.transactionLevy.monthly.customerCount')}
           value={fmt.format(summary.customerCount)}

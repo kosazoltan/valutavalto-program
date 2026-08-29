@@ -122,9 +122,7 @@ const RecurringCustomerReportPage = lazy(
 )
 const AverageRateReportPage = lazy(() => import('./pages/reports/AverageRateReportPage'))
 // FK-099: tranzakciós illeték riport + append-only ráta-beállítások.
-const TransactionLevyReportPage = lazy(
-  () => import('./pages/reports/TransactionLevyReportPage'),
-)
+const TransactionLevyReportPage = lazy(() => import('./pages/reports/TransactionLevyReportPage'))
 const TransactionLevyRatesPage = lazy(() => import('./pages/reports/TransactionLevyRatesPage'))
 const DailyJournalPage = lazy(() => import('./pages/reports/DailyJournalPage'))
 const CentralReportsPage = lazy(() => import('./pages/reports/CentralReportsPage'))

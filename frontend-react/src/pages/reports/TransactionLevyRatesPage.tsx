@@ -63,9 +63,7 @@ export default function TransactionLevyRatesPage() {
       <h1 className="mb-4 text-2xl font-bold">{t('reports.transactionLevyRates.title')}</h1>
 
       {error && (
-        <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-red-700">
-          {error}
-        </div>
+        <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-red-700">{error}</div>
       )}
       {info && (
         <div className="mb-4 rounded border border-green-300 bg-green-50 p-3 text-green-700">
@@ -107,7 +105,9 @@ export default function TransactionLevyRatesPage() {
           {rates.map((rate) => (
             <tr key={rate.id}>
               <td className="border border-gray-300 px-2 py-1">{rate.effectiveFrom}</td>
-              <td className="border border-gray-300 px-2 py-1 text-right">{rate.baseRatePercent}</td>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {rate.baseRatePercent}
+              </td>
               <td className="border border-gray-300 px-2 py-1 text-right">
                 {fmt.format(rate.baseRateCapHuf)}
               </td>
@@ -131,9 +131,7 @@ export default function TransactionLevyRatesPage() {
 
       {canWrite && (
         <form onSubmit={onSubmit} className="rounded border border-gray-200 bg-gray-50 p-4">
-          <h2 className="mb-3 text-lg font-semibold">
-            {t('reports.transactionLevyRates.newRow')}
-          </h2>
+          <h2 className="mb-3 text-lg font-semibold">{t('reports.transactionLevyRates.newRow')}</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-1 block">{t('reports.transactionLevyRates.effectiveFrom')}</span>
