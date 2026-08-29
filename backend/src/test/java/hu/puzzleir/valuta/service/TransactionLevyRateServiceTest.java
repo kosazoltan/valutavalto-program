@@ -103,6 +103,24 @@ class TransactionLevyRateServiceTest {
                 .thenReturn(Optional.ofNullable(row));
     }
 
+    /**
+     * Fixtureszabály: a repository-stub adjon vissza ID-val rendelkező entitást
+     * (a JPA persist is ezt tenné) — a service audit-lépése a mentett id-t használja.
+     */
+    private static TransactionLevyRateHistory savedWithId(TransactionLevyRateHistory entity) {
+        return TransactionLevyRateHistory.builder()
+                .id(UUID.randomUUID())
+                .companyId(entity.getCompanyId())
+                .effectiveFrom(entity.getEffectiveFrom())
+                .baseRatePercent(entity.getBaseRatePercent())
+                .baseRateCapHuf(entity.getBaseRateCapHuf())
+                .supplementRatePercent(entity.getSupplementRatePercent())
+                .supplementRateCapHuf(entity.getSupplementRateCapHuf())
+                .conversionSingleSideFlag(entity.isConversionSingleSideFlag())
+                .createdBy(entity.getCreatedBy())
+                .build();
+    }
+
     // ============================ C1–C4: append-only validáció ============================
 
     @Test
@@ -280,7 +298,7 @@ class TransactionLevyRateServiceTest {
         authenticate("FOERTEKTAR");
         stubMaxExisting(seedRateRow());
         when(rateHistoryRepository.saveAndFlush(any(TransactionLevyRateHistory.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> savedWithId(invocation.getArgument(0)));
 
         assertThat(service.create(validRequest(LocalDate.now().plusDays(1)))).isNotNull();
     }
@@ -355,7 +373,7 @@ class TransactionLevyRateServiceTest {
         authenticate("FOERTEKTAR");
         stubMaxExisting(seedRateRow());
         when(rateHistoryRepository.saveAndFlush(any(TransactionLevyRateHistory.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> savedWithId(invocation.getArgument(0)));
 
         service.create(validRequest(LocalDate.now().plusDays(1)));
 
@@ -370,7 +388,7 @@ class TransactionLevyRateServiceTest {
         authenticate("FOERTEKTAR");
         stubMaxExisting(seedRateRow());
         when(rateHistoryRepository.saveAndFlush(any(TransactionLevyRateHistory.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> savedWithId(invocation.getArgument(0)));
 
         TransactionLevyRateCreateRequest request = TransactionLevyRateCreateRequest.builder()
                 .effectiveFrom(LocalDate.now().plusDays(1))
