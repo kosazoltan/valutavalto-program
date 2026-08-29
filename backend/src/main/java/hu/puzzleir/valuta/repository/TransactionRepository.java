@@ -2011,4 +2011,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("companyId") UUID companyId,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate);
+
+    /**
+     * FK-099 — tranzakciós illeték riport forrás-sorok.
+     *
+     * <p>WU1: default metódus, amely {@code UnsupportedOperationException("FK-099 RED")}-et
+     * dob — a {@code TransactionLevySourceRowsPostgresIT} RED-jele, miközben a többi
+     * repository-IT Spring-kontextusa továbbra is elindul (a Spring Data nem próbálja
+     * deriválni). A WU4 a default törzset lecseréli a valós {@code @Query}-re.</p>
+     *
+     * <p>Visszaad: [transactionDate, branchId, branchCode, branchName,
+     * transactionType, hufAmount, conversionGroupId, financialEffective, customerId]</p>
+     */
+    default List<Object[]> findTransactionLevySourceRows(
+            UUID companyId,
+            UUID branchId,
+            LocalDate from,
+            LocalDate to) {
+        throw new UnsupportedOperationException("FK-099 RED");
+    }
 }
