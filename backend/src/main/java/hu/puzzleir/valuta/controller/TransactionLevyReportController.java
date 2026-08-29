@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.service.TransactionLevyReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,12 +16,13 @@ import java.util.UUID;
 
 /**
  * FK-099 — tranzakciós illeték riport végpont. Company a JWT-ből
- * (SecurityUtils), a kliens companyId-t nem küldhet. WU1: metódusok megvannak,
- * az osztály-szintű @PreAuthorize("isAuthenticated()") a WU6-ban kerül rá
- * (az a viselkedés, amit a TransactionLevyControllerSecurityTest tesztel).
+ * (SecurityUtils), a kliens companyId-t nem küldhet. D10: osztály-szintű
+ * {@code @PreAuthorize("isAuthenticated()")} — a SZEREP-döntés a service-ben
+ * történik, hogy a megtagadás ACCESS_DENIED audit-sort kapjon (FR-17).
  */
 @RestController
 @RequestMapping("/api/v1/reports/transaction-levy")
+@PreAuthorize("isAuthenticated()")
 @RequiredArgsConstructor
 public class TransactionLevyReportController {
 

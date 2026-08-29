@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,12 +20,14 @@ import java.util.List;
  * FK-099 — append-only illeték-ráta history végpontok.
  *
  * <p>FR-1: CSAK GET és POST létezik — PUT/PATCH/DELETE szándékosan nincs
- * (a TransactionLevyControllerSecurityTest reflexióval pineli). WU1: a metódusok
- * megvannak, az osztály-szintű @PreAuthorize("isAuthenticated()") a WU6-ban
- * kerül rá.</p>
+ * (a TransactionLevyControllerSecurityTest reflexióval pineli). D10:
+ * osztály-szintű {@code @PreAuthorize("isAuthenticated()")} — a szerep-döntés
+ * a service-ben történik, hogy a megtagadás ACCESS_DENIED audit-sort kapjon
+ * (FR-18).</p>
  */
 @RestController
 @RequestMapping("/api/v1/transaction-levy-rates")
+@PreAuthorize("isAuthenticated()")
 @RequiredArgsConstructor
 public class TransactionLevyRateController {
 
