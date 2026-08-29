@@ -61,15 +61,20 @@ export function readInstallWindowRole(): string {
 /**
  * Belépőképernyő műszak-jelentése a suite-updaternek.
  *
- * Hideg indítás (még nem volt belépés): IDLE_BEFORE_OPEN — a telepítés
- * belépés nélkül is elindulhat.
- * Logout után (már volt belépés): SHIFT_OPEN — ne telepítsen nyitott nap közben.
+ * Hideg indítás (még nem volt belépés): a telepítés belépés nélkül is
+ * elindulhat — DE FKH-041 round 2 (D7) óta CSAK akkor, ha a gép utolsó sikeres
+ * belépése BIZONYÍTOTTAN pénztáros volt (localStorage marker). Amíg ez nem
+ * bizonyított, a döntés FAIL-CLOSED: `SHIFT_OPEN` (nincs IDLE_BEFORE_OPEN, nincs
+ * csendes telepítés a bejelentkezés alatt — a riportáló terminál
+ * `app_mode='penztar'` mellett futtat értéktárost, ott a round-1 appMode-only
+ * szabály nem tüzelt). Logout után (már volt belépés): SHIFT_OPEN — ne telepítsen
+ * nyitott nap közben (`hadAuth` továbbra is nyer a markerrel szemben, D14).
  *
- * FKH-041 FR-3 / C6 (D7): ha a hívó appMode-ot ad, nem-pénztár módban SOHA nem
- * IDLE_BEFORE_OPEN (értéktár képernyőjén nincs pénztári nap-határ, a hamis ablak
- * csendes telepítést és app.quit()-et váltana ki a bejelentkezés közben).
- * `appMode = null` (default) a FKH-041 előtti szemantikát tartja — a boundary gate
- * pontosan a lenti `hadAuth ? ...` ternary szöveget rögzíti.
+ * Nem-pénztár módban SOHA nem IDLE (értéktár képernyőjén nincs pénztári nap-határ,
+ * a hamis ablak csendes telepítést és app.quit()-et váltana ki a bejelentkezés
+ * közben). `appMode = null` (default) a FKH-041 előtti szemantikát tartja — a
+ * marker csak adott mód mellett él (back-compat a legacy 2-arg hívásokra), és a
+ * boundary gate pontosan a lenti `hadAuth ? ...` ternary szöveget rögzíti.
  */
 export async function reportLoginScreenIdleForUpdate(
   api: {
@@ -77,12 +82,22 @@ export async function reportLoginScreenIdleForUpdate(
   } | null = getElectronAPI(),
   hadAuth: boolean = hasAuthenticatedSession(),
   appMode: AppMode | null = null,
+  lastInstallWindowRole: string = readInstallWindowRole(),
 ): Promise<ShiftState | null> {
   if (!api?.suiteUpdate) return null
   let next: ShiftState
+  const lastCanonical = canonicalizeRoleForAppMode(lastInstallWindowRole)
   if (appMode != null && appMode !== CASHIER_APP_MODE) {
     // FKH-041 FR-3: nem-pénztár módban SOHA nem IDLE — nincs pénztári nap-határ.
     next = 'SHIFT_OPEN'
+  } else if (appMode != null && lastCanonical !== 'penztar') {
+    // FKH-041 round 2 (ITEM 1b): FAIL-CLOSED — penztar konfiguraciojú gépen sem nyitunk
+    // telepítési ablakot, amíg nincs BIZONYÍTOTT pénztáros munkamenet ezen a gépen.
+    next = 'SHIFT_OPEN'
+    logger.warn(
+      'SuiteUpdate',
+      `Belepes elotti telepitesi ablak letiltva (FKH-041): appMode=${appMode}, utolso kanonikus szerep=${lastCanonical || 'ismeretlen'}`,
+    )
   } else {
     // appMode = null: a FKH-041 előtti szemantika változatlan (boundary gate rögzíti).
     next = hadAuth ? 'SHIFT_OPEN' : 'IDLE_BEFORE_OPEN'
