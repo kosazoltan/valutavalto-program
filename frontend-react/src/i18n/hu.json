@@ -1641,6 +1641,54 @@
         "noDateRange": "Add meg a dátum-tartományt!"
       }
     },
+    "transactionLevy": {
+      "title": "Tranzakciós díjak jelentése",
+      "month": "Hónap",
+      "loading": "Betöltés...",
+      "emptyState": "Nincs adat a kiválasztott hónapra.",
+      "threshold": "Küszöb",
+      "multiRateNote": "Több ráta is hatályban volt ebben az időszakban.",
+      "totalRow": "ÖSSZESEN",
+      "monthly": {
+        "title": "Havi összesítő",
+        "buyCount": "Vételek száma",
+        "sellCount": "Eladások száma",
+        "customerCount": "Ügyfelek száma",
+        "belowBuy": "Küszöb alatti vétel forgalom",
+        "belowSell": "Küszöb alatti eladás forgalom",
+        "aboveBuy": "Küszöb feletti vétel forgalom",
+        "aboveSell": "Küszöb feletti eladás forgalom"
+      },
+      "table": {
+        "date": "Dátum",
+        "branch": "Pénztár",
+        "buy": "Vétel",
+        "sell": "Eladás",
+        "conversion": "Konverzió",
+        "normalBase": "Alap illeték",
+        "normalSupplement": "Kieg. illeték",
+        "aboveCount": "Küszöb feletti db",
+        "aboveBase": "Alap (küszöb felett)",
+        "aboveSupplement": "Kieg. (küszöb felett)",
+        "largeBase": "Nagy-alap",
+        "levyTotal": "Tranz.díj"
+      }
+    },
+    "transactionLevyRates": {
+      "title": "Illeték-ráta beállítások",
+      "history": "Ráta-history",
+      "newRow": "Új ráta rögzítése",
+      "save": "Mentés",
+      "effectiveFrom": "Hatálybalépés dátuma",
+      "baseRate": "Alap ráta (%)",
+      "baseCap": "Alap plafon (Ft)",
+      "supplementRate": "Kiegészítő ráta (%)",
+      "supplementCap": "Kiegészítő plafon (Ft)",
+      "singleSide": "Konverzió egy illeték-pár",
+      "threshold": "Küszöb",
+      "createdBy": "Rögzítette",
+      "saved": "Új ráta rögzítve."
+    },
     "bankTransactions": {
       "title": "Banki tranzakciók riport",
       "from": "Tól",

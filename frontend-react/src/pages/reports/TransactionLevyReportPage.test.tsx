@@ -57,6 +57,10 @@ vi.mock('../../services/api/index', () => ({
 }))
 
 const fmt = new Intl.NumberFormat('hu-HU')
+// testing-library a DOM-szöveget normalizálja (NBSP → ASCII szóköz), ezért a
+// elvárt értékeket ugyanazzal a normalizálással képezzük le (az elvárás továbbra
+// is Intl.NumberFormat('hu-HU')-val épül, nem kézzel írt szóközzel — pitfall 9).
+const fmtText = (n: number) => fmt.format(n).replace(/\s+/g, ' ')
 
 const zeroGroup = {
   normalBaseLevy: 0,
@@ -131,7 +135,7 @@ describe('TransactionLevyReportPage — FK-099', () => {
     )
     // Az ÖSSZESEN sor megjelenik, minden értéke 0.
     expect(screen.getByText('ÖSSZESEN')).toBeInTheDocument()
-    expect(screen.getAllByText(fmt.format(0)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(fmtText(0)).length).toBeGreaterThan(0)
   })
 
   it('F2/FR-8/10: fixture hónap → sorok pénztárkóddal, dátummal, 5 alkomponenssel, Nagy-alappal és Tranz.díjjal', async () => {
@@ -139,17 +143,17 @@ describe('TransactionLevyReportPage — FK-099', () => {
 
     render(<TransactionLevyReportPage />)
 
-    await waitFor(() => expect(screen.getByText('001')).toBeInTheDocument())
-    expect(screen.getByText('002')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('001 – Fő utca')).toBeInTheDocument())
+    expect(screen.getByText('002 – Mellék')).toBeInTheDocument()
     expect(screen.getByText('2026-08-03')).toBeInTheDocument()
     expect(screen.getByText('2026-08-04')).toBeInTheDocument()
     // Soronkénti Tranz.díj: 27 000 és 40 000 (hu-HU formázás).
-    expect(screen.getByText(fmt.format(27000))).toBeInTheDocument()
-    expect(screen.getByText(fmt.format(40000))).toBeInTheDocument()
-    // Normál illetékek és Nagy-alap.
-    expect(screen.getAllByText(fmt.format(13500)).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(fmt.format(20000)).length).toBeGreaterThan(0)
-    expect(screen.getByText(fmt.format(5000000))).toBeInTheDocument()
+    expect(screen.getByText(fmtText(27000))).toBeInTheDocument()
+    expect(screen.getByText(fmtText(40000))).toBeInTheDocument()
+    // Normál illetékek és Nagy-alap (több cellában is előfordulnak — getAllByText).
+    expect(screen.getAllByText(fmtText(13500)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(fmtText(20000)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(fmtText(5000000)).length).toBeGreaterThan(0)
   })
 
   it('F3/FR-11: az ÖSSZESEN sor a backend totals-ból jön — a kliens NEM számolja újra', async () => {
@@ -160,8 +164,8 @@ describe('TransactionLevyReportPage — FK-099', () => {
     render(<TransactionLevyReportPage />)
 
     await waitFor(() => expect(screen.getByText('ÖSSZESEN')).toBeInTheDocument())
-    expect(screen.getByText(fmt.format(99999))).toBeInTheDocument()
-    expect(screen.queryByText(fmt.format(67000))).not.toBeInTheDocument()
+    expect(screen.getByText(fmtText(99999))).toBeInTheDocument()
+    expect(screen.queryByText(fmtText(67000))).not.toBeInTheDocument()
   })
 
   it('F4/FR-12/13/14: a havi panel megjeleníti a darabszámokat és forgalmakat; konverziós érték nincs', async () => {
@@ -172,13 +176,13 @@ describe('TransactionLevyReportPage — FK-099', () => {
     await waitFor(() => expect(screen.getByText('Havi összesítő')).toBeInTheDocument())
     const panel = screen.getByText('Havi összesítő').closest('section') as HTMLElement
     expect(panel).not.toBeNull()
-    expect(panel).toHaveTextContent(fmt.format(12))
-    expect(panel).toHaveTextContent(fmt.format(7))
-    expect(panel).toHaveTextContent(fmt.format(5))
-    expect(panel).toHaveTextContent(fmt.format(3000000))
-    expect(panel).toHaveTextContent(fmt.format(1000000))
-    expect(panel).toHaveTextContent(fmt.format(5000000))
-    expect(panel).toHaveTextContent(fmt.format(4444445))
+    expect(panel).toHaveTextContent(fmtText(12))
+    expect(panel).toHaveTextContent(fmtText(7))
+    expect(panel).toHaveTextContent(fmtText(5))
+    expect(panel).toHaveTextContent(fmtText(3000000))
+    expect(panel).toHaveTextContent(fmtText(1000000))
+    expect(panel).toHaveTextContent(fmtText(5000000))
+    expect(panel).toHaveTextContent(fmtText(4444445))
     expect(panel).not.toHaveTextContent('Konverzió')
   })
 
@@ -187,7 +191,12 @@ describe('TransactionLevyReportPage — FK-099', () => {
 
     render(<TransactionLevyReportPage />)
 
-    await waitFor(() => expect(screen.getByText(fmt.format(4444445))).toBeInTheDocument())
+    // A küszöb-érték a havi panelben is előfordul (aboveThresholdSellHuf) — a
+    // badge-t ezért a dedikált testid-ján keresztül pineljük (getByText 2 találatra
+    // hibás lenne). A lefedettség ugyanaz: a badge a hatályos ráta küszöbét mutatja.
+    await waitFor(() => {
+      expect(screen.getByTestId('threshold-badge')).toHaveTextContent(fmtText(4444445))
+    })
   })
 
   it('F6: hónapváltás 2026-02-re → getReport("2026-02-01","2026-02-28"), nincs UTC-shift', async () => {
