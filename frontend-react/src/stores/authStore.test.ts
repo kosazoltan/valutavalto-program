@@ -10,6 +10,7 @@ vi.mock('../services/api/index', () => ({
 // Import after mock
 import { useAuthStore } from './authStore'
 import type { Worker } from './authStore'
+import { LAST_INSTALL_WINDOW_ROLE_KEY } from '../hooks/reportLoginScreenIdleForUpdate'
 
 const mockWorker: Worker = {
   id: 1,
@@ -318,6 +319,37 @@ describe('authStore', () => {
         useAuthStore.getState().login(orphanAdmin, 'tok', 'Bearer', '', null, [], [])
       })
       expect(useAuthStore.getState().hasCanonicalRole('belso_ellenor')).toBe(true)
+    })
+  })
+
+  describe('authStore — FKH-041 telepitesi-ablak marker', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    it('F1: login penztar szereppel -> penztar marker a localStorage-ban', () => {
+      act(() => {
+        useAuthStore.getState().login(mockWorker, 'tok', 'Bearer', '', 'penztar')
+      })
+      expect(localStorage.getItem(LAST_INSTALL_WINDOW_ROLE_KEY)).toBe('penztar')
+    })
+
+    it('F2: login ertektar szereppel -> ertektar marker (az ertektaros belepés zarja a belepes-elotti ablakot)', () => {
+      act(() => {
+        useAuthStore.getState().login(mockWorker, 'tok', 'Bearer', '', 'ertektar')
+      })
+      expect(localStorage.getItem(LAST_INSTALL_WINDOW_ROLE_KEY)).toBe('ertektar')
+    })
+
+    it('F3: login penztar, majd selectRole ertektar -> a marker atall ertektar-ra', () => {
+      act(() => {
+        useAuthStore.getState().login(mockWorker, 'tok', 'Bearer', '', 'penztar')
+      })
+      expect(localStorage.getItem(LAST_INSTALL_WINDOW_ROLE_KEY)).toBe('penztar')
+      act(() => {
+        useAuthStore.getState().selectRole('tok2', 'ertektar', [])
+      })
+      expect(localStorage.getItem(LAST_INSTALL_WINDOW_ROLE_KEY)).toBe('ertektar')
     })
   })
 })

@@ -76,6 +76,17 @@ vi.mock('../useAppMode', () => ({
   useAppMode: () => appModeMock(),
 }))
 
+// FKH-041 round 2 (D6): a hook a kanonikus szerepet az auth store-ból olvassa
+// (zéró-argumentumú hook, nem-selector destrukturálás). Alapértelmezés: penztár
+// szerep, így a meglévő esetek BIZONYÍTOTT pénztáros munkamenetben futnak.
+const authMock = vi.fn((): { activeRole: string | null; user: { role: string } | null } => ({
+  activeRole: 'penztar',
+  user: { role: 'penztar' },
+}))
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: () => authMock(),
+}))
+
 const { useSuiteUpdate, mapSessionToShiftState } = await import('../useSuiteUpdate')
 
 describe('mapSessionToShiftState — fail-safe leképezés', () => {
@@ -111,6 +122,8 @@ describe('useSuiteUpdate — jelentés a main processnek', () => {
     isElectronMock.mockReturnValue(true)
     appModeMock.mockReset()
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReset()
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
     readyCallback = null
   })
 
@@ -196,6 +209,8 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     isElectronMock.mockReturnValue(true)
     appModeMock.mockReset()
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReset()
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
     readyCallback = null
   })
 
@@ -252,8 +267,9 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
   })
 
-  it('C7: penztar mod + nincs session + getCurrent hibazik -> IDLE_BEFORE_OPEN (penztar valtozatlan)', async () => {
+  it('C7: penztar mod + penztar szerep + nincs session + getCurrent hibazik -> IDLE_BEFORE_OPEN (penztaros ablak megmarad)', async () => {
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
     isOpenMock.mockResolvedValue(false)
     getCurrentMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
@@ -289,5 +305,113 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     rerender()
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
     expect(setShiftStateMock).toHaveBeenLastCalledWith('SHIFT_OPEN')
+  })
+})
+
+describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/D6/D8)', () => {
+  beforeEach(() => {
+    isOpenMock.mockReset()
+    getCurrentMock.mockReset()
+    setShiftStateMock.mockClear()
+    statusMock.mockClear()
+    onReadyMock.mockClear()
+    isElectronMock.mockReturnValue(true)
+    appModeMock.mockReset()
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReset()
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    readyCallback = null
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('C10: penztar mod + ertektar szerep -> SHIFT_OPEN (soha IDLE_BEFORE_OPEN)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReturnValue({ activeRole: 'ertektar', user: { role: 'ertektar' } })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('C11: penztar mod + foertektar szerep + CLOSED session -> SHIFT_OPEN (soha CLOSED_AFTER_DAY_END)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReturnValue({ activeRole: 'foertektar', user: { role: 'foertektar' } })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockResolvedValue({ status: 'CLOSED', closedAt: '2026-08-12T18:00:00Z' })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('CLOSED_AFTER_DAY_END')
+  })
+
+  it('C12: penztar mod + TREASURY_MANAGER (legacy -> ertektar) -> SHIFT_OPEN (soha IDLE_BEFORE_OPEN)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReturnValue({ activeRole: 'TREASURY_MANAGER', user: null })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('C13: penztar mod + ismeretlen/hiányzó szerep (activeRole=null, user=null) -> SHIFT_OPEN (fail closed)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReturnValue({ activeRole: null, user: null })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('C14: penztar mod + activeRole=null, user.role=CASHIER -> IDLE_BEFORE_OPEN (legacy kanonizáció + user.role fallback, regresszió-pin)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReturnValue({ activeRole: null, user: { role: 'CASHIER' } })
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+  })
+
+  it('C15: penztar mod + ertektar szerep -> a napi-session API-t NEM hívjuk (backend-kör nélkül)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReturnValue({ activeRole: 'ertektar', user: { role: 'ertektar' } })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(isOpenMock).not.toHaveBeenCalled()
+    expect(getCurrentMock).not.toHaveBeenCalled()
+  })
+
+  it('C16: amíg az appMode isLoading=true, SEMMIT nem jelent (D8, ITEM 1c)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: true })
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    isOpenMock.mockResolvedValue(false)
+    renderHook(() => useSuiteUpdate())
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(setShiftStateMock).not.toHaveBeenCalled()
+  })
+
+  it('C17: isLoading=true -> false átmenet után jelent (a guard késleltet, nem nyom el)', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: true })
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    isOpenMock.mockResolvedValue(true)
+    const { rerender } = renderHook(() => useSuiteUpdate())
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(setShiftStateMock).not.toHaveBeenCalled()
+
+    // Az SQLite app_mode feloldódott -> isLoading=false, jelentés indulhat.
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    rerender()
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+  })
+
+  it('C18: ertektar mod + penztar szerep -> SHIFT_OPEN (a mód-ág továbbra is elsőbbséget élvez, regresszió-pin)', async () => {
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
   })
 })
