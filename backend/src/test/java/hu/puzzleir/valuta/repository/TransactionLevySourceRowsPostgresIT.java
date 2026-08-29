@@ -40,8 +40,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * bővül (a FK-053 eredeti ezeket hardkódolja).</p>
  *
  * <p>A vetület oszlop-sorrendje SZERZŐDÉS: (date, branchId, branchCode, branchName,
- * type, hufAmount, conversionGroupId, financialEffective, customerId) — a P12
- * minden oszlopot pinel, az index-csúszás itt bukik el, nem a foldban.</p>
+ * type, hufAmount, conversionGroupId, financialEffective, customerId, status) — a P12
+ * minden oszlopot pinel, az index-csúszás itt bukik el, nem a foldban. A status
+ * oszlop (row[9]) a round-2 D19 parent-status projekciója (FR-16 csoport-szint).</p>
  */
 @Testcontainers
 @EnableJpaAuditing
@@ -77,7 +78,8 @@ class TransactionLevySourceRowsPostgresIT {
     /** A vetületi oszlop-sorrend SZERZŐDÉS (P12 pineli). */
     private record SourceRow(LocalDate date, String branchCode, TransactionType type,
                              BigDecimal hufAmount, UUID conversionGroupId,
-                             boolean financialEffective, String customerId) {}
+                             boolean financialEffective, String customerId,
+                             TransactionStatus status) {}
 
     private static SourceRow toSourceRow(Object[] row) {
         return new SourceRow(
@@ -87,11 +89,12 @@ class TransactionLevySourceRowsPostgresIT {
                 (BigDecimal) row[5],
                 (UUID) row[6],
                 (Boolean) row[7],
-                (String) row[8]);
+                (String) row[8],
+                (TransactionStatus) row[9]);
     }
 
     @Test
-    @DisplayName("FK-099 P1–P12: a riport-univerzum pontos sorhalmaza valós PostgreSQL-en")
+    @DisplayName("FK-099 P1–P14: a riport-univerzum pontos sorhalmaza valós PostgreSQL-en")
     void universeReturnsExactlyTheExpectedRows() {
         Seed seed = transactionTemplate.execute(status -> seed());
         assertThat(seed).isNotNull();
@@ -101,25 +104,33 @@ class TransactionLevySourceRowsPostgresIT {
 
         List<SourceRow> actual = rows.stream().map(TransactionLevySourceRowsPostgresIT::toSourceRow).toList();
 
-        // ============================ P8: IDENTITÁS (pontos halmaz) ============================
+        // ============================ P8: IDENTITÁS (pontos halmaz, 10 sor) ============================
         List<SourceRow> expected = List.of(
                 new SourceRow(D1, seed.branchA1().getCode(), TransactionType.BUY,
-                        new BigDecimal("3000000.00"), null, true, "C1"),
+                        new BigDecimal("3000000.00"), null, true, "C1", TransactionStatus.COMPLETED),
                 new SourceRow(D1, seed.branchA1().getCode(), TransactionType.SELL,
-                        new BigDecimal("1000000.00"), null, true, "C2"),
+                        new BigDecimal("1000000.00"), null, true, "C2", TransactionStatus.COMPLETED),
                 new SourceRow(D1, seed.branchA1().getCode(), TransactionType.CONVERSION,
-                        new BigDecimal("3000000.00"), seed.groupG1(), false, "C3"),
+                        new BigDecimal("3000000.00"), seed.groupG1(), false, "C3", TransactionStatus.COMPLETED),
                 new SourceRow(D1, seed.branchA1().getCode(), TransactionType.BUY,
-                        new BigDecimal("3000000.00"), seed.groupG1(), true, "C3"),
+                        new BigDecimal("3000000.00"), seed.groupG1(), true, "C3", TransactionStatus.COMPLETED),
                 new SourceRow(D2, seed.branchA1().getCode(), TransactionType.SELL,
-                        new BigDecimal("2990000.00"), seed.groupG1(), true, "C3"),
+                        new BigDecimal("2990000.00"), seed.groupG1(), true, "C3", TransactionStatus.COMPLETED),
                 new SourceRow(D1, seed.branchA2().getCode(), TransactionType.BUY,
-                        new BigDecimal("4444444.00"), null, true, ""),
+                        new BigDecimal("4444444.00"), null, true, "", TransactionStatus.COMPLETED),
                 new SourceRow(D1, seed.branchA2().getCode(), TransactionType.BUY,
-                        new BigDecimal("4444445.00"), null, true, "C7"));
+                        new BigDecimal("4444445.00"), null, true, "C7", TransactionStatus.COMPLETED),
+                // G2 (round-2 D19): a REVERSED parent LÁTSZIK a halmazban, hogy a fold
+                // megkülönböztesse a „sztornózott" és a „ténylegesen hiányzó parent" alakot.
+                new SourceRow(D1, seed.branchA1().getCode(), TransactionType.CONVERSION,
+                        new BigDecimal("3000000.00"), seed.groupG2(), false, "C10", TransactionStatus.REVERSED),
+                new SourceRow(D1, seed.branchA1().getCode(), TransactionType.BUY,
+                        new BigDecimal("3000000.00"), seed.groupG2(), true, "C10", TransactionStatus.COMPLETED),
+                new SourceRow(D1, seed.branchA1().getCode(), TransactionType.SELL,
+                        new BigDecimal("2990000.00"), seed.groupG2(), true, "C10", TransactionStatus.COMPLETED));
 
         assertThat(actual)
-                .as("P8/FR-5/FR-15/FR-16: a visszaadott halmaz EXAKTAN {T1,T2,T3,T4,T5,T10,T11} — "
+                .as("P8/FR-5/FR-15/FR-16: a visszaadott halmaz EXAKTAN {T1,T2,T3,T4,T5,T10,T11,T15,T16,T17} — "
                         + "nem szuperszett (a mutációs bizonyíték erre épül)")
                 .containsExactlyInAnyOrderElementsOf(expected);
 
@@ -195,11 +206,40 @@ class TransactionLevySourceRowsPostgresIT {
 
         // ============================ P12: vetület-oszlopok ============================
         for (Object[] row : rows) {
-            assertThat(row).as("P12: minden sor 9 oszlopos").hasSize(9);
+            assertThat(row).as("P12: minden sor 10 oszlopos").hasSize(10);
             assertThat(row[1]).as("P12: row[1] a branch UUID").isInstanceOf(UUID.class);
             assertThat(row[3]).as("P12: row[3] a branch név").isInstanceOf(String.class);
             assertThat(row[8]).as("P12: row[8] a customerId").isInstanceOf(String.class);
+            assertThat(row[9]).as("P12: row[9] a TransactionStatus").isInstanceOf(TransactionStatus.class);
         }
+
+        // ============================ P13: D19 — sztornózott parent látszik (FR-16 csoport-szint) ============================
+        assertThat(actual)
+                .filteredOn(row -> seed.groupG2().equals(row.conversionGroupId()))
+                .as("P13/FR-16/D19: a G2 csoport MINDHÁROM sora jön, parent REVERSED státusszal — "
+                        + "a fold így különbözteti meg a sztornózott és a ténylegesen hiányzó parentet")
+                .hasSize(3)
+                .anySatisfy(row -> {
+                    assertThat(row.type()).isEqualTo(TransactionType.CONVERSION);
+                    assertThat(row.status()).isEqualTo(TransactionStatus.REVERSED);
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.type()).isEqualTo(TransactionType.BUY);
+                    assertThat(row.status()).isEqualTo(TransactionStatus.COMPLETED);
+                })
+                .anySatisfy(row -> {
+                    assertThat(row.type()).isEqualTo(TransactionType.SELL);
+                    assertThat(row.status()).isEqualTo(TransactionStatus.COMPLETED);
+                });
+
+        // ============================ P14: pitfall 26 — csak a parent status-exempt ============================
+        assertThat(actual)
+                .filteredOn(row -> seed.groupG1().equals(row.conversionGroupId()))
+                .as("P14/pitfall 26: a T18 REVERSED convBuy child (G1, 1 000 000) NEM szivárog be — "
+                        + "a konverzió-ágon CSAK a parent státusz-exempt, a childoké nem; "
+                        + "a G1 három VALID sora érintetlen")
+                .hasSize(3)
+                .noneSatisfy(row -> assertThat(row.hufAmount()).isEqualByComparingTo("1000000.00"));
     }
 
     @Test
@@ -284,6 +324,7 @@ class TransactionLevySourceRowsPostgresIT {
         Tenant tenantB = seedTenant("B" + suffix, branchType, country, branchStatus, now, "FK099B1");
 
         UUID groupG1 = UUID.randomUUID();
+        UUID groupG2 = UUID.randomUUID();
 
         // T1: önálló BUY, COMPLETED, 3M, effective, C1 (D1)
         saveTransaction(tenantA, huf, D1, TransactionType.BUY, TransactionStatus.COMPLETED,
@@ -327,10 +368,23 @@ class TransactionLevySourceRowsPostgresIT {
         // T14: nem-effective önálló BUY — egyik univerzum-ágba sem illik
         saveTransaction(tenantA, huf, D1, TransactionType.BUY, TransactionStatus.COMPLETED,
                 "2000000.00", null, false, "C9", "T14-" + suffix);
+        // T15–T17 (round-2 D19): G2 konverzió-csoport SZTORNÓZOTT parenttel (ugyanaznapi storno alakja).
+        // T15: parent CONVERSION, REVERSED — a query-nak vissza KELL adnia, hogy a fold lássa.
+        saveTransaction(tenantA, huf, D1, TransactionType.CONVERSION, TransactionStatus.REVERSED,
+                "3000000.00", groupG2, false, "C10", "T15-" + suffix);
+        // T16: convBuy child — COMPLETED (a storno a childokat nem érinti)
+        saveTransaction(tenantA, huf, D1, TransactionType.BUY, TransactionStatus.COMPLETED,
+                "3000000.00", groupG2, true, "C10", "T16-" + suffix);
+        // T17: convSell child — COMPLETED
+        saveTransaction(tenantA, huf, D1, TransactionType.SELL, TransactionStatus.COMPLETED,
+                "2990000.00", groupG2, true, "C10", "T17-" + suffix);
+        // T18 (round-2, pitfall 26): REVERSED convBuy child a G1-ben — ki kell maradnia
+        saveTransaction(tenantA, huf, D1, TransactionType.BUY, TransactionStatus.REVERSED,
+                "1000000.00", groupG1, true, "C11", "T18-" + suffix);
 
         transactionRepository.flush();
         return new Seed(tenantA.company(), tenantA.branch(), branchA2,
-                tenantB.company(), groupG1);
+                tenantB.company(), groupG1, groupG2);
     }
 
     private Tenant seedTenant(
@@ -428,5 +482,5 @@ class TransactionLevySourceRowsPostgresIT {
     private record Tenant(Company company, Branch branch, Worker worker) {}
 
     private record Seed(Company companyA, Branch branchA1, Branch branchA2,
-                        Company companyB, UUID groupG1) {}
+                        Company companyB, UUID groupG1, UUID groupG2) {}
 }

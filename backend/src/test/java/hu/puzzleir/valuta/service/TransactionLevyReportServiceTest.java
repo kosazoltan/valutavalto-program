@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.dto.levy.TransactionLevyReportDto;
 import hu.puzzleir.valuta.dto.levy.TypeGroupDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.TransactionLevyRateHistory;
+import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -49,7 +50,8 @@ import static org.mockito.Mockito.when;
  * <p>A fixture-k {@code Object[]} sorok, pontosan a
  * {@code findTransactionLevySourceRows} vetületi sorrendjében:
  * (date, branchId, branchCode, branchName, type, hufAmount,
- * conversionGroupId, financialEffective, customerId).</p>
+ * conversionGroupId, financialEffective, customerId, status). A status
+ * oszlop a round-2 D19 parent-status projekciója (FR-16 csoport-szint).</p>
  *
  * <p>Megj.: a query-predikátumok (WU-kizárás, REVERSED-kizárás, konverzió
  * dupla-adóztatás elleni őrzés) valós PostgreSQL-en a
@@ -90,19 +92,19 @@ class TransactionLevyReportServiceTest {
 
     private static Object[] row(LocalDate date, UUID branchId, String branchCode, String branchName,
                                 TransactionType type, String hufAmount, UUID conversionGroupId,
-                                boolean financialEffective, String customerId) {
+                                boolean financialEffective, String customerId, TransactionStatus status) {
         return new Object[]{date, branchId, branchCode, branchName, type,
-                new BigDecimal(hufAmount), conversionGroupId, financialEffective, customerId};
+                new BigDecimal(hufAmount), conversionGroupId, financialEffective, customerId, status};
     }
 
     private static Object[] buyRow(LocalDate date, String hufAmount, String customerId) {
         return row(date, BRANCH_ID_001, "001", "Fo utca", TransactionType.BUY,
-                hufAmount, null, true, customerId);
+                hufAmount, null, true, customerId, TransactionStatus.COMPLETED);
     }
 
     private static Object[] sellRow(LocalDate date, String hufAmount, String customerId) {
         return row(date, BRANCH_ID_001, "001", "Fo utca", TransactionType.SELL,
-                hufAmount, null, true, customerId);
+                hufAmount, null, true, customerId, TransactionStatus.COMPLETED);
     }
 
     /** V384 seed: 0.45% / 20000 mindket komponensre, flag TRUE. */
@@ -215,17 +217,29 @@ class TransactionLevyReportServiceTest {
 
     private static Object[] conversionParentRow() {
         return row(D1, BRANCH_ID_001, "001", "Fo utca", TransactionType.CONVERSION,
-                "3000000", GROUP_G1, false, "C3");
+                "3000000", GROUP_G1, false, "C3", TransactionStatus.COMPLETED);
     }
 
     private static Object[] convBuyChildRow() {
         return row(D1, BRANCH_ID_001, "001", "Fo utca", TransactionType.BUY,
-                "3000000", GROUP_G1, true, "C3");
+                "3000000", GROUP_G1, true, "C3", TransactionStatus.COMPLETED);
     }
 
     private static Object[] convSellChildRow() {
         return row(D1, BRANCH_ID_001, "001", "Fo utca", TransactionType.SELL,
-                "2990000", GROUP_G1, true, "C3");
+                "2990000", GROUP_G1, true, "C3", TransactionStatus.COMPLETED);
+    }
+
+    /** D18/D19: sztornózott parent — REVERSED státuszú CONVERSION sor (a childok COMPLETED-ek maradnak). */
+    private static Object[] reversedConversionParentRow() {
+        return row(D1, BRANCH_ID_001, "001", "Fo utca", TransactionType.CONVERSION,
+                "3000000", GROUP_G1, false, "C3", TransactionStatus.REVERSED);
+    }
+
+    /** B30/D18 szélesség: CANCELLED parent — a szabály „nem COMPLETED", nem „REVERSED". */
+    private static Object[] cancelledConversionParentRow() {
+        return row(D1, BRANCH_ID_001, "001", "Fo utca", TransactionType.CONVERSION,
+                "3000000", GROUP_G1, false, "C3", TransactionStatus.CANCELLED);
     }
 
     @Test
@@ -247,7 +261,7 @@ class TransactionLevyReportServiceTest {
     }
 
     @Test
-    @DisplayName("B5/FR-5 fallback: parent nélkül a convBuy hufAmount az alap (ugyanaz az eredmény)")
+    @DisplayName("B5/D21 legacy: NINCS parent sor egyáltalán (nem sztornózott) — a convBuy hufAmount az alap")
     void b5_conversionFallbackToConvBuyWhenParentMissing() {
         authenticate("FOERTEKTAR");
         stubRates(seedRate());
@@ -281,6 +295,119 @@ class TransactionLevyReportServiceTest {
         assertThat(r.getSell().getNormalSupplementLevy()).isEqualByComparingTo("13455");
         assertZeroGroup(r.getConversion());
         assertThat(r.getLevyTotal()).isEqualByComparingTo("53910");
+    }
+
+    // ============================ B27–B32: FR-16 csoport-szint (round-2 D18/D19/D20) ============================
+
+    @Test
+    @DisplayName("B27/FR-16/D18: sztornózott parent (REVERSED) + COMPLETED childok → EGÉSZ csoport 0 illeték, "
+            + "üres rows/appliedRates (flag TRUE)")
+    void b27_reversedParentYieldsZeroLevyFlagTrue() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(reversedConversionParentRow(), convBuyChildRow(), convSellChildRow());
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        // A konverzió-napra nem keletkezik sor: a csoport 0-t ad, önálló tétel nincs.
+        assertThat(report.getRows()).isEmpty();
+        TransactionLevyReportDto.Row totals = report.getTotals();
+        assertThat(totals.getLevyTotal()).isEqualByComparingTo("0");
+        assertThat(totals.getLargeBaseHuf()).isEqualByComparingTo("0");
+        assertZeroGroup(totals.getConversion());
+        assertZeroGroup(totals.getBuy());
+        assertZeroGroup(totals.getSell());
+        // D22: sztornózott csoport nem növeli az appliedRates-t (ráta-feloldás előtt tér vissza).
+        assertThat(report.getAppliedRates()).isEmpty();
+        // A havi panel érintetlen (konverzió eleve nem ad hozzá — B13).
+        assertThat(report.getMonthlySummary().getBuyCount()).isZero();
+        assertThat(report.getMonthlySummary().getSellCount()).isZero();
+        assertThat(report.getMonthlySummary().getCustomerCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("B28/FR-16/D18 flag FALSE alatt: sztornózott csoport → Vétel ÉS Eladás is 0, "
+            + "a D6 láb-split NEM futhat le")
+    void b28_reversedParentYieldsZeroLevyFlagFalse() {
+        authenticate("FOERTEKTAR");
+        stubRates(rateRow(LocalDate.of(2013, 1, 1), "0.450", "20000.00", false));
+        stubRows(reversedConversionParentRow(), convBuyChildRow(), convSellChildRow());
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).isEmpty();
+        TransactionLevyReportDto.Row totals = report.getTotals();
+        assertThat(totals.getLevyTotal()).isEqualByComparingTo("0");
+        assertZeroGroup(totals.getBuy());
+        assertZeroGroup(totals.getSell());
+        assertZeroGroup(totals.getConversion());
+        assertThat(report.getAppliedRates()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("B29/D20 jó fele: COMPLETED parent + childok → változatlan B4 eredmény (Konverzió 27000)")
+    void b29_completedParentUnchanged() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(conversionParentRow(), convBuyChildRow(), convSellChildRow());
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).hasSize(1);
+        TransactionLevyReportDto.Row r = report.getRows().get(0);
+        assertThat(r.getConversion().getNormalBaseLevy()).isEqualByComparingTo("13500");
+        assertThat(r.getConversion().getNormalSupplementLevy()).isEqualByComparingTo("13500");
+        assertZeroGroup(r.getBuy());
+        assertZeroGroup(r.getSell());
+        assertThat(r.getLevyTotal()).isEqualByComparingTo("27000");
+    }
+
+    @Test
+    @DisplayName("B30/D18 szélesség: CANCELLED parent → szintén 0 — a szabály „nem COMPLETED\", nem „REVERSED\"")
+    void b30_cancelledParentYieldsZeroLevy() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(cancelledConversionParentRow(), convBuyChildRow(), convSellChildRow());
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).isEmpty();
+        assertThat(report.getTotals().getLevyTotal()).isEqualByComparingTo("0");
+        assertZeroGroup(report.getTotals().getConversion());
+        assertThat(report.getAppliedRates()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("B31/D18+vegyes nap: sztornózott csoport MELLETT önálló BUY érintetlenül illetékezik")
+    void b31_voidedGroupBesideStandaloneBuy() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(reversedConversionParentRow(), convBuyChildRow(), convSellChildRow(),
+                buyRow(D1, "3000000", "C1"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).hasSize(1);
+        TransactionLevyReportDto.Row r = report.getRows().get(0);
+        assertThat(r.getBuy().getNormalBaseLevy()).isEqualByComparingTo("13500");
+        assertThat(r.getBuy().getNormalSupplementLevy()).isEqualByComparingTo("13500");
+        assertZeroGroup(r.getConversion());
+        assertZeroGroup(r.getSell());
+        assertThat(r.getLevyTotal()).isEqualByComparingTo("27000");
+    }
+
+    @Test
+    @DisplayName("B32/D22: sztornózott csoport + NINCS hatályos ráta → NEM D7 400, hanem üres riport")
+    void b32_voidedGroupNeedsNoRate() {
+        authenticate("FOERTEKTAR");
+        stubRates();
+        stubRows(reversedConversionParentRow(), convBuyChildRow(), convSellChildRow());
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).isEmpty();
+        assertThat(report.getTotals().getLevyTotal()).isEqualByComparingTo("0");
+        assertThat(report.getAppliedRates()).isEmpty();
     }
 
     // ============================ B7–B8: query-szintű kizárások (mock-oldal) ============================
@@ -330,7 +457,7 @@ class TransactionLevyReportServiceTest {
         stubRows(
                 buyRow(D1, "3000000", "C1"),
                 row(D2, BRANCH_ID_002, "002", "Meldek", TransactionType.SELL,
-                        "5000000", null, true, "C2"));
+                        "5000000", null, true, "C2", TransactionStatus.COMPLETED));
 
         TransactionLevyReportDto report = service.getReport(null, FROM, TO);
 
@@ -525,7 +652,7 @@ class TransactionLevyReportServiceTest {
         stubRows(
                 buyRow(D1, "3000000", "C1"),
                 row(D2, BRANCH_ID_002, "002", "Meldek", TransactionType.SELL,
-                        "5000000", null, true, "C2"));
+                        "5000000", null, true, "C2", TransactionStatus.COMPLETED));
 
         service.getReport(null, FROM, TO);
 
