@@ -20,6 +20,7 @@ import {
 import { useAppMode } from '../hooks/useAppMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
 import type { AppMode } from '../types/appMode'
+import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
 import { isElectron as isElectronRuntime } from '../utils/electron'
 import { logger } from '../utils/logger'
 
@@ -31,8 +32,27 @@ import SuiteUpdateBadge from '../components/SuiteUpdateBadge'
 import { useSuiteUpdate } from '../hooks/useSuiteUpdate'
 import i18n from '../i18n'
 
-export function shouldRequireDailySession(appMode: AppMode): boolean {
-  return appMode === CASHIER_APP_MODE
+/**
+ * FKH-041 FR-2: a napi-session kapu SZEREPKÖR-tudatos. Pénztár módban CSAK a
+ * kanonikusan `penztar` szerepű dolgozót gateli (értéktáros/főértéktáros/
+ * értékszállító nem napnyitással dolgozik). Más módban a kapu nem él.
+ *
+ * Bemenet: az AKTÍV kanonikus szerep (activeRole ?? worker.role), NEM a
+ * `hasCanonicalRole` — az bármely szerepre (ADMIN-short-circuittel is) igazat adna,
+ * így egy penztar+ertektar multiszerepű dolgozó mindig gate-elve lenne (D4).
+ */
+export function shouldRequireDailySession(
+  appMode: AppMode,
+  activeCanonicalRole?: string | null,
+): boolean {
+  const canonical = canonicalizeRoleForAppMode(activeCanonicalRole)
+  if (appMode !== CASHIER_APP_MODE) return false
+  // R1: az ures/whitespace-only szerep-sztring kanonizacioja '' (falsy), ezert a
+  // `!canonical` tartja fenn a kaput. Ez a viselkedes a canonicalizeRoleForAppMode
+  // ures-visszateresen alapul — egy explicit osszehasonlitasra (pl. `=== null`)
+  // atirt refaktor ezt hallgatoalagban megvaltoztatna (ismeretlen szerep => kapu nelkul).
+  if (!canonical) return true // ismeretlen/meg restore-elotti szerep -> kapu marad (nincs regresszio)
+  return canonical === 'penztar' // csak a penztari operatort gateli
 }
 
 export async function performBackendAwareLogout(
@@ -79,7 +99,7 @@ export default function MainLayout() {
   const [sessionInfo, setSessionInfo] = useState<DailySession | null>(null)
   const [showSessionDialog, setShowSessionDialog] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
-  const { user, logout, hasRole, hasCanonicalRole } = useAuthStore()
+  const { user, logout, hasRole, hasCanonicalRole, activeRole } = useAuthStore()
 
   // Suite-frissítés: a renderer jelenti a műszak-állapotot a main processnek (csak itt
   // tudható, van-e nyitott napi munkamenet), és innen kapjuk a "készen áll" jelzést.
@@ -134,7 +154,18 @@ export default function MainLayout() {
   }, [])
 
   const initSession = useCallback(async () => {
-    if (!shouldRequireDailySession(appMode)) {
+    if (!shouldRequireDailySession(appMode, activeRole ?? user?.role ?? null)) {
+      if (appMode === CASHIER_APP_MODE) {
+        // FKH-041 FR-2 / C9: penztar mod nem-penztari kanonikus szereppel —
+        // a napnyitas-kapu nem él. A live-log a bejelento gepen a bizonyitek
+        // (round 2: a kanonikus szerep is szerepel a sorban — a judge
+        // accepted-risk fixje; megjegyzés: a logger.info dev-only, prod main.log-ba
+        // a renderer warn/error jut csak, ld. logger.ts:145-152).
+        logger.info(
+          'MainLayout',
+          `Napi-session kapu kihagyva: penztar mod nem-penztari szereppel (aktiv: ${activeRole ?? user?.role ?? 'ismeretlen'}, kanonikus: ${canonicalizeRoleForAppMode(activeRole ?? user?.role ?? null) || 'ismeretlen'})`,
+        )
+      }
       markSessionReadyWithoutDailyGate()
       return
     }
@@ -168,7 +199,7 @@ export default function MainLayout() {
     } finally {
       setSessionChecking(false)
     }
-  }, [appMode, markSessionReadyWithoutDailyGate])
+  }, [appMode, activeRole, user?.role, markSessionReadyWithoutDailyGate])
 
   useEffect(() => {
     if (appModeLoading) {

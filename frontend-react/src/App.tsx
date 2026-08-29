@@ -20,6 +20,8 @@ import {
 import { HEARTBEAT_INTERVAL_MS } from './config/heartbeat'
 import { useAppMode } from './hooks/useAppMode'
 import { appModeLabel, isRoleSelectableForAppMode } from './utils/appModeRoles'
+import { getAppFlavor } from './utils/clientEnv'
+import { resolveDefaultProtectedRoute } from './utils/defaultProtectedRoute'
 import { resolveOfflineRestoreProfile, type OfflineJwtPayload } from './utils/offlineAuthRestore'
 
 // Layouts
@@ -358,14 +360,16 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const [isRestoring, setIsRestoring] = useState(() => hasPersistedToken() || appModeLoading)
-  const defaultProtectedRoute =
-    import.meta.env.VITE_APP_FLAVOR === 'central-workstation'
-      ? '/central-workstation'
-      : import.meta.env.VITE_APP_FLAVOR === 'rate-maker'
-        ? '/rates/main'
-        : appMode === 'full'
-          ? '/central-workstation'
-          : '/dashboard'
+  const roles = useAuthStore((state) => state.roles)
+  const activeRole = useAuthStore((state) => state.activeRole)
+  // FKH-041 FR-1: a lokál terminál kezdő útvonala SZEREPKÖR-alapú (ertektar -> /treasury),
+  // nem a config-ból visszatöltött appMode alapján mereven /dashboard.
+  const defaultProtectedRoute = resolveDefaultProtectedRoute({
+    flavor: getAppFlavor(),
+    appMode,
+    roles,
+    activeRole,
+  })
 
   // Desktopon és weben is megpróbáljuk visszatölteni a tárolt JWT-t.
   useEffect(() => {
