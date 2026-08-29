@@ -306,6 +306,20 @@ export const menuGroups: MenuGroup[] = [
       { path: '/reports/mnb', label: 'MNB riportok', icon: FileText },
       { path: '/reports/handling-fee-decade', label: 'Kezelési díj — készpénz', icon: FileText },
       { path: '/reports/pos-handling-fee', label: 'Kezelési díj — POS', icon: FileText },
+      // FK-099: tranzakciós illeték riport + append-only ráta-beállítások.
+      // A riport itemet irodavezeto is látja; a ráta-itemet NEM (FR-18, D10).
+      {
+        path: '/reports/transaction-levy',
+        label: 'Tranzakciós díjak jelentése',
+        icon: FileText,
+        canonicalRoles: ['foertektar', 'ugyvezeto', 'irodavezeto', 'belso_ellenor'],
+      },
+      {
+        path: '/reports/transaction-levy-rates',
+        label: 'Illeték-ráta beállítások',
+        icon: FileText,
+        canonicalRoles: ['foertektar', 'ugyvezeto', 'belso_ellenor'],
+      },
       { path: '/reports/bank-transactions', label: 'Banki tranzakciók', icon: FileText },
       { path: '/reports/cashier-turnover', label: 'Pénztáros forgalom', icon: FileText },
       { path: '/reports/recurring-customers', label: 'Visszatérő ügyfél (AML)', icon: FileText },

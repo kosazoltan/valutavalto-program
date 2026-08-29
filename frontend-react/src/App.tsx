@@ -121,6 +121,11 @@ const RecurringCustomerReportPage = lazy(
   () => import('./pages/reports/RecurringCustomerReportPage'),
 )
 const AverageRateReportPage = lazy(() => import('./pages/reports/AverageRateReportPage'))
+// FK-099: tranzakciós illeték riport + append-only ráta-beállítások.
+const TransactionLevyReportPage = lazy(
+  () => import('./pages/reports/TransactionLevyReportPage'),
+)
+const TransactionLevyRatesPage = lazy(() => import('./pages/reports/TransactionLevyRatesPage'))
 const DailyJournalPage = lazy(() => import('./pages/reports/DailyJournalPage'))
 const CentralReportsPage = lazy(() => import('./pages/reports/CentralReportsPage'))
 const NavReportPage = lazy(() => import('./pages/reports/NavReportPage'))
@@ -820,6 +825,24 @@ export default function App() {
                   element={<RecurringCustomerReportPage />}
                 />
                 <Route path="/reports/average-rate" element={<AverageRateReportPage />} />
+                {/* FK-099: tranzakciós illeték riport + ráta-beállítások (MenuRoleGate: a
+                    route-szerepek a menüből jönnek — single source of truth, D10) */}
+                <Route
+                  path="/reports/transaction-levy"
+                  element={
+                    <MenuRoleGate path="/reports/transaction-levy">
+                      <TransactionLevyReportPage />
+                    </MenuRoleGate>
+                  }
+                />
+                <Route
+                  path="/reports/transaction-levy-rates"
+                  element={
+                    <MenuRoleGate path="/reports/transaction-levy-rates">
+                      <TransactionLevyRatesPage />
+                    </MenuRoleGate>
+                  }
+                />
                 <Route path="/reports/daily-journal" element={<DailyJournalPage />} />
                 <Route path="/reports/central" element={<CentralReportsPage />} />
                 <Route path="/reports/nav" element={<NavReportPage />} />
