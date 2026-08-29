@@ -157,10 +157,13 @@ export default function MainLayout() {
     if (!shouldRequireDailySession(appMode, activeRole ?? user?.role ?? null)) {
       if (appMode === CASHIER_APP_MODE) {
         // FKH-041 FR-2 / C9: penztar mod nem-penztari kanonikus szereppel —
-        // a napnyitas-kapu nem él. A live-log a bejelento gepen a bizonyitek.
+        // a napnyitas-kapu nem él. A live-log a bejelento gepen a bizonyitek
+        // (round 2: a kanonikus szerep is szerepel a sorban — a judge
+        // accepted-risk fixje; megjegyzés: a logger.info dev-only, prod main.log-ba
+        // a renderer warn/error jut csak, ld. logger.ts:145-152).
         logger.info(
           'MainLayout',
-          `Napi-session kapu kihagyva: penztar mod nem-penztari szereppel (aktiv szerep: ${activeRole ?? user?.role ?? 'ismeretlen'})`,
+          `Napi-session kapu kihagyva: penztar mod nem-penztari szereppel (aktiv: ${activeRole ?? user?.role ?? 'ismeretlen'}, kanonikus: ${canonicalizeRoleForAppMode(activeRole ?? user?.role ?? null) || 'ismeretlen'})`,
         )
       }
       markSessionReadyWithoutDailyGate()
