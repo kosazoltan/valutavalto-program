@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-27T07:01:00.889Z
+generated_at: 2026-08-29T06:07:27.319Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7156,13 +7156,6 @@ nodes:
     summary: "# Diagnózis-jelentés: VW0001 / TISZA telephely-azonosító (Neon élő DB, 2026-07-02) Forrás: `penztari-keszlet-telephely-diag.yml` run 28596040523 (7 SELECT + 4 szélesség-felmérő, read-only). ## 1. A hibajelentés fő hipotézise MEGDŐLT **A VW0001 worker RENDBEN van:** `branch_id → BR020 (Szeged Értéktár)`, `vault_territory_id=4 (Szeged)`, role `ertektar` (primary). NEM a régi TISZA-ra mutat — a V282-jellegű adatjavításr"
     tags: [diagnozis, jelentes, vw0001, tisza, telephely, azonosito, neon, elo, 2026, forras]
     areas: [database, deploy, ertektar, napzaras, penztar, specifikacio]
-  - id: 55ee59debe750e76
-    type: medium-term-episodic
-    title: "Értéktári teljes batch — élő követelménystátusz (2026-07-19)"
-    source_path: vault/sessions/2026-07-19-ertektari-batch-statusz.md
-    summary: "# Értéktári teljes batch — élő követelménystátusz (2026-07-19) Forrás: `.hermes/plans/ertektari-teljes-batch-holdout.md`. Státusz csak nyers evidencia után módosítható; állítás önmagában nem PASS. | Sor-ID | Státusz | Evidencia / blocker | Utolsó frissítés | |---|---|---|---| | FKH006-FR1 | PARTIAL | Előzetes audit: részmegvalósítás; teljes kapu/evidencia nyitott. | 2026-07-19 S0 | | FKH006-FR2 | PARTIAL | Előzetes a"
-    tags: [ertektari, teljes, batch, elo, kovetelmenystatusz, 2026, forras, hermes, plans, holdout]
-    areas: [ertektar, specifikacio]
   - id: d8d6d97f9f2f52ba
     type: medium-term-episodic
     title: "Handoff — 2026-06-08 — Mandate cleanup + módszertani frissítések"
@@ -7191,314 +7184,6 @@ nodes:
     summary: "# Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett) > Oka: az Anthropic hozzáférés (Opus orchestrator + Fable planner) kikerült a > session végén. A 4-szerepes pipeline nem folytatható (Fable tervezés + GLM > review még elmegy OpenRouter/Nous úton, de az Opus orchestrátor nélül a > minőségi szabvány nem tartható). A user explicit utasítása: álljunk meg, > írjunk handoffot, várjuk az"
     tags: [handoff, 2026, gap, program, szelet, pending, anthropic, hozzaferes, kiesett, oka]
     areas: [cimletezes, database, deploy, installer, penztar, security, specifikacio, sync, tenant]
-  - id: b4425b2b164a7b6f
-    type: medium-term-episodic
-    title: "Handoff — 2026-07-07 FS-D (FS-3) MERGELVE + deployolva; FS-GAP folytatható"
-    source_path: vault/sessions/handoff-2026-07-07-fs-d-merged-deployed.md
-    summary: "# Handoff — 2026-07-07 FS-D (FS-3) MERGELVE + deployolva; FS-GAP folytatható > Előzmény: a `handoff-2026-07-06-anthropic-outage-fs-d-pending.md` az Anthropic-kiesés > miatt PENDING-en hagyta az FS-D-t (WIP-snapshot commit, review előtt). Az Anthropic > visszatért; ez a session végigvitte a teljes pipeline-t merge-ig és deployig. ## 1. AKTUÁLIS ÁLLAPOT - **Main HEAD:** `b6b263eb` = PR #1348 (FS-3 D-szelet) squash-merg"
-    tags: [handoff, 2026, mergelve, deployolva, gap, folytathato, elozmeny, anthropic, outage, pending]
-    areas: [cimletezes, deploy, penztar, security]
-  - id: a2ec70d90f22e388
-    type: medium-term-episodic
-    title: "Handoff — 2026-07-07 FS-5 TELJES (4/4 slice mergelve)"
-    source_path: vault/sessions/handoff-2026-07-07-fs5-complete.md
-    summary: "# Handoff — 2026-07-07 FS-5 TELJES (4/4 slice mergelve) ## 1. AKTUÁLIS ÁLLAPOT - **Main HEAD:** `094bc809` = PR #1352 (FS-5 S4) squash-merge. - **FS-5 KÉSZ** — okmány elő/hátlap képpár + törvényi kódos nagyítás + pénztár scan-törlés sync után. - Working tree tiszta, worktree-k eltávolítva. - Flyway max a repóban: **V345** (V344 scanned_document_image, V345 document_view_grant). - Prod deploy: NEM ellenőriztem ebben a"
-    tags: [handoff, 2026, teljes, slice, mergelve, aktualis, allapot, main, head, 094bc809]
-    areas: [cimletezes, deploy, napzaras, penztar, sync, tenant]
-  - id: ae4202f46bf0a057
-    type: medium-term-episodic
-    title: "Handoff — FS-7 S3 merged, FS-7 TELJES (2026-07-07)"
-    source_path: vault/sessions/handoff-2026-07-07-fs7-s3-complete.md
-    summary: "# Handoff — FS-7 S3 merged, FS-7 TELJES (2026-07-07) ## Mi történt FS-7 (10M+ jövedelemforrás-igazolás → email a compliance-címzetteknek → zero-persistence) **záró szelete (S3) merged** → **FS-7 TELJES (3/3)**. - **PR #1355** (squash 70fa72ff): center `IncomeProofRecipientsPanel` + SettingsPage tab (`Jövedelemig. címzettek`) + `incomeSourceDocApi` getRecipients/putRecipients a MEGLÉVŐ `services/api/incomeSourceDocs.t"
-    tags: [handoff, merged, teljes, 2026, tortent, 10m, jovedelemforras, igazolas, email, compliance]
-    areas: [cimletezes, deploy, frontend]
-  - id: e9ce6f34c949532f
-    type: medium-term-episodic
-    title: "Handoff — FS-9 S1 merged, FS-9 folyamatban (2026-07-07)"
-    source_path: vault/sessions/handoff-2026-07-07-fs9-s1-merged.md
-    summary: "# Handoff — FS-9 S1 merged, FS-9 folyamatban (2026-07-07) ## Mi történt FS-9 (címletképek center→pénztár sync) **S1 backend foundation merged**. - **PR #1356** (squash 1e74af97): `CurrencyDenominationImage` entity + V346 migráció (FK-mentes, új tábla) + repository (findByIdAndCompanyId IDOR-guard + bájtmentes MetaView-projekció) + service (fail-closed upload, cross-tenant IDOR minden útvonalon) + controller (/upload"
-    tags: [handoff, merged, folyamatban, 2026, tortent, cimletkepek, center, penztar, sync, backend]
-    areas: [cimletezes, database, deploy, ertektar, penztar, sync, tenant]
-  - id: 25673a3b6fd7e9d5
-    type: medium-term-episodic
-    title: "Handoff — FS-10 S2 (center compliance kérdés-szerkesztő UI) — 2026-07-08"
-    source_path: vault/sessions/handoff-2026-07-08-fs10-s2-merged.md
-    summary: "# Handoff — FS-10 S2 (center compliance kérdés-szerkesztő UI) — 2026-07-08 ## Kész / merged - **PR #1360 MERGED** (squash, `ed23815e`) — FS-10 S2 center admin UI. - `services/api/complianceQuestions.ts` — önálló domain API-modul (list/create/update/setActive) client-side fail-closed guardokkal; companyId SOHA nincs a body-ban. - `pages/compliance/ComplianceQuestionsPage.tsx` — CRUD editor (create+edit egy űrlapon, di"
-    tags: [handoff, center, compliance, kerdes, szerkeszto, 2026, kesz, merged, 1360, squash]
-    areas: [deploy, penztar, sync]
-  - id: cf7e5d6a9203c7e0
-    type: medium-term-episodic
-    title: "Handoff — FS-10 S3 (pénztár compliance-kérdés flow) + FS-10 TELJES — 2026-07-08"
-    source_path: vault/sessions/handoff-2026-07-08-fs10-s3-complete.md
-    summary: "# Handoff — FS-10 S3 (pénztár compliance-kérdés flow) + FS-10 TELJES — 2026-07-08 ## Kész / merged - **PR #1361 MERGED** (squash, `09d8fee3`) — FS-10 S3, a lánc lezárása. → **FS-10 TELJES (3/3):** S1 #1359 (backend), S2 #1360 (center szerkesztő), S3 #1361 (pénztár flow). - Fájlok: `complianceQuestions.ts` (+listActive/submitAnswer), új `ComplianceQuestionsBlock.tsx` (+teszt), `CashierTransactionPage.tsx` (5 pontszerű"
-    tags: [handoff, penztar, compliance, kerdes, flow, teljes, 2026, kesz, merged, 1361]
-    areas: [deploy, napzaras, penztar]
-  - id: 985fc94d62118e36
-    type: medium-term-episodic
-    title: "Handoff — FS-9 TELJES (2026-07-08)"
-    source_path: vault/sessions/handoff-2026-07-08-fs9-complete.md
-    summary: "# Handoff — FS-9 TELJES (2026-07-08) ## Mi történt FS-9 (címletképek: center feltöltés → sync → pénztár nézegető, hamis bankjegy szűréshez) **mindhárom szelete merged. FS-9 TELJES (3/3).** - **S1** #1356 (1e74af97) — backend foundation: `CurrencyDenominationImage` entity + V346 (FK-mentes) + service (fail-closed upload, cross-tenant IDOR) + controller + `ImageThumbnailUtil` refactor + multipart-limit. Backend suite 2"
-    tags: [handoff, teljes, 2026, tortent, cimletkepek, center, feltoltes, sync, penztar, nezegeto]
-    areas: [cimletezes, database, deploy, penztar, tenant]
-  - id: 8ffd41cb58bcc6dd
-    type: medium-term-episodic
-    title: "Handoff — 2026-07-08 — Tech-adósság backlog 9/9 KÉSZ + first-shot kapuk"
-    source_path: vault/sessions/handoff-2026-07-08-techdebt-9of9.md
-    summary: "# Handoff — 2026-07-08 — Tech-adósság backlog 9/9 KÉSZ + first-shot kapuk ## Mi készült el ma (mind merged a mainre, végig zöld CI) | TD | Téma | PR | Squash-commit | |---|---|---|---| | TD1 | security-logger (token/PIN redakció a logból) | #1362 | 4859cf49 | | TD2 | LOG-CUSTOMERID-HYGIENE | #1363 | ea0eb03c | | TD3 | SECRETS-HOOK-CASEINSENSITIVE (hook `(?-i)` fix) | #1364 | 50593492 | | TD4 | repo-wide prettier norm"
-    tags: [handoff, 2026, tech, adossag, backlog, kesz, first, shot, kapuk, keszult]
-    areas: [deploy, security]
-  - id: 269f552ec765ee8b
-    type: medium-term-episodic
-    title: "Handoff — 2026-07-09 backlog-grind: LOWER-BYTEA-CLASS + FE blob/log hygiene"
-    source_path: vault/sessions/handoff-2026-07-09-backlog-grind.md
-    summary: "# Handoff — 2026-07-09 backlog-grind: LOWER-BYTEA-CLASS + FE blob/log hygiene ## Merged ma (ez a session) - **#1377** `a95b76fa` — LOWER-BYTEA-CLASS lezárás: az osztály-lelet NEM reprodukál (RED 12/12 zöld fix nélkül, valós PG; trigger a `(:p IS NULL OR ...)` kettős param-használat volt a #1376-ban, a 9 repóban hiányzik). Szállítás: pinelő `LowerByteaNullBindRegressionIT` (9 null-bind + 3 happy/tenant). Coder korrekt"
-    tags: [handoff, 2026, backlog, grind, lower, bytea, class, blob, log, hygiene]
-    areas: [deploy, napzaras, tenant]
-  - id: 62894051ee9c694b
-    type: medium-term-episodic
-    title: "Handoff — 2026-07-09 — FS-11 backend KÉSZ (S1+S2a+S2b), S3 frontend folyamatban"
-    source_path: vault/sessions/handoff-2026-07-09-fs11-backend-complete.md
-    summary: "# Handoff — 2026-07-09 — FS-11 backend KÉSZ (S1+S2a+S2b), S3 frontend folyamatban ## Mi készült el (mind merged a mainre, végig zöld CI) | Szelet | Téma | PR | Squash-commit | |---|---|---|---| | FS-11 S1 | Cégszintű compliance tranzakció-kereső (21 szűrő) + CSV/XLSX export | #1371 | ab8f5dc9 | | FS-11 S2a | Mentett szűrő-sablonok (V350, dátum nélkül, cégszintű, IDOR-védett) | #1372 | 794b2568 | | FS-11 S2b | Keresés"
-    tags: [handoff, 2026, backend, kesz, s2a, s2b, frontend, folyamatban, keszult, mind]
-    areas: [aml, database]
-  - id: 7badec612ccd2cf0
-    type: medium-term-episodic
-    title: "Handoff — 2026-07-09 — FS-11 TELJES (S3 frontend + fix-kör merged)"
-    source_path: vault/sessions/handoff-2026-07-09-fs11-complete.md
-    summary: "# Handoff — 2026-07-09 — FS-11 TELJES (S3 frontend + fix-kör merged) ## Mi készült el (mind merged a mainre) | Tétel | Tartalom | PR | Squash | |---|---|---|---| | FS-11 S3 | Compliance tranzakciós lista center frontend — S3a kliens+downloadBlob, S3b oldal (21 szűrő/5 fieldset + lapozott tábla + CSV/XLSX) + route + AML/Compliance menüpont, S3c sablon-eszköztár + audit-mentés modal + audit-lista + PDF | #1374 | 121f7a"
-    tags: [handoff, 2026, teljes, frontend, fix, kor, merged, keszult, mind, mainre]
-    areas: [database, deploy, sync]
-  - id: 46056f6354a75faa
-    type: medium-term-episodic
-    title: "HANDOFF — 2026-07-09 backlog-grind (gép-újraindítás + Hermes-frissítés előtti állapot)"
-    source_path: vault/sessions/handoff-2026-07-09-restart-and-update.md
-    summary: "# HANDOFF — 2026-07-09 backlog-grind (gép-újraindítás + Hermes-frissítés előtti állapot) > Cél: e session lezárása után a gép újraindítható, a Hermes Agent frissíthető, > és egy friss session EBBŐL a fájlból + a BACKLOG.md-ből folytatni tud. > Frissítés-recept: `hermes-update-maintenance` skill. ## 1. AZONNALI folytatási pont (ha a session megszakadt) **In-flight munka: SYSPARAM-NO-COMPANYID Slice 1** — branch `fix/s"
-    tags: [handoff, 2026, backlog, grind, gep, ujrainditas, hermes, frissites, elotti, allapot]
-    areas: [cimletezes, database, deploy, frontend, napzaras, penztar, security, tenant]
-  - id: 3e8837b4f2cf1cf9
-    type: medium-term-episodic
-    title: "HANDOFF — 2026-07-10 nappal: backlog-grind folytatás (FK-028 után)"
-    source_path: vault/sessions/handoff-2026-07-10-backlog-grind-2.md
-    summary: "# HANDOFF — 2026-07-10 nappal: backlog-grind folytatás (FK-028 után) ## Ma merged (mind teljes pipeline: terv→coder→dual review→holdout→CI→deploy→origin-check) | PR | SHA | Mi | |---|---|---| | #1391 | 826e6715 | FS-12 gyanús ügyfél dashboard + 10M XLSX (V-nincs; suite 2794/0) | | #1392 | bcae65fc | FS-14 kamera ellenőri workflow (V354; 2812/0; vizuál PASS) | | #1393 | 650e1e9f | CAMERA-FREEZE-DETECT legacy-parity (2"
-    tags: [handoff, 2026, nappal, backlog, grind, folytatas, 028, utan, merged, mind]
-    areas: [cimletezes, deploy, installer, legacy, penztar, tenant]
-  - id: 3902fdb64c2b2758
-    type: medium-term-episodic
-    title: "HANDOFF — 2026-07-10 éjjel: INVSTOCK + FE-hygiene + FK-028 teljes"
-    source_path: vault/sessions/handoff-2026-07-10-fk028-complete.md
-    summary: "# HANDOFF — 2026-07-10 éjjel: INVSTOCK + FE-hygiene + FK-028 teljes ## Ma merged (mind: teljes pipeline + dual review + holdout + CI + deploy) | PR | SHA | Mi | |---|---|---| | #1385 | 2735737a | INVSTOCK-SHIPMENT-ROLLBACK-ONLY: ON CONFLICT insertIfAbsent + relock (3 hely), valós-PG repro IT (RED→GREEN), suite 2755/0 | | #1386 | 3377f3fb | LOGGER-RAW-ERR residual: 3 console.warn bypass → sanitizáló logger.warn (osztá"
-    tags: [handoff, 2026, ejjel, invstock, hygiene, 028, teljes, merged, mind, pipeline]
-    areas: [arfolyam, deploy, ertektar, penztar]
-  - id: f7a0e629db1b28f9
-    type: medium-term-episodic
-    title: "HANDOFF — 2026-07-10 teljes session (10 PR + legacy-elemzés + FS-VISUAL batch)"
-    source_path: vault/sessions/handoff-2026-07-10-full-session.md
-    summary: "# HANDOFF — 2026-07-10 teljes session (10 PR + legacy-elemzés + FS-VISUAL batch) > Ez a mérvadó handoff az új session folytatásához. A BACKLOG.md a teljes részletességű forrás. ## Előző session-ból átvett állapot (07-09 work, már prodon) #1385 INVSTOCK · #1386 FE-console-err · #1388 triple-Low · #1389 CASHBAL-scope · #1390 FE-FLAKY-SWEEP — mind merged+deployed, 2.28.29. ## Ez a session: 8 PR merged+deployed (mind: te"
-    tags: [handoff, 2026, teljes, session, legacy, elemzes, visual, batch, mervado, folytatasahoz]
-    areas: [cimletezes, deploy, frontend, installer, legacy, penztar, tenant]
-  - id: cbb55e2dc7a71740
-    type: medium-term-episodic
-    title: "WorkerBranchAccess TOCTOU triage — 2026-07-10"
-    source_path: vault/sessions/handoff-2026-07-10-workerbranchaccess-toctou-triage.md
-    summary: "# WorkerBranchAccess TOCTOU triage — 2026-07-10 **VERDIKT: FALSE POSITIVE.** A #1401 `listBranches`/`listWorkers` guardjai és a lista-query közti elméleti READ_COMMITTED ablak jelenleg nem kihasználható. - Nincs production hívó: `WorkerBranchAccessService.java:188,210` az egyetlen definíció; külső hívó csak `WorkerService.java:403` → `hasAccess`, nem a listázók. - Nincs versenyző író: `AdminBootstrapService.java:136`"
-    tags: [workerbranchaccess, toctou, triage, 2026, verdikt, positive, 1401, listbranches, listworkers, guardjai]
-    areas: []
-  - id: 5e41d89c34f8764f
-    type: medium-term-episodic
-    title: "FS11-DEF — TELJES PROGRAM LEZÁRVA — 2026-07-12"
-    source_path: vault/sessions/handoff-2026-07-12-fs11-def-COMPLETE.md
-    summary: "# FS11-DEF — TELJES PROGRAM LEZÁRVA — 2026-07-12 ## Végállapot Az FS11-DEF (5 halasztott compliance keresőszűrő) mind backend, mind frontend oldalon **teljesen leszállítva és élesítve**. | Szűrő | PR | Deploy | |---|---|---| | beneficialOwnerName + LINECUR (currency OR) | #1422 | ✅ v2.28.33 14:03 | | customerCountry + customerBirthName | #1423 | ✅ v2.28.33 14:59 | | relatedMinCount (backend, GROUP BY/HAVING aggregate"
-    tags: [fs11, def, teljes, program, lezarva, 2026, vegallapot, halasztott, compliance, keresoszuro]
-    areas: [deploy, frontend]
-  - id: dbd9a1a95b58f908
-    type: medium-term-episodic
-    title: "FS11-DEF backend teljes (5/5) — 2026-07-12"
-    source_path: vault/sessions/handoff-2026-07-12-fs11-def-backend-complete.md
-    summary: "# FS11-DEF backend teljes (5/5) — 2026-07-12 **Belépő állapot:** BACKLOG.md + korábbi handoffok + FS11-DEF slice1-4 tervek beolvasva; slice1 PR (#1422) készen állt, de branch-policy blokkolta a sima merge-t. ## Végzett munka (kanonikus dev-loop szerint, minden szeleten) 1. **Slice1 (#1422, ALREADY CODED, csak merge kellett):** beneficialOwnerName + line-currency EXISTS-szűrők. `--admin` merge (branch-policy blokk), d"
-    tags: [fs11, def, backend, teljes, 2026, belepo, allapot, backlog, korabbi, handoffok]
-    areas: [deploy]
-  - id: a0f8170239b05c54
-    type: medium-term-episodic
-    title: "FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12"
-    source_path: vault/sessions/handoff-2026-07-12-fs11-def-release-chain.md
-    summary: "# FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12 ## Teljes lánc végigvitel (a felhasználó kérésére: \"Push, merge, lint, deploy és telepítő\") 1. **PR #1425** (FS11-DEF slice 3/3 frontend) — mergelve, deploy éles v2.28.33-ban. 2. **Both-origin freshness** (Hetzner + Scaleway hot standby) verifikálva PASS mindkét deployra (v2.28.33 és v2.28.34). 3. **Lint**: `npm run lint` → 0 error (2447 pre-existing warning, n"
-    tags: [fs11, def, release, chain, teljesen, lezarva, 2026, teljes, lanc, vegigvitel]
-    areas: [deploy, frontend, installer, napzaras, penztar, riport, security]
-  - id: c4d37a24cd7d0b6b
-    type: medium-term-episodic
-    title: "FK09/FK10 rate-maker handoff — 2026-07-18"
-    source_path: vault/sessions/handoff-2026-07-18-fk09-fk10-rate-maker.md
-    summary: "# FK09/FK10 rate-maker handoff — 2026-07-18 - PR #1454 MERGED: https://github.com/kosazoltan/valutavalto-program/pull/1454 - Main/release SHA: `e0db5f395ea8601493cece45a25e971ef2e9fb3e` - Release: `v2.28.44` — https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.28.44 - FK09: online/offline fejlécállapot látható, regressziós teszt lefedi. - FK10: 0/nem pozitív forrás látható képlethiba; előző jó érték me"
-    tags: [fk09, fk10, rate, maker, handoff, 2026, 1454, merged, https, github]
-    areas: [arfolyam, deploy, frontend, penztar]
-  - id: 8015976e25eb1d51
-    type: medium-term-episodic
-    title: "Handoff — FKH-018 + Ollama indítási hiba"
-    source_path: vault/sessions/handoff-2026-07-18-fkh018-ollama.md
-    summary: "# Handoff — FKH-018 + Ollama indítási hiba - Időpont: 2026-07-18 14:31 +0200. - Repo: `D:/repo/valutavalto-program`; branch: `feature/ertektar-atvetel-jovahagyas-nelkul`; HEAD: `e0db5f39`. - Worktree: 41 módosított/untracked bejegyzés; semmi nincs commitolva vagy pusholva. - Első következő feladat: az Ollama nem indul el; bizonyíték-első hibakereséssel javítandó, utána folytatni FKH-018-at. - Session elején ellenőriz"
-    tags: [handoff, fkh, 018, ollama, inditasi, hiba, idopont, 2026, 0200, repo]
-    areas: [database, deploy, ertektar, frontend, installer, penztar, sync]
-  - id: 9ebcbfcd2be29dbd
-    type: medium-term-episodic
-    title: "Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19)"
-    source_path: vault/sessions/handoff-2026-07-19-ertektar-batch-r2-budget-stop.md
-    summary: "# Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19) - Stable task-id: `VALUTA-ERTEKTAR-BATCH-20260719-R2`. - Planner (Fable-5) lefutott; verdict READY. - Kanonikus terv: `.hermes/dev-loop/VALUTA-ERTEKTAR-BATCH-20260718-PLAN.md` (SHA-256 `3faf4488a304e3b707ea5fc13436a986cecc75abfee4a779a0dec37b0ff58d85`). - Holdout: `D:/repo/Hermes-agent/pipeline/.runtime/VALUTA-ERTEKTAR-BATCH-20260719-R2/HOLDOUT.md` (40 eset)."
-    tags: [handoff, valuta, ertektar, batch, 20260718, 2026, stable, task, 20260719, planner]
-    areas: [deploy, ertektar, legacy, specifikacio]
-  - id: f49b492e4064abd4
-    type: medium-term-episodic
-    title: "Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra"
-    source_path: vault/sessions/handoff-2026-07-19-fk057-mainlayout.md
-    summary: "# Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra - Forrás: `FK-057_MainLayout_gorgetesi_architektura_javitas_v2.md` R4, SHA-256 ellenőrizve. - A gyökérlayout viewport-magasságú (`h-screen overflow-hidden`); nincs dokumentumszintű görgetés. - A Sidebar navigáció és a `.app-print-content` külön függőleges scrollport. - Mobilon a `main` explicit `minHeight: 0`; a nyitott sidebar `min-h-0 max-h-full`. -"
-    tags: [handoff, 2026, 057, mainlayout, gorgetesi, architektura, forras, 057_mainlayout_gorgetesi_architektura_javitas_v2, sha, 256]
-    areas: [deploy, penztar]
-  - id: 382a01d07bbc914e
-    type: medium-term-episodic
-    title: "Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19"
-    source_path: vault/sessions/handoff-2026-07-19-v2.28.45-release.md
-    summary: "# Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19 - PR #1456 merged (squash): https://github.com/kosazoltan/valutavalto-program/pull/1456 - Main/release SHA: `f3ac9fad0b992ef6f7c0f41cd954c413f825c59c` - PR CI: all required checks PASS after fixing the CashierStocks async test race. - CI fix: await rendered `Baja Tesco` option; 10/10 repeated targeted coverage runs PASS; dual review+jury APPROVE. - Local gates"
-    tags: [handoff, shipment, 057, release, 2026, 1456, merged, squash, https, github]
-    areas: [deploy, penztar]
-  - id: 64edf3c814cb8a32
-    type: medium-term-episodic
-    title: "Handoff — FK-058 + FK-051v2 + v2.28.53 release — 2026-07-23"
-    source_path: vault/sessions/handoff-2026-07-23-fk058-fk051v2-v2.28.53.md
-    summary: "# Handoff — FK-058 + FK-051v2 + v2.28.53 release — 2026-07-23 - FK-058 (PR #1474 merged): CashBalanceRepository.findByCompanyIdExcludingVault + DailySessionRepository.findByDateRangeExcludingVault kiegészítve a FK-056 kanonikus null-safe VAULT_COUNTERPARTY branchType-kizárással (isVault defense-in-depth marad). Új VaultCounterpartyExclusionPostgresIT (Testcontainers) 2/2 PASS. - FK-051 v2 (PR #1475 merged): kozponti-"
-    tags: [handoff, 058, 051v2, release, 2026, 1474, merged, cashbalancerepository, findbycompanyidexcludingvault, dailysessionrepository]
-    areas: [arfolyam, deploy, napzaras, penztar, sync]
-  - id: a2fbc3ea51c79e35
-    type: medium-term-episodic
-    title: "Handoff — v2.28.52 release + backlog-zárás — 2026-07-23"
-    source_path: vault/sessions/handoff-2026-07-23-v2.28.52-release.md
-    summary: "# Handoff — v2.28.52 release + backlog-zárás — 2026-07-23 - Minden nyitott issue lezárva: #1442 (PR #1470), #1451 (PR #1472), #1455 (triage, not planned), #1428 (PR #1473). - #1428 gyökérok: electron-builder multiUser.nsh System::Store ág friss telepítésnél (upstream #7921, offset 0x1581=System!Store+0x4a0). Fix: preInit InstallLocation pre-seed mindkét kliensben. Mért: baseline unsigned 5/8 crash → fix 0/8. - v2.28."
-    tags: [handoff, release, backlog, zaras, 2026, minden, nyitott, issue, lezarva, 1442]
-    areas: [deploy, installer, napzaras, penztar]
-  - id: 799ffaf190729a10
-    type: medium-term-episodic
-    title: "Handoff 2026-07-23 — v2.28.55 release (CI-annotáció batch)"
-    source_path: vault/sessions/handoff-2026-07-23-v2.28.55-dependency-batch.md
-    summary: "# Handoff 2026-07-23 — v2.28.55 release (CI-annotáció batch) - v2.28.54 lezárva: run 30003708497 success, Downloads-verifikáció OK (SHA256 + Authenticode Valid). - CI-annotációk implementálva: - #1478: Spring Jackson 3 fix — RedisConfig GenericJacksonJsonRedisSerializer (builder+enableUnsafeDefaultTyping, 1:1 viselkedés), teszt JacksonJsonHttpMessageConverter. GLM-5.2 review: APPROVE-WITH-NITS, 0 blocker; teszt 8/8."
-    tags: [handoff, 2026, release, annotacio, batch, lezarva, run, 30003708497, success, downloads]
-    areas: [deploy]
-  - id: 8045ddff658e4dc5
-    type: medium-term-episodic
-    title: "Handoff 2026-07-24 — FK-061 + FK-062, v2.28.56"
-    source_path: vault/sessions/handoff-2026-07-24-fk061-fk062-v2.28.56.md
-    summary: "# Handoff 2026-07-24 — FK-061 + FK-062, v2.28.56 - FK-054 (318fb160/#1281) és FK-059 (7272e03c, v2.28.50) lezártsága VERIFIED (main-ancestor). - FK-061: 'Napzárás' menü az Értéktár csoportban (menuGroups.ts); backend DailyClosingService.checkEveningDenomination vault-skip (branch.isVault) + EVENING_DENOMINATION_CHECK_SKIPPED_VAULT audit + info log; új isVaultBranch() helper. - FK-062: ClosingControlService.isRequired"
-    tags: [handoff, 2026, 061, 062, 054, 318fb160, 1281, 059, 7272e03c, lezartsaga]
-    areas: [deploy, ertektar, napzaras]
-  - id: 9f877b301de1b2a8
-    type: medium-term-episodic
-    title: "Handoff — FK-063 + FK-064 (pénztári multi-devizás címletezés + zárási UI egységesítés)"
-    source_path: vault/sessions/handoff-2026-07-24-fk063-fk064-multidevizas-zaras.md
-    summary: "# Handoff — FK-063 + FK-064 (pénztári multi-devizás címletezés + zárási UI egységesítés) - PR #1483 squash-merged → main `467a0fbc` (2026-07-24). Branch törölve. - FK-063: `GET /closing-wizard/currencies-with-balance` (JWT-branch, company-szűrt, HUF mindig); `denominationSections` pénztár módban dinamikus (cash_balance-alapú, HUF-fallback offline-ra); `computeCashDiscrepancy` + finalize-gate pénznemenkénti (`perCurre"
-    tags: [handoff, 063, 064, penztari, multi, devizas, cimletezes, zarasi, egysegesites, 1483]
-    areas: [cimletezes, deploy, ertektar, frontend, napzaras, penztar]
-  - id: 046499b445beac35
-    type: medium-term-episodic
-    title: "Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés"
-    source_path: vault/sessions/handoff-2026-08-04-fkh029-vault-cash-balance-scope.md
-    summary: "# Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés **Dátum:** 2026-08-04 · **Branch:** `fkh029-vault-cash-balance-scope` (main `9a48f0dd`-ből) ## Miért Az FKH-028 V369 csak BR020-at pótolta (FR-5 tudatos scope-kivétel). Az élő prod audit (read-only, Hetzner) szerint **7 további aktív Értéktárnak 0 `cash_balance` sora** volt, és **BR075 Békéscsaba 10 PENDING átadása 2026-05-26 óta b"
-    tags: [handoff, fkh, 029, ertektari, cash_balance, hatokor, cashier, currency_stock, kivezetes, datum]
-    areas: [database, deploy, ertektar, napzaras, penztar, tenant]
-  - id: 9b6f403d1655a914
-    type: medium-term-episodic
-    title: "Aktív repo-memória (read-gate + area-taxonómia + stale-check)"
-    source_path: vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md
-    summary: "--- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour"
-    tags: [aktiv, repo, memoria, read, gate, area, taxonomia, stale, check, date]
-    areas: [cimletezes, ertektar, sync, tenant]
-  - id: 57d7a6fe91a377d4
-    type: medium-term-episodic
-    title: "FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele"
-    source_path: vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md
-    summary: "--- date: 2026-08-09 title: FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele type: session status: complete tags: [fkh031, sync, ertektar, penztar, retry, ui, tdd] --- # Handoff — FKH-031 NFR-1 ## Kiindulás A branch (`feature/ertektar-fkh031-sync-retry-lathatosag`) FR-1…FR-6 szinten készen volt (commit `6ff0fc2a`, `711c4adf`). Kötelező memória-lookup után (AGENTS.md 2.1) kódfeltárással **egy valós hiányt** találta"
-    tags: [fkh, 031, nfr, lejart, retry, ablak, lathatova, tetele, date, 2026]
-    areas: [ertektar, frontend, penztar, specifikacio, sync]
-  - id: be68989e6ea5a2e7
-    type: medium-term-episodic
-    title: "Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása"
-    source_path: vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md
-    summary: "--- date: 2026-08-09 title: Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása type: session status: complete tags: [memory, legacy, excmd, felmeres-kb, agent-rules, recovery] --- # Handoff — a memória legacy-vakfoltjának megszüntetése ## A probléma (audit) A bundle 382 forrást indexelt, és a fejlesztéshez ténylegesen szükséges tudás szinte teljes egészében kimaradt. Git-trackelt fájlokhoz mért le"
-    tags: [legacy, tudasbazis, beindexelese, elveszett, felmeresi, helyreallitasa, date, 2026, title, type]
-    areas: [ertektar, legacy, riport, specifikacio]
-  - id: 5854e5999d2a6bf0
-    type: medium-term-episodic
-    title: "Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás"
-    source_path: vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md
-    summary: "# Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás ## Release: v2.28.73 (FKH-031 / V377) — KIADVA, élesben igazolva - main `a54e4890`; main CI 6/6 zöld; prod `/api/v1/version` → 2.28.73, health `ok:true`. - **Gate B 7/7 PASS** (`scripts/verify-fkh031-gate-b.sh`): V377 lefutott ÉS ÍRT (`[FKH-031 V377]` marker 2 soron), AA035100003→COMPLETED, AA035100004→CANCELLED, `cash_balance` BR035/BR020 USD"
-    tags: [handoff, 2026, release, ket, prod, uzemeltetesi, javitas, fkh, 031, v377]
-    areas: [deploy, napzaras]
-  - id: f784325d168a2ae6
-    type: medium-term-episodic
-    title: "Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés"
-    source_path: vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md
-    summary: "# Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés ## Mi történt User kérdése az „architekturális duplikáció / 17 szolgáltatás\" fordítására indult, majd a 17-es szám felülvizsgálatára, végül a kliens-összevonás + pénztár-eltávolító végrehajtására (kétszeresen ellenőrzött terv alapján). ## Mért eredmények (nem becslés) - **Duplikáció: nem 17, hanem 19 klaszter.** 10 001 indexelt függvénytörzsbő"
-    tags: [handoff, 2026, fkh, 036, telepito, javitas, duplikacio, felmeres, tortent, user]
-    areas: [arfolyam, deploy, installer, penztar, security, specifikacio, sync]
-  - id: b72f91141cd6ddd5
-    type: medium-term-episodic
-    title: "Platform-refaktor 2. kör — zárójelentés (a telepítőig)"
-    source_path: vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md
-    summary: "# Platform-refaktor 2. kör — zárójelentés (a telepítőig) **Dátum:** 2026-08-10 | **Repo:** `D:\\repo\\valutavalto-program` **Megbízás:** a platform-refaktor befejezése, szeletenként **kétszer ellenőrzött terv**, majd autonóm verifikált futás **a telepítőig**. --- ## 1. Eredmény egy táblázatban | Metrika | 1. kör előtt | 1. kör után | MOST | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 96 | **90** | | **Cross-"
-    tags: [platform, refaktor, kor, zarojelentes, telepitoig, datum, 2026, repo, valutavalto, program]
-    areas: [arfolyam, deploy, installer, penztar, security, sync, tenant]
-  - id: a79b67aa99062718
-    type: medium-term-episodic
-    title: "Platform-refaktor — végrehajtási zárójelentés"
-    source_path: vault/sessions/handoff-2026-08-10-platform-refaktor.md
-    summary: "# Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\\repo\\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált"
-    tags: [platform, refaktor, vegrehajtasi, zarojelentes, datum, 2026, repo, valutavalto, program, kiindulas]
-    areas: [arfolyam, deploy, installer, legacy, penztar, specifikacio, sync]
-  - id: 0bca100deeb7a2b5
-    type: medium-term-episodic
-    title: "Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12)"
-    source_path: vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md
-    summary: "# Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12) **Állapot: pipeline PASS, merge a felhasználó döntése.** Branch `feature/engedelyezett-ermek-egysegesitese`, bázis `4ad7c54d`, 6 commit, fa tiszta, `main == origin/main` (érintetlen). ## Mi készült el `denomination_allowed` = egyetlen igazságforrás, a HUF-ot is beleértve. - **V379**: HUF-seed, cégenként 12 sor (nincs 1/2 Ft). **V380**: tiltott COIN"
-    tags: [handoff, 080, engedelyezett, ermek, egysegesitese, 2026, allapot, pipeline, pass, merge]
-    areas: [database, deploy, installer, napzaras, security]
-  - id: b0780f14de102d14
-    type: medium-term-episodic
-    title: "Platform-refaktor 3. kör — zárójelentés"
-    source_path: vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md
-    summary: "# Platform-refaktor 3. kör — zárójelentés **Dátum:** 2026-08-11 | **Repo:** `D:\\repo\\valutavalto-program` | **HEAD:** `47522cb8` (v2.28.76) **Fázis:** az előterjesztés **1. fázisa** (platform-kiemelés). **NEM** app-merge (3-5. fázis, D2 blokkolja), **NEM** installer-merge. --- ## 1. Eredmény | Metrika | 1. kör előtt | 2. kör után | **MOST** | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 90 | **84** | | **Cr"
-    tags: [platform, refaktor, kor, zarojelentes, datum, 2026, repo, valutavalto, program, head]
-    areas: [installer, penztar, security, sync]
-  - id: afd81b9e0bc11daa
-    type: medium-term-episodic
-    title: "Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)"
-    source_path: vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md
-    summary: "# Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`."
-    tags: [handoff, 2026, teljes, ciklus, lezaras, merge, lanc, inditas, statusz, kesz]
-    areas: [arfolyam, deploy, legacy, napzaras, penztar]
-  - id: 32a736fb32f958c3
-    type: medium-term-episodic
-    title: "Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17)"
-    source_path: vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md
-    summary: "# Handoff — FKH-036 Értéktári „Napi zárás\" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (8 egység, b0d4feee-re építve). Terv + riport: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/. ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE"
-    tags: [handoff, fkh, 036, ertektari, napi, zaras, egyesitett, blokkolo, 2026, branch]
-    areas: [cimletezes, ertektar, frontend, napzaras, penztar]
-  - id: f55fd3c1b3236ff5
-    type: medium-term-episodic
-    title: "FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83"
-    source_path: vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md
-    summary: "--- date: 2026-08-18 title: FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 type: session status: complete tags: [fkh037, fk086, fkh030, fkh036, specifikacio, frontend, deploy, installer, napzaras, penztar, release] --- # Handoff — FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 (2026-08-18) Status: **KIADVA**. Prod `2.28.83`, tag `v2.28.83` = `c51a7434`. Letöltött másolat: `C:\\zk\\Downloads\\valutavalto-v2.28.83`."
-    tags: [fkh, 037, 086, stacked, 030, 036, date, 2026, title, type]
-    areas: [deploy, installer, napzaras, penztar, specifikacio]
-  - id: 30dff79de919b0f7
-    type: medium-term-episodic
-    title: "Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19)"
-    source_path: vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md
-    summary: "# Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19) Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` ## Hiba A `GET /cash-desks/{id}/denominations/currency/{currencyId}` READ-út nem szűrt `denomination_category`-ra. Az Esti zárás (EVENING) HUF-készlet előtöltődött a Kezelési díj (HANDLING_FEE) oldalon. A WRITE-út (`POST .../batch?category=`) már helyes volt (FK-078 / FKH-0"
-    tags: [handoff, fkh, 038, becimletezo, kategoria, vak, betoltes, 2026, branch, feature]
-    areas: [cimletezes, ertektar, frontend, legacy, napzaras]
-  - id: 182029da334faa90
-    type: medium-term-episodic
-    title: "Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089"
-    source_path: vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md
-    summary: "# Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089 Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` HEAD at start: `bbf0a8aa` (a FK-090 jegy `55c8e9cc`-t várt — a main azóta release-elt). ## FKH-038 Becímletező READ kategória-szűrt (`findByCashDeskIdAndCurrencyIdAndCategory`). WRITE változatlan. EVENING/HANDLING_FEE nem keveredik. ## FK-090 Transfer-egyeztetés: - RECEIVED kikerült a megerős"
-    tags: [handoff, 2026, fkh, 038, 090, 089, branch, feature, ertektar, fkh038]
-    areas: [cimletezes, deploy, ertektar]
   - id: 6450c8dbe47b4c1c
     type: medium-term-episodic
     title: "FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP"
@@ -7513,13 +7198,13 @@ nodes:
     summary: "# Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (6 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi"
     tags: [handoff, 2026, verzio, gate, kiadas, standby, helyreallitas, volt, feladat, fkh039]
     areas: [deploy, installer, napzaras, penztar, specifikacio]
-  - id: 233bcee3ee2d42d9
+  - id: b436ad668307faf7
     type: medium-term-episodic
-    title: "Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás"
-    source_path: vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md
-    summary: "# Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás Dátum: 2026-08-25 · Repo: valutavalto-program · Fő ág: main @ a6b1d15a ## Mi történt 1. **FK-094 + FK-095 + CORS jegy** hatcsatornás pipeline-nal (Planner → plan-gate ×2 → Coder 10 unit → full review ×2 → Judge PASS) elkészült, PR #1659 → merge `a6b1d15a` → éles deploy. Prod: **2.28.88**, health ok. 2. **Aláírt release v2.28.88** (run 3288671"
-    tags: [handoff, 094, 095, release, checkout, hang, gyokerok, javitas, datum, 2026]
-    areas: [deploy, frontend, installer, penztar, specifikacio]
+    title: "Handoff — FKH-041 értéktár routing + auto-update javítás (round 2, 2026-08-28)"
+    source_path: vault/sessions/handoff-2026-08-28-fkh041-ertektar-routing-autoupdate.md
+    summary: "# Handoff — FKH-041 értéktár routing + auto-update javítás (round 2, 2026-08-28) Branch: `pipeline/20260828-fkh041-ertektar-routing-autoupdate` (12 commit, base 94c48665: 6 round-1 + 6 round-2). Terv: `round-2/10-plan.md` (round-1 jóváhagyott része változatlan). ## Round 2: ROLE-ELSŐ telepítési-ablak döntés (a round-1 appMode-only lyuk zárása) A riportáló terminál SQLite `app_mode='penztar'` mellett futtat értéktáros"
+    tags: [handoff, fkh, 041, ertektar, routing, auto, update, javitas, round, 2026]
+    areas: [ertektar, legacy, napzaras, penztar]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22232,12 +21917,6 @@ edges:
   - from: 68af548a4ed87087
     to: area_specifikacio
     relation: belongs_to_area
-  - from: 55ee59debe750e76
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 55ee59debe750e76
-    to: area_specifikacio
-    relation: belongs_to_area
   - from: d8d6d97f9f2f52ba
     to: area_deploy
     relation: belongs_to_area
@@ -22289,570 +21968,6 @@ edges:
   - from: 7307b2388c3cda33
     to: area_tenant
     relation: belongs_to_area
-  - from: b4425b2b164a7b6f
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: b4425b2b164a7b6f
-    to: area_deploy
-    relation: belongs_to_area
-  - from: b4425b2b164a7b6f
-    to: area_penztar
-    relation: belongs_to_area
-  - from: b4425b2b164a7b6f
-    to: area_security
-    relation: belongs_to_area
-  - from: a2ec70d90f22e388
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: a2ec70d90f22e388
-    to: area_deploy
-    relation: belongs_to_area
-  - from: a2ec70d90f22e388
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: a2ec70d90f22e388
-    to: area_penztar
-    relation: belongs_to_area
-  - from: a2ec70d90f22e388
-    to: area_sync
-    relation: belongs_to_area
-  - from: a2ec70d90f22e388
-    to: area_tenant
-    relation: belongs_to_area
-  - from: ae4202f46bf0a057
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: ae4202f46bf0a057
-    to: area_deploy
-    relation: belongs_to_area
-  - from: ae4202f46bf0a057
-    to: area_frontend
-    relation: belongs_to_area
-  - from: e9ce6f34c949532f
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: e9ce6f34c949532f
-    to: area_database
-    relation: belongs_to_area
-  - from: e9ce6f34c949532f
-    to: area_deploy
-    relation: belongs_to_area
-  - from: e9ce6f34c949532f
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: e9ce6f34c949532f
-    to: area_penztar
-    relation: belongs_to_area
-  - from: e9ce6f34c949532f
-    to: area_sync
-    relation: belongs_to_area
-  - from: e9ce6f34c949532f
-    to: area_tenant
-    relation: belongs_to_area
-  - from: 25673a3b6fd7e9d5
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 25673a3b6fd7e9d5
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 25673a3b6fd7e9d5
-    to: area_sync
-    relation: belongs_to_area
-  - from: cf7e5d6a9203c7e0
-    to: area_deploy
-    relation: belongs_to_area
-  - from: cf7e5d6a9203c7e0
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: cf7e5d6a9203c7e0
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 985fc94d62118e36
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 985fc94d62118e36
-    to: area_database
-    relation: belongs_to_area
-  - from: 985fc94d62118e36
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 985fc94d62118e36
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 985fc94d62118e36
-    to: area_tenant
-    relation: belongs_to_area
-  - from: 8ffd41cb58bcc6dd
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 8ffd41cb58bcc6dd
-    to: area_security
-    relation: belongs_to_area
-  - from: 269f552ec765ee8b
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 269f552ec765ee8b
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 269f552ec765ee8b
-    to: area_tenant
-    relation: belongs_to_area
-  - from: 62894051ee9c694b
-    to: area_aml
-    relation: belongs_to_area
-  - from: 62894051ee9c694b
-    to: area_database
-    relation: belongs_to_area
-  - from: 7badec612ccd2cf0
-    to: area_database
-    relation: belongs_to_area
-  - from: 7badec612ccd2cf0
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 7badec612ccd2cf0
-    to: area_sync
-    relation: belongs_to_area
-  - from: 46056f6354a75faa
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 46056f6354a75faa
-    to: area_database
-    relation: belongs_to_area
-  - from: 46056f6354a75faa
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 46056f6354a75faa
-    to: area_frontend
-    relation: belongs_to_area
-  - from: 46056f6354a75faa
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 46056f6354a75faa
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 46056f6354a75faa
-    to: area_security
-    relation: belongs_to_area
-  - from: 46056f6354a75faa
-    to: area_tenant
-    relation: belongs_to_area
-  - from: 3e8837b4f2cf1cf9
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 3e8837b4f2cf1cf9
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 3e8837b4f2cf1cf9
-    to: area_installer
-    relation: belongs_to_area
-  - from: 3e8837b4f2cf1cf9
-    to: area_legacy
-    relation: belongs_to_area
-  - from: 3e8837b4f2cf1cf9
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 3e8837b4f2cf1cf9
-    to: area_tenant
-    relation: belongs_to_area
-  - from: 3902fdb64c2b2758
-    to: area_arfolyam
-    relation: belongs_to_area
-  - from: 3902fdb64c2b2758
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 3902fdb64c2b2758
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 3902fdb64c2b2758
-    to: area_penztar
-    relation: belongs_to_area
-  - from: f7a0e629db1b28f9
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: f7a0e629db1b28f9
-    to: area_deploy
-    relation: belongs_to_area
-  - from: f7a0e629db1b28f9
-    to: area_frontend
-    relation: belongs_to_area
-  - from: f7a0e629db1b28f9
-    to: area_installer
-    relation: belongs_to_area
-  - from: f7a0e629db1b28f9
-    to: area_legacy
-    relation: belongs_to_area
-  - from: f7a0e629db1b28f9
-    to: area_penztar
-    relation: belongs_to_area
-  - from: f7a0e629db1b28f9
-    to: area_tenant
-    relation: belongs_to_area
-  - from: 5e41d89c34f8764f
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 5e41d89c34f8764f
-    to: area_frontend
-    relation: belongs_to_area
-  - from: dbd9a1a95b58f908
-    to: area_deploy
-    relation: belongs_to_area
-  - from: a0f8170239b05c54
-    to: area_deploy
-    relation: belongs_to_area
-  - from: a0f8170239b05c54
-    to: area_frontend
-    relation: belongs_to_area
-  - from: a0f8170239b05c54
-    to: area_installer
-    relation: belongs_to_area
-  - from: a0f8170239b05c54
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: a0f8170239b05c54
-    to: area_penztar
-    relation: belongs_to_area
-  - from: a0f8170239b05c54
-    to: area_riport
-    relation: belongs_to_area
-  - from: a0f8170239b05c54
-    to: area_security
-    relation: belongs_to_area
-  - from: c4d37a24cd7d0b6b
-    to: area_arfolyam
-    relation: belongs_to_area
-  - from: c4d37a24cd7d0b6b
-    to: area_deploy
-    relation: belongs_to_area
-  - from: c4d37a24cd7d0b6b
-    to: area_frontend
-    relation: belongs_to_area
-  - from: c4d37a24cd7d0b6b
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 8015976e25eb1d51
-    to: area_database
-    relation: belongs_to_area
-  - from: 8015976e25eb1d51
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 8015976e25eb1d51
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 8015976e25eb1d51
-    to: area_frontend
-    relation: belongs_to_area
-  - from: 8015976e25eb1d51
-    to: area_installer
-    relation: belongs_to_area
-  - from: 8015976e25eb1d51
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 8015976e25eb1d51
-    to: area_sync
-    relation: belongs_to_area
-  - from: 9ebcbfcd2be29dbd
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 9ebcbfcd2be29dbd
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 9ebcbfcd2be29dbd
-    to: area_legacy
-    relation: belongs_to_area
-  - from: 9ebcbfcd2be29dbd
-    to: area_specifikacio
-    relation: belongs_to_area
-  - from: f49b492e4064abd4
-    to: area_deploy
-    relation: belongs_to_area
-  - from: f49b492e4064abd4
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 382a01d07bbc914e
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 382a01d07bbc914e
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 64edf3c814cb8a32
-    to: area_arfolyam
-    relation: belongs_to_area
-  - from: 64edf3c814cb8a32
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 64edf3c814cb8a32
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 64edf3c814cb8a32
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 64edf3c814cb8a32
-    to: area_sync
-    relation: belongs_to_area
-  - from: a2fbc3ea51c79e35
-    to: area_deploy
-    relation: belongs_to_area
-  - from: a2fbc3ea51c79e35
-    to: area_installer
-    relation: belongs_to_area
-  - from: a2fbc3ea51c79e35
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: a2fbc3ea51c79e35
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 799ffaf190729a10
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 8045ddff658e4dc5
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 8045ddff658e4dc5
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 8045ddff658e4dc5
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 9f877b301de1b2a8
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 9f877b301de1b2a8
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 9f877b301de1b2a8
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 9f877b301de1b2a8
-    to: area_frontend
-    relation: belongs_to_area
-  - from: 9f877b301de1b2a8
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 9f877b301de1b2a8
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 046499b445beac35
-    to: area_database
-    relation: belongs_to_area
-  - from: 046499b445beac35
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 046499b445beac35
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 046499b445beac35
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 046499b445beac35
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 046499b445beac35
-    to: area_tenant
-    relation: belongs_to_area
-  - from: 9b6f403d1655a914
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 9b6f403d1655a914
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 9b6f403d1655a914
-    to: area_sync
-    relation: belongs_to_area
-  - from: 9b6f403d1655a914
-    to: area_tenant
-    relation: belongs_to_area
-  - from: 57d7a6fe91a377d4
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 57d7a6fe91a377d4
-    to: area_frontend
-    relation: belongs_to_area
-  - from: 57d7a6fe91a377d4
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 57d7a6fe91a377d4
-    to: area_specifikacio
-    relation: belongs_to_area
-  - from: 57d7a6fe91a377d4
-    to: area_sync
-    relation: belongs_to_area
-  - from: be68989e6ea5a2e7
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: be68989e6ea5a2e7
-    to: area_legacy
-    relation: belongs_to_area
-  - from: be68989e6ea5a2e7
-    to: area_riport
-    relation: belongs_to_area
-  - from: be68989e6ea5a2e7
-    to: area_specifikacio
-    relation: belongs_to_area
-  - from: 5854e5999d2a6bf0
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 5854e5999d2a6bf0
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: f784325d168a2ae6
-    to: area_arfolyam
-    relation: belongs_to_area
-  - from: f784325d168a2ae6
-    to: area_deploy
-    relation: belongs_to_area
-  - from: f784325d168a2ae6
-    to: area_installer
-    relation: belongs_to_area
-  - from: f784325d168a2ae6
-    to: area_penztar
-    relation: belongs_to_area
-  - from: f784325d168a2ae6
-    to: area_security
-    relation: belongs_to_area
-  - from: f784325d168a2ae6
-    to: area_specifikacio
-    relation: belongs_to_area
-  - from: f784325d168a2ae6
-    to: area_sync
-    relation: belongs_to_area
-  - from: b72f91141cd6ddd5
-    to: area_arfolyam
-    relation: belongs_to_area
-  - from: b72f91141cd6ddd5
-    to: area_deploy
-    relation: belongs_to_area
-  - from: b72f91141cd6ddd5
-    to: area_installer
-    relation: belongs_to_area
-  - from: b72f91141cd6ddd5
-    to: area_penztar
-    relation: belongs_to_area
-  - from: b72f91141cd6ddd5
-    to: area_security
-    relation: belongs_to_area
-  - from: b72f91141cd6ddd5
-    to: area_sync
-    relation: belongs_to_area
-  - from: b72f91141cd6ddd5
-    to: area_tenant
-    relation: belongs_to_area
-  - from: a79b67aa99062718
-    to: area_arfolyam
-    relation: belongs_to_area
-  - from: a79b67aa99062718
-    to: area_deploy
-    relation: belongs_to_area
-  - from: a79b67aa99062718
-    to: area_installer
-    relation: belongs_to_area
-  - from: a79b67aa99062718
-    to: area_legacy
-    relation: belongs_to_area
-  - from: a79b67aa99062718
-    to: area_penztar
-    relation: belongs_to_area
-  - from: a79b67aa99062718
-    to: area_specifikacio
-    relation: belongs_to_area
-  - from: a79b67aa99062718
-    to: area_sync
-    relation: belongs_to_area
-  - from: 0bca100deeb7a2b5
-    to: area_database
-    relation: belongs_to_area
-  - from: 0bca100deeb7a2b5
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 0bca100deeb7a2b5
-    to: area_installer
-    relation: belongs_to_area
-  - from: 0bca100deeb7a2b5
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 0bca100deeb7a2b5
-    to: area_security
-    relation: belongs_to_area
-  - from: b0780f14de102d14
-    to: area_installer
-    relation: belongs_to_area
-  - from: b0780f14de102d14
-    to: area_penztar
-    relation: belongs_to_area
-  - from: b0780f14de102d14
-    to: area_security
-    relation: belongs_to_area
-  - from: b0780f14de102d14
-    to: area_sync
-    relation: belongs_to_area
-  - from: afd81b9e0bc11daa
-    to: area_arfolyam
-    relation: belongs_to_area
-  - from: afd81b9e0bc11daa
-    to: area_deploy
-    relation: belongs_to_area
-  - from: afd81b9e0bc11daa
-    to: area_legacy
-    relation: belongs_to_area
-  - from: afd81b9e0bc11daa
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: afd81b9e0bc11daa
-    to: area_penztar
-    relation: belongs_to_area
-  - from: 32a736fb32f958c3
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 32a736fb32f958c3
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 32a736fb32f958c3
-    to: area_frontend
-    relation: belongs_to_area
-  - from: 32a736fb32f958c3
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 32a736fb32f958c3
-    to: area_penztar
-    relation: belongs_to_area
-  - from: f55fd3c1b3236ff5
-    to: area_deploy
-    relation: belongs_to_area
-  - from: f55fd3c1b3236ff5
-    to: area_installer
-    relation: belongs_to_area
-  - from: f55fd3c1b3236ff5
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: f55fd3c1b3236ff5
-    to: area_penztar
-    relation: belongs_to_area
-  - from: f55fd3c1b3236ff5
-    to: area_specifikacio
-    relation: belongs_to_area
-  - from: 30dff79de919b0f7
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 30dff79de919b0f7
-    to: area_ertektar
-    relation: belongs_to_area
-  - from: 30dff79de919b0f7
-    to: area_frontend
-    relation: belongs_to_area
-  - from: 30dff79de919b0f7
-    to: area_legacy
-    relation: belongs_to_area
-  - from: 30dff79de919b0f7
-    to: area_napzaras
-    relation: belongs_to_area
-  - from: 182029da334faa90
-    to: area_cimletezes
-    relation: belongs_to_area
-  - from: 182029da334faa90
-    to: area_deploy
-    relation: belongs_to_area
-  - from: 182029da334faa90
-    to: area_ertektar
-    relation: belongs_to_area
   - from: 6450c8dbe47b4c1c
     to: area_cimletezes
     relation: belongs_to_area
@@ -22886,20 +22001,17 @@ edges:
   - from: f5e96d18f0ff5f8a
     to: area_specifikacio
     relation: belongs_to_area
-  - from: 233bcee3ee2d42d9
-    to: area_deploy
+  - from: b436ad668307faf7
+    to: area_ertektar
     relation: belongs_to_area
-  - from: 233bcee3ee2d42d9
-    to: area_frontend
+  - from: b436ad668307faf7
+    to: area_legacy
     relation: belongs_to_area
-  - from: 233bcee3ee2d42d9
-    to: area_installer
+  - from: b436ad668307faf7
+    to: area_napzaras
     relation: belongs_to_area
-  - from: 233bcee3ee2d42d9
+  - from: b436ad668307faf7
     to: area_penztar
-    relation: belongs_to_area
-  - from: 233bcee3ee2d42d9
-    to: area_specifikacio
     relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
@@ -22958,6 +22070,141 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
+  - from: 2263d6949b82a695
+    to: repo_project_state
+    relation: informs
+  - from: 6808ef1452993f8e
+    to: repo_project_state
+    relation: informs
+  - from: 0a8b5f4e3afdb3cd
+    to: repo_project_state
+    relation: informs
+  - from: 776879fd8e0d9e05
+    to: repo_project_state
+    relation: informs
+  - from: e7997cabbb9f99c1
+    to: repo_project_state
+    relation: informs
+  - from: 54b78ef4acf7f3f3
+    to: repo_project_state
+    relation: informs
+  - from: 4dc2653aea1324f2
+    to: repo_project_state
+    relation: informs
+  - from: fe41e4c70bdd8860
+    to: repo_project_state
+    relation: informs
+  - from: f794fd5ad2fe9fee
+    to: repo_project_state
+    relation: informs
+  - from: 024bfd96ed2561d8
+    to: repo_project_state
+    relation: informs
+  - from: 32b365bef70cc4c9
+    to: repo_project_state
+    relation: informs
+  - from: 3b22603f14ca5115
+    to: repo_project_state
+    relation: informs
+  - from: 2c406b90f8a5f96a
+    to: repo_project_state
+    relation: informs
+  - from: 3766874e1255626b
+    to: repo_project_state
+    relation: informs
+  - from: a16a75d7b5fb3569
+    to: repo_project_state
+    relation: informs
+  - from: 215465ec8b912faf
+    to: repo_project_state
+    relation: informs
+  - from: 0d135a05ed9290a9
+    to: repo_project_state
+    relation: informs
+  - from: 7d25db9019810540
+    to: repo_project_state
+    relation: informs
+  - from: fcf1eaf5589e3a55
+    to: repo_project_state
+    relation: informs
+  - from: e9dbd74fe061f1c7
+    to: repo_project_state
+    relation: informs
+  - from: cc1d2eaf64c237c2
+    to: repo_project_state
+    relation: informs
+  - from: e2705097931cb760
+    to: repo_project_state
+    relation: informs
+  - from: 93bea3176d7fd782
+    to: repo_project_state
+    relation: informs
+  - from: 8c22866b95badb61
+    to: repo_project_state
+    relation: informs
+  - from: 0b2d0cda1d7855a7
+    to: repo_project_state
+    relation: informs
+  - from: 1fc629221af573d0
+    to: repo_project_state
+    relation: informs
+  - from: c553b09e9b53a636
+    to: repo_project_state
+    relation: informs
+  - from: 29e6137c5359049e
+    to: repo_project_state
+    relation: informs
+  - from: 302ab034dcb6934a
+    to: repo_project_state
+    relation: informs
+  - from: aca7bcfec6996618
+    to: repo_project_state
+    relation: informs
+  - from: c206e27893093403
+    to: repo_project_state
+    relation: informs
+  - from: 041d7a37f24f7cb9
+    to: repo_project_state
+    relation: informs
+  - from: ec80bc2dacc727a0
+    to: repo_project_state
+    relation: informs
+  - from: e787de7feffa3dc1
+    to: repo_project_state
+    relation: informs
+  - from: ccbbcc571d2686ce
+    to: repo_project_state
+    relation: informs
+  - from: e7821e87f571bcc2
+    to: repo_project_state
+    relation: informs
+  - from: 0fb39661965caf8d
+    to: repo_project_state
+    relation: informs
+  - from: 95b8596fd7a2e97e
+    to: repo_project_state
+    relation: informs
+  - from: b15eb48097d8ab6e
+    to: repo_project_state
+    relation: informs
+  - from: 0ca04e601787c4e5
+    to: repo_project_state
+    relation: informs
+  - from: 819e4c78c01e00ab
+    to: repo_project_state
+    relation: informs
+  - from: de2b442d593fa931
+    to: repo_project_state
+    relation: informs
+  - from: ae3cbba0a3313652
+    to: repo_project_state
+    relation: informs
+  - from: a1fd6ef587fc2523
+    to: repo_project_state
+    relation: informs
+  - from: 41bd75b51913a86b
+    to: repo_project_state
+    relation: informs
   - from: 8ab5d6135d4c5efc
     to: repo_project_state
     relation: informs
@@ -23036,9 +22283,6 @@ edges:
   - from: 68af548a4ed87087
     to: repo_project_state
     relation: informs
-  - from: 55ee59debe750e76
-    to: repo_project_state
-    relation: informs
   - from: d8d6d97f9f2f52ba
     to: repo_project_state
     relation: informs
@@ -23051,145 +22295,13 @@ edges:
   - from: 7307b2388c3cda33
     to: repo_project_state
     relation: informs
-  - from: b4425b2b164a7b6f
-    to: repo_project_state
-    relation: informs
-  - from: a2ec70d90f22e388
-    to: repo_project_state
-    relation: informs
-  - from: ae4202f46bf0a057
-    to: repo_project_state
-    relation: informs
-  - from: e9ce6f34c949532f
-    to: repo_project_state
-    relation: informs
-  - from: 25673a3b6fd7e9d5
-    to: repo_project_state
-    relation: informs
-  - from: cf7e5d6a9203c7e0
-    to: repo_project_state
-    relation: informs
-  - from: 985fc94d62118e36
-    to: repo_project_state
-    relation: informs
-  - from: 8ffd41cb58bcc6dd
-    to: repo_project_state
-    relation: informs
-  - from: 269f552ec765ee8b
-    to: repo_project_state
-    relation: informs
-  - from: 62894051ee9c694b
-    to: repo_project_state
-    relation: informs
-  - from: 7badec612ccd2cf0
-    to: repo_project_state
-    relation: informs
-  - from: 46056f6354a75faa
-    to: repo_project_state
-    relation: informs
-  - from: 3e8837b4f2cf1cf9
-    to: repo_project_state
-    relation: informs
-  - from: 3902fdb64c2b2758
-    to: repo_project_state
-    relation: informs
-  - from: f7a0e629db1b28f9
-    to: repo_project_state
-    relation: informs
-  - from: cbb55e2dc7a71740
-    to: repo_project_state
-    relation: informs
-  - from: 5e41d89c34f8764f
-    to: repo_project_state
-    relation: informs
-  - from: dbd9a1a95b58f908
-    to: repo_project_state
-    relation: informs
-  - from: a0f8170239b05c54
-    to: repo_project_state
-    relation: informs
-  - from: c4d37a24cd7d0b6b
-    to: repo_project_state
-    relation: informs
-  - from: 8015976e25eb1d51
-    to: repo_project_state
-    relation: informs
-  - from: 9ebcbfcd2be29dbd
-    to: repo_project_state
-    relation: informs
-  - from: f49b492e4064abd4
-    to: repo_project_state
-    relation: informs
-  - from: 382a01d07bbc914e
-    to: repo_project_state
-    relation: informs
-  - from: 64edf3c814cb8a32
-    to: repo_project_state
-    relation: informs
-  - from: a2fbc3ea51c79e35
-    to: repo_project_state
-    relation: informs
-  - from: 799ffaf190729a10
-    to: repo_project_state
-    relation: informs
-  - from: 8045ddff658e4dc5
-    to: repo_project_state
-    relation: informs
-  - from: 9f877b301de1b2a8
-    to: repo_project_state
-    relation: informs
-  - from: 046499b445beac35
-    to: repo_project_state
-    relation: informs
-  - from: 9b6f403d1655a914
-    to: repo_project_state
-    relation: informs
-  - from: 57d7a6fe91a377d4
-    to: repo_project_state
-    relation: informs
-  - from: be68989e6ea5a2e7
-    to: repo_project_state
-    relation: informs
-  - from: 5854e5999d2a6bf0
-    to: repo_project_state
-    relation: informs
-  - from: f784325d168a2ae6
-    to: repo_project_state
-    relation: informs
-  - from: b72f91141cd6ddd5
-    to: repo_project_state
-    relation: informs
-  - from: a79b67aa99062718
-    to: repo_project_state
-    relation: informs
-  - from: 0bca100deeb7a2b5
-    to: repo_project_state
-    relation: informs
-  - from: b0780f14de102d14
-    to: repo_project_state
-    relation: informs
-  - from: afd81b9e0bc11daa
-    to: repo_project_state
-    relation: informs
-  - from: 32a736fb32f958c3
-    to: repo_project_state
-    relation: informs
-  - from: f55fd3c1b3236ff5
-    to: repo_project_state
-    relation: informs
-  - from: 30dff79de919b0f7
-    to: repo_project_state
-    relation: informs
-  - from: 182029da334faa90
-    to: repo_project_state
-    relation: informs
   - from: 6450c8dbe47b4c1c
     to: repo_project_state
     relation: informs
   - from: f5e96d18f0ff5f8a
     to: repo_project_state
     relation: informs
-  - from: 233bcee3ee2d42d9
+  - from: b436ad668307faf7
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

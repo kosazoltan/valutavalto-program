@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-08-27T07:01:00.889Z
+generated: 2026-08-29T06:07:27.319Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-08-27T07:01:00.889Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1076
-- generated: 2026-08-27T07:01:00.889Z
+- sources: 1031
+- generated: 2026-08-29T06:07:27.319Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1034,57 +1034,12 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[2026-06-16 — Local-First végállapot megerősítve + Neon-backup 3-bug javítás + teljes újraépítés]] — `vault/sessions/2026-06-16-local-first-neon-backup-rebuild.md` (medium-term-episodic)
 - [[Handoff - ertektari UI/backend javitasok, repo-audit, CI/deploy]] — `vault/sessions/2026-06-21-ertektari-ui-backend-repo-audit-handoff.md` (medium-term-episodic)
 - [[Diagnózis-jelentés: VW0001 / TISZA telephely-azonosító (Neon élő DB, 2026-07-02)]] — `vault/sessions/2026-07-02-telephely-diag-eredmeny.md` (medium-term-episodic)
-- [[Értéktári teljes batch — élő követelménystátusz (2026-07-19)]] — `vault/sessions/2026-07-19-ertektari-batch-statusz.md` (medium-term-episodic)
 - [[Handoff — 2026-06-08 — Mandate cleanup + módszertani frissítések]] — `vault/sessions/handoff-2026-06-08-mandate-cleanup-metodologia.md` (medium-term-episodic)
 - [[Handoff — 2026-06-15 — AI biztonsági-audit doktrína + operating-fájl cleanup + módszertan-beépítés]] — `vault/sessions/handoff-2026-06-15-ai-audit-doktrina-es-operating-cleanup.md` (medium-term-episodic)
 - [[Handoff — 2026-07-05 PROD-VERSION-STALE (DNS-misroute) diagnózis + fix]] — `vault/sessions/handoff-2026-07-05-prod-version-stale-dns-misroute.md` (medium-term-episodic)
 - [[Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett)]] — `vault/sessions/handoff-2026-07-06-anthropic-outage-fs-d-pending.md` (medium-term-episodic)
-- [[Handoff — 2026-07-07 FS-D (FS-3) MERGELVE + deployolva; FS-GAP folytatható]] — `vault/sessions/handoff-2026-07-07-fs-d-merged-deployed.md` (medium-term-episodic)
-- [[Handoff — 2026-07-07 FS-5 TELJES (4/4 slice mergelve)]] — `vault/sessions/handoff-2026-07-07-fs5-complete.md` (medium-term-episodic)
-- [[Handoff — FS-7 S3 merged, FS-7 TELJES (2026-07-07)]] — `vault/sessions/handoff-2026-07-07-fs7-s3-complete.md` (medium-term-episodic)
-- [[Handoff — FS-9 S1 merged, FS-9 folyamatban (2026-07-07)]] — `vault/sessions/handoff-2026-07-07-fs9-s1-merged.md` (medium-term-episodic)
-- [[Handoff — FS-10 S2 (center compliance kérdés-szerkesztő UI) — 2026-07-08]] — `vault/sessions/handoff-2026-07-08-fs10-s2-merged.md` (medium-term-episodic)
-- [[Handoff — FS-10 S3 (pénztár compliance-kérdés flow) + FS-10 TELJES — 2026-07-08]] — `vault/sessions/handoff-2026-07-08-fs10-s3-complete.md` (medium-term-episodic)
-- [[Handoff — FS-9 TELJES (2026-07-08)]] — `vault/sessions/handoff-2026-07-08-fs9-complete.md` (medium-term-episodic)
-- [[Handoff — 2026-07-08 — Tech-adósság backlog 9/9 KÉSZ + first-shot kapuk]] — `vault/sessions/handoff-2026-07-08-techdebt-9of9.md` (medium-term-episodic)
-- [[Handoff — 2026-07-09 backlog-grind: LOWER-BYTEA-CLASS + FE blob/log hygiene]] — `vault/sessions/handoff-2026-07-09-backlog-grind.md` (medium-term-episodic)
-- [[Handoff — 2026-07-09 — FS-11 backend KÉSZ (S1+S2a+S2b), S3 frontend folyamatban]] — `vault/sessions/handoff-2026-07-09-fs11-backend-complete.md` (medium-term-episodic)
-- [[Handoff — 2026-07-09 — FS-11 TELJES (S3 frontend + fix-kör merged)]] — `vault/sessions/handoff-2026-07-09-fs11-complete.md` (medium-term-episodic)
-- [[HANDOFF — 2026-07-09 backlog-grind (gép-újraindítás + Hermes-frissítés előtti állapot)]] — `vault/sessions/handoff-2026-07-09-restart-and-update.md` (medium-term-episodic)
-- [[HANDOFF — 2026-07-10 nappal: backlog-grind folytatás (FK-028 után)]] — `vault/sessions/handoff-2026-07-10-backlog-grind-2.md` (medium-term-episodic)
-- [[HANDOFF — 2026-07-10 éjjel: INVSTOCK + FE-hygiene + FK-028 teljes]] — `vault/sessions/handoff-2026-07-10-fk028-complete.md` (medium-term-episodic)
-- [[HANDOFF — 2026-07-10 teljes session (10 PR + legacy-elemzés + FS-VISUAL batch)]] — `vault/sessions/handoff-2026-07-10-full-session.md` (medium-term-episodic)
-- [[WorkerBranchAccess TOCTOU triage — 2026-07-10]] — `vault/sessions/handoff-2026-07-10-workerbranchaccess-toctou-triage.md` (medium-term-episodic)
-- [[FS11-DEF — TELJES PROGRAM LEZÁRVA — 2026-07-12]] — `vault/sessions/handoff-2026-07-12-fs11-def-COMPLETE.md` (medium-term-episodic)
-- [[FS11-DEF backend teljes (5/5) — 2026-07-12]] — `vault/sessions/handoff-2026-07-12-fs11-def-backend-complete.md` (medium-term-episodic)
-- [[FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12]] — `vault/sessions/handoff-2026-07-12-fs11-def-release-chain.md` (medium-term-episodic)
-- [[FK09/FK10 rate-maker handoff — 2026-07-18]] — `vault/sessions/handoff-2026-07-18-fk09-fk10-rate-maker.md` (medium-term-episodic)
-- [[Handoff — FKH-018 + Ollama indítási hiba]] — `vault/sessions/handoff-2026-07-18-fkh018-ollama.md` (medium-term-episodic)
-- [[Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19)]] — `vault/sessions/handoff-2026-07-19-ertektar-batch-r2-budget-stop.md` (medium-term-episodic)
-- [[Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra]] — `vault/sessions/handoff-2026-07-19-fk057-mainlayout.md` (medium-term-episodic)
-- [[Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19]] — `vault/sessions/handoff-2026-07-19-v2.28.45-release.md` (medium-term-episodic)
-- [[Handoff — FK-058 + FK-051v2 + v2.28.53 release — 2026-07-23]] — `vault/sessions/handoff-2026-07-23-fk058-fk051v2-v2.28.53.md` (medium-term-episodic)
-- [[Handoff — v2.28.52 release + backlog-zárás — 2026-07-23]] — `vault/sessions/handoff-2026-07-23-v2.28.52-release.md` (medium-term-episodic)
-- [[Handoff 2026-07-23 — v2.28.55 release (CI-annotáció batch)]] — `vault/sessions/handoff-2026-07-23-v2.28.55-dependency-batch.md` (medium-term-episodic)
-- [[Handoff 2026-07-24 — FK-061 + FK-062, v2.28.56]] — `vault/sessions/handoff-2026-07-24-fk061-fk062-v2.28.56.md` (medium-term-episodic)
-- [[Handoff — FK-063 + FK-064 (pénztári multi-devizás címletezés + zárási UI egységesítés)]] — `vault/sessions/handoff-2026-07-24-fk063-fk064-multidevizas-zaras.md` (medium-term-episodic)
-- [[Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés]] — `vault/sessions/handoff-2026-08-04-fkh029-vault-cash-balance-scope.md` (medium-term-episodic)
-- [[Aktív repo-memória (read-gate + area-taxonómia + stale-check)]] — `vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md` (medium-term-episodic)
-- [[FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele]] — `vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md` (medium-term-episodic)
-- [[Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása]] — `vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md` (medium-term-episodic)
-- [[Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás]] — `vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md` (medium-term-episodic)
-- [[Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés]] — `vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md` (medium-term-episodic)
-- [[Platform-refaktor 2. kör — zárójelentés (a telepítőig)]] — `vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md` (medium-term-episodic)
-- [[Platform-refaktor — végrehajtási zárójelentés]] — `vault/sessions/handoff-2026-08-10-platform-refaktor.md` (medium-term-episodic)
-- [[Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12)]] — `vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md` (medium-term-episodic)
-- [[Platform-refaktor 3. kör — zárójelentés]] — `vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md` (medium-term-episodic)
-- [[Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)]] — `vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md` (medium-term-episodic)
-- [[Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17)]] — `vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md` (medium-term-episodic)
-- [[FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83]] — `vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md` (medium-term-episodic)
-- [[Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19)]] — `vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md` (medium-term-episodic)
-- [[Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089]] — `vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md` (medium-term-episodic)
 - [[FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP]] — `vault/sessions/handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` (medium-term-episodic)
 - [[Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás]] — `vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md` (medium-term-episodic)
-- [[Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás]] — `vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md` (medium-term-episodic)
+- [[Handoff — FKH-041 értéktár routing + auto-update javítás (round 2, 2026-08-28)]] — `vault/sessions/handoff-2026-08-28-fkh041-ertektar-routing-autoupdate.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)

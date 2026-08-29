@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-27T07:01:00.889Z
+generated: 2026-08-29T06:07:27.319Z
 format: gfm
 ---
 
@@ -112,125 +112,125 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 ## Kozep Tavu Memoria
 
-- **HANDOFF — 2026-07-10 teljes session (10 PR + legacy-elemzés + FS-VISUAL batch)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-10-full-session.md`
-  - summary: # HANDOFF — 2026-07-10 teljes session (10 PR + legacy-elemzés + FS-VISUAL batch) > Ez a mérvadó handoff az új session folytatásához. A BACKLOG.md a teljes részletességű forrás. ## Előző session-ból átvett állapot (07-09 work, már prodon) #1385 INVSTOCK · #1386 FE-console-err · #1388 triple-Low · #1389 CASHBAL-scope · #1390 FE-FLAKY-SWEEP — mind merged+deployed, 2.28.29. ## Ez a session: 8 PR merged+deployed (mind: te
+- **2026-05-23 — N9 értéktári átértékelés-lecsorgatás + v2.26.29 tesztelő-build** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-23-revaluation-allocation-v2.26.29.md`
+  - summary: # 2026-05-23 — N9 értéktári átértékelés-lecsorgatás + v2.26.29 tesztelő-build ## N9 — értéktári átértékelés lecsorgatása a pénztárakra (PR #811) User-kérdésből nőtt ki: az értéktár puffer (NEM haszoncenter); a pénztár+terület a haszoncenter. A pufferkészlet nem-realizált átértékelését (heldQty × (MNB − WAC)) valutánként lecsorgatjuk a terület pénztáraira a **lehívott mennyiség × pénztári átlag-árrés** súly szerint. -
 
-- **WorkerBranchAccess TOCTOU triage — 2026-07-10** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-10-workerbranchaccess-toctou-triage.md`
-  - summary: # WorkerBranchAccess TOCTOU triage — 2026-07-10 **VERDIKT: FALSE POSITIVE.** A #1401 `listBranches`/`listWorkers` guardjai és a lista-query közti elméleti READ_COMMITTED ablak jelenleg nem kihasználható. - Nincs production hívó: `WorkerBranchAccessService.java:188,210` az egyetlen definíció; külső hívó csak `WorkerService.java:403` → `hasAccess`, nem a listázók. - Nincs versenyző író: `AdminBootstrapService.java:136`
+- **2026-05-23 — Verzió- és telepítő-build stratégia (token/idő-spórolás)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-23-versioning-installer-strategy.md`
+  - summary: # 2026-05-23 — Verzió- és telepítő-build stratégia (token/idő-spórolás) ## User-direktíva "Térjünk át minor/major verziókra a telepítők készítésénél. Tesztelői javítás (szűk szkóp) → minor; teljes refaktor/revízió → csak a lezáráskor major telepítő." ## Döntés (AskUserQuestion megerősítve) - **Build-trigger: Electron-natív VAGY milestone.** A tisztán backend/frontend-react (server-served) javítások merge+deploy-jal m
 
-- **FS11-DEF — TELJES PROGRAM LEZÁRVA — 2026-07-12** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-12-fs11-def-COMPLETE.md`
-  - summary: # FS11-DEF — TELJES PROGRAM LEZÁRVA — 2026-07-12 ## Végállapot Az FS11-DEF (5 halasztott compliance keresőszűrő) mind backend, mind frontend oldalon **teljesen leszállítva és élesítve**. | Szűrő | PR | Deploy | |---|---|---| | beneficialOwnerName + LINECUR (currency OR) | #1422 | ✅ v2.28.33 14:03 | | customerCountry + customerBirthName | #1423 | ✅ v2.28.33 14:59 | | relatedMinCount (backend, GROUP BY/HAVING aggregate
+- **Session: antivaluta_audit.md PP-08+PP-09 lezárás — v2.26.33** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-24-antivaluta-audit-pp08-pp09-v2.26.33.md`
+  - summary: # Session: antivaluta_audit.md PP-08+PP-09 lezárás — v2.26.33 **Dátum:** 2026-05-24 **PR:** #816 (admin-merged, squash) **Commit:** `5140b45f0` **Verzió:** v2.26.33 **Production:** HEALTHY 200 --- ## Elvégzett munka ### PP-08 — Auth Failure Spam in Offline Sync (`sync-engine.ts`) **Root cause:** `bootstrapAuthSession()` null visszatérési értéke esetén (401/403, hiányzó credentials, hálózati hiba) a `runSync` a siker-
 
-- **FS11-DEF backend teljes (5/5) — 2026-07-12** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-12-fs11-def-backend-complete.md`
-  - summary: # FS11-DEF backend teljes (5/5) — 2026-07-12 **Belépő állapot:** BACKLOG.md + korábbi handoffok + FS11-DEF slice1-4 tervek beolvasva; slice1 PR (#1422) készen állt, de branch-policy blokkolta a sima merge-t. ## Végzett munka (kanonikus dev-loop szerint, minden szeleten) 1. **Slice1 (#1422, ALREADY CODED, csak merge kellett):** beneficialOwnerName + line-currency EXISTS-szűrők. `--admin` merge (branch-policy blokk), d
+- **Session: valutavalto_sajat_meglatas_audit + RFM Should-elemek — v2.26.39/40 (2026-05-24)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-24-antivaluta-saját-meglátás-audit-pp17-18-20-v2.26.40.md`
+  - summary: # Session: valutavalto_sajat_meglatas_audit + RFM Should-elemek — v2.26.39/40 (2026-05-24) ## Összefoglaló Két PR mergelt: a hátralévő RFM Should-elemek (#829) és a legújabb audit-MD findingjeinek javítása (#830). Mindkettő server-served (backend/frontend-react), NINCS telepítő-build. ### PR #829 — RFM FR-RFM-22 + FR-RFM-23 (v2.26.39, frontend-react) A G22 sub-scope két utolsó Should-eleme: - **FR-RFM-22 "Aktuális fü
 
-- **FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-12-fs11-def-release-chain.md`
-  - summary: # FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12 ## Teljes lánc végigvitel (a felhasználó kérésére: "Push, merge, lint, deploy és telepítő") 1. **PR #1425** (FS11-DEF slice 3/3 frontend) — mergelve, deploy éles v2.28.33-ban. 2. **Both-origin freshness** (Hetzner + Scaleway hot standby) verifikálva PASS mindkét deployra (v2.28.33 és v2.28.34). 3. **Lint**: `npm run lint` → 0 error (2447 pre-existing warning, n
+- **Session: Backdoor Audit PP-13/PP-14/PP-15 — v2.26.34** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-24-backdoor-audit-pp13-pp14-pp15-v2.26.34.md`
+  - summary: # Session: Backdoor Audit PP-13/PP-14/PP-15 — v2.26.34 **Dátum:** 2026-05-24 **Verzió:** v2.26.34 **PR:** [#817](https://github.com/kosazoltan/valutavalto-program/pull/817) **Branch:** `fix/pp13-pp14-pp15-backdoor-audit` **Merge commit:** `48e5c7d25` (squash merge → main) **Audit forrás:** `antivaluta_backdoor_audit.md` (PP-13, PP-14, PP-15) --- ## Findings és fix-ek ### PP-13 (CRITICAL) — SetupGoogleIdentificationSe
 
-- **FK09/FK10 rate-maker handoff — 2026-07-18** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-18-fk09-fk10-rate-maker.md`
-  - summary: # FK09/FK10 rate-maker handoff — 2026-07-18 - PR #1454 MERGED: https://github.com/kosazoltan/valutavalto-program/pull/1454 - Main/release SHA: `e0db5f395ea8601493cece45a25e971ef2e9fb3e` - Release: `v2.28.44` — https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.28.44 - FK09: online/offline fejlécállapot látható, regressziós teszt lefedi. - FK10: 0/nem pozitív forrás látható képlethiba; előző jó érték me
+- **Session: G22 54-csempe munkacsoport-rács UI — v2.26.38 (2026-05-24)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-24-g22-workgroup-tile-grid-v2.26.38.md`
+  - summary: # Session: G22 54-csempe munkacsoport-rács UI — v2.26.38 (2026-05-24) ## Összefoglaló A G22 sub-scope (utolsó befejezetlen tervrészlet) lezárva: a TCSOPORTDISPLAY legacy 54-csempe munkacsoport-rács vizuális paritása az RFM árfolyamkészítőben. ### PR #828 — G22 54-csempe munkacsoport-rács (v2.26.38) **Háttér:** A 23/23 EXCMD gap már KÉSZ volt; a G22 számítási mag (rfmRules.ts: EUA ×1.2, Raiffeisen ±10%, R/S, kereszt)
 
-- **Handoff — FKH-018 + Ollama indítási hiba** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-18-fkh018-ollama.md`
-  - summary: # Handoff — FKH-018 + Ollama indítási hiba - Időpont: 2026-07-18 14:31 +0200. - Repo: `D:/repo/valutavalto-program`; branch: `feature/ertektar-atvetel-jovahagyas-nelkul`; HEAD: `e0db5f39`. - Worktree: 41 módosított/untracked bejegyzés; semmi nincs commitolva vagy pusholva. - Első következő feladat: az Ollama nem indul el; bizonyíték-első hibakereséssel javítandó, utána folytatni FKH-018-at. - Session elején ellenőriz
+- **Session: Kozponti + Arfolyamkeszito telepítő-összevonás + telepito-audit — v2.27.0 (2026-05-24)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-24-kozponti-arfolyam-merge-v2.27.0.md`
+  - summary: # Session: Kozponti + Arfolyamkeszito telepítő-összevonás + telepito-audit — v2.27.0 (2026-05-24) ## Összefoglaló A főértéktáros két vékony kliense (Kozponti irányítóközpont + Árfolyamkészítő) EGY összevont „Központi munkaállomás" telepítővé olvasztva, induláskori magyar mód-választó ablakkal. **4 telepítő → 3** (Penztar + Munkaallomas + Eltavolito). PR #831 admin-merged `c3e0891f4`. ## Tervezési döntés: dual-bundle
 
-- **Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-19-ertektar-batch-r2-budget-stop.md`
-  - summary: # Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19) - Stable task-id: `VALUTA-ERTEKTAR-BATCH-20260719-R2`. - Planner (Fable-5) lefutott; verdict READY. - Kanonikus terv: `.hermes/dev-loop/VALUTA-ERTEKTAR-BATCH-20260718-PLAN.md` (SHA-256 `3faf4488a304e3b707ea5fc13436a986cecc75abfee4a779a0dec37b0ff58d85`). - Holdout: `D:/repo/Hermes-agent/pipeline/.runtime/VALUTA-ERTEKTAR-BATCH-20260719-R2/HOLDOUT.md` (40 eset).
+- **Session: PP-09 SQLite roundFin teljes lefedés — v2.26.36** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-24-pp09-sqlite-roundfin-complete-v2.26.36.md`
+  - summary: # Session: PP-09 SQLite roundFin teljes lefedés — v2.26.36 **Dátum:** 2026-05-24 **Verzió:** v2.26.36 **PR:** #821 (admin-merged, squash, `0a1630c62`) **Trigger:** antivaluta_audit_2026_05_24.md PP-09 finding (OUTSTANDING a PP-16 lezárása után) --- ## Feladat A v2.26.33-as PP-09 fix (roundFin a `savePendingTransactionV2` és `savePendingConversionV2`-ban) hiányos volt: 3 INSERT funkció + 2 legacy funkció még mindig ny
 
-- **Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-19-fk057-mainlayout.md`
-  - summary: # Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra - Forrás: `FK-057_MainLayout_gorgetesi_architektura_javitas_v2.md` R4, SHA-256 ellenőrizve. - A gyökérlayout viewport-magasságú (`h-screen overflow-hidden`); nincs dokumentumszintű görgetés. - A Sidebar navigáció és a `.app-print-content` külön függőleges scrollport. - Mobilon a `main` explicit `minHeight: 0`; a nyitott sidebar `min-h-0 max-h-full`. -
+- **Session: PP-16 MFA Backup Kód BCrypt Hardening — v2.26.35** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-24-pp16-totp-bcrypt-v2.26.35.md`
+  - summary: # Session: PP-16 MFA Backup Kód BCrypt Hardening — v2.26.35 **Dátum:** 2026-05-24 **Verzió:** v2.26.35 **PR:** #818 (admin-merged, squash, `2cb6859d8`) **Trigger:** antivaluta_audit_2026_05_24.md PP-16 finding --- ## Feladat Az audit azonosította, hogy a `TotpService.hashBackupCodes()` metódus SHA-256-tal hash-eli az MFA backup kódokat. A backup kódok 8 decimális számjegyből állnak (10^8 kombináció), SHA-256 gyors és
 
-- **Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-19-v2.28.45-release.md`
-  - summary: # Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19 - PR #1456 merged (squash): https://github.com/kosazoltan/valutavalto-program/pull/1456 - Main/release SHA: `f3ac9fad0b992ef6f7c0f41cd954c413f825c59c` - PR CI: all required checks PASS after fixing the CashierStocks async test race. - CI fix: await rendered `Baja Tesco` option; 10/10 repeated targeted coverage runs PASS; dual review+jury APPROVE. - Local gates
+- **2026-05-24 — AI_INTERNAL_SECURITY_AUDIT V2.0 végrehajtás (v2.26.37)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-24-security-audit-v2-execution-v2.26.37.md`
+  - summary: # 2026-05-24 — AI_INTERNAL_SECURITY_AUDIT V2.0 végrehajtás (v2.26.37) ## Összefoglalás Az `AI_INTERNAL_SECURITY_AUDIT_INSTRUCTIONS.md` V2.0 audit kézikönyvet (8 szabály, Antigravity AI Senior Security Architect Agent) végrehajtottuk a teljes valutaváltó kódbázison. PR #824 squash-merged, Hetzner deploy SUCCESS, production HEALTHY 200. ## Auditált szabályok és eredmény | Szabály | Státusz | Finding | Javítás | |------
 
-- **Handoff — FK-058 + FK-051v2 + v2.28.53 release — 2026-07-23** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-23-fk058-fk051v2-v2.28.53.md`
-  - summary: # Handoff — FK-058 + FK-051v2 + v2.28.53 release — 2026-07-23 - FK-058 (PR #1474 merged): CashBalanceRepository.findByCompanyIdExcludingVault + DailySessionRepository.findByDateRangeExcludingVault kiegészítve a FK-056 kanonikus null-safe VAULT_COUNTERPARTY branchType-kizárással (isVault defense-in-depth marad). Új VaultCounterpartyExclusionPostgresIT (Testcontainers) 2/2 PASS. - FK-051 v2 (PR #1475 merged): kozponti-
+- **2026-05-25 — RFM Valutakezelő-fix + vékony-kliens↔szerver e2e + v2.27.1 release** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-25-rfm-currency-manager-fix-e2e-v2.27.1.md`
+  - summary: # 2026-05-25 — RFM Valutakezelő-fix + vékony-kliens↔szerver e2e + v2.27.1 release ## Kontextus A felhasználó jelezte: a Valutakezelő (Currency Manager) létrehozáskor hibát dob, az Aktivál/Inaktivál gombok némán nem csinálnak semmit. Plusz kérdés: a rate-maker főlap formula/navigáció követelményei működnek-e ("így működik?"). Majd: a vékony-kliens → szerver árfolyam-publikálás + szétküldés valós működésének ellenőrzés
 
-- **Handoff — v2.28.52 release + backlog-zárás — 2026-07-23** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-23-v2.28.52-release.md`
-  - summary: # Handoff — v2.28.52 release + backlog-zárás — 2026-07-23 - Minden nyitott issue lezárva: #1442 (PR #1470), #1451 (PR #1472), #1455 (triage, not planned), #1428 (PR #1473). - #1428 gyökérok: electron-builder multiUser.nsh System::Store ág friss telepítésnél (upstream #7921, offset 0x1581=System!Store+0x4a0). Fix: preInit InstallLocation pre-seed mindkét kliensben. Mért: baseline unsigned 5/8 crash → fix 0/8. - v2.28.
+- **Semgrep teljes-kódbázis audit — 2026-05-26 (v2.27.9)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-26-semgrep-audit-v2.27.9.md`
+  - summary: # Semgrep teljes-kódbázis audit — 2026-05-26 (v2.27.9) **Eszköz:** semgrep 1.133.0 `--config auto` (registry security/OWASP/nyelv-specifikus). **Scannelt:** 2015 forrásfájl (backend Java, frontend-react, 3 Electron kliens, packages). **Nyers JSON (gitignore-olt, a 2.27.8 baseline-en futtatott scan artefaktja):** `security-reports/semgrep/semgrep-2.27.8.json` + `SEMGREP-AUDIT-2.27.8.md`. A fájlnév a scan idején érvény
 
-- **Handoff 2026-07-23 — v2.28.55 release (CI-annotáció batch)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-23-v2.28.55-dependency-batch.md`
-  - summary: # Handoff 2026-07-23 — v2.28.55 release (CI-annotáció batch) - v2.28.54 lezárva: run 30003708497 success, Downloads-verifikáció OK (SHA256 + Authenticode Valid). - CI-annotációk implementálva: - #1478: Spring Jackson 3 fix — RedisConfig GenericJacksonJsonRedisSerializer (builder+enableUnsafeDefaultTyping, 1:1 viselkedés), teszt JacksonJsonHttpMessageConverter. GLM-5.2 review: APPROVE-WITH-NITS, 0 blocker; teszt 8/8.
+- **2026-05-27 — Élő-API keresztmetszet bug-hunt (futó backend, valós HTTP)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-27-live-api-cross-section-bug-hunt.md`
+  - summary: # 2026-05-27 — Élő-API keresztmetszet bug-hunt (futó backend, valós HTTP) ## Kontextus User-direktíva: NEM kód-olvasás, hanem a **futó alkalmazás backend API-ját** tesztelni valós HTTP kérésekkel + kritikus frontend-logika átnézés. Minden hibát feltárni → javítani → újra tesztelni, amíg az összes hiba javítva. Teszt-DB (Docker PG, fresh→V269), nem éles adat → teszt-tranzakciók OK. ## Tesztkörnyezet - Docker PG (valut
 
-- **Handoff 2026-07-24 — FK-061 + FK-062, v2.28.56** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-24-fk061-fk062-v2.28.56.md`
-  - summary: # Handoff 2026-07-24 — FK-061 + FK-062, v2.28.56 - FK-054 (318fb160/#1281) és FK-059 (7272e03c, v2.28.50) lezártsága VERIFIED (main-ancestor). - FK-061: 'Napzárás' menü az Értéktár csoportban (menuGroups.ts); backend DailyClosingService.checkEveningDenomination vault-skip (branch.isVault) + EVENING_DENOMINATION_CHECK_SKIPPED_VAULT audit + info log; új isVaultBranch() helper. - FK-062: ClosingControlService.isRequired
+- **FK-013 — Egységes értéktári átadás-átvétel menü (design + spec)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-28-fk013-unified-vault-transfer-design.md`
+  - summary: # FK-013 — Egységes értéktári átadás-átvétel menü (design + spec) **Forrás**: Kasza Helga + Bali Henriett (Szeged Értéktár) 2026-05-28 kérés (Downloads/FK-013_Ertektari_atadasatvétel_teruleti_szures.md). **Prioritás**: Magas. **Megrendelő**: Főértéktár. ## Cél A két jelenlegi értéktári menüpont (`Átadás-átvétel (pénztáraknak)` + `Átadás bank / másik értéktár`) egyetlen menüpontba vonva, a "Cél iroda" legördülő egy li
 
-- **Handoff — FK-063 + FK-064 (pénztári multi-devizás címletezés + zárási UI egységesítés)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-24-fk063-fk064-multidevizas-zaras.md`
-  - summary: # Handoff — FK-063 + FK-064 (pénztári multi-devizás címletezés + zárási UI egységesítés) - PR #1483 squash-merged → main `467a0fbc` (2026-07-24). Branch törölve. - FK-063: `GET /closing-wizard/currencies-with-balance` (JWT-branch, company-szűrt, HUF mindig); `denominationSections` pénztár módban dinamikus (cash_balance-alapú, HUF-fallback offline-ra); `computeCashDiscrepancy` + finalize-gate pénznemenkénti (`perCurre
+- **2026-05-28 — FK-04 C/E képletezés + árfolyamvédelem (PR-sorozat)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-28-fk04-ce-formula-protection-pr-series.md`
+  - summary: # 2026-05-28 — FK-04 C/E képletezés + árfolyamvédelem (PR-sorozat) ## Kritikus felfedezés **Az FK-04/E.2 backend védelmi validáció (#885, v2.27.39) SOHA nem került a main-re.** A `feat/fk-04-e2-protection-validation` feature-branch commitja (`7890ef0d2`) NEM ancestor-a a main-nek (a squash-merge elmaradt). A main #884 (v2.27.38) után rögtön a Shipment-ekre ugrott. A session-ledger tévesen állította, hogy merged. → he
 
-- **Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-04-fkh029-vault-cash-balance-scope.md`
-  - summary: # Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés **Dátum:** 2026-08-04 · **Branch:** `fkh029-vault-cash-balance-scope` (main `9a48f0dd`-ből) ## Miért Az FKH-028 V369 csak BR020-at pótolta (FR-5 tudatos scope-kivétel). Az élő prod audit (read-only, Hetzner) szerint **7 további aktív Értéktárnak 0 `cash_balance` sora** volt, és **BR075 Békéscsaba 10 PENDING átadása 2026-05-26 óta b
+- **2026-05-28 — Teljes nap fejlesztési ledger** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-28-full-day-development-ledger.md`
+  - summary: # 2026-05-28 — Teljes nap fejlesztési ledger > Központi session-jegyzet a mai munka teljes archívuma. A részletes FK-013-design külön fájlban: `2026-05-28-fk013-unified-vault-transfer-design.md`. ## 🎯 Mai PR-ek (5 db, mind merged kivéve #893) | PR | Verzió | Cél | Status | |---|---|---|---| | **#889** | v2.27.43 | Bali Henriett D pont — alkalmazott elszámoló árfolyam + forintosított érték (V276 migráció) | ✅ MERGED
 
-- **Aktív repo-memória (read-gate + area-taxonómia + stale-check)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md`
-  - summary: --- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour
+- **2026-05-29 — FK-batch merge + prod-deploy + telepítő** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-29-fk-batch-merge-deploy-installer.md`
+  - summary: # 2026-05-29 — FK-batch merge + prod-deploy + telepítő ## Mind merge-elve a main-re (v2.27.50), prod-deploy ÉLES A user explicit „mindent jóváhagyok" + autonómia-felhatalmazás után `--admin` merge: - #898 ShipmentNewPage teszt-fix · #899 FK-04/E.2 backend védelem (elveszett #885 helyreállítás) - #900 FK-04/C compute · #901 storage · #902 FK-04/E protection - #903 NAPI FORGALOM Ft (hufAmount) · #904 v2.5.54 kozmetikák
 
-- **FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md`
-  - summary: --- date: 2026-08-09 title: FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele type: session status: complete tags: [fkh031, sync, ertektar, penztar, retry, ui, tdd] --- # Handoff — FKH-031 NFR-1 ## Kiindulás A branch (`feature/ertektar-fkh031-sync-retry-lathatosag`) FR-1…FR-6 szinten készen volt (commit `6ff0fc2a`, `711c4adf`). Kötelező memória-lookup után (AGENTS.md 2.1) kódfeltárással **egy valós hiányt** találta
+- **2026-05-31 — Több-ügynökös kódbázis-audit + multi-tenant IDOR batch (v2.27.58)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-31-codebase-audit-tenant-idor-batch.md`
+  - summary: # 2026-05-31 — Több-ügynökös kódbázis-audit + multi-tenant IDOR batch (v2.27.58) ## Kontextus Új gép, `git pull` (a másik gép feltöltötte a hiányzó állapotot → HEAD `a3496b8b`, v2.27.57). Production HEALTHY (bootstrap 200, EBC branches non-üres). A user kérése: dynamic workflow-val több külön ügynökkel átnézni a teljes kódbázist hibákra/hiányosságokra, alapos ellenőrzés után folytatni. ## Audit (Workflow `vv-codebase
 
-- **Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md`
-  - summary: --- date: 2026-08-09 title: Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása type: session status: complete tags: [memory, legacy, excmd, felmeres-kb, agent-rules, recovery] --- # Handoff — a memória legacy-vakfoltjának megszüntetése ## A probléma (audit) A bundle 382 forrást indexelt, és a fejlesztéshez ténylegesen szükséges tudás szinte teljes egészében kimaradt. Git-trackelt fájlokhoz mért le
+- **HANDOFF — 2026-05-31 (folytatás másik gépen)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-31-handoff-to-other-machine.md`
+  - summary: # HANDOFF — 2026-05-31 (folytatás másik gépen) > **Cél:** ez a session ARM-gépen futott; a folytatás másik gépen lesz. Ez a jegyzet önállóan > elég a folytatáshoz. **SESSION-START:** `git pull` ELŐSZÖR, majd ezt + `vault/references/program-state-cache.md` olvasd. ## Verzió + prod állapot - **main = v2.27.64** (a #941 merge után; ha #941 még nyitott, lásd lent). Production **HEALTHY** — `https://excvaluta.com/api/v1/a
 
-- **Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md`
-  - summary: # Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás ## Release: v2.28.73 (FKH-031 / V377) — KIADVA, élesben igazolva - main `a54e4890`; main CI 6/6 zöld; prod `/api/v1/version` → 2.28.73, health `ok:true`. - **Gate B 7/7 PASS** (`scripts/verify-fkh031-gate-b.sh`): V377 lefutott ÉS ÍRT (`[FKH-031 V377]` marker 2 soron), AA035100003→COMPLETED, AA035100004→CANCELLED, `cash_balance` BR035/BR020 USD
+- **Session 2026-05-31 — Reversal-cap concurrency + security milestone (v2.27.66 → v2.27.70)** (medium-term-episodic)
+  - source: `vault/sessions/2026-05-31-reversal-cap-concurrency-security-milestone.md`
+  - summary: # Session 2026-05-31 — Reversal-cap concurrency + security milestone (v2.27.66 → v2.27.70) ## Kiindulás A #944 PR (napi sztornó-plafon: prior-day NEVER + aznapi max-3, 3.=supervisor, 4+=block) **OPEN** volt; egy Codex P1 review valós concurrency-rést jelzett a `getDailyReversalCount()` lock-mentes olvasásán. Mivel #944 nem mergelt, a fixet UGYANAZON a branchen (#944) folytattam (nem main-ről új branch). ## Elvégzett
 
-- **Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md`
-  - summary: # Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés ## Mi történt User kérdése az „architekturális duplikáció / 17 szolgáltatás" fordítására indult, majd a 17-es szám felülvizsgálatára, végül a kliens-összevonás + pénztár-eltávolító végrehajtására (kétszeresen ellenőrzött terv alapján). ## Mért eredmények (nem becslés) - **Duplikáció: nem 17, hanem 19 klaszter.** 10 001 indexelt függvénytörzsbő
+- **Pénztár Törzs Adatbázis — feltérképezési utasításkészlet** (medium-term-episodic)
+  - source: `vault/sessions/2026-06-03_penztar_torzs_adatbazis_felterkepezes_utasitas.md`
+  - summary: --- title: Pénztár Törzs Adatbázis — feltérképezési utasításkészlet date: 2026-06-03 forras: C:\Users\Kósa Zoltán\Downloads\FELTERKEPEZES_penztar_torzs.md cel: Claude Code / AI ügynök számára — adatbázis és kapcsolatok feltérképezése, NEM programozás status: tenyalapu-kod-audit --- <!-- AGENT-HEAD --> ## AGENT-HEAD — olvasd először **Feladat típusa:** feltérképezés és dokumentálás. **TILOS programozni** ebből a fájlb
 
-- **Platform-refaktor 2. kör — zárójelentés (a telepítőig)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md`
-  - summary: # Platform-refaktor 2. kör — zárójelentés (a telepítőig) **Dátum:** 2026-08-10 | **Repo:** `D:\repo\valutavalto-program` **Megbízás:** a platform-refaktor befejezése, szeletenként **kétszer ellenőrzött terv**, majd autonóm verifikált futás **a telepítőig**. --- ## 1. Eredmény egy táblázatban | Metrika | 1. kör előtt | 1. kör után | MOST | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 96 | **90** | | **Cross-
+- **2026-06-12 — FK04 valuta-katalógus dinamikus betöltés + voice-assistant branch-takarítás** (medium-term-episodic)
+  - source: `vault/sessions/2026-06-12-fk04-valuta-katalogus-es-voice-branch-takaritas.md`
+  - summary: # 2026-06-12 — FK04 valuta-katalógus dinamikus betöltés + voice-assistant branch-takarítás ## Elvégzett munka ### 0) Repo-szinkron korrekció (kritikus tanulság) - A session-eleji „lokál = remote, szinkronban" jelentés **hamis** volt: a `git fetch` háttérben futott, az ahead/behind számítás a fetch-ELŐTTI stale ref-et látta. Valójában a lokál main **203 committal** volt lemaradva (v2.27.64 → v2.27.99, max migráció V28
 
-- **Platform-refaktor — végrehajtási zárójelentés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-10-platform-refaktor.md`
-  - summary: # Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\repo\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált
+- **2026-06-12 — Pénztár-batch: 9 user-reportált hiba/kérés (Fabulya Zsuzsanna teszt, v2.27.99)** (medium-term-episodic)
+  - source: `vault/sessions/2026-06-12-penztar-batch-9-hibajavitas.md`
+  - summary: # 2026-06-12 — Pénztár-batch: 9 user-reportált hiba/kérés (Fabulya Zsuzsanna teszt, v2.27.99) ## Szállítás: 4 PR (3 MERGED + 1 folyamatban a jegyzet írásakor) ### PR #1100 — Sztornó (D.1+D.2) ✅ MERGED - D.1: „Egyedi árfolyam" + „Fizetési mód" mezők törölve — a `paymentMethodDid` a backenden HALOTT mező volt (sehol nem olvassák; a sztornó az eredeti fizetési módot örökli), az üres customExchangeRate defaultja az erede
 
-- **Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md`
-  - summary: # Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12) **Állapot: pipeline PASS, merge a felhasználó döntése.** Branch `feature/engedelyezett-ermek-egysegesitese`, bázis `4ad7c54d`, 6 commit, fa tiszta, `main == origin/main` (érintetlen). ## Mi készült el `denomination_allowed` = egyetlen igazságforrás, a HUF-ot is beleértve. - **V379**: HUF-seed, cégenként 12 sor (nincs 1/2 Ft). **V380**: tiltott COIN
+- **2026-06-16 — Local-First végállapot megerősítve + Neon-backup 3-bug javítás + teljes újraépítés** (medium-term-episodic)
+  - source: `vault/sessions/2026-06-16-local-first-neon-backup-rebuild.md`
+  - summary: # 2026-06-16 — Local-First végállapot megerősítve + Neon-backup 3-bug javítás + teljes újraépítés ## Kontextus A 2026-06-15-ös incidens-note azt sejtette, hogy a backend a Neont szolgálja (split-brain). A 2026-06-16-os prod-probe (SSH a Hetzner prod-hoz a deploy-kulccsal — konkrét IP/kulcs-path a deploy-secretekben, nem itt) ezt cáfolta. ## Prod-topológia (bizonyított, 2026-06-16) | Réteg | Mi | Státusz | |---|---|--
 
-- **Platform-refaktor 3. kör — zárójelentés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md`
-  - summary: # Platform-refaktor 3. kör — zárójelentés **Dátum:** 2026-08-11 | **Repo:** `D:\repo\valutavalto-program` | **HEAD:** `47522cb8` (v2.28.76) **Fázis:** az előterjesztés **1. fázisa** (platform-kiemelés). **NEM** app-merge (3-5. fázis, D2 blokkolja), **NEM** installer-merge. --- ## 1. Eredmény | Metrika | 1. kör előtt | 2. kör után | **MOST** | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 90 | **84** | | **Cr
+- **Handoff - ertektari UI/backend javitasok, repo-audit, CI/deploy** (medium-term-episodic)
+  - source: `vault/sessions/2026-06-21-ertektari-ui-backend-repo-audit-handoff.md`
+  - summary: # Handoff - ertektari UI/backend javitasok, repo-audit, CI/deploy Keszult: 2026-06-21, Europe/Budapest. Repo: `C:\Repo\valutavalto-program` Ez a handoff a 2026-06-21-i Codex session tenyalapu atadasa. A dokumentum a helyi git/GitHub CLI ellenorzesek, lokalis parancskimenetek es a session kozben futtatott verifikaciok alapjan keszult. Ami nem volt ujraellenorizve a handoff irasakor, azt kulon jelolom. ## 1. Aktualis r
 
-- **Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md`
-  - summary: # Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`.
+- **Diagnózis-jelentés: VW0001 / TISZA telephely-azonosító (Neon élő DB, 2026-07-02)** (medium-term-episodic)
+  - source: `vault/sessions/2026-07-02-telephely-diag-eredmeny.md`
+  - summary: # Diagnózis-jelentés: VW0001 / TISZA telephely-azonosító (Neon élő DB, 2026-07-02) Forrás: `penztari-keszlet-telephely-diag.yml` run 28596040523 (7 SELECT + 4 szélesség-felmérő, read-only). ## 1. A hibajelentés fő hipotézise MEGDŐLT **A VW0001 worker RENDBEN van:** `branch_id → BR020 (Szeged Értéktár)`, `vault_territory_id=4 (Szeged)`, role `ertektar` (primary). NEM a régi TISZA-ra mutat — a V282-jellegű adatjavításr
 
-- **Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md`
-  - summary: # Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (8 egység, b0d4feee-re építve). Terv + riport: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/. ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE
+- **Handoff — 2026-06-08 — Mandate cleanup + módszertani frissítések** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-06-08-mandate-cleanup-metodologia.md`
+  - summary: # Handoff — 2026-06-08 — Mandate cleanup + módszertani frissítések ## Elvégzett munka ### Új kötelező munkamódszerek (minden jövőbeli sessionre érvényes) 1. **Kettős terv** — minden változtatás előtt: (1) impl terv + (2) lokális ellenőrzési terv (Python/Bash script, bemenet/kimenet, token-ROI igazolás) 2. **Globális hatásvizsgálat** — minden kódmódosítás után grep minden hívóra + teljes modul teszt + typecheck mind 4
 
-- **FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md`
-  - summary: --- date: 2026-08-18 title: FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 type: session status: complete tags: [fkh037, fk086, fkh030, fkh036, specifikacio, frontend, deploy, installer, napzaras, penztar, release] --- # Handoff — FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 (2026-08-18) Status: **KIADVA**. Prod `2.28.83`, tag `v2.28.83` = `c51a7434`. Letöltött másolat: `C:\zk\Downloads\valutavalto-v2.28.83`.
+- **Handoff — 2026-06-15 — AI biztonsági-audit doktrína + operating-fájl cleanup + módszertan-beépítés** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-06-15-ai-audit-doktrina-es-operating-cleanup.md`
+  - summary: # Handoff — 2026-06-15 — AI biztonsági-audit doktrína + operating-fájl cleanup + módszertan-beépítés ## Mi történt (3 PR, mind docs/agent-konfig — NINCS deploy, a futó backend bitre azonos) 1. **PR #1144** (main `330cb0fc`) — AI defenzív audit **doktrína**: új mandate `vault/feedback/security-audit-mandate-2026-06-15.md` + playbook + `docs/security/ai-audit-profile.yaml` + effort-allokáció **vezérelv** (max effort ah
 
-- **Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md`
-  - summary: # Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19) Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` ## Hiba A `GET /cash-desks/{id}/denominations/currency/{currencyId}` READ-út nem szűrt `denomination_category`-ra. Az Esti zárás (EVENING) HUF-készlet előtöltődött a Kezelési díj (HANDLING_FEE) oldalon. A WRITE-út (`POST .../batch?category=`) már helyes volt (FK-078 / FKH-0
+- **Handoff — 2026-07-05 PROD-VERSION-STALE (DNS-misroute) diagnózis + fix** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-05-prod-version-stale-dns-misroute.md`
+  - summary: # Handoff — 2026-07-05 PROD-VERSION-STALE (DNS-misroute) diagnózis + fix ## Mi volt a baj A publikus `excvaluta.com`/`/api/v1/version` hetekig `2.28.8`-at adott (buildTime 07-04 15:11), miközben minden deploy sikeresen `2.28.27`-et telepített. A backlog eredeti hipotézise (systemctl restart nem cserélte a JVM-et) **HAMIS** volt. ## Valós gyökérok (VERIFY-DON'T-TRUST győzött) - Hetzner primary VÉGIG egészséges: `curl
 
-- **Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md`
-  - summary: # Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089 Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` HEAD at start: `bbf0a8aa` (a FK-090 jegy `55c8e9cc`-t várt — a main azóta release-elt). ## FKH-038 Becímletező READ kategória-szűrt (`findByCashDeskIdAndCurrencyIdAndCategory`). WRITE változatlan. EVENING/HANDLING_FEE nem keveredik. ## FK-090 Transfer-egyeztetés: - RECEIVED kikerült a megerős
+- **Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-07-06-anthropic-outage-fs-d-pending.md`
+  - summary: # Handoff — 2026-07-06 FS-GAP program, D-szelet PENDING (Anthropic hozzáférés kiesett) > Oka: az Anthropic hozzáférés (Opus orchestrator + Fable planner) kikerült a > session végén. A 4-szerepes pipeline nem folytatható (Fable tervezés + GLM > review még elmegy OpenRouter/Nous úton, de az Opus orchestrátor nélül a > minőségi szabvány nem tartható). A user explicit utasítása: álljunk meg, > írjunk handoffot, várjuk az
 
 - **FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md`
@@ -240,9 +240,9 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md`
   - summary: # Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (6 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi
 
-- **Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md`
-  - summary: # Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás Dátum: 2026-08-25 · Repo: valutavalto-program · Fő ág: main @ a6b1d15a ## Mi történt 1. **FK-094 + FK-095 + CORS jegy** hatcsatornás pipeline-nal (Planner → plan-gate ×2 → Coder 10 unit → full review ×2 → Judge PASS) elkészült, PR #1659 → merge `a6b1d15a` → éles deploy. Prod: **2.28.88**, health ok. 2. **Aláírt release v2.28.88** (run 3288671
+- **Handoff — FKH-041 értéktár routing + auto-update javítás (round 2, 2026-08-28)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-28-fkh041-ertektar-routing-autoupdate.md`
+  - summary: # Handoff — FKH-041 értéktár routing + auto-update javítás (round 2, 2026-08-28) Branch: `pipeline/20260828-fkh041-ertektar-routing-autoupdate` (12 commit, base 94c48665: 6 round-1 + 6 round-2). Terv: `round-2/10-plan.md` (round-1 jóváhagyott része változatlan). ## Round 2: ROLE-ELSŐ telepítési-ablak döntés (a round-1 appMode-only lyuk zárása) A riportáló terminál SQLite `app_mode='penztar'` mellett futtat értéktáros
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
