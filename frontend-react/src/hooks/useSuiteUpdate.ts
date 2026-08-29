@@ -4,6 +4,8 @@ import { isElectron, getElectronAPI } from '../utils/electron'
 import { logger } from '../utils/logger'
 import { useAppMode } from './useAppMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
+import { useAuthStore } from '../stores/authStore'
+import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
 
 /**
  * A pénztárgép munkafolyamat-állapota a suite-frissítés szempontjából.
@@ -62,14 +64,20 @@ export function mapSessionToShiftState(
  * állapotváltáskor és percenként is megtörténik, mert a telepítés kiváltója az
  * ÁLLAPOTÁTMENET (napzárás lezárása vagy napnyitás előtti állapot), nem egy időzítő.
  *
- * FKH-041 FR-3 (D5/D6): nem-pénztár módban a renderer KONZERVATÍVAN `SHIFT_OPEN`-t
- * jelent. Indoklás: az értéktár munkafolyamatnak nincs pénztári nap-határa, ezért
- * nincs detektálhatóan biztonságos telepítési ablak — az `IDLE_BEFORE_OPEN` hamis
- * ablakot nyitna (a main process `maybeOfferInstall` -> csendes telepítés ->
- * `app.quit()` ~1 mp múlva, ami megszakította a bejelentkezést). Ez a kompromisszum
- * ELFOGADOTT: az értéktár terminál sosem auto-telepít, a manuális telepítő
- * (Penztar-Setup) marad az út. NE „javítsd vissza" a main processben — a fő folyamat
- * telepítési kapuja a renderer jelentésétől függetlenül is fail-safe
+ * FKH-041 FR-3, round 2 (D5/D6/D8): a telepíthető ablak CSAK bizonyított pénztáros
+ * munkamenetben létezik — a döntés SZEREP-ELSŐ: `appMode === 'penztar'` ÉS az aktív
+ * kanonikus szerep `penztar`. Minden más kombináció (nem-pénztár mód, értéktáros/
+ * főértéktáros/értékszállító szerep — akár pénztár konfigurációjú gépen is —,
+ * ismeretlen/hiányzó szerep) KONZERVATÍVAN `SHIFT_OPEN`-t jelent, és a napi-session
+ * API-t sem hívja. Amíg az appMode nem oldódott fel (`isLoading`), a hook SEMMILYEN
+ * állapotot nem jelent (a main process alapértelmezése úgyis `SHIFT_OPEN`). Indoklás:
+ * a riportoló terminál SQLite `app_mode='penztar'` mellett futtat értéktárost, ezért
+ * az appMode-egyből döntés hamis `IDLE_BEFORE_OPEN` ablakot hagyott nyitva
+ * (`maybeOfferInstall` -> csendes telepítés -> `app.quit()` ~1 mp múlva, ami
+ * megszakította a bejelentkezést). Ez a kompromisszum ELFOGADOTT: az értéktár
+ * terminál és az értéktáros által kezelt pénztár gép sosem auto-telepít, a manuális
+ * telepítő (Penztar-Setup) marad az út. NE „javítsd vissza" a main processben — a fő
+ * folyamat telepítési kapuja a renderer jelentésétől függetlenül is fail-safe
  * (alapértelmezés és ismeretlen érték egyaránt `SHIFT_OPEN`).
  *
  * Web-böngészőben (nem Electron) no-op: nincs mit frissíteni.
@@ -81,21 +89,38 @@ export function useSuiteUpdate(): {
   const [shiftState, setShiftState] = useState<ShiftState | null>(null)
   const [readyUpdate, setReadyUpdate] = useState<SuiteUpdateReady | null>(null)
   const lastReportedRef = useRef<ShiftState | null>(null)
-  // D6: a hook zéró-argumentumú marad (a boundary gate a `useSuiteUpdate()` hívást
-  // rögzíti a MainLayout-ban); az appMode-ot belsőleg olvassuk, és a reportState
-  // deps-ébe kerül, hogy a feloldott/átváltott mód ÚJRA-jelentést váltson ki (R3/D6).
-  const { mode: appMode } = useAppMode()
+  // D6 (round 2): a hook zéró-argumentumú marad (a boundary gate a `useSuiteUpdate()`
+  // hívást rögzíti a MainLayout-ban); az appMode ÉS a kanonikus szerep belsőleg
+  // olvasott, és mindkettő a reportState deps-ébe kerül, hogy a feloldott/átváltott
+  // mód és a szerepváltás ÚJRA-jelentést váltson ki (R3/D6). A nem-selector
+  // destrukturálás azonos a MainLayout.tsx konvenciójával.
+  const { mode: appMode, isLoading: appModeLoading } = useAppMode()
+  const { activeRole, user } = useAuthStore()
+  const canonicalRole = canonicalizeRoleForAppMode(activeRole ?? user?.role ?? null)
+  // D9: a never-install ág naplózása mountonként egyszer (a 60 mp-es intervallum
+  // nem spamelhet). Csak log-guard — a SHIFT_OPEN-hozást NEM kapuzhatja.
+  const neverInstallLoggedRef = useRef(false)
 
   const reportState = useCallback(async () => {
     const electronAPI = getElectronAPI()
     if (!electronAPI?.suiteUpdate) return
 
+    // FKH-041 round 2 / D8: amíg az appMode nem oldódott fel, NEM jelentünk (a main
+    // process alapértelmezése SHIFT_OPEN, tehát a hallgatás a biztonságos ág).
+    if (appModeLoading) return
+
     let next: ShiftState
-    if (appMode !== CASHIER_APP_MODE) {
-      // FKH-041 FR-3: nem pénztár módban NINCS pénztári napi munkamenet, ezért az
-      // `IDLE_BEFORE_OPEN` hamis „telepíthető" ablakot nyitna (suite-update.ts:609-649
-      // -> csendes telepítés -> app.quit()). Konzervatívan SHIFT_OPEN —
-      // és a napi-session API-t sem hívjuk (felesleges backend-kör nélkül).
+    if (appMode !== CASHIER_APP_MODE || canonicalRole !== 'penztar') {
+      // FKH-041 round 2 / D5: telepítési ablak CSAK bizonyított pénztáros munkamenetben.
+      // Az értéktáros (penztar konfigurációjú gépen is!) sosem nyit ablakot -> nincs
+      // csendes telepítés a bejelentkezés alatt (suite-update.ts:624-648 -> app.quit()).
+      if (!neverInstallLoggedRef.current) {
+        neverInstallLoggedRef.current = true
+        logger.warn(
+          'SuiteUpdate',
+          `Telepitesi ablak letiltva (FKH-041): appMode=${appMode}, kanonikus szerep=${canonicalRole || 'ismeretlen'} -> SHIFT_OPEN`,
+        )
+      }
       next = 'SHIFT_OPEN'
     } else {
       try {
@@ -134,7 +159,7 @@ export function useSuiteUpdate(): {
     } catch (error) {
       logger.warn('SuiteUpdate', 'A műszak-állapot jelentése sikertelen', error)
     }
-  }, [appMode])
+  }, [appMode, appModeLoading, canonicalRole])
 
   useEffect(() => {
     if (!isElectron()) return undefined
