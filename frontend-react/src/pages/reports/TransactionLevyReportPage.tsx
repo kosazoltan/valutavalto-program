@@ -28,20 +28,23 @@ export default function TransactionLevyReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (selectedMonth: string) => {
-    const { from, to } = monthRange(selectedMonth)
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await transactionLevyApi.getReport(from, to)
-      setReport(data)
-    } catch (err) {
-      setReport(null)
-      setError(extractMessage(err, t('reports.transactionLevy.loading')))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const load = useCallback(
+    async (selectedMonth: string) => {
+      const { from, to } = monthRange(selectedMonth)
+      setLoading(true)
+      setError(null)
+      try {
+        const data = await transactionLevyApi.getReport(from, to)
+        setReport(data)
+      } catch (err) {
+        setReport(null)
+        setError(extractMessage(err, t('reports.transactionLevy.loading')))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [t],
+  )
 
   useEffect(() => {
     void load(month)
@@ -75,7 +78,7 @@ export default function TransactionLevyReportPage() {
             data-testid="threshold-badge"
             className="rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-800"
           >
-            {t('reports.transactionLevy.threshold')}: {fmt.format(threshold)} Ft
+            {t('reports.transactionLevy.threshold')}: {fmt.format(threshold)} {t('components.ft')}
           </span>
         )}
         {(report?.appliedRates.length ?? 0) > 1 && (
