@@ -3,6 +3,7 @@ import { getElectronAPI } from '../utils/electron'
 import { logger } from '../utils/logger'
 import type { AppMode } from '../types/appMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
+import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
 
 /** SessionStorage: volt-e sikeres belépés ebben a renderer-folyamatban. */
 export const HAD_AUTH_SESSION_KEY = 'valuta-suite-update-had-auth'
@@ -20,6 +21,40 @@ export function hasAuthenticatedSession(): boolean {
     return sessionStorage.getItem(HAD_AUTH_SESSION_KEY) === '1'
   } catch {
     return false
+  }
+}
+
+/**
+ * LocalStorage: az UTOLSÓ sikeres belépés kanonikus szerepe ezen a gépen.
+ *
+ * FKH-041 round 2 (D7/D8b): belépés ELŐTT nincs activeRole, ezért a telepítési
+ * ablak bizonyítéka az, hogy ezen a gépen utoljára BIZONYÍTOTTAN pénztáros lépett
+ * be. A marker localStorage-ban él (túléli a csendes telepítés okozta
+ * folyamat-újraindítást is). Írási szemantika: kanonikus szerep tárolódik;
+ * üres/ismeretlen szerep TÖRLI a kulcsot (elavult `penztar` marker nem maradhat
+ * egy ismeretlen szerepű belépés után — az pontosan a javított lyukat nyitná újra).
+ */
+export const LAST_INSTALL_WINDOW_ROLE_KEY = 'valuta-suite-update-last-role'
+
+export function rememberInstallWindowRole(roleCode: string | null | undefined): void {
+  try {
+    const canonical = canonicalizeRoleForAppMode(roleCode)
+    if (!canonical) {
+      localStorage.removeItem(LAST_INSTALL_WINDOW_ROLE_KEY)
+      return
+    }
+    localStorage.setItem(LAST_INSTALL_WINDOW_ROLE_KEY, canonical)
+  } catch {
+    // localStorage nem elérhető (teszt / privát mód) — a fail-closed alapérték marad.
+  }
+}
+
+/** Az utolsó sikeres belépés kanonikus szerepe; '' ha nincs marker / nem olvasható. */
+export function readInstallWindowRole(): string {
+  try {
+    return localStorage.getItem(LAST_INSTALL_WINDOW_ROLE_KEY) ?? ''
+  } catch {
+    return ''
   }
 }
 

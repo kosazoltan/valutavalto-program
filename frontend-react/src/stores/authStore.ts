@@ -3,7 +3,10 @@ import { persistToken, clearPersistedToken } from '../services/api/index'
 import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
 import { legacyOrphanFallbackMatches } from '../utils/legacyRoleFallback'
 import { clearSessionAppMode } from '../utils/sessionAppMode'
-import { markAuthenticatedSession } from '../hooks/reportLoginScreenIdleForUpdate'
+import {
+  markAuthenticatedSession,
+  rememberInstallWindowRole,
+} from '../hooks/reportLoginScreenIdleForUpdate'
 
 export interface Worker {
   id: number
@@ -103,6 +106,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     // Electron: token mentése SQLite-ba (offline login restore-hoz)
     void persistToken(token)
     markAuthenticatedSession()
+    // FKH-041 round 2 (D8b): az utolsó sikeres belépés kanonikus szerepének
+    // markere — belépés ELŐTT ez bizonyítja a pénztáros telepítési ablakot.
+    // A `markAuthenticatedSession()` hívásformát a boundary gate rögzíti, ezért
+    // ez KÜLÖN függvény, nem argumentum.
+    rememberInstallWindowRole(activeRole ?? worker.role)
   },
 
   selectRole: (
@@ -120,6 +128,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     })
     // Electron: új token mentése
     void persistToken(token)
+    // FKH-041 round 2 (D8b): a mód-/szerepválasztás újraírja a telepítési-ablak
+    // döntését (értéktáros választás zárja, pénztáros választás nyitja a markert).
+    rememberInstallWindowRole(activeRole)
   },
 
   logout: () => {
