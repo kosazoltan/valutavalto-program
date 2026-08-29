@@ -105,9 +105,9 @@ export default function TransactionLevyReportPage() {
                 <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-left">
                   {t('reports.transactionLevy.table.branch')}
                 </th>
-                <GroupHeader label={t('reports.transactionLevy.table.buy')} t={t} />
-                <GroupHeader label={t('reports.transactionLevy.table.sell')} t={t} />
-                <GroupHeader label={t('reports.transactionLevy.table.conversion')} t={t} />
+                <GroupHeader label={t('reports.transactionLevy.table.buy')} />
+                <GroupHeader label={t('reports.transactionLevy.table.sell')} />
+                <GroupHeader label={t('reports.transactionLevy.table.conversion')} />
                 <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-right">
                   {t('reports.transactionLevy.table.largeBase')}
                 </th>
@@ -123,7 +123,7 @@ export default function TransactionLevyReportPage() {
             </thead>
             <tbody>
               {report.rows.map((row) => (
-                <RowCells key={`${row.date}-${row.branchId}`} row={row} fmt={fmt} t={t} />
+                <RowCells key={`${row.date}-${row.branchId}`} row={row} fmt={fmt} />
               ))}
               <TotalsRow totals={report.totals} fmt={fmt} t={t} />
             </tbody>
@@ -163,7 +163,7 @@ function extractMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
-function GroupHeader({ label, t }: { label: string; t: (k: string) => string }) {
+function GroupHeader({ label }: { label: string }) {
   return (
     <th colSpan={5} className="border border-gray-300 px-2 py-1 text-center">
       {label}
@@ -199,15 +199,7 @@ function SubHeaders({ keyPrefix, t }: { keyPrefix: string; t: (k: string) => str
   )
 }
 
-function RowCells({
-  row,
-  fmt,
-  t,
-}: {
-  row: TransactionLevyRow
-  fmt: Intl.NumberFormat
-  t: (k: string) => string
-}) {
+function RowCells({ row, fmt }: { row: TransactionLevyRow; fmt: Intl.NumberFormat }) {
   return (
     <tr>
       <td className="border border-gray-300 px-2 py-1">{row.date}</td>
