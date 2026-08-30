@@ -4,6 +4,7 @@ import { logger } from '../utils/logger'
 import type { AppMode } from '../types/appMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
 import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
+import { hasOpenDayObservedToday } from '../utils/openDayMarker'
 
 /** SessionStorage: volt-e sikeres belépés ebben a renderer-folyamatban. */
 export const HAD_AUTH_SESSION_KEY = 'valuta-suite-update-had-auth'
@@ -12,7 +13,7 @@ export function markAuthenticatedSession(): void {
   try {
     sessionStorage.setItem(HAD_AUTH_SESSION_KEY, '1')
   } catch {
-    // sessionStorage nem elérhető (teszt / privát mód) — a hideg indítás IDLE marad.
+    // sessionStorage nem elérhető (teszt / privát mód) — a hideg indítás ACTIVE marad.
   }
 }
 
@@ -59,22 +60,89 @@ export function readInstallWindowRole(): string {
 }
 
 /**
+ * A belépőképernyő aktivitási állapota a suite-updater szempontjából.
+ *
+ * `'ACTIVE'`: BELÉPÉS FOLYAMATBAN / aktív képernyő (mount, bármely belépési
+ * lépés — Google OAuth/OTP, MFA, szerep-/mód-választó —, friss felhasználói
+ * bevitel). `'IDLE_TIMEOUT'`: MÉRT tétlenség (nincs folyamatban lévő lépés,
+ * nincs input a küszöb óta) — EZ AZ EGYETLEN ág, amely IDLE_BEFORE_OPEN-hez
+ * vezethet, és azt is csak a többi szabály engedélyével.
+ */
+export type LoginScreenActivity = 'ACTIVE' | 'IDLE_TIMEOUT'
+
+/**
+ * Belépőképernyő műszak-döntése a suite-updaternek — tiszta függvény (Application
+ * policy, nincs I/O), ezért DOM/IPC nélkül unit-tesztelhető.
+ *
+ * Szabálysorrend (első egyezés nyer; az első négy szabály mind `SHIFT_OPEN`,
+ * így a sorrend kimenetet nem változtat, de a FKH-041 diagnosztikai log megmarad):
+ *
+ * 1. Nem-pénztár appMode -> SHIFT_OPEN (FKH-041 FR-3).
+ * 2. Pénztár appMode, de a gép utolsó bizonyított szerepe nem `penztar`
+ *    -> SHIFT_OPEN + warn (FKH-041 round 2, fail-closed).
+ * 3. ACTIVE (belépés folyamatban / aktív képernyő) -> SHIFT_OPEN. Ez öli meg a
+ *    Google-OTP hurkot: a 2-3 perces out-of-process OAuth alatt a gép sosem IDLE.
+ * 4. Ma megfigyelt nyitott nap -> SHIFT_OPEN. Nem hazudjuk, hogy „a nap még nem
+ *    indult el", ha a hitelesített munkamenet ma már látott `Nap nyitva`-t (C3) —
+ *    és ehhez NEM kell autentikálatlan `/daily-sessions/is-open` hívás (AC-5).
+ * 5. A fail-safe ternár (boundary gate rögzíti szövegesen): logout -> SHIFT_OPEN,
+ *    egyébként IDLE_BEFORE_OPEN.
+ */
+export function decideLoginScreenShiftState(input: {
+  hadAuth: boolean
+  appMode: AppMode | null
+  lastInstallWindowRole: string
+  activity: LoginScreenActivity
+  openDayObservedToday: boolean
+}): ShiftState {
+  const { hadAuth, appMode, lastInstallWindowRole, activity, openDayObservedToday } = input
+  if (appMode != null && appMode !== CASHIER_APP_MODE) {
+    // FKH-041 FR-3: nem-pénztár módban SOHA nem IDLE — nincs pénztári nap-határ.
+    return 'SHIFT_OPEN'
+  }
+  const lastCanonical = canonicalizeRoleForAppMode(lastInstallWindowRole)
+  if (appMode != null && lastCanonical !== 'penztar') {
+    // FKH-041 round 2 (ITEM 1b): FAIL-CLOSED — penztar konfiguraciojú gépen sem nyitunk
+    // telepítési ablakot, amíg nincs BIZONYÍTOTT pénztáros munkamenet ezen a gépen.
+    logger.warn(
+      'SuiteUpdate',
+      `Belepes elotti telepitesi ablak letiltva (FKH-041): appMode=${appMode}, utolso kanonikus szerep=${lastCanonical || 'ismeretlen'}`,
+    )
+    return 'SHIFT_OPEN'
+  }
+  if (activity === 'ACTIVE') {
+    logger.info('SuiteUpdate', 'Belepes folyamatban / aktiv belepokepernyo -> SHIFT_OPEN')
+    return 'SHIFT_OPEN'
+  }
+  if (openDayObservedToday) {
+    logger.warn(
+      'SuiteUpdate',
+      'Telepitesi ablak letiltva: a mai nap mar nyitott volt (hitelesitett munkamenetben megfigyelt nyitott nap) -> SHIFT_OPEN',
+    )
+    return 'SHIFT_OPEN'
+  }
+  // appMode = null: a FKH-041 előtti szemantika változatlan (boundary gate rögzíti).
+  return hadAuth ? 'SHIFT_OPEN' : 'IDLE_BEFORE_OPEN'
+}
+
+/**
  * Belépőképernyő műszak-jelentése a suite-updaternek.
  *
- * Hideg indítás (még nem volt belépés): a telepítés belépés nélkül is
- * elindulhat — DE FKH-041 round 2 (D7) óta CSAK akkor, ha a gép utolsó sikeres
- * belépése BIZONYÍTOTTAN pénztáros volt (localStorage marker). Amíg ez nem
- * bizonyított, a döntés FAIL-CLOSED: `SHIFT_OPEN` (nincs IDLE_BEFORE_OPEN, nincs
- * csendes telepítés a bejelentkezés alatt — a riportáló terminál
- * `app_mode='penztar'` mellett futtat értéktárost, ott a round-1 appMode-only
- * szabály nem tüzelt). Logout után (már volt belépés): SHIFT_OPEN — ne telepítsen
- * nyitott nap közben (`hadAuth` továbbra is nyer a markerrel szemben, D14).
+ * ÚJ SZERZŐDÉS (Google-OTP hurok, 2026-08-30): a belépőképernyő MOUNTJA SOHA nem
+ * telepíthető — mountkor és bármely folyamatban lévő belépési lépés alatt
+ * (Google OAuth/OTP 2-3 perce, MFA, szerep-/mód-választó) `SHIFT_OPEN` megy.
+ * `IDLE_BEFORE_OPEN` CSAK mért idle-timeout után (`'IDLE_TIMEOUT'` aktivitás,
+ * lásd `useLoginScreenUpdateWindow`) ÉS csak akkor, ha a mai napra nincs
+ * megfigyelt nyitott nap (nyitottnap-marker) és nem volt még belépés sem.
  *
- * Nem-pénztár módban SOHA nem IDLE (értéktár képernyőjén nincs pénztári nap-határ,
- * a hamis ablak csendes telepítést és app.quit()-et váltana ki a bejelentkezés
- * közben). `appMode = null` (default) a FKH-041 előtti szemantikát tartja — a
- * marker csak adott mód mellett él (back-compat a legacy 2-arg hívásokra), és a
- * boundary gate pontosan a lenti `hadAuth ? ...` ternary szöveget rögzíti.
+ * Az `activity` paraméter defaultja FAIL-CLOSED `'ACTIVE'`: bármely legacy /
+ * 2-arg hívás ezért `SHIFT_OPEN`-t jelent — az egyetlen hívó, amely tétlenséget
+ * állíthat, az, aki TÉNYLEGESEN mérte is.
+ *
+ * Nem-pénztár módban SOHA nem IDLE (FKH-041 FR-3). `appMode = null` (default)
+ * esetén a marker-szabály nem él (back-compat a legacy hívásokra), de az
+ * activity-szabály ott is elsőbbséget élvez; a boundary gate pontosan a lenti
+ * `hadAuth ? ...` ternary szöveget rögzíti.
  */
 export async function reportLoginScreenIdleForUpdate(
   api: {
@@ -83,25 +151,17 @@ export async function reportLoginScreenIdleForUpdate(
   hadAuth: boolean = hasAuthenticatedSession(),
   appMode: AppMode | null = null,
   lastInstallWindowRole: string = readInstallWindowRole(),
+  activity: LoginScreenActivity = 'ACTIVE',
+  openDayObservedToday: boolean = hasOpenDayObservedToday(),
 ): Promise<ShiftState | null> {
   if (!api?.suiteUpdate) return null
-  let next: ShiftState
-  const lastCanonical = canonicalizeRoleForAppMode(lastInstallWindowRole)
-  if (appMode != null && appMode !== CASHIER_APP_MODE) {
-    // FKH-041 FR-3: nem-pénztár módban SOHA nem IDLE — nincs pénztári nap-határ.
-    next = 'SHIFT_OPEN'
-  } else if (appMode != null && lastCanonical !== 'penztar') {
-    // FKH-041 round 2 (ITEM 1b): FAIL-CLOSED — penztar konfiguraciojú gépen sem nyitunk
-    // telepítési ablakot, amíg nincs BIZONYÍTOTT pénztáros munkamenet ezen a gépen.
-    next = 'SHIFT_OPEN'
-    logger.warn(
-      'SuiteUpdate',
-      `Belepes elotti telepitesi ablak letiltva (FKH-041): appMode=${appMode}, utolso kanonikus szerep=${lastCanonical || 'ismeretlen'}`,
-    )
-  } else {
-    // appMode = null: a FKH-041 előtti szemantika változatlan (boundary gate rögzíti).
-    next = hadAuth ? 'SHIFT_OPEN' : 'IDLE_BEFORE_OPEN'
-  }
+  const next = decideLoginScreenShiftState({
+    hadAuth,
+    appMode,
+    lastInstallWindowRole,
+    activity,
+    openDayObservedToday,
+  })
   try {
     await api.suiteUpdate.setShiftState(next)
     return next
