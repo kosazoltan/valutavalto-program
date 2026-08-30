@@ -1,12 +1,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TransactionLevyRatesPage from './TransactionLevyRatesPage'
 
 /**
- * FK-099 F8–F11 — illeték-ráta beállítások oldal (WU7 RED → WU9 GREEN).
- * F8: history lista effectiveFrom DESC, nincs szerkesztés/törlés vezérlő (FR-1).
- * F9/F10: a mentési űrlap CSAK foertektar/ugyvezeto/admin szerepben (FR-18 UI).
- * F11: a batchelt validációs hiba szó szerint jelenik meg.
+ * FK-099 R1–R4 — illeték-ráta beállítások oldal (WU7 RED → WU9 GREEN;
+ * round-3: R-sorozatra átnevezve — az F8–F11 nevek a riport-oldalé;
+ * D6: a batchelt validációs hiba valódi AxiosError-ként érkezik, a szöveg VERBATIM).
+ * R1: history lista effectiveFrom DESC, nincs szerkesztés/törlés vezérlő (FR-1).
+ * R2/R3: a mentési űrlap CSAK foertektar/ugyvezeto/admin szerepben (FR-18 UI).
+ * R4: a batchelt validációs hiba szó szerint jelenik meg.
  */
 
 const translations: Record<string, string> = vi.hoisted(() => ({
@@ -86,7 +89,7 @@ describe('TransactionLevyRatesPage — FK-099', () => {
     mocks.listRates.mockResolvedValue(RATES_DESC)
   })
 
-  it('F8/FR-1 UI: a lista effectiveFrom DESC-rendezett és nincs szerkesztés/törlés vezérlő', async () => {
+  it('R1/FR-1 UI: a lista effectiveFrom DESC-rendezett és nincs szerkesztés/törlés vezérlő', async () => {
     mocks.roles.value = ['belso_ellenor']
 
     render(<TransactionLevyRatesPage />)
@@ -105,7 +108,7 @@ describe('TransactionLevyRatesPage — FK-099', () => {
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
-  it('F9/FR-18 UI: belso_ellenor (írás-jogosultság nélkül) NEM látja az új ráta űrlapot', async () => {
+  it('R2/FR-18 UI: belso_ellenor (írás-jogosultság nélkül) NEM látja az új ráta űrlapot', async () => {
     mocks.roles.value = ['belso_ellenor']
 
     render(<TransactionLevyRatesPage />)
@@ -115,7 +118,7 @@ describe('TransactionLevyRatesPage — FK-099', () => {
     expect(screen.queryByRole('button', { name: 'Mentés' })).toBeNull()
   })
 
-  it('F10/FR-18 UI: foertektar látja az űrlapot, a mentés a típusozott body-val hívja a createRate-et', async () => {
+  it('R3/FR-18 UI: foertektar látja az űrlapot, a mentés a típusozott body-val hívja a createRate-et', async () => {
     mocks.roles.value = ['foertektar']
     mocks.createRate.mockResolvedValue(RATES_DESC[0])
 
@@ -145,17 +148,23 @@ describe('TransactionLevyRatesPage — FK-099', () => {
     )
   })
 
-  it('F11: createRate batchelt validációs hibája szó szerint megjelenik', async () => {
+  it('R4: createRate batchelt validációs hibája szó szerint megjelenik', async () => {
     mocks.roles.value = ['foertektar']
     mocks.listRates.mockResolvedValue(RATES_DESC)
-    mocks.createRate.mockRejectedValue({
-      response: {
+    // D6: valódi AxiosError (nem plain objektum) — a batchelt validációs üzenet
+    // (`response.data.message`, FR-1 UI/D8) VERBATIM jelenik meg a getErrorMessage-en át.
+    mocks.createRate.mockRejectedValue(
+      new AxiosError('Request failed with status code 400', 'ERR_BAD_REQUEST', undefined, undefined, {
         data: {
           message:
             'A hatálybalépés dátuma csak jövőbeli lehet. A hatálybalépés dátuma nem lehet korábbi vagy azonos a legutolsó rögzített sorénál: 2026-08-15',
         },
-      },
-    })
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {},
+        config: {},
+      } as AxiosResponse),
+    )
 
     render(<TransactionLevyRatesPage />)
 

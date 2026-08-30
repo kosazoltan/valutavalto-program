@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TransactionLevyReportPage from './TransactionLevyReportPage'
 
 /**
- * FK-099 F1–F7 — tranzakciós illeték riport oldal (WU7 RED → WU8 GREEN).
+ * FK-099 F1–F11 — tranzakciós illeték riport oldal (WU7 RED → WU8 GREEN;
+ * round-3: F8–F11 — D2 stale-response guard, D3 metric-wrapper, D4 overflow).
  * Mock: `../../services/api/index` + react-i18next (PosHandlingFeePage minta).
  * Szám-elvárások `new Intl.NumberFormat('hu-HU')`-val épülnek — a hu-HU
  * ezres-elválasztója U+00A0, nem ASCII szóköz (pitfall 9).
@@ -86,6 +88,47 @@ function emptyReport() {
       },
     ],
     rows: [],
+    totals: {
+      date: null,
+      branchId: null,
+      branchCode: null,
+      branchName: null,
+      buy: { ...zeroGroup },
+      sell: { ...zeroGroup },
+      conversion: { ...zeroGroup },
+      largeBaseHuf: 0,
+      levyTotal: 0,
+    },
+    monthlySummary: {
+      buyCount: 0,
+      sellCount: 0,
+      customerCount: 0,
+      belowThresholdBuyHuf: 0,
+      belowThresholdSellHuf: 0,
+      aboveThresholdBuyHuf: 0,
+      aboveThresholdSellHuf: 0,
+    },
+  }
+}
+
+function reportWithBranch(branchCode: string) {
+  return {
+    from: '2026-08-01',
+    to: '2026-08-31',
+    appliedRates: [],
+    rows: [
+      {
+        date: '2026-08-03',
+        branchId: `b-${branchCode}`,
+        branchCode,
+        branchName: '',
+        buy: { ...zeroGroup, normalBaseLevy: 1 },
+        sell: { ...zeroGroup },
+        conversion: { ...zeroGroup },
+        largeBaseHuf: 0,
+        levyTotal: 2,
+      },
+    ],
     totals: {
       date: null,
       branchId: null,
@@ -287,9 +330,17 @@ describe('TransactionLevyReportPage — FK-099', () => {
   })
 
   it('F7: getReport hiba → a szerver üzenet jelenik meg, a táblázat nem', async () => {
-    mockGetReport.mockRejectedValue({
-      response: { data: { message: 'A lekérdezett időszak nem haladhatja meg a 62 napot.' } },
-    })
+    // D5: valódi AxiosError (nem plain objektum) — a szerver-üzenet elsőbbsége
+    // (`response.data.message`) a getErrorMessage AxiosError-ágán megy át.
+    mockGetReport.mockRejectedValue(
+      new AxiosError('Request failed with status code 400', 'ERR_BAD_REQUEST', undefined, undefined, {
+        data: { message: 'A lekérdezett időszak nem haladhatja meg a 62 napot.' },
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {},
+        config: {},
+      } as AxiosResponse),
+    )
 
     render(<TransactionLevyReportPage />)
 
@@ -299,5 +350,92 @@ describe('TransactionLevyReportPage — FK-099', () => {
       ).toBeInTheDocument(),
     )
     expect(screen.queryByText('ÖSSZESEN')).not.toBeInTheDocument()
+  })
+
+  // ============================ F8–F11: round-3 PR-bot defektek ============================
+
+  it('F8/D2: gyors dupla hónapváltás — a későn érkező ELSŐ válasz nem írhatja felül az újat', async () => {
+    let resolveFirst!: (report: unknown) => void
+    const firstPending = new Promise((resolve) => {
+      resolveFirst = resolve
+    })
+    mockGetReport.mockReturnValueOnce(firstPending).mockResolvedValueOnce(reportWithBranch('FRESH1'))
+
+    render(<TransactionLevyReportPage />)
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(1))
+
+    fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: '2026-09' } })
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.getByText('FRESH1')).toBeInTheDocument())
+
+    // A második (ÚJABB) hónap már renderelt; most érkezik meg a lassú első válasz.
+    resolveFirst(reportWithBranch('STALE1'))
+
+    await waitFor(() => expect(screen.queryByText('STALE1')).not.toBeInTheDocument())
+    expect(screen.getByText('FRESH1')).toBeInTheDocument()
+  })
+
+  it('F9/D2: újabb siker UTÁN érkező elavult hiba → nincs banner, tábla ép, loading nem ragad', async () => {
+    let rejectFirst!: (err: unknown) => void
+    const firstPending = new Promise((_, reject) => {
+      rejectFirst = reject
+    })
+    mockGetReport.mockReturnValueOnce(firstPending).mockResolvedValueOnce(reportWithBranch('FRESH2'))
+
+    render(<TransactionLevyReportPage />)
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(1))
+
+    fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: '2026-09' } })
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.getByText('FRESH2')).toBeInTheDocument())
+
+    // Az elavult hiba most érkezik — guard nélkül törölné a friss táblát és banner-t tenne ki.
+    rejectFirst(new AxiosError('Request failed with status code 500', 'ERR_BAD_RESPONSE'))
+
+    await waitFor(() => expect(screen.getByText('FRESH2')).toBeInTheDocument())
+    expect(screen.queryByText('Betöltés...')).not.toBeInTheDocument()
+    expect(screen.queryByText('Request failed with status code 500')).not.toBeInTheDocument()
+    expect(document.querySelector('.bg-red-50')).toBeNull()
+  })
+
+  it('F10/D3: mind a 7 havi metrika dt-címkéje és dd-értéke EGY wrapperben van (dl > div > dt+dd)', async () => {
+    mockGetReport.mockResolvedValue(fixtureReport())
+
+    render(<TransactionLevyReportPage />)
+
+    await waitFor(() => expect(screen.getByText('Havi összesítő')).toBeInTheDocument())
+
+    const expected: [string, string][] = [
+      ['Vételek száma', fmtText(12)],
+      ['Eladások száma', fmtText(7)],
+      ['Ügyfelek száma', fmtText(5)],
+      ['Küszöb alatti vétel forgalom', `${fmtText(3000000)} Ft`],
+      ['Küszöb alatti eladás forgalom', `${fmtText(1000000)} Ft`],
+      ['Küszöb feletti vétel forgalom', `${fmtText(5000000)} Ft`],
+      ['Küszöb feletti eladás forgalom', `${fmtText(4444445)} Ft`],
+    ]
+    expect(expected).toHaveLength(7)
+    expected.forEach(([label, value]) => {
+      const dt = screen.getByText(label)
+      expect(dt.tagName).toBe('DT')
+      const wrapper = dt.parentElement as HTMLElement
+      // Fragment-alakban a parent maga a DL — a wrappernek DIV-nek kell lennie.
+      expect(wrapper.tagName).toBe('DIV')
+      const dd = wrapper.querySelector('dd')
+      expect(dd).not.toBeNull()
+      expect(dd?.textContent?.replace(/\s+/g, ' ')).toBe(value)
+    })
+  })
+
+  it('F11/D4: a fő tábla overflow-x-auto scroll-konténerben van', async () => {
+    mockGetReport.mockResolvedValue(fixtureReport())
+
+    render(<TransactionLevyReportPage />)
+
+    await waitFor(() => expect(screen.getByText('ÖSSZESEN')).toBeInTheDocument())
+
+    const table = document.querySelector('table') as HTMLTableElement
+    expect(table).not.toBeNull()
+    expect(table.closest('.overflow-x-auto')).not.toBeNull()
   })
 })

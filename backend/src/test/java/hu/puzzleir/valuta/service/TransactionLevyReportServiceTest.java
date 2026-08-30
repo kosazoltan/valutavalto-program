@@ -410,6 +410,77 @@ class TransactionLevyReportServiceTest {
         assertThat(report.getAppliedRates()).isEmpty();
     }
 
+    // ============================ B33–B35: D1 sorrend-szerződés (round-3) ============================
+
+    @Test
+    @DisplayName("B33/D1: konverzió-nap (D1) + önálló nap (D2) → a kimenet date ASC, "
+            + "akkor is, ha a fold az önállót szúrja be előbb")
+    void b33_rowsAreDateAscendingAcrossStandaloneAndConversion() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // A query date ASC rendezi (konverzió-sorok D1-en előbb), de a service az
+        // önálló sorokat foldolja előbb (lines 138–154), a konverzió-csoportokat
+        // utána (156–158) — rendezés nélkül a D2-es önálló sor a D1-es konverzió
+        // ELŐTT jelenne meg a DTO-ban (D1 sorrend-szerződés: date ASC, branchCode ASC).
+        stubRows(conversionParentRow(), convBuyChildRow(), convSellChildRow(),
+                buyRow(D2, "3000000", "C1"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).hasSize(2);
+        assertThat(report.getRows())
+                .as("B33/D1: date ASC — a D1-es konverzió-nap a D2-es önálló előtt")
+                .extracting(TransactionLevyReportDto.Row::getDate)
+                .containsExactly(D1, D2);
+        assertThat(report.getRows().get(0).getConversion().getNormalBaseLevy())
+                .isEqualByComparingTo("13500");
+        assertThat(report.getRows().get(1).getBuy().getNormalBaseLevy())
+                .isEqualByComparingTo("13500");
+    }
+
+    @Test
+    @DisplayName("B34/D1: azonos nap, branchCode-fordulás (önálló 002 előbb a foldban) → branchCode ASC [001, 002]")
+    void b34_rowsAreBranchCodeAscendingWithinSameDate() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // DB-rend: konverzió D1-001 előbb, önálló D1-002 utána; a service mégis az
+        // önállót (002) szúrja be a rowsByKey-ba előbb.
+        stubRows(conversionParentRow(), convBuyChildRow(), convSellChildRow(),
+                row(D1, BRANCH_ID_002, "002", "Meldek", TransactionType.SELL,
+                        "3000000", null, true, "C2", TransactionStatus.COMPLETED));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).hasSize(2);
+        assertThat(report.getRows())
+                .as("B34/D1: azonos napon branchCode ASC — 001 a konverzióval előbb")
+                .extracting(TransactionLevyReportDto.Row::getBranchCode)
+                .containsExactly("001", "002");
+    }
+
+    @Test
+    @DisplayName("B35/D1 invariáns: a rendezés SEMMIT nem változtat a pénzügyi értékeken "
+            + "(totals/levyTotal/largeBaseHuf azonos)")
+    void b35_sortIsBehaviorPreservingForFinancialValues() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(conversionParentRow(), convBuyChildRow(), convSellChildRow(),
+                buyRow(D2, "3000000", "C1"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        // Konverzió 27 000 + önálló BUY 27 000 = 54 000 — beszúrási sorrendtől függetlenül.
+        assertThat(report.getTotals().getLevyTotal()).isEqualByComparingTo("54000");
+        assertThat(report.getTotals().getLargeBaseHuf()).isEqualByComparingTo("0");
+        assertThat(report.getTotals().getConversion().getNormalBaseLevy())
+                .isEqualByComparingTo("13500");
+        assertThat(report.getTotals().getConversion().getNormalSupplementLevy())
+                .isEqualByComparingTo("13500");
+        assertThat(report.getTotals().getBuy().getNormalBaseLevy()).isEqualByComparingTo("13500");
+        assertThat(report.getTotals().getBuy().getNormalSupplementLevy()).isEqualByComparingTo("13500");
+        assertThat(report.getTotals().getSell().getNormalBaseLevy()).isEqualByComparingTo("0");
+    }
+
     // ============================ B7–B8: query-szintű kizárások (mock-oldal) ============================
 
     @Test
