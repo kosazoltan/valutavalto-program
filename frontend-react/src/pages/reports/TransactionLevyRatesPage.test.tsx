@@ -154,16 +154,22 @@ describe('TransactionLevyRatesPage — FK-099', () => {
     // D6: valódi AxiosError (nem plain objektum) — a batchelt validációs üzenet
     // (`response.data.message`, FR-1 UI/D8) VERBATIM jelenik meg a getErrorMessage-en át.
     mocks.createRate.mockRejectedValue(
-      new AxiosError('Request failed with status code 400', 'ERR_BAD_REQUEST', undefined, undefined, {
-        data: {
-          message:
-            'A hatálybalépés dátuma csak jövőbeli lehet. A hatálybalépés dátuma nem lehet korábbi vagy azonos a legutolsó rögzített sorénál: 2026-08-15',
-        },
-        status: 400,
-        statusText: 'Bad Request',
-        headers: {},
-        config: {},
-      } as AxiosResponse),
+      new AxiosError(
+        'Request failed with status code 400',
+        'ERR_BAD_REQUEST',
+        undefined,
+        undefined,
+        {
+          data: {
+            message:
+              'A hatálybalépés dátuma csak jövőbeli lehet. A hatálybalépés dátuma nem lehet korábbi vagy azonos a legutolsó rögzített sorénál: 2026-08-15',
+          },
+          status: 400,
+          statusText: 'Bad Request',
+          headers: {},
+          config: {},
+        } as AxiosResponse,
+      ),
     )
 
     render(<TransactionLevyRatesPage />)

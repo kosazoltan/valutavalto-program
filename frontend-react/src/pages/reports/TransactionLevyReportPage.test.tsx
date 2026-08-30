@@ -333,13 +333,19 @@ describe('TransactionLevyReportPage — FK-099', () => {
     // D5: valódi AxiosError (nem plain objektum) — a szerver-üzenet elsőbbsége
     // (`response.data.message`) a getErrorMessage AxiosError-ágán megy át.
     mockGetReport.mockRejectedValue(
-      new AxiosError('Request failed with status code 400', 'ERR_BAD_REQUEST', undefined, undefined, {
-        data: { message: 'A lekérdezett időszak nem haladhatja meg a 62 napot.' },
-        status: 400,
-        statusText: 'Bad Request',
-        headers: {},
-        config: {},
-      } as AxiosResponse),
+      new AxiosError(
+        'Request failed with status code 400',
+        'ERR_BAD_REQUEST',
+        undefined,
+        undefined,
+        {
+          data: { message: 'A lekérdezett időszak nem haladhatja meg a 62 napot.' },
+          status: 400,
+          statusText: 'Bad Request',
+          headers: {},
+          config: {},
+        } as AxiosResponse,
+      ),
     )
 
     render(<TransactionLevyReportPage />)
@@ -359,7 +365,9 @@ describe('TransactionLevyReportPage — FK-099', () => {
     const firstPending = new Promise((resolve) => {
       resolveFirst = resolve
     })
-    mockGetReport.mockReturnValueOnce(firstPending).mockResolvedValueOnce(reportWithBranch('FRESH1'))
+    mockGetReport
+      .mockReturnValueOnce(firstPending)
+      .mockResolvedValueOnce(reportWithBranch('FRESH1'))
 
     render(<TransactionLevyReportPage />)
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(1))
@@ -380,7 +388,9 @@ describe('TransactionLevyReportPage — FK-099', () => {
     const firstPending = new Promise((_, reject) => {
       rejectFirst = reject
     })
-    mockGetReport.mockReturnValueOnce(firstPending).mockResolvedValueOnce(reportWithBranch('FRESH2'))
+    mockGetReport
+      .mockReturnValueOnce(firstPending)
+      .mockResolvedValueOnce(reportWithBranch('FRESH2'))
 
     render(<TransactionLevyReportPage />)
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(1))

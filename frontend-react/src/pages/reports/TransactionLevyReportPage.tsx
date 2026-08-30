@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { transactionLevyApi } from '../../services/api/index'
 import type {
@@ -7,6 +7,7 @@ import type {
   TransactionLevyRow,
   TypeGroup,
 } from '../../services/api/index'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
  * FK-099 FR-8/9/10/11/12/13/14 — Tranzakciós díjak jelentése.
@@ -28,23 +29,35 @@ export default function TransactionLevyReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(
-    async (selectedMonth: string) => {
-      const { from, to } = monthRange(selectedMonth)
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await transactionLevyApi.getReport(from, to)
+  // D2 (round-3): kérés-sorszám őrző (TransferPage idióma) — gyors hónapváltásnál
+  // a későn érkező elavult válasz nem írhatja felül az újabbat, az elavult hiba
+  // nem törölhet friss sikert, és az elavult `finally` nem ragaszthatja a loadingot.
+  const requestSeqRef = useRef(0)
+
+  const load = useCallback(async (selectedMonth: string) => {
+    const { from, to } = monthRange(selectedMonth)
+    const requestId = requestSeqRef.current + 1
+    requestSeqRef.current = requestId
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await transactionLevyApi.getReport(from, to)
+      if (requestSeqRef.current === requestId) {
         setReport(data)
-      } catch (err) {
+      }
+    } catch (err) {
+      if (requestSeqRef.current === requestId) {
         setReport(null)
-        setError(extractMessage(err, t('reports.transactionLevy.loading')))
-      } finally {
+        // D5 (round-3): repo-konvenció getErrorMessage — a szerver `response.data.message`
+        // elsőbbsége megmarad (AxiosError-ág), a hálózati hibák humanizáltak.
+        setError(getErrorMessage(err))
+      }
+    } finally {
+      if (requestSeqRef.current === requestId) {
         setLoading(false)
       }
-    },
-    [t],
-  )
+    }
+  }, [])
 
   useEffect(() => {
     void load(month)
@@ -99,38 +112,42 @@ export default function TransactionLevyReportPage() {
 
       {!loading && !error && report && (
         <>
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-left">
-                  {t('reports.transactionLevy.table.date')}
-                </th>
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-left">
-                  {t('reports.transactionLevy.table.branch')}
-                </th>
-                <GroupHeader label={t('reports.transactionLevy.table.buy')} />
-                <GroupHeader label={t('reports.transactionLevy.table.sell')} />
-                <GroupHeader label={t('reports.transactionLevy.table.conversion')} />
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-right">
-                  {t('reports.transactionLevy.table.largeBase')}
-                </th>
-                <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-right">
-                  {t('reports.transactionLevy.table.levyTotal')}
-                </th>
-              </tr>
-              <tr>
-                <SubHeaders keyPrefix="buy" t={t} />
-                <SubHeaders keyPrefix="sell" t={t} />
-                <SubHeaders keyPrefix="conversion" t={t} />
-              </tr>
-            </thead>
-            <tbody>
-              {report.rows.map((row) => (
-                <RowCells key={`${row.date}-${row.branchId}`} row={row} fmt={fmt} />
-              ))}
-              <TotalsRow totals={report.totals} fmt={fmt} t={t} />
-            </tbody>
-          </table>
+          {/* D4 (round-3): vízszintes scroll-konténer (ArchivingPage idióma) —
+              a 19 oszlopos tábla keskeny nézetben nem tolja szét az oldalt. */}
+          <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+            <table className="w-full min-w-[1200px] border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-left">
+                    {t('reports.transactionLevy.table.date')}
+                  </th>
+                  <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-left">
+                    {t('reports.transactionLevy.table.branch')}
+                  </th>
+                  <GroupHeader label={t('reports.transactionLevy.table.buy')} />
+                  <GroupHeader label={t('reports.transactionLevy.table.sell')} />
+                  <GroupHeader label={t('reports.transactionLevy.table.conversion')} />
+                  <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-right">
+                    {t('reports.transactionLevy.table.largeBase')}
+                  </th>
+                  <th rowSpan={2} className="border border-gray-300 px-2 py-1 text-right">
+                    {t('reports.transactionLevy.table.levyTotal')}
+                  </th>
+                </tr>
+                <tr>
+                  <SubHeaders keyPrefix="buy" t={t} />
+                  <SubHeaders keyPrefix="sell" t={t} />
+                  <SubHeaders keyPrefix="conversion" t={t} />
+                </tr>
+              </thead>
+              <tbody>
+                {report.rows.map((row) => (
+                  <RowCells key={`${row.date}-${row.branchId}`} row={row} fmt={fmt} />
+                ))}
+                <TotalsRow totals={report.totals} fmt={fmt} t={t} />
+              </tbody>
+            </table>
+          </div>
 
           <MonthlyPanel summary={report.monthlySummary} fmt={fmt} t={t} />
         </>
@@ -155,15 +172,6 @@ function monthRange(month: string): { from: string; to: string } {
   const monthIndex = Number(monthStr)
   const lastDay = new Date(year, monthIndex, 0).getDate()
   return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, '0')}` }
-}
-
-function extractMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const response = (err as { response?: { data?: { message?: string } } }).response
-    if (response?.data?.message) return response.data.message
-  }
-  if (err instanceof Error && err.message) return err.message
-  return fallback
 }
 
 function GroupHeader({ label }: { label: string }) {
@@ -319,10 +327,12 @@ function MonthlyPanel({
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
+  // D3 (round-3): HTML5-valid `dl > div > dt + dd` — a dt/dd PÁR egy wrapperben
+  // kerül a rácsba (fragment-ként a md:grid-cols-3 rács celláira szóródna).
   return (
-    <>
+    <div className="grid grid-cols-[auto_1fr] gap-x-2">
       <dt className="text-gray-600">{label}</dt>
       <dd className="font-medium">{value}</dd>
-    </>
+    </div>
   )
 }

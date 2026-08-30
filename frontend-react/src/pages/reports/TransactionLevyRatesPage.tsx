@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { transactionLevyApi } from '../../services/api/index'
 import type { TransactionLevyRate } from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
+import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
  * FK-099 FR-1 UI / FR-18 UI — Illeték-ráta beállítások (append-only).
@@ -29,7 +30,9 @@ export default function TransactionLevyRatesPage() {
       setRates(await transactionLevyApi.listRates())
       setError(null)
     } catch (err) {
-      setError(extractMessage(err))
+      // D6 (round-3): repo-konvenció getErrorMessage — a szerver-üzenet VERBATIM
+      // marad (a batchelt validációs üzenet az AxiosError `response.data.message`-éből).
+      setError(getErrorMessage(err))
     }
   }, [])
 
@@ -54,7 +57,7 @@ export default function TransactionLevyRatesPage() {
       setInfo(t('reports.transactionLevyRates.saved'))
       await load()
     } catch (err) {
-      setError(extractMessage(err))
+      setError(getErrorMessage(err))
     }
   }
 
@@ -201,13 +204,4 @@ export default function TransactionLevyRatesPage() {
       )}
     </div>
   )
-}
-
-function extractMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const response = (err as { response?: { data?: { message?: string } } }).response
-    if (response?.data?.message) return response.data.message
-  }
-  if (err instanceof Error && err.message) return err.message
-  return String(err)
 }
