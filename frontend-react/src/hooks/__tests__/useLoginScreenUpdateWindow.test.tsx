@@ -112,6 +112,7 @@ describe('useLoginScreenUpdateWindow — activity-gated telepítési ablak', () 
     })
     const idleCalls = reportMock.mock.calls.filter((c) => c[4] === 'IDLE_TIMEOUT')
     expect(idleCalls).toHaveLength(1)
-    expect(idleCalls[0][2]).toBe('penztar')
+    const firstIdleCall = idleCalls[0]
+    expect(firstIdleCall?.[2]).toBe('penztar')
   })
 })
