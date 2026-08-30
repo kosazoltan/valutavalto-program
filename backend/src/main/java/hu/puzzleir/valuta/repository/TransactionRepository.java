@@ -2037,6 +2037,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
      *
      * <p>Visszaad: [transactionDate, branchId, branchCode, branchName,
      * transactionType, hufAmount, conversionGroupId, financialEffective, customerId, status]</p>
+     *
+     * <p>FR-2 (FK-100) TBD: a típus-fehérlistából a WESTERN_UNION_* / MONEYGRAM_* /
+     * VIGNETTE tranzakciók kizárása IMPLICIT — nem szerepelnek a BUY/SELL/CONVERSION
+     * felsorolásban, külön explicit predikátum nincs rájuk. Az ÁFA-visszatérítés
+     * kezelése nyitott könyvelői kérdés, nem külön explicit döntés eredménye.</p>
+     *
+     * <p>FK-100 FR-6: az opcionális {@code region} paraméter a szöveges
+     * {@code branch.region} oszlopon szűr (dictionary REGION kód, pl. SZEGED),
+     * a {@code :branchId} sorával azonos {@code IS NULL OR} idiómával. A numerikus
+     * {@code region_code} (KESZLEX) NEM a szűrő kulcsa — pénztáraknál gyakran NULL.</p>
      */
     @Query("SELECT t.transactionDate, b.id, b.code, b.name, t.transactionType, t.hufAmount, " +
            "t.conversionGroupId, t.financialEffective, t.customerId, t.status " +
@@ -2044,6 +2054,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.company.id = :companyId " +
            "AND t.transactionDate BETWEEN :from AND :to " +
            "AND (:branchId IS NULL OR b.id = :branchId) " +
+           "AND (:region IS NULL OR b.region = :region) " +
            "AND ((t.transactionType IN (hu.puzzleir.valuta.entity.TransactionType.BUY, " +
            "                            hu.puzzleir.valuta.entity.TransactionType.SELL) " +
            "      AND t.conversionGroupId IS NULL " +
@@ -2057,5 +2068,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("companyId") UUID companyId,
             @Param("branchId") UUID branchId,
             @Param("from") LocalDate from,
-            @Param("to") LocalDate to);
+            @Param("to") LocalDate to,
+            @Param("region") String region);
+
+    /**
+     * FK-100 FR-6 kompatibilitási túlterhelés: region-szűrő nélkül
+     * ({@code region = null}) — a régi 4 argumentumú hívók viselkedése változatlan.
+     */
+    default List<Object[]> findTransactionLevySourceRows(
+            UUID companyId, UUID branchId, LocalDate from, LocalDate to) {
+        return findTransactionLevySourceRows(companyId, branchId, from, to, null);
+    }
 }

@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.repository.TransactionLevyRateHistoryRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -94,16 +95,28 @@ public class TransactionLevyReportService {
     private final TransactionLevyRateHistoryRepository rateHistoryRepository;
     private final BranchRepository branchRepository;
     private final AuditLogService auditLogService;
+    /** FK-100 FR-6: a region-szűrő dictionary-validációja (REGION kategória). */
+    private final DictionaryRepository dictionaryRepository;
 
     /**
      * Riport számítása a megadott (inclusive) időszakra, opcionális iroda-szűréssel.
+     * Kompatibilitási túlterhelés (FK-100 FR-6): region-szűrő nélkül.
+     */
+    public TransactionLevyReportDto getReport(UUID branchId, LocalDate from, LocalDate to) {
+        return getReport(branchId, from, to, null);
+    }
+
+    /**
+     * Riport számítása a megadott (inclusive) időszakra, opcionális iroda- és
+     * terület-szűréssel (FK-100 FR-6).
      *
      * <p>Sorrend (pitfall 23): előbb RBAC (egy illetéktelen hívó ne
      * különböztethesse meg a valid és invalid tartományt hitelesítés előtt),
      * aztán a batchelt intervallum-validáció (D8/D15), majd a tenant- és
      * ráta-feloldás.</p>
      */
-    public TransactionLevyReportDto getReport(UUID branchId, LocalDate from, LocalDate to) {
+    public TransactionLevyReportDto getReport(UUID branchId, LocalDate from, LocalDate to,
+                                              String region) {
         assertAuthorized();
         validateRange(from, to);
 
@@ -122,7 +135,7 @@ public class TransactionLevyReportService {
                 .toList();
 
         List<Object[]> sourceRows =
-                transactionRepository.findTransactionLevySourceRows(companyId, branchId, from, to);
+                transactionRepository.findTransactionLevySourceRows(companyId, branchId, from, to, region);
 
         FoldState state = new FoldState();
         for (Object[] sourceRow : sourceRows) {
@@ -216,6 +229,9 @@ public class TransactionLevyReportService {
 
         if (rate.conversionSingleSide()) {
             // TRUE: egy illeték-pár a Konverzió oszlopcsoportban; Eladás-komponens = 0.
+            // FR-1 (FK-100) TBD: a TRUE alapértelmezés (konverzió EGYSZER adózik)
+            // könyvelői/adótanácsadói megerősítésre vár — nem végleges jogi
+            // állásfoglalás. A számítás a megerősítésig változatlan marad.
             LevyAmounts amounts = TransactionLevyCalculator.compute(baseRow.hufAmount(), rate);
             TransactionLevyReportDto.Row row = rowFor(state, baseRow.date(), baseRow);
             addLevy(row.getConversion(), amounts);

@@ -284,6 +284,60 @@ class TransactionLevySourceRowsPostgresIT {
                 .anySatisfy(row -> assertThat(row.hufAmount()).isEqualByComparingTo("4444445.00"));
     }
 
+    // ============================ P15–P17: FK-100 FR-6 — region-szűrő (valós PostgreSQL) ============================
+
+    @Test
+    @DisplayName("FK-100 P15: region = branchA1.region → CSAK branchA1 univerzum-sorai (branchA2 sora nincs)")
+    void regionFilterNarrowsToRegionBranchRows() {
+        Seed seed = transactionTemplate.execute(status -> seed());
+        assertThat(seed).isNotNull();
+
+        List<Object[]> rows = transactionRepository.findTransactionLevySourceRows(
+                seed.companyA().getId(), null, D1, D2, seed.branchA1().getRegion());
+
+        List<SourceRow> actual = rows.stream().map(TransactionLevySourceRowsPostgresIT::toSourceRow).toList();
+        assertThat(actual)
+                .as("P15: a region-szűrő minden sora branchA1-hez tartozik")
+                .isNotEmpty()
+                .allSatisfy(row -> assertThat(row.branchCode()).isEqualTo(seed.branchA1().getCode()));
+        assertThat(actual)
+                .as("P15: a DEBRECEN branchA2 egyetlen sora sem szivárog be a SZEGED szűrőbe")
+                .noneSatisfy(row -> assertThat(row.branchCode()).isEqualTo(seed.branchA2().getCode()));
+    }
+
+    @Test
+    @DisplayName("FK-100 P16: a 4-arg default túlterhelés azonos halmazt ad, mint a region=null univerzum")
+    void defaultOverloadMatchesUniverse() {
+        Seed seed = transactionTemplate.execute(status -> seed());
+        assertThat(seed).isNotNull();
+
+        List<SourceRow> viaDefault = transactionRepository
+                .findTransactionLevySourceRows(seed.companyA().getId(), null, D1, D2)
+                .stream().map(TransactionLevySourceRowsPostgresIT::toSourceRow).toList();
+        List<SourceRow> viaNullRegion = transactionRepository
+                .findTransactionLevySourceRows(seed.companyA().getId(), null, D1, D2, null)
+                .stream().map(TransactionLevySourceRowsPostgresIT::toSourceRow).toList();
+
+        assertThat(viaDefault)
+                .as("P16: a 4-arg túlterhelés pontosan a region=null univerzum-halmazt adja "
+                        + "(a régi hívók regresszió-pinje)")
+                .containsExactlyInAnyOrderElementsOf(viaNullRegion);
+    }
+
+    @Test
+    @DisplayName("FK-100 P17: olyan region, amellyel egyetlen branch sem rendelkezik → üres lista, nincs hiba")
+    void regionWithoutBranchesReturnsEmptyList() {
+        Seed seed = transactionTemplate.execute(status -> seed());
+        assertThat(seed).isNotNull();
+
+        List<Object[]> rows = transactionRepository.findTransactionLevySourceRows(
+                seed.companyA().getId(), null, D1, D2, "IRODA");
+
+        assertThat(rows)
+                .as("P17: a seed-ben IRODA regionű branch nincs — üres eredmény, nem kivétel")
+                .isEmpty();
+    }
+
     // ============================ SEED ============================
 
     private Seed seed() {
@@ -318,10 +372,17 @@ class TransactionLevySourceRowsPostgresIT {
                         .createdAt(now)
                         .build()));
 
-        Tenant tenantA = seedTenant("A" + suffix, branchType, country, branchStatus, now, "FK099A1");
+        Tenant tenantA = seedTenant("A" + suffix, branchType, country, branchStatus, now, "FK099A1",
+                // FK-100 FR-6: branchA1 SZEGED (a kontraszt-ág DEBRECEN — P15 csak
+                // eltérő regionökkel nem üres állítás).
+                "SZEGED");
         Branch branchA2 = seedBranch(tenantA.company(), "A2" + suffix, branchType, country,
-                branchStatus, now, "FK099A2");
-        Tenant tenantB = seedTenant("B" + suffix, branchType, country, branchStatus, now, "FK099B1");
+                branchStatus, now, "FK099A2",
+                // P15 kontraszt: branchA2 MÁS terület (DEBRECEN), hogy a region-szűrő
+                // ténylegesen kizárhassa a sorait.
+                "DEBRECEN");
+        Tenant tenantB = seedTenant("B" + suffix, branchType, country, branchStatus, now, "FK099B1",
+                "SZEGED");
 
         UUID groupG1 = UUID.randomUUID();
         UUID groupG2 = UUID.randomUUID();
@@ -393,14 +454,15 @@ class TransactionLevySourceRowsPostgresIT {
             Dictionary country,
             Dictionary branchStatus,
             LocalDateTime now,
-            String branchCodePrefix) {
+            String branchCodePrefix,
+            String region) {
         Company company = companyRepository.save(Company.builder()
                 .code("FK099-C-" + suffix)
                 .name("FK-099 Company " + suffix)
                 .createdAt(now)
                 .build());
         Branch branch = seedBranch(company, suffix, branchType, country, branchStatus, now,
-                branchCodePrefix);
+                branchCodePrefix, region);
         Worker worker = seedWorker(company, branch, suffix, now);
         return new Tenant(company, branch, worker);
     }
@@ -412,7 +474,8 @@ class TransactionLevySourceRowsPostgresIT {
             Dictionary country,
             Dictionary branchStatus,
             LocalDateTime now,
-            String codePrefix) {
+            String codePrefix,
+            String region) {
         return branchRepository.save(Branch.builder()
                 .code(codePrefix + "-" + suffix)
                 .company(company)
@@ -427,6 +490,9 @@ class TransactionLevySourceRowsPostgresIT {
                 .isVault(false)
                 .openingDate(D1)
                 .createdAt(now)
+                // FK-100 FR-6: a region-oszlop a P15–P17 szűrő-tesztek alapja
+                // (szöveges dictionary REGION kód, NEM a numerikus region_code).
+                .region(region)
                 .build());
     }
 
