@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-29T06:07:27.319Z",
-  "source_count": 1031,
+  "generated_at": "2026-08-30T11:14:26.550Z",
+  "source_count": 1080,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -5803,7 +5803,7 @@
     },
     {
       "path": "backend/src/main/java/hu/puzzleir/valuta/entity/ReceiptSequence.java",
-      "sha256": "2474d3be7e8d6d83a3117b32cfdd727d7b5efd399aa8753ae07e999a1fb38648",
+      "sha256": "48ab0714641fe49c6f7ea06532dc66cb788813cf0e2a8aad7f1159027bdac9d1",
       "type": "operational-receipt",
       "areas": [
         "legacy",
@@ -5914,7 +5914,7 @@
     },
     {
       "path": "backend/src/test/java/hu/puzzleir/valuta/migration/V380AgainstLegacySchemaPostgresTest.java",
-      "sha256": "06c61f802f0834ab4415eb28aa8091807a8493ec75202f0fa555d50cdc85b3c5",
+      "sha256": "a5d01b5f0dc63f189dbae266db0ba512a58a6eb99a03a791474c647d3b451caf",
       "type": "semantic-reference",
       "areas": [
         "database",
@@ -8139,7 +8139,7 @@
     },
     {
       "path": "docs/specs/fkh019-022-ertektar-gap-fix-2026-07-20.md",
-      "sha256": "be5495bfd4e3f6b5d4ec27f46bb3ada16a56edcdafd5c1540987ef8d15738a0a",
+      "sha256": "fae6d81cf0f3527491b68a987b55fb1f14a765a4bb8e38c7972bfef67d867c83",
       "type": "semantic-reference",
       "areas": [
         "cimletezes",
@@ -8189,7 +8189,7 @@
     },
     {
       "path": "docs/specs/release-blocker-remediation-2.28.49.md",
-      "sha256": "0b5fc12892bf4e0a95ebb0678ec9e80cd1604fbe05b47728c3440533a8a12399",
+      "sha256": "6d208183cb5d5b359a4408fac1f81a62d492f95c1bfdddec3af7c8298bfce2c8",
       "type": "semantic-reference",
       "areas": [
         "arfolyam",
@@ -9043,7 +9043,7 @@
     },
     {
       "path": "vault/operations/v380-eles-oszlop-agnosztikus-hotfix-2026-08-12.md",
-      "sha256": "8a80e8262fbd479d9abf769bea1811d6d61ab96fbd5a4f95f09996abb692f633",
+      "sha256": "183c728bab2e0ea75c37b7187938236777ba98b5dbbaadce1fb83980c6b9c7e6",
       "type": "semantic-reference",
       "areas": [
         "database",
@@ -12037,6 +12037,15 @@
       ]
     },
     {
+      "path": "vault/sessions/2026-07-19-ertektari-batch-statusz.md",
+      "sha256": "7bacad235439659b111dd7294fef58d24d7dfe03481612b9d739ef29134096b9",
+      "type": "medium-term-episodic",
+      "areas": [
+        "ertektar",
+        "specifikacio"
+      ]
+    },
+    {
       "path": "vault/sessions/handoff-2026-06-08-mandate-cleanup-metodologia.md",
       "sha256": "1b37c5a539901c1cb675bbc7f68ffdd98308a0e0e18bb13772548c3327ff15cd",
       "type": "medium-term-episodic",
@@ -12057,7 +12066,7 @@
     },
     {
       "path": "vault/sessions/handoff-2026-07-05-prod-version-stale-dns-misroute.md",
-      "sha256": "5a45063d34fe543324479830056cb9bb2d64d041adaeb181f0b5ff451517fa37",
+      "sha256": "7d03a4cc187403e7497c492f4293bee4803c72f5b1ddbce4aea4b95e4d56d0b8",
       "type": "medium-term-episodic",
       "areas": [
         "deploy",
@@ -12079,6 +12088,501 @@
         "specifikacio",
         "sync",
         "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-07-fs-d-merged-deployed.md",
+      "sha256": "c9ab989c30d0ade31dc70b4d2c883b359eb9a62d806fd925946bea5b07bc4819",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "penztar",
+        "security"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-07-fs5-complete.md",
+      "sha256": "66fc5d172523c2b8be998d230586c6277f5fb3caaed4db1ac250808ed87cd266",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "napzaras",
+        "penztar",
+        "sync",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-07-fs7-s3-complete.md",
+      "sha256": "27f09c05d33e6051b4d728e88b783a60fc365869df5b41e6a29cb657e6e438f4",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "frontend"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-07-fs9-s1-merged.md",
+      "sha256": "021a1aabdcd83952bd81a67917ad340454963cd8bafb29273a62af4d3708cdfb",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "database",
+        "deploy",
+        "ertektar",
+        "penztar",
+        "sync",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-08-fs10-s2-merged.md",
+      "sha256": "d2ddde5b4ea6323f52651e231ac74f46ed220140744e99c8438b31f3536ff67f",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "penztar",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-08-fs10-s3-complete.md",
+      "sha256": "7d66d67c58aaaa5eb2729a9ee45a0b114e33ef9e0b29e765da01df39e1f0678b",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "napzaras",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-08-fs9-complete.md",
+      "sha256": "1725991b120d222f2999ac3ea2d9dc1927eb7d7b848299ce98f3c64f6fc59391",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "database",
+        "deploy",
+        "penztar",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-08-techdebt-9of9.md",
+      "sha256": "74f54338bbdfa572c061ffe6bc810ee4053cedb5ec21bfceadb4c73db51fb21c",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "security"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-09-backlog-grind.md",
+      "sha256": "609bda8ec829f1a7e8e564e791dc5c06ac763169d0853e5b135bce19a31bbf0c",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "napzaras",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-09-fs11-backend-complete.md",
+      "sha256": "46995ceb1e5e846dcd6ff0f6e78bbff2561709a6a50c4674f3dce423d8a3f230",
+      "type": "medium-term-episodic",
+      "areas": [
+        "aml",
+        "database"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-09-fs11-complete.md",
+      "sha256": "8d9301b969e2860f967b0c28b7a89faa35f7782248e515e2ab398fae419883af",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-09-restart-and-update.md",
+      "sha256": "4eb0e780aa23d009bbce1c5662ec66fda7970caee1003c37dde99c749795ce3d",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "database",
+        "deploy",
+        "frontend",
+        "napzaras",
+        "penztar",
+        "security",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-10-backlog-grind-2.md",
+      "sha256": "e34608b38c8ce1de6f2b59afc900cb136ce9af69f6ad6faf6cfc547d1390ae2b",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "installer",
+        "legacy",
+        "penztar",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-10-fk028-complete.md",
+      "sha256": "e0675b6c908d071f7d47629d2fffb984355576cdf2475ca0b6fdadd2ea68c6d0",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "ertektar",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-10-full-session.md",
+      "sha256": "994708e2c0fb40f3b663b381dadffdd875e2dda34181b0ecfb1dcba404b07cb4",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "frontend",
+        "installer",
+        "legacy",
+        "penztar",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-10-workerbranchaccess-toctou-triage.md",
+      "sha256": "0a2696210f3cc8feda1a0f91d698bfc305e8244960778e50161e0874d3b08ddc",
+      "type": "medium-term-episodic",
+      "areas": []
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-12-fs11-def-COMPLETE.md",
+      "sha256": "ee7e8a5f131c741c4e7da3c6e3609371f979becc34d6d08f076388f7d237e719",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "frontend"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-12-fs11-def-backend-complete.md",
+      "sha256": "88c2e56641c851b1f65cae5a982d044693c4a49bfed78bf064b6f1cb724b7a0b",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-12-fs11-def-release-chain.md",
+      "sha256": "c7bbc71542c2751aeb3917417973604ef0cbd7d4b3079324727d1817d21e5739",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "frontend",
+        "installer",
+        "napzaras",
+        "penztar",
+        "riport",
+        "security"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-18-fk09-fk10-rate-maker.md",
+      "sha256": "6fb26a122794983135068bc3145895a6a620754688be825c461991be20bfc9bf",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "frontend",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-18-fkh018-ollama.md",
+      "sha256": "e859c5210d76b53ea566a15a19d0a919de7abddece6204365f265312711deb86",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy",
+        "ertektar",
+        "frontend",
+        "installer",
+        "penztar",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-19-ertektar-batch-r2-budget-stop.md",
+      "sha256": "b733cc4e5053578c9c4e1a1f7db8da9066a64a504e3c13a194ef173af64646a1",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "ertektar",
+        "legacy",
+        "specifikacio"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-19-fk057-mainlayout.md",
+      "sha256": "b1cfa828f0e94a61b704028de51155e6db86d40705665223be41055622d93c70",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-19-v2.28.45-release.md",
+      "sha256": "59c4107bb8648201443675c8f6f66e55b3657c68ca5f2e727112aa7c7f4c83fa",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-23-fk058-fk051v2-v2.28.53.md",
+      "sha256": "80e6a6c56cc0d86b808c6d417bf79bbf03001cae3c8750b482a9de058488c04d",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "napzaras",
+        "penztar",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-23-v2.28.52-release.md",
+      "sha256": "2dc1e8deb1e13488c5b20d542a23da531916a933d53daf63c9130793f9ab211c",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "installer",
+        "napzaras",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-23-v2.28.55-dependency-batch.md",
+      "sha256": "1abdee522d9c8bf2f8174f196ec880dfdf3ef230657dd9c8497f839914020029",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-24-fk061-fk062-v2.28.56.md",
+      "sha256": "c54a1656cd0adbf2720a78bbd553dcfc15d85218863e6bf6edde9cf5431eb367",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "ertektar",
+        "napzaras"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-07-24-fk063-fk064-multidevizas-zaras.md",
+      "sha256": "6de8a37d908f8f0f7888866af9198273b935bf583baba1124876d06092a8e6aa",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "ertektar",
+        "frontend",
+        "napzaras",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-04-fkh029-vault-cash-balance-scope.md",
+      "sha256": "f8505d0450fbe0a63e87e610d78bbf1bf0d0c883ffee2b7e008f2cf1551f7da5",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy",
+        "ertektar",
+        "napzaras",
+        "penztar",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md",
+      "sha256": "34ca943444353cc9869864139ec2338556c7695332026ae74e4a8251eab13243",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "ertektar",
+        "sync",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md",
+      "sha256": "ecdd058d70a6952af7e5f6cb5fe19ba28afbcef419c715b724a68b140131ef39",
+      "type": "medium-term-episodic",
+      "areas": [
+        "ertektar",
+        "frontend",
+        "penztar",
+        "specifikacio",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md",
+      "sha256": "3bf42d91ea4812c5a018158750aae7eb00930a89c9bcb7324ad43e6453068efd",
+      "type": "medium-term-episodic",
+      "areas": [
+        "ertektar",
+        "legacy",
+        "riport",
+        "specifikacio"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md",
+      "sha256": "6532cee81a1e0c21bb14d24c62f9d2018c046d13347d07501cc49c79ed951844",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "napzaras"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md",
+      "sha256": "b12f1d4f4ac397ed621e14cf80f19842a77e9cc8277b7dd7154c3724e95f724e",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "installer",
+        "penztar",
+        "security",
+        "specifikacio",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md",
+      "sha256": "b328783f1adb5f0a987f6031903d3b21290473e9caa1a7fdaf6853318e36a828",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "installer",
+        "penztar",
+        "security",
+        "sync",
+        "tenant"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-10-platform-refaktor.md",
+      "sha256": "612b75cb715769bd364a96b8199331f50d55f38954031e9f467330506558b2f1",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "installer",
+        "legacy",
+        "penztar",
+        "specifikacio",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md",
+      "sha256": "87596931038a8caac7f4c16421d677c2367589824f9bdf1e243cf4e0b0547058",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy",
+        "installer",
+        "napzaras",
+        "security"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md",
+      "sha256": "7e2290a2a8eadd57aac21c8cd2479aca09945043f9c3fe051723e1a41806dde8",
+      "type": "medium-term-episodic",
+      "areas": [
+        "installer",
+        "penztar",
+        "security",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md",
+      "sha256": "617bd51d29a63043c9581633d7725fd726fcad336d2ed5dcc8064aaf15173c6d",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "legacy",
+        "napzaras",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md",
+      "sha256": "5aa31829db359a16b0cf5032f5d66320fd47f814e0ac50e2d4d06ce64d8687b6",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "ertektar",
+        "frontend",
+        "napzaras",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md",
+      "sha256": "a837485c034d39cb92e6cddb13785e06e01014f8360d243f1a0cc054265dd86b",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "installer",
+        "napzaras",
+        "penztar",
+        "specifikacio"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md",
+      "sha256": "6b6ac387d2b945c6a53c65ba3612c598d8a010f9df16b294431ada2d64a66af1",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "ertektar",
+        "frontend",
+        "legacy",
+        "napzaras"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md",
+      "sha256": "bab9d375d3b00b522d710818680d700718b12c8fbbeca66b83853e2e62ff634f",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "ertektar"
       ]
     },
     {
@@ -12107,6 +12611,42 @@
       ]
     },
     {
+      "path": "vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md",
+      "sha256": "a842dbd8299e83bde6dfdec99a1a5264abadddd98d1d92957c4d5d26fa590894",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "frontend",
+        "installer",
+        "penztar",
+        "specifikacio"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-27-fk096-fk097-i18n-v2.28.89.md",
+      "sha256": "6083e77e3e4fa5b84d50d01273713098dd48a52ff98729122bf7afd7444e433e",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy",
+        "legacy",
+        "penztar",
+        "security",
+        "sync"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-28-fk098-kezelesi-dij-terulet-ux.md",
+      "sha256": "3ac4d0dd80031efaefd3dbe00d49a3dcfae97e9537f5ac270f22ff9364ca1d17",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "ertektar",
+        "napzaras",
+        "penztar"
+      ]
+    },
+    {
       "path": "vault/sessions/handoff-2026-08-28-fkh041-ertektar-routing-autoupdate.md",
       "sha256": "f423754740486e3eff842fa8ad5891e8a9b301f64f0398581889a3d785efd9a4",
       "type": "medium-term-episodic",
@@ -12115,6 +12655,15 @@
         "legacy",
         "napzaras",
         "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-30-fk099-r3-pr1675-bot-fixek.md",
+      "sha256": "8d19744b5baa4f85805343a8149ec32a11dbe5db134cf5e1427c819c7ddad50d",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy"
       ]
     },
     {
