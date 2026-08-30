@@ -36,6 +36,11 @@ import java.util.UUID;
  * {@code saveAndFlush} + {@code DataIntegrityViolationException} catch →
  * ValidationException (HTTP 400), soha 500 (D16, pitfall 17: plain {@code save}
  * esetén a constraint commit-időben, a catch-en KÍVÜL sülne el).</p>
+ *
+ * <p>FR-5 (FK-100): a „csak jövőbeli hatálybalépés" TUDATOS ÜZLETI DÖNTÉS
+ * (Főértéktáros, 2026-08-30) — a törvényi illeték-rátaváltozásokat a
+ * hatálybalépés napjától előre kell rögzíteni, soha nem visszamenőlegesen.
+ * Ez nem technikai hiányosság.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -128,6 +133,13 @@ public class TransactionLevyRateService {
     /**
      * FR-1 append-only szabályok BATCH-elve (D8): mindkét szabálysértés EGY
      * ValidationException üzenetbe kerül, nem az elsőnél megállva.
+     *
+     * <p>FR-5 (FK-100): a „csak jövőbeli hatálybalépés" TUDATOS ÜZLETI DÖNTÉS
+     * (Főértéktáros, 2026-08-30) — a törvényi illeték-rátaváltozásokat a
+     * hatálybalépés napjától előre kell rögzíteni, soha nem visszamenőlegesen.
+     * Ez nem technikai hiányosság, hanem üzleti/audit-szempontú döntés: a ráta-
+     * history append-only napló, amelyben minden sor a saját hatálybalépésétől
+     * érvényes.</p>
      */
     private void validateEffectiveFrom(LocalDate effectiveFrom, LocalDate maxExisting) {
         List<String> problems = new ArrayList<>();
