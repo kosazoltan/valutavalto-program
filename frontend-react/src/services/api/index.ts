@@ -49,3 +49,16 @@ export type {
   SanctionMatchType,
   SanctionRiskLevel,
 } from './sanction'
+
+// FK-099: named re-export (az `export *` blokkban a reports.ts neveivel
+// wildcard-ütközés lenne — a named export az index-fájl végén a minta).
+export { transactionLevyApi } from './transactionLevy'
+export type {
+  AppliedRate,
+  MonthlySummary,
+  TransactionLevyRate,
+  TransactionLevyRateCreateRequest,
+  TransactionLevyReport,
+  TransactionLevyRow,
+  TypeGroup,
+} from './transactionLevy'

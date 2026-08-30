@@ -2011,4 +2011,51 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("companyId") UUID companyId,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate);
+
+    /**
+     * FK-099 — tranzakciós illeték riport forrás-sorok, EGY query / kérés (NFR-4).
+     *
+     * <p>Univerzum (ticket §5, D5): COMPLETED, és
+     * (önálló BUY/SELL: conversion_group_id IS NULL + financial_effective = true)
+     * VAGY conversion_group_id IS NOT NULL. A második ág a konverzió-csoport
+     * MINDHÁROM sorát (parent CONVERSION + convBuy + convSell) behúzza, hogy a
+     * service a szülőre vagy a convBuy-ra támaszkodva fold-olhasson — a child
+     * BUY/SELL a conversion_group_id miatt sosem kerül az önálló Vétel/Eladás
+     * csoportokba (dupla-adóztatás elleni őrzés, FR-5/§5.6).</p>
+     *
+     * <p>A financial_effective predikátum CSAK az önálló ágon van: a parent
+     * CONVERSION sor financial_effective = false, egy query-szintű szűrő
+     * eldobná a konverzió alapját (D5, pitfall 2).</p>
+     *
+     * <p>Round-2 D19 (FR-16 csoport-szint): a status-predikátum NEM közös —
+     * az önálló ágon sor-szintű (COMPLETED), a konverzió-ágon CSAK a childokra
+     * vonatkozik: a parent CONVERSION sor BÁRMELY státusszal látszik
+     * ({@code t.status = COMPLETED OR t.transactionType = CONVERSION}), hogy a
+     * fold megkülönböztesse a sztornózott (nem-COMPLETED parent ⇒ a csoport
+     * 0 illeték) és a ténylegesen hiányzó parent alakot. A vetület 10 oszlopos:
+     * a status-oszlop (row[9]) viszi a parent státuszát a foldnak.</p>
+     *
+     * <p>Visszaad: [transactionDate, branchId, branchCode, branchName,
+     * transactionType, hufAmount, conversionGroupId, financialEffective, customerId, status]</p>
+     */
+    @Query("SELECT t.transactionDate, b.id, b.code, b.name, t.transactionType, t.hufAmount, " +
+           "t.conversionGroupId, t.financialEffective, t.customerId, t.status " +
+           "FROM Transaction t JOIN t.branch b " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.transactionDate BETWEEN :from AND :to " +
+           "AND (:branchId IS NULL OR b.id = :branchId) " +
+           "AND ((t.transactionType IN (hu.puzzleir.valuta.entity.TransactionType.BUY, " +
+           "                            hu.puzzleir.valuta.entity.TransactionType.SELL) " +
+           "      AND t.conversionGroupId IS NULL " +
+           "      AND t.financialEffective = true " +
+           "      AND t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED) " +
+           "     OR (t.conversionGroupId IS NOT NULL " +
+           "         AND (t.status = hu.puzzleir.valuta.entity.TransactionStatus.COMPLETED " +
+           "              OR t.transactionType = hu.puzzleir.valuta.entity.TransactionType.CONVERSION))) " +
+           "ORDER BY t.transactionDate ASC, b.code ASC")
+    List<Object[]> findTransactionLevySourceRows(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
 }

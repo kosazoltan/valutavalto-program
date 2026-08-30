@@ -497,3 +497,53 @@ describe('menuVisibility — FK-096 FR-12: kezelési díj konfiguráció RBAC-sz
     expect(roles).toContain('penztar')
   })
 })
+
+describe('menuVisibility — FK-099: tranzakciós illeték riport + ráta-beállítások RBAC', () => {
+  // F12: irodavezeto a riportot látja (az item canonicalRoles-ban van), de a
+  // ráta-beállításokat NEM (szándékosan nincs a listában).
+  it('FK-099/F12: irodavezeto (full) látja a riport-itemet, NEM látja a ráta-itemet', () => {
+    const riportok = groupByLabel('Riportok')
+    const ctx = ctxFor(['irodavezeto'], 'full')
+    expect(
+      isMenuItemVisible(itemByPath(riportok, '/reports/transaction-levy'), riportok, ctx),
+    ).toBe(true)
+    expect(
+      isMenuItemVisible(itemByPath(riportok, '/reports/transaction-levy-rates'), riportok, ctx),
+    ).toBe(false)
+  })
+
+  // F13: foertektar / ugyvezeto / belso_ellenor MINDKETTŐT látja.
+  it('FK-099/F13: foertektar / ugyvezeto / belso_ellenor (full) MINDKÉT itemet látja', () => {
+    const riportok = groupByLabel('Riportok')
+    for (const role of ['foertektar', 'ugyvezeto', 'belso_ellenor']) {
+      const ctx = ctxFor([role], 'full')
+      expect(
+        isMenuItemVisible(itemByPath(riportok, '/reports/transaction-levy'), riportok, ctx),
+        `riport-item rejtve: ${role}`,
+      ).toBe(true)
+      expect(
+        isMenuItemVisible(itemByPath(riportok, '/reports/transaction-levy-rates'), riportok, ctx),
+        `rata-item rejtve: ${role}`,
+      ).toBe(true)
+    }
+  })
+
+  // F14: penztar(full módban a felügyeleti bypass nem él) egyiket sem látja, és a
+  // route-gate uniója pontosan a három íráshoz is jogosult szerep.
+  it('FK-099/F14: penztaros egyiket sem látja; a route-gate uniója [foertektar, ugyvezeto, belso_ellenor]', () => {
+    const riportok = groupByLabel('Riportok')
+    const ctx = ctxFor(['penztar'], 'full')
+    expect(
+      isMenuItemVisible(itemByPath(riportok, '/reports/transaction-levy'), riportok, ctx),
+    ).toBe(false)
+    expect(
+      isMenuItemVisible(itemByPath(riportok, '/reports/transaction-levy-rates'), riportok, ctx),
+    ).toBe(false)
+
+    expect(
+      [
+        ...(effectiveCanonicalRolesForPath(menuGroups, '/reports/transaction-levy-rates') ?? []),
+      ].sort(),
+    ).toEqual(['belso_ellenor', 'foertektar', 'ugyvezeto'])
+  })
+})
