@@ -10,7 +10,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { AppMode } from '../../types/appMode'
 
-const reportMock = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => 'SHIFT_OPEN'))
+// A mock realisztikusan képezi az aktivitást műszak-állapotra: az IDLE_TIMEOUT
+// ágból IDLE_BEFORE_OPEN lesz (cashier mód + penztar marker + nincs auth/nyitott
+// nap), minden másból SHIFT_OPEN — így a hook deduplikáló logikája is életszerűen fut.
+const reportMock = vi.hoisted(() =>
+  vi.fn(async (...args: unknown[]) =>
+    args[4] === 'IDLE_TIMEOUT' ? 'IDLE_BEFORE_OPEN' : 'SHIFT_OPEN',
+  ),
+)
 
 vi.mock('../reportLoginScreenIdleForUpdate', () => ({
   reportLoginScreenIdleForUpdate: (...args: unknown[]) => reportMock(...args),
