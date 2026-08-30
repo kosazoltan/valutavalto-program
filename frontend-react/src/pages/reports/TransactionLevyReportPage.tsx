@@ -110,7 +110,9 @@ export default function TransactionLevyReportPage() {
         <p className="mb-4 text-gray-500">{t('reports.transactionLevy.emptyState')}</p>
       )}
 
-      {!loading && !error && report && (
+      {/* FK-100 FR-3: táblázat + havi panel CSAK nem üres riportnál — az üres hónap
+          emptyState-e és a küszöb-badge nem versenyez a nulla-táblázattal. */}
+      {!loading && !error && report && report.rows.length > 0 && (
         <>
           {/* D4 (round-3): vízszintes scroll-konténer (ArchivingPage idióma) —
               a 19 oszlopos tábla keskeny nézetben nem tolja szét az oldalt. */}

@@ -171,6 +171,16 @@ public class TransactionLevyReportService {
             foldConversionGroup(state, ratesDesc, entry.getValue());
         }
 
+        // FK-100 FR-3: üres hónapnál (0 forrás-sor) az appliedRates-be bekerülnek
+        // az időszakot lefedő ráta-sorok, hogy a küszöb-badge forrás-sor nélkül is
+        // megjelenhessen. CSAK a sourceRows.isEmpty() alakban fut — nem üres forrásnál
+        // (pl. B27/B28/B30/B31/B32: sztornózott csoport, nem üres forrás) a fold-alapú
+        // töltés marad az egyetlen forrás. A D7 fail-closed itt NEM fut: tranzakció
+        // híján nincs tranzakció-dátum, amire rátát kellene feloldani (B37).
+        if (sourceRows.isEmpty()) {
+            populateCoveringRates(state, ratesDesc, from, to);
+        }
+
         // D1 (round-3): sorrend-szerződés (TransactionLevyReportDto.rows): date ASC,
         // branchCode ASC. A rowsByKey beszúrás-rendű (az önálló sorok foldolódnak
         // előbb), ezért CSAK a rendezés garantálja a szerződést — sort csak,
@@ -264,6 +274,44 @@ public class TransactionLevyReportService {
             row.setLargeBaseHuf(row.getLargeBaseHuf().add(leg.hufAmount()));
         }
         row.setLevyTotal(row.getLevyTotal().add(amounts.baseLevy()).add(amounts.supplementLevy()));
+    }
+
+    /**
+     * FK-100 FR-3: az {@code [from, to]} időszakot lefedő ráta-sorok felvétele az
+     * {@code appliedRates}-be üres hónap (0 forrás-sor) esetén, hogy a küszöb-badge
+     * forrás-sor nélkül is megjelenhessen.
+     *
+     * <p>Felvételi szabály (Design decision 5): az ascending-rendezett
+     * {@code e1<…<en} ráta-sorok közül {@code ei} kerül be, ha
+     * {@code effFrom(ei) <= to} ÉS ({@code i == n} VAGY
+     * {@code effFrom(e(i+1)) > from}). Ez lefedi azt az alakot is, amikor egy
+     * {@code from} ELŐTT hatályba lépett ráta utódja {@code from} után kezdődik
+     * — az a ráta is fedi az időszakot (a {@code e(i+1) > from} tag). A
+     * {@code to} után kezdődő ráta soha nem fed (B39).</p>
+     *
+     * <p>Iteráció: a lista már DESC-rendezett; a VÉGÉTŐL olvasva ascending sorrendet
+     * kapunk, így az {@code e(i+1) > from} ablak off-by-one nélkül számolható
+     * (addendum #4). A {@code recordAppliedRate} TreeMap-dedupja + derived
+     * {@code thresholdHuf}-ja változatlanul érvényesül.</p>
+     */
+    private static void populateCoveringRates(FoldState state, List<LevyRate> ratesDesc,
+                                              LocalDate from, LocalDate to) {
+        int n = ratesDesc.size();
+        for (int asc = 0; asc < n; asc++) {
+            // asc index asc ↔ DESC index n-1-asc.
+            LevyRate rate = ratesDesc.get(n - 1 - asc);
+            if (rate.effectiveFrom().isAfter(to)) {
+                continue;
+            }
+            boolean isLast = asc == n - 1;
+            if (!isLast) {
+                LevyRate next = ratesDesc.get(n - 1 - (asc + 1));
+                if (!next.effectiveFrom().isAfter(from)) {
+                    continue;
+                }
+            }
+            state.recordAppliedRate(rate);
+        }
     }
 
     // ============================ HELPEREK ============================
