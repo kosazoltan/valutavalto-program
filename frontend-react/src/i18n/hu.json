@@ -1689,7 +1689,13 @@
       "singleSide": "Konverzió egy illeték-pár",
       "threshold": "Küszöb",
       "createdBy": "Rögzítette",
-      "saved": "Új ráta rögzítve."
+      "saved": "Új ráta rögzítve.",
+      "singleSideInfo": "A konverzió egyszeri adóztatása (TRUE alapértelmezés) könyvelői/adótanácsadói megerősítésre vár — nem végleges jogi állásfoglalás.",
+      "confirmTitle": "Eltérő illeték-ráta rögzítése",
+      "confirmText": "Az új ráta értékei eltérnek a jelenleg hatályos rátától.",
+      "confirmIrreversible": "Ez a döntés a jövőben visszamenőlegesen nem módosítható.",
+      "confirmCurrent": "Jelenlegi",
+      "confirmNew": "Új"
     },
     "bankTransactions": {
       "title": "Banki tranzakciók riport",
