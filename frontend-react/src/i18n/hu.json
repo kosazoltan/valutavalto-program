@@ -1644,6 +1644,8 @@
     "transactionLevy": {
       "title": "Tranzakciós díjak jelentése",
       "month": "Hónap",
+      "region": "Terület",
+      "regionAll": "Összes terület",
       "loading": "Betöltés...",
       "emptyState": "Nincs adat a kiválasztott hónapra.",
       "threshold": "Küszöb",

@@ -84,9 +84,15 @@ export interface TransactionLevyRateCreateRequest {
 
 export const transactionLevyApi = {
   /** FK-099 riport: pénztár+nap sorok, ÖSSZESEN, havi panel, appliedRates. */
-  getReport: async (from: string, to: string): Promise<TransactionLevyReport> => {
+  /**
+   * FK-099 riport: pénztár+nap sorok, ÖSSZESEN, havi panel, appliedRates.
+   * FK-100 FR-6: opcionális `region` (dictionary REGION kód) — csak truthy
+   * érték esetén kerül a query-paraméterekbe, a régi `(from, to)` hívók
+   * paraméter-kontraktusa változatlan.
+   */
+  getReport: async (from: string, to: string, region?: string): Promise<TransactionLevyReport> => {
     const response = await api.get<TransactionLevyReport>('/reports/transaction-levy', {
-      params: { from, to },
+      params: region ? { from, to, region } : { from, to },
     })
     return response.data
   },

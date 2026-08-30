@@ -128,14 +128,28 @@ public class TransactionLevyReportService {
                             "Iroda nem található.", ERR_CROSS_TENANT, HttpStatus.NOT_FOUND));
         }
 
+        // FK-100 FR-6: region-szűrő normalizálás + dictionary-validáció a forrás-query
+        // ELŐTT (fail-fast, nincs információ-szivárgás): blank → null (nincs szűrő),
+        // nem-blank → a REGION dictionary aktív bejegyzése kötelező (B43/B44),
+        // a trimmelt érték megy a validációba ÉS a finder-be egyaránt (B45, addendum #7).
+        String trimmedRegion = region == null ? null : region.trim();
+        String normalizedRegion = (trimmedRegion == null || trimmedRegion.isEmpty()) ? null : trimmedRegion;
+        if (normalizedRegion != null) {
+            dictionaryRepository.findByCategoryAndCode("REGION", normalizedRegion)
+                    .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
+                    .orElseThrow(() -> new ValidationException(
+                            "Ismeretlen terület kód: " + normalizedRegion
+                                    + ". Válasszon a Terület-listából."));
+        }
+
         List<LevyRate> ratesDesc = rateHistoryRepository
                 .findByCompanyIdOrderByEffectiveFromDesc(companyId)
                 .stream()
                 .map(TransactionLevyReportService::toLevyRate)
                 .toList();
 
-        List<Object[]> sourceRows =
-                transactionRepository.findTransactionLevySourceRows(companyId, branchId, from, to, region);
+        List<Object[]> sourceRows = transactionRepository
+                .findTransactionLevySourceRows(companyId, branchId, from, to, normalizedRegion);
 
         FoldState state = new FoldState();
         for (Object[] sourceRow : sourceRows) {
