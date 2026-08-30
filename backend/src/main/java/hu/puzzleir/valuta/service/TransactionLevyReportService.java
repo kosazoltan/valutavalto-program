@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -157,7 +158,18 @@ public class TransactionLevyReportService {
             foldConversionGroup(state, ratesDesc, entry.getValue());
         }
 
-        List<TransactionLevyReportDto.Row> rows = List.copyOf(state.rowsByKey.values());
+        // D1 (round-3): sorrend-szerződés (TransactionLevyReportDto.rows): date ASC,
+        // branchCode ASC. A rowsByKey beszúrás-rendű (az önálló sorok foldolódnak
+        // előbb), ezért CSAK a rendezés garantálja a szerződést — sort csak,
+        // újra-aggregálás NINCS. A nullsLast csak a teljesítési irányt tűzi (a
+        // riport-sorokon date/branchCode sosem null; a totals külön épül).
+        List<TransactionLevyReportDto.Row> rows = state.rowsByKey.values().stream()
+                .sorted(Comparator
+                        .comparing(TransactionLevyReportDto.Row::getDate,
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(TransactionLevyReportDto.Row::getBranchCode,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
         return TransactionLevyReportDto.builder()
                 .from(from)
                 .to(to)
