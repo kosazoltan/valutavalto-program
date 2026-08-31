@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { transactionLevyApi } from '../../services/api/index'
-import type { TransactionLevyRate } from '../../services/api/index'
+import type {
+  TransactionLevyRate,
+  TransactionLevyRateCreateRequest,
+} from '../../services/api/index'
 import { useAuthStore } from '../../stores/authStore'
 import { getErrorMessage } from '../../utils/errorHandling'
+import TransactionLevyRateConfirmDialog from './TransactionLevyRateConfirmDialog'
 
 /**
- * FK-099 FR-1 UI / FR-18 UI — Illeték-ráta beállítások (append-only).
+ * FK-099 FR-1 UI / FR-18 UI + FK-100 FR-4 — Illeték-ráta beállítások (append-only).
  *
- * - history lista `effectiveFrom` DESC — a sorok READ-ONLY: sem szerkesztés,
- *   sem törlés vezérlő NINCS a markup-ban (a backend FR-1 append-only
- *   szerződésének UI-tükre);
- * - az „Új ráta" űrlap CSAK akkor renderelődik, ha a user
- *   ugyvezeto/foertektar/admin kanonikus szereppel bír
- *   (`HandlingFeeConfigPage` idióma); belso_ellenor / irodavezeto csak olvas;
- * - a szerver-hiba (a batchelt validációs üzenet, D8) SZÓ SZERINT jelenik meg.
+ * - history lista `effectiveFrom` DESC — a sorok READ-ONLY;
+ * - az „Új ráta" űrlap CSAK ugyvezeto/foertektar/admin szerepben;
+ * - FK-100 FR-4: ha az űrlap 5 rátamezője eltér a ma hatályos sortól,
+ *   Mentés előtt megerősítő alertdialog; Mégse/Esc nem POST-ol.
  */
 export default function TransactionLevyRatesPage() {
   const { t } = useTranslation()
@@ -24,14 +25,13 @@ export default function TransactionLevyRatesPage() {
   const [rates, setRates] = useState<TransactionLevyRate[]>([])
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  const [pending, setPending] = useState<TransactionLevyRateCreateRequest | null>(null)
 
   const load = useCallback(async () => {
     try {
       setRates(await transactionLevyApi.listRates())
       setError(null)
     } catch (err) {
-      // D6 (round-3): repo-konvenció getErrorMessage — a szerver-üzenet VERBATIM
-      // marad (a batchelt validációs üzenet az AxiosError `response.data.message`-éből).
       setError(getErrorMessage(err))
     }
   }, [])
@@ -40,26 +40,42 @@ export default function TransactionLevyRatesPage() {
     void load()
   }, [load])
 
+  const save = async (request: TransactionLevyRateCreateRequest) => {
+    try {
+      await transactionLevyApi.createRate(request)
+      setInfo(t('reports.transactionLevyRates.saved'))
+      setPending(null)
+      await load()
+    } catch (err) {
+      setPending(null)
+      setError(getErrorMessage(err))
+    }
+  }
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setInfo(null)
     setError(null)
     const data = new FormData(event.currentTarget)
-    try {
-      await transactionLevyApi.createRate({
-        effectiveFrom: String(data.get('effectiveFrom')),
-        baseRatePercent: Number(data.get('baseRatePercent')),
-        baseRateCapHuf: Number(data.get('baseRateCapHuf')),
-        supplementRatePercent: Number(data.get('supplementRatePercent')),
-        supplementRateCapHuf: Number(data.get('supplementRateCapHuf')),
-        conversionSingleSideFlag: data.get('conversionSingleSideFlag') === 'on',
-      })
-      setInfo(t('reports.transactionLevyRates.saved'))
-      await load()
-    } catch (err) {
-      setError(getErrorMessage(err))
+    const request: TransactionLevyRateCreateRequest = {
+      effectiveFrom: String(data.get('effectiveFrom')),
+      baseRatePercent: Number(data.get('baseRatePercent')),
+      baseRateCapHuf: Number(data.get('baseRateCapHuf')),
+      supplementRatePercent: Number(data.get('supplementRatePercent')),
+      supplementRateCapHuf: Number(data.get('supplementRateCapHuf')),
+      conversionSingleSideFlag: data.get('conversionSingleSideFlag') === 'on',
     }
+    const today = todayIso()
+    const baseline = rates.find((rate) => rate.effectiveFrom <= today)
+    if (baseline && rateFieldsDiffer(baseline, request)) {
+      setPending(request)
+      return
+    }
+    await save(request)
   }
+
+  const baselineForDialog =
+    pending === null ? null : (rates.find((rate) => rate.effectiveFrom <= todayIso()) ?? null)
 
   return (
     <div className="mx-auto max-w-5xl p-6">
@@ -194,6 +210,9 @@ export default function TransactionLevyRatesPage() {
               <span>{t('reports.transactionLevyRates.singleSide')}</span>
             </label>
           </div>
+          <p className="mt-2 text-sm text-gray-600">
+            {t('reports.transactionLevyRates.singleSideInfo')}
+          </p>
           <button
             type="submit"
             className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
@@ -202,6 +221,39 @@ export default function TransactionLevyRatesPage() {
           </button>
         </form>
       )}
+
+      {pending && baselineForDialog && (
+        <TransactionLevyRateConfirmDialog
+          title={t('reports.transactionLevyRates.confirmTitle')}
+          current={baselineForDialog}
+          pending={pending}
+          onConfirm={() => {
+            void save(pending)
+          }}
+          onCancel={() => setPending(null)}
+        />
+      )}
     </div>
+  )
+}
+
+/** Local YYYY-MM-DD — never toISOString (UTC shift, pitfall 8). */
+function todayIso(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate(),
+  ).padStart(2, '0')}`
+}
+
+function rateFieldsDiffer(
+  baseline: TransactionLevyRate,
+  request: TransactionLevyRateCreateRequest,
+): boolean {
+  return (
+    baseline.baseRatePercent !== request.baseRatePercent ||
+    baseline.baseRateCapHuf !== request.baseRateCapHuf ||
+    baseline.supplementRatePercent !== request.supplementRatePercent ||
+    baseline.supplementRateCapHuf !== request.supplementRateCapHuf ||
+    baseline.conversionSingleSideFlag !== request.conversionSingleSideFlag
   )
 }

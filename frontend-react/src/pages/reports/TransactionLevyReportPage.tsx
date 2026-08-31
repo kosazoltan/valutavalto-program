@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { transactionLevyApi } from '../../services/api/index'
+import { dictionaryApi, transactionLevyApi } from '../../services/api/index'
 import type {
+  DictionaryEntry,
   MonthlySummary,
   TransactionLevyReport,
   TransactionLevyRow,
@@ -10,10 +11,13 @@ import type {
 import { getErrorMessage } from '../../utils/errorHandling'
 
 /**
- * FK-099 FR-8/9/10/11/12/13/14 — Tranzakciós díjak jelentése.
+ * FK-099 FR-8/9/10/11/12/13/14 + FK-100 FR-3/FR-6 — Tranzakciós díjak jelentése.
  *
  * - hónap-választó; `from = ${month}-01`, `to = ${month}-${lastDay}` — string/
  *   szám-matematikával (soha `toISOString`, ami UTC+2-n hónapokat csúsztat, pitfall 8);
+ * - FK-100 FR-6: opcionális Terület-szűrő (dictionary REGION) a hónap mellett;
+ * - FK-100 FR-3: üres hónapnál CSAK emptyState (+ küszöb-badge, ha van lefedő
+ *   ráta) — táblázat és havi panel ilyenkor nem renderelődik;
  * - fő-tábla: pénztár+nap sorok, Vétel / Eladás / Konverzió × 5 alkomponens
  *   + Nagy-alap + Tranz.díj;
  * - ÖSSZESEN sor a backend `totals`-ból — a kliens NEM számolja újra (FR-11);
@@ -25,23 +29,50 @@ export default function TransactionLevyReportPage() {
   const fmt = useMemo(() => new Intl.NumberFormat('hu-HU'), [])
 
   const [month, setMonth] = useState(() => currentMonth())
+  // FK-100 FR-6: '' = „Összes terület" (nincs region-paraméter a kérésben).
+  const [region, setRegion] = useState('')
+  const [regions, setRegions] = useState<DictionaryEntry[]>([])
   const [report, setReport] = useState<TransactionLevyReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // FK-100 FR-6: a REGION dictionary betöltése egyszer. Hiba esetén csendben
+  // visszazuhanunk az egyetlen „Összes terület" opcióra — a szűrő opcionális,
+  // a riport betöltését soha nem blokkolhatja (F13).
+  useEffect(() => {
+    let cancelled = false
+    dictionaryApi
+      .getByCategory('REGION')
+      .then((entries) => {
+        if (!cancelled) {
+          setRegions(entries)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRegions([])
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // D2 (round-3): kérés-sorszám őrző (TransferPage idióma) — gyors hónapváltásnál
   // a későn érkező elavult válasz nem írhatja felül az újabbat, az elavult hiba
   // nem törölhet friss sikert, és az elavult `finally` nem ragaszthatja a loadingot.
   const requestSeqRef = useRef(0)
 
-  const load = useCallback(async (selectedMonth: string) => {
+  const load = useCallback(async (selectedMonth: string, selectedRegion: string) => {
     const { from, to } = monthRange(selectedMonth)
     const requestId = requestSeqRef.current + 1
     requestSeqRef.current = requestId
     setLoading(true)
     setError(null)
     try {
-      const data = await transactionLevyApi.getReport(from, to)
+      // FK-100 FR-6: a 3. argumentum mindig megy ('' = Összes terület); a kliens
+      // a region-t CSAK truthy érték esetén teszi a query-paraméterekbe (A1/A2).
+      const data = await transactionLevyApi.getReport(from, to, selectedRegion)
       if (requestSeqRef.current === requestId) {
         setReport(data)
       }
@@ -59,12 +90,19 @@ export default function TransactionLevyReportPage() {
     }
   }, [])
 
+  // FK-100 FR-6 (addendum #5): a `region` MIND a useCallback-függőségben, mind
+  // itt szerepel — területváltás újratölt, hónapváltás pedig nem hagyhatja
+  // figyelmen kívül a területet (stale-closure elleni őrzés).
   useEffect(() => {
-    void load(month)
-  }, [month, load])
+    void load(month, region)
+  }, [month, region, load])
 
   const onMonthChange = (value: string) => {
     setMonth(value)
+  }
+
+  const onRegionChange = (value: string) => {
+    setRegion(value)
   }
 
   const threshold = report?.appliedRates.at(-1)?.thresholdHuf ?? null
@@ -85,6 +123,25 @@ export default function TransactionLevyReportPage() {
             value={month}
             onChange={(e) => onMonthChange(e.target.value)}
           />
+        </div>
+        {/* FK-100 FR-6: Terület-szűrő (dictionary REGION) a hónap mellett. */}
+        <div>
+          <label htmlFor="levy-region" className="mb-1 block text-sm font-medium">
+            {t('reports.transactionLevy.region')}
+          </label>
+          <select
+            id="levy-region"
+            className="rounded border border-gray-300 px-3 py-2"
+            value={region}
+            onChange={(e) => onRegionChange(e.target.value)}
+          >
+            <option value="">{t('reports.transactionLevy.regionAll')}</option>
+            {regions.map((entry) => (
+              <option key={entry.code} value={entry.code}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
         </div>
         {threshold !== null && (
           <span
@@ -110,7 +167,9 @@ export default function TransactionLevyReportPage() {
         <p className="mb-4 text-gray-500">{t('reports.transactionLevy.emptyState')}</p>
       )}
 
-      {!loading && !error && report && (
+      {/* FK-100 FR-3: táblázat + havi panel CSAK nem üres riportnál — az üres hónap
+          emptyState-e és a küszöb-badge nem versenyez a nulla-táblázattal. */}
+      {!loading && !error && report && report.rows.length > 0 && (
         <>
           {/* D4 (round-3): vízszintes scroll-konténer (ArchivingPage idióma) —
               a 19 oszlopos tábla keskeny nézetben nem tolja szét az oldalt. */}

@@ -4,11 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TransactionLevyReportPage from './TransactionLevyReportPage'
 
 /**
- * FK-099 F1–F11 — tranzakciós illeték riport oldal (WU7 RED → WU8 GREEN;
- * round-3: F8–F11 — D2 stale-response guard, D3 metric-wrapper, D4 overflow).
+ * FK-099 F1–F11 + FK-100 F1b/F6/F12/F13 — tranzakciós illeték riport oldal.
  * Mock: `../../services/api/index` + react-i18next (PosHandlingFeePage minta).
  * Szám-elvárások `new Intl.NumberFormat('hu-HU')`-val épülnek — a hu-HU
  * ezres-elválasztója U+00A0, nem ASCII szóköz (pitfall 9).
+ *
+ * FK-100 FR-3: F1 ÁTÍRVA az új üres-állapot viselkedésre — emptyState szöveg
+ * IGEN, táblázat/ÖSSZESEN/havi panel NEM; a küszöb-badge az appliedRates
+ * alapján jelenik meg. FR-6: region-legördülő a dictionary REGION kategóriából.
  */
 
 const translations: Record<string, string> = vi.hoisted(() => ({
@@ -19,6 +22,8 @@ const translations: Record<string, string> = vi.hoisted(() => ({
   'reports.transactionLevy.threshold': 'Küszöb',
   'reports.transactionLevy.multiRateNote': 'Több ráta is hatályban volt ebben az időszakban.',
   'reports.transactionLevy.totalRow': 'ÖSSZESEN',
+  'reports.transactionLevy.region': 'Terület',
+  'reports.transactionLevy.regionAll': 'Összes terület',
   'reports.transactionLevy.monthly.title': 'Havi összesítő',
   'reports.transactionLevy.monthly.buyCount': 'Vételek száma',
   'reports.transactionLevy.monthly.sellCount': 'Eladások száma',
@@ -49,12 +54,16 @@ vi.mock('react-i18next', () => ({
 }))
 
 const mockGetReport = vi.fn()
+const mockGetByCategory = vi.fn()
 
 vi.mock('../../services/api/index', () => ({
   transactionLevyApi: {
     getReport: (...args: unknown[]) => mockGetReport(...args),
     listRates: vi.fn().mockResolvedValue([]),
     createRate: vi.fn(),
+  },
+  dictionaryApi: {
+    getByCategory: (...args: unknown[]) => mockGetByCategory(...args),
   },
 }))
 
@@ -238,12 +247,14 @@ function fixtureReport(totalsLevyTotal = 67000) {
   }
 }
 
-describe('TransactionLevyReportPage — FK-099', () => {
+describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
   beforeEach(() => {
     mockGetReport.mockReset()
+    mockGetByCategory.mockReset()
+    mockGetByCategory.mockResolvedValue([])
   })
 
-  it('F1/FR-8: üres hónap → empty-state szöveg és minden ÖSSZESEN cella 0', async () => {
+  it('F1/FR-3 (FK-100 átírt): üres hónap → emptyState + küszöb-badge, ÖSSZESEN/havi panel NÉLKÜL', async () => {
     mockGetReport.mockResolvedValue(emptyReport())
 
     render(<TransactionLevyReportPage />)
@@ -251,9 +262,24 @@ describe('TransactionLevyReportPage — FK-099', () => {
     await waitFor(() =>
       expect(screen.getByText('Nincs adat a kiválasztott hónapra.')).toBeInTheDocument(),
     )
-    // Az ÖSSZESEN sor megjelenik, minden értéke 0.
-    expect(screen.getByText('ÖSSZESEN')).toBeInTheDocument()
-    expect(screen.getAllByText(fmtText(0)).length).toBeGreaterThan(0)
+    // FR-3: a küszöb-badge az appliedRates-ból jelenik meg forrás-sor nélkül is.
+    expect(screen.getByTestId('threshold-badge')).toHaveTextContent(fmtText(4444445))
+    // FR-3: üres hónapnál táblázat ÉS havi panel NEM renderelődik.
+    expect(screen.queryByText('ÖSSZESEN')).not.toBeInTheDocument()
+    expect(screen.queryByText('Havi összesítő')).not.toBeInTheDocument()
+    expect(document.querySelector('table')).toBeNull()
+  })
+
+  it('F1b/FR-3 (FK-100): üres hónap appliedRates NÉLKÜL → emptyState, küszöb-badge NÉLKÜL', async () => {
+    mockGetReport.mockResolvedValue({ ...emptyReport(), appliedRates: [] })
+
+    render(<TransactionLevyReportPage />)
+
+    await waitFor(() =>
+      expect(screen.getByText('Nincs adat a kiválasztott hónapra.')).toBeInTheDocument(),
+    )
+    expect(screen.queryByTestId('threshold-badge')).toBeNull()
+    expect(screen.queryByText('ÖSSZESEN')).not.toBeInTheDocument()
   })
 
   it('F2/FR-8/10: fixture hónap → sorok pénztárkóddal, dátummal, 5 alkomponenssel, Nagy-alappal és Tranz.díjjal', async () => {
@@ -317,7 +343,7 @@ describe('TransactionLevyReportPage — FK-099', () => {
     })
   })
 
-  it('F6: hónapváltás 2026-02-re → getReport("2026-02-01","2026-02-28"), nincs UTC-shift', async () => {
+  it('F6 (FK-100): hónapváltás 2026-02-re → getReport("2026-02-01","2026-02-28",""), nincs UTC-shift', async () => {
     mockGetReport.mockResolvedValue(emptyReport())
 
     render(<TransactionLevyReportPage />)
@@ -326,7 +352,7 @@ describe('TransactionLevyReportPage — FK-099', () => {
 
     fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: '2026-02' } })
 
-    await waitFor(() => expect(mockGetReport).toHaveBeenCalledWith('2026-02-01', '2026-02-28'))
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledWith('2026-02-01', '2026-02-28', ''))
   })
 
   it('F7: getReport hiba → a szerver üzenet jelenik meg, a táblázat nem', async () => {
@@ -447,5 +473,52 @@ describe('TransactionLevyReportPage — FK-099', () => {
     const table = document.querySelector('table') as HTMLTableElement
     expect(table).not.toBeNull()
     expect(table.closest('.overflow-x-auto')).not.toBeNull()
+  })
+
+  // ============================ F12–F13: FK-100 FR-6 — region-legördülő ============================
+
+  it('F12/FR-6 (FK-100): SZEGED kiválasztása → getReport "SZEGED"-del; visszaállítva ""', async () => {
+    mockGetByCategory.mockResolvedValue([
+      { id: 'd1', category: 'REGION', code: 'SZEGED', name: 'Szeged', nameHu: '', sortOrder: 1 },
+    ])
+    mockGetReport.mockResolvedValue(emptyReport())
+
+    // Az oldal kezdő hónapja a VALÓDI aktuális hónap — az elvárt from/to-t
+    // ugyanabból a hónapból képezzük (falióra-függés nélkül nincs rögzített hónap).
+    const now = new Date()
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    const from = `${monthStr}-01`
+    const to = `${monthStr}-${String(lastDay).padStart(2, '0')}`
+
+    render(<TransactionLevyReportPage />)
+    await waitFor(() => expect(screen.getByText('Szeged')).toBeInTheDocument())
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalled())
+    mockGetReport.mockClear()
+
+    const select = screen.getByLabelText('Terület') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'SZEGED' } })
+
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledWith(from, to, 'SZEGED'))
+    mockGetReport.mockClear()
+
+    fireEvent.change(select, { target: { value: '' } })
+
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledWith(from, to, ''))
+  })
+
+  it('F13/FR-6 (FK-100): dictionary-hiba → CSAK "Összes terület" opció, a riport akkor is betölt', async () => {
+    mockGetByCategory.mockRejectedValue(new Error('dictionary unavailable'))
+    mockGetReport.mockResolvedValue(emptyReport())
+
+    render(<TransactionLevyReportPage />)
+
+    await waitFor(() =>
+      expect(screen.getByText('Nincs adat a kiválasztott hónapra.')).toBeInTheDocument(),
+    )
+    const select = screen.getByLabelText('Terület') as HTMLSelectElement
+    expect(select).toBeInTheDocument()
+    expect(select.querySelectorAll('option')).toHaveLength(1)
+    expect(screen.getByText('Összes terület')).toBeInTheDocument()
   })
 })

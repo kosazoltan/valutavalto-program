@@ -135,11 +135,11 @@ class TransactionLevyControllerSecurityTest {
     @WithMockUser(roles = {"PENZTAR"})
     @DisplayName("D1/FR-17: PENZTAR → a hívás eljut a service-ig, annak szerep-ellenőrzése dob")
     void d1_penztarReachesServiceRoleCheck() {
-        when(reportService.getReport(any(), any(), any()))
+        when(reportService.getReport(any(), any(), any(), any()))
                 .thenThrow(new AccessDeniedException("VV-AUTH-006: nincs jogosultsága."));
 
         assertThrows(AccessDeniedException.class,
-                () -> reportController.report(null, FROM, TO));
+                () -> reportController.report(null, FROM, TO, null));
     }
 
     @ParameterizedTest(name = "engedélyezett szerep: {0}")
@@ -156,7 +156,7 @@ class TransactionLevyControllerSecurityTest {
         org.springframework.security.core.context.SecurityContextHolder.getContext()
                 .setAuthentication(token);
         try {
-            assertAuthorized(() -> reportController.report(null, FROM, TO));
+            assertAuthorized(() -> reportController.report(null, FROM, TO, null));
         } finally {
             org.springframework.security.core.context.SecurityContextHolder.clearContext();
         }
@@ -201,7 +201,7 @@ class TransactionLevyControllerSecurityTest {
     @DisplayName("D5: anonim hívó → a riport osztály-szintű isAuthenticated() elutasít")
     void d5_anonymousReportRejected() {
         assertThrows(AccessDeniedException.class,
-                () -> reportController.report(null, FROM, TO));
+                () -> reportController.report(null, FROM, TO, null));
     }
 
     @Test

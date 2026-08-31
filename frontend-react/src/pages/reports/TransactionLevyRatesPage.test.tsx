@@ -22,9 +22,16 @@ const translations: Record<string, string> = vi.hoisted(() => ({
   'reports.transactionLevyRates.supplementRate': 'Kiegészítő ráta (%)',
   'reports.transactionLevyRates.supplementCap': 'Kiegészítő plafon (Ft)',
   'reports.transactionLevyRates.singleSide': 'Konverzió egy illeték-pár',
+  'reports.transactionLevyRates.singleSideInfo':
+    'A konverzió egyszeri adóztatása (TRUE alapértelmezés) könyvelői/adótanácsadói megerősítésre vár — nem végleges jogi állásfoglalás.',
   'reports.transactionLevyRates.history': 'Ráta-history',
   'reports.transactionLevyRates.threshold': 'Küszöb',
   'reports.transactionLevyRates.createdBy': 'Rögzítette',
+  'reports.transactionLevyRates.confirmTitle': 'Eltérő illeték-ráta rögzítése',
+  'reports.transactionLevyRates.confirmText':
+    'Az új ráta értékei eltérnek a jelenleg hatályos rátától.',
+  'reports.transactionLevyRates.confirmIrreversible':
+    'Ez a döntés a jövőben visszamenőlegesen nem módosítható.',
 }))
 
 vi.mock('react-i18next', () => ({
@@ -82,6 +89,64 @@ const RATES_DESC = [
   },
 ]
 
+/**
+ * FK-100 FR-4: RELATÍV dátumú fixture (pitfall 6) — baseline ≈ ma−30 nap
+ * (0.3% / 15 000 cap), opcionális jövőbeli sor ≈ ma+30 nap. A fix dátumok
+ * elavulnának; a relatív ablak a „ma hatályos" baseline-t stabilan adja.
+ */
+function isoDaysFromToday(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`
+}
+
+const fmt = new Intl.NumberFormat('hu-HU')
+const fmtText = (n: number) => fmt.format(n).replace(/\s+/g, ' ')
+
+function relativeRatesDesc() {
+  return [
+    {
+      id: 'rf',
+      effectiveFrom: isoDaysFromToday(30),
+      baseRatePercent: 0.2,
+      baseRateCapHuf: 10000,
+      supplementRatePercent: 0.2,
+      supplementRateCapHuf: 10000,
+      conversionSingleSideFlag: true,
+      createdBy: 'WK002',
+      createdAt: '2026-08-14T10:00:00Z',
+      thresholdHuf: 5000000,
+    },
+    {
+      id: 'rb',
+      effectiveFrom: isoDaysFromToday(-30),
+      baseRatePercent: 0.3,
+      baseRateCapHuf: 15000,
+      supplementRatePercent: 0.3,
+      supplementRateCapHuf: 15000,
+      conversionSingleSideFlag: true,
+      createdBy: 'WK001',
+      createdAt: '2026-08-01T00:00:00Z',
+      thresholdHuf: 5000000,
+    },
+  ]
+}
+
+/** R5/R6/R7/R10 közös bemenete: az űrlap kitöltése a baseline-tól eltérő értékekkel. */
+function fillDifferingForm() {
+  fireEvent.change(screen.getByLabelText('Hatálybalépés dátuma'), {
+    target: { value: isoDaysFromToday(40) },
+  })
+  fireEvent.change(screen.getByLabelText('Alap ráta (%)'), { target: { value: '0.5' } })
+  fireEvent.change(screen.getByLabelText('Alap plafon (Ft)'), { target: { value: '25000' } })
+  fireEvent.change(screen.getByLabelText('Kiegészítő ráta (%)'), { target: { value: '0.5' } })
+  fireEvent.change(screen.getByLabelText('Kiegészítő plafon (Ft)'), {
+    target: { value: '25000' },
+  })
+}
+
 describe('TransactionLevyRatesPage — FK-099', () => {
   beforeEach(() => {
     mocks.listRates.mockReset()
@@ -125,24 +190,27 @@ describe('TransactionLevyRatesPage — FK-099', () => {
     render(<TransactionLevyRatesPage />)
 
     await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    // FK-100 FR-4: a baseline-tól (r2: 0.3/15000) eltérő űrlap megerősítő modált
+    // nyitna — ezért a payload-alak pinje a baseline-azonos értékekkel fut
+    // (a típusozott body-kontraktum ugyanúgy bizonyított; R5–R7 viseli a modált).
     fireEvent.change(screen.getByLabelText('Hatálybalépés dátuma'), {
       target: { value: '2026-09-15' },
     })
-    fireEvent.change(screen.getByLabelText('Alap ráta (%)'), { target: { value: '0.5' } })
-    fireEvent.change(screen.getByLabelText('Alap plafon (Ft)'), { target: { value: '25000' } })
-    fireEvent.change(screen.getByLabelText('Kiegészítő ráta (%)'), { target: { value: '0.5' } })
+    fireEvent.change(screen.getByLabelText('Alap ráta (%)'), { target: { value: '0.3' } })
+    fireEvent.change(screen.getByLabelText('Alap plafon (Ft)'), { target: { value: '15000' } })
+    fireEvent.change(screen.getByLabelText('Kiegészítő ráta (%)'), { target: { value: '0.3' } })
     fireEvent.change(screen.getByLabelText('Kiegészítő plafon (Ft)'), {
-      target: { value: '25000' },
+      target: { value: '15000' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Mentés' }))
 
     await waitFor(() =>
       expect(mocks.createRate).toHaveBeenCalledWith({
         effectiveFrom: '2026-09-15',
-        baseRatePercent: 0.5,
-        baseRateCapHuf: 25000,
-        supplementRatePercent: 0.5,
-        supplementRateCapHuf: 25000,
+        baseRatePercent: 0.3,
+        baseRateCapHuf: 15000,
+        supplementRatePercent: 0.3,
+        supplementRateCapHuf: 15000,
         conversionSingleSideFlag: true,
       }),
     )
@@ -175,14 +243,17 @@ describe('TransactionLevyRatesPage — FK-099', () => {
     render(<TransactionLevyRatesPage />)
 
     await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    // FK-100 FR-4: baseline-azonos számértékek (0.3/15000), hogy a verbatim
+    // hibaüzenet-pin ne a megerősítő modálon bukjon el (effectiveFrom nem
+    // összehasonlított mező — C9).
     fireEvent.change(screen.getByLabelText('Hatálybalépés dátuma'), {
       target: { value: '2026-08-10' },
     })
-    fireEvent.change(screen.getByLabelText('Alap ráta (%)'), { target: { value: '0.5' } })
-    fireEvent.change(screen.getByLabelText('Alap plafon (Ft)'), { target: { value: '25000' } })
-    fireEvent.change(screen.getByLabelText('Kiegészítő ráta (%)'), { target: { value: '0.5' } })
+    fireEvent.change(screen.getByLabelText('Alap ráta (%)'), { target: { value: '0.3' } })
+    fireEvent.change(screen.getByLabelText('Alap plafon (Ft)'), { target: { value: '15000' } })
+    fireEvent.change(screen.getByLabelText('Kiegészítő ráta (%)'), { target: { value: '0.3' } })
     fireEvent.change(screen.getByLabelText('Kiegészítő plafon (Ft)'), {
-      target: { value: '25000' },
+      target: { value: '15000' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Mentés' }))
 
@@ -193,5 +264,141 @@ describe('TransactionLevyRatesPage — FK-099', () => {
         ),
       ).toBeInTheDocument(),
     )
+  })
+
+  // ============================ R5–R11: FK-100 FR-4 megerősítő modal + FR-1 info ============================
+
+  it('R5/FR-4 (FK-100): baseline-tól eltérő értékek → alertdialog jelenlegi vs új értékekkel, createRate NÉLKÜL', async () => {
+    mocks.roles.value = ['foertektar']
+    mocks.listRates.mockResolvedValue(relativeRatesDesc())
+
+    render(<TransactionLevyRatesPage />)
+    await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    fillDifferingForm()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mentés' }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    // Jelenlegi (baseline, ma hatályos: 0.3% / 15 000) vs új (0.5% / 25 000).
+    expect(dialog).toHaveTextContent('0.3')
+    expect(dialog).toHaveTextContent(fmtText(15000))
+    expect(dialog).toHaveTextContent('0.5')
+    expect(dialog).toHaveTextContent(fmtText(25000))
+    // A kötelező visszavonhatatlanság-mondat (i18n).
+    expect(dialog).toHaveTextContent('Ez a döntés a jövőben visszamenőlegesen nem módosítható.')
+    expect(mocks.createRate).not.toHaveBeenCalled()
+  })
+
+  it('R6/FR-4 (FK-100): Mégse → dialog eltűnik, createRate NEM hívódik, az űrlap értékei megmaradnak', async () => {
+    mocks.roles.value = ['foertektar']
+    mocks.listRates.mockResolvedValue(relativeRatesDesc())
+
+    render(<TransactionLevyRatesPage />)
+    await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    const dateValue = isoDaysFromToday(40)
+    fillDifferingForm()
+    fireEvent.click(screen.getByRole('button', { name: 'Mentés' }))
+
+    await screen.findByRole('alertdialog')
+    fireEvent.click(screen.getByRole('button', { name: 'Mégse' }))
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(mocks.createRate).not.toHaveBeenCalled()
+    // Az űrlap DOM-ja mounton maradt — a kitöltött értékek megőrződnek (uncontrolled).
+    expect((screen.getByLabelText('Hatálybalépés dátuma') as HTMLInputElement).value).toBe(
+      dateValue,
+    )
+    expect((screen.getByLabelText('Alap ráta (%)') as HTMLInputElement).value).toBe('0.5')
+    expect((screen.getByLabelText('Alap plafon (Ft)') as HTMLInputElement).value).toBe('25000')
+  })
+
+  it('R7/FR-4 (FK-100): megerősítés → createRate PONTOSAN EGYSZER a parse-olt payload-dal', async () => {
+    mocks.roles.value = ['foertektar']
+    mocks.listRates.mockResolvedValue(relativeRatesDesc())
+    mocks.createRate.mockResolvedValue(relativeRatesDesc()[0])
+
+    render(<TransactionLevyRatesPage />)
+    await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    const dateValue = isoDaysFromToday(40)
+    fillDifferingForm()
+    fireEvent.click(screen.getByRole('button', { name: 'Mentés' }))
+
+    await screen.findByRole('alertdialog')
+    fireEvent.click(screen.getByRole('button', { name: 'Küldés megerősítése' }))
+
+    await waitFor(() => expect(mocks.createRate).toHaveBeenCalledTimes(1))
+    expect(mocks.createRate).toHaveBeenCalledWith({
+      effectiveFrom: dateValue,
+      baseRatePercent: 0.5,
+      baseRateCapHuf: 25000,
+      supplementRatePercent: 0.5,
+      supplementRateCapHuf: 25000,
+      conversionSingleSideFlag: true,
+    })
+  })
+
+  it('R8/FR-4 (FK-100): baseline-nal azonos értékek → nincs dialog, közvetlen mentés', async () => {
+    mocks.roles.value = ['foertektar']
+    mocks.listRates.mockResolvedValue(relativeRatesDesc())
+    mocks.createRate.mockResolvedValue(relativeRatesDesc()[1])
+
+    render(<TransactionLevyRatesPage />)
+    await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('Hatálybalépés dátuma'), {
+      target: { value: isoDaysFromToday(40) },
+    })
+    fireEvent.change(screen.getByLabelText('Alap ráta (%)'), { target: { value: '0.3' } })
+    fireEvent.change(screen.getByLabelText('Alap plafon (Ft)'), { target: { value: '15000' } })
+    fireEvent.change(screen.getByLabelText('Kiegészítő ráta (%)'), { target: { value: '0.3' } })
+    fireEvent.change(screen.getByLabelText('Kiegészítő plafon (Ft)'), {
+      target: { value: '15000' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Mentés' }))
+
+    await waitFor(() => expect(mocks.createRate).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('R9/FR-4 (FK-100): csak jövőbeli history-sorok → nincs baseline, nincs dialog, közvetlen mentés', async () => {
+    mocks.roles.value = ['foertektar']
+    mocks.listRates.mockResolvedValue([relativeRatesDesc()[0]]) // csak a ma+30 napos sor
+    mocks.createRate.mockResolvedValue(relativeRatesDesc()[0])
+
+    render(<TransactionLevyRatesPage />)
+    await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    fillDifferingForm()
+    fireEvent.click(screen.getByRole('button', { name: 'Mentés' }))
+
+    await waitFor(() => expect(mocks.createRate).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('R10/FR-4 (FK-100): Escape → dialog eltűnik, createRate NEM hívódik', async () => {
+    mocks.roles.value = ['foertektar']
+    mocks.listRates.mockResolvedValue(relativeRatesDesc())
+
+    render(<TransactionLevyRatesPage />)
+    await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    fillDifferingForm()
+    fireEvent.click(screen.getByRole('button', { name: 'Mentés' }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(mocks.createRate).not.toHaveBeenCalled()
+  })
+
+  it('R11/FR-1 UI (FK-100): a singleSideInfo tájékoztató szöveg megjelenik a checkbox mellett', async () => {
+    mocks.roles.value = ['foertektar']
+
+    render(<TransactionLevyRatesPage />)
+
+    await waitFor(() => expect(screen.getByText('Új ráta rögzítése')).toBeInTheDocument())
+    expect(
+      screen.getByText(
+        'A konverzió egyszeri adóztatása (TRUE alapértelmezés) könyvelői/adótanácsadói megerősítésre vár — nem végleges jogi állásfoglalás.',
+      ),
+    ).toBeInTheDocument()
   })
 })

@@ -55,7 +55,13 @@ public class TransactionLevyReportDto {
         /** FR-9: a küszöb feletti tételek HUF-alapjának összege a sorban. */
         private BigDecimal largeBaseHuf;
 
-        /** FR-10: a sor hat illeték-komponensének összege (a Nagy-alap NEM illeték). */
+        /**
+         * FR-10 / FR-8 (FK-100): a sor illeték-összege — a 3 típus-csoport
+         * (Vétel / Eladás / Konverzió) × 4 pénz-mező (normalBaseLevy,
+         * normalSupplementLevy, aboveThresholdBaseLevy,
+         * aboveThresholdSupplementLevy) = 12 pénz-komponens összege.
+         * A darabszám (aboveThresholdCount) és a largeBaseHuf NEM illeték.
+         */
         private BigDecimal levyTotal;
     }
 }

@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.repository.TransactionLevyRateHistoryRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -94,16 +95,28 @@ public class TransactionLevyReportService {
     private final TransactionLevyRateHistoryRepository rateHistoryRepository;
     private final BranchRepository branchRepository;
     private final AuditLogService auditLogService;
+    /** FK-100 FR-6: a region-szűrő dictionary-validációja (REGION kategória). */
+    private final DictionaryRepository dictionaryRepository;
 
     /**
      * Riport számítása a megadott (inclusive) időszakra, opcionális iroda-szűréssel.
+     * Kompatibilitási túlterhelés (FK-100 FR-6): region-szűrő nélkül.
+     */
+    public TransactionLevyReportDto getReport(UUID branchId, LocalDate from, LocalDate to) {
+        return getReport(branchId, from, to, null);
+    }
+
+    /**
+     * Riport számítása a megadott (inclusive) időszakra, opcionális iroda- és
+     * terület-szűréssel (FK-100 FR-6).
      *
      * <p>Sorrend (pitfall 23): előbb RBAC (egy illetéktelen hívó ne
      * különböztethesse meg a valid és invalid tartományt hitelesítés előtt),
      * aztán a batchelt intervallum-validáció (D8/D15), majd a tenant- és
      * ráta-feloldás.</p>
      */
-    public TransactionLevyReportDto getReport(UUID branchId, LocalDate from, LocalDate to) {
+    public TransactionLevyReportDto getReport(UUID branchId, LocalDate from, LocalDate to,
+                                              String region) {
         assertAuthorized();
         validateRange(from, to);
 
@@ -115,14 +128,28 @@ public class TransactionLevyReportService {
                             "Iroda nem található.", ERR_CROSS_TENANT, HttpStatus.NOT_FOUND));
         }
 
+        // FK-100 FR-6: region-szűrő normalizálás + dictionary-validáció a forrás-query
+        // ELŐTT (fail-fast, nincs információ-szivárgás): blank → null (nincs szűrő),
+        // nem-blank → a REGION dictionary aktív bejegyzése kötelező (B43/B44),
+        // a trimmelt érték megy a validációba ÉS a finder-be egyaránt (B45, addendum #7).
+        String trimmedRegion = region == null ? null : region.trim();
+        String normalizedRegion = (trimmedRegion == null || trimmedRegion.isEmpty()) ? null : trimmedRegion;
+        if (normalizedRegion != null) {
+            dictionaryRepository.findByCategoryAndCode("REGION", normalizedRegion)
+                    .filter(entry -> Boolean.TRUE.equals(entry.getIsActive()))
+                    .orElseThrow(() -> new ValidationException(
+                            "Ismeretlen terület kód: " + normalizedRegion
+                                    + ". Válasszon a Terület-listából."));
+        }
+
         List<LevyRate> ratesDesc = rateHistoryRepository
                 .findByCompanyIdOrderByEffectiveFromDesc(companyId)
                 .stream()
                 .map(TransactionLevyReportService::toLevyRate)
                 .toList();
 
-        List<Object[]> sourceRows =
-                transactionRepository.findTransactionLevySourceRows(companyId, branchId, from, to);
+        List<Object[]> sourceRows = transactionRepository
+                .findTransactionLevySourceRows(companyId, branchId, from, to, normalizedRegion);
 
         FoldState state = new FoldState();
         for (Object[] sourceRow : sourceRows) {
@@ -156,6 +183,16 @@ public class TransactionLevyReportService {
 
         for (Map.Entry<UUID, List<SourceRowData>> entry : state.conversionGroups.entrySet()) {
             foldConversionGroup(state, ratesDesc, entry.getValue());
+        }
+
+        // FK-100 FR-3: üres hónapnál (0 forrás-sor) az appliedRates-be bekerülnek
+        // az időszakot lefedő ráta-sorok, hogy a küszöb-badge forrás-sor nélkül is
+        // megjelenhessen. CSAK a sourceRows.isEmpty() alakban fut — nem üres forrásnál
+        // (pl. B27/B28/B30/B31/B32: sztornózott csoport, nem üres forrás) a fold-alapú
+        // töltés marad az egyetlen forrás. A D7 fail-closed itt NEM fut: tranzakció
+        // híján nincs tranzakció-dátum, amire rátát kellene feloldani (B37).
+        if (sourceRows.isEmpty()) {
+            populateCoveringRates(state, ratesDesc, from, to);
         }
 
         // D1 (round-3): sorrend-szerződés (TransactionLevyReportDto.rows): date ASC,
@@ -216,6 +253,9 @@ public class TransactionLevyReportService {
 
         if (rate.conversionSingleSide()) {
             // TRUE: egy illeték-pár a Konverzió oszlopcsoportban; Eladás-komponens = 0.
+            // FR-1 (FK-100) TBD: a TRUE alapértelmezés (konverzió EGYSZER adózik)
+            // könyvelői/adótanácsadói megerősítésre vár — nem végleges jogi
+            // állásfoglalás. A számítás a megerősítésig változatlan marad.
             LevyAmounts amounts = TransactionLevyCalculator.compute(baseRow.hufAmount(), rate);
             TransactionLevyReportDto.Row row = rowFor(state, baseRow.date(), baseRow);
             addLevy(row.getConversion(), amounts);
@@ -248,6 +288,44 @@ public class TransactionLevyReportService {
             row.setLargeBaseHuf(row.getLargeBaseHuf().add(leg.hufAmount()));
         }
         row.setLevyTotal(row.getLevyTotal().add(amounts.baseLevy()).add(amounts.supplementLevy()));
+    }
+
+    /**
+     * FK-100 FR-3: az {@code [from, to]} időszakot lefedő ráta-sorok felvétele az
+     * {@code appliedRates}-be üres hónap (0 forrás-sor) esetén, hogy a küszöb-badge
+     * forrás-sor nélkül is megjelenhessen.
+     *
+     * <p>Felvételi szabály (Design decision 5): az ascending-rendezett
+     * {@code e1<…<en} ráta-sorok közül {@code ei} kerül be, ha
+     * {@code effFrom(ei) <= to} ÉS ({@code i == n} VAGY
+     * {@code effFrom(e(i+1)) > from}). Ez lefedi azt az alakot is, amikor egy
+     * {@code from} ELŐTT hatályba lépett ráta utódja {@code from} után kezdődik
+     * — az a ráta is fedi az időszakot (a {@code e(i+1) > from} tag). A
+     * {@code to} után kezdődő ráta soha nem fed (B39).</p>
+     *
+     * <p>Iteráció: a lista már DESC-rendezett; a VÉGÉTŐL olvasva ascending sorrendet
+     * kapunk, így az {@code e(i+1) > from} ablak off-by-one nélkül számolható
+     * (addendum #4). A {@code recordAppliedRate} TreeMap-dedupja + derived
+     * {@code thresholdHuf}-ja változatlanul érvényesül.</p>
+     */
+    private static void populateCoveringRates(FoldState state, List<LevyRate> ratesDesc,
+                                              LocalDate from, LocalDate to) {
+        int n = ratesDesc.size();
+        for (int asc = 0; asc < n; asc++) {
+            // asc index asc ↔ DESC index n-1-asc.
+            LevyRate rate = ratesDesc.get(n - 1 - asc);
+            if (rate.effectiveFrom().isAfter(to)) {
+                continue;
+            }
+            boolean isLast = asc == n - 1;
+            if (!isLast) {
+                LevyRate next = ratesDesc.get(n - 1 - (asc + 1));
+                if (!next.effectiveFrom().isAfter(from)) {
+                    continue;
+                }
+            }
+            state.recordAppliedRate(rate);
+        }
     }
 
     // ============================ HELPEREK ============================

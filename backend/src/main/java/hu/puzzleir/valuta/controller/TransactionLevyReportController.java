@@ -32,7 +32,8 @@ public class TransactionLevyReportController {
     public ResponseEntity<TransactionLevyReportDto> report(
             @RequestParam(required = false) UUID branchId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(reportService.getReport(branchId, from, to));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String region) {
+        return ResponseEntity.ok(reportService.getReport(branchId, from, to, region));
     }
 }

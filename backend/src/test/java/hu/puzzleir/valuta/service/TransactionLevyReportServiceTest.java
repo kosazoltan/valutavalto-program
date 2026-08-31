@@ -3,12 +3,14 @@ package hu.puzzleir.valuta.service;
 import hu.puzzleir.valuta.dto.levy.TransactionLevyReportDto;
 import hu.puzzleir.valuta.dto.levy.TypeGroupDto;
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Dictionary;
 import hu.puzzleir.valuta.entity.TransactionLevyRateHistory;
 import hu.puzzleir.valuta.entity.TransactionStatus;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
+import hu.puzzleir.valuta.repository.DictionaryRepository;
 import hu.puzzleir.valuta.repository.TransactionLevyRateHistoryRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
@@ -74,13 +76,15 @@ class TransactionLevyReportServiceTest {
     @Mock private TransactionLevyRateHistoryRepository rateHistoryRepository;
     @Mock private BranchRepository branchRepository;
     @Mock private AuditLogService auditLogService;
+    @Mock private DictionaryRepository dictionaryRepository;
 
     private TransactionLevyReportService service;
 
     @BeforeEach
     void setUp() {
         service = new TransactionLevyReportService(
-                transactionRepository, rateHistoryRepository, branchRepository, auditLogService);
+                transactionRepository, rateHistoryRepository, branchRepository, auditLogService,
+                dictionaryRepository);
     }
 
     @AfterEach
@@ -139,7 +143,8 @@ class TransactionLevyReportServiceTest {
     }
 
     private void stubRows(Object[]... rows) {
-        when(transactionRepository.findTransactionLevySourceRows(eq(COMPANY_ID), any(), any(), any()))
+        when(transactionRepository.findTransactionLevySourceRows(
+                eq(COMPANY_ID), any(), any(), any(), any()))
                 .thenReturn(List.of(rows));
     }
 
@@ -495,7 +500,7 @@ class TransactionLevyReportServiceTest {
         TransactionLevyReportDto report = service.getReport(null, FROM, TO);
 
         verify(transactionRepository, times(1)).findTransactionLevySourceRows(
-                eq(COMPANY_ID), isNull(), eq(FROM), eq(TO));
+                eq(COMPANY_ID), isNull(), eq(FROM), eq(TO), isNull());
         assertThat(report.getRows()).hasSize(1);
         assertThat(report.getRows().get(0).getBuy().getNormalBaseLevy()).isEqualByComparingTo("13500");
         assertThat(report.getRows().get(0).getLevyTotal()).isEqualByComparingTo("27000");
@@ -513,7 +518,7 @@ class TransactionLevyReportServiceTest {
         TransactionLevyReportDto report = service.getReport(null, FROM, TO);
 
         verify(transactionRepository).findTransactionLevySourceRows(
-                eq(COMPANY_ID), isNull(), eq(FROM), eq(TO));
+                eq(COMPANY_ID), isNull(), eq(FROM), eq(TO), isNull());
         assertThat(report.getRows()).isEmpty();
         assertThat(report.getTotals().getLevyTotal()).isEqualByComparingTo("0");
     }
@@ -636,7 +641,7 @@ class TransactionLevyReportServiceTest {
                 .contains("\"KAT\":\"AUTH\"")
                 .contains("\"VV-AUTH-006\"");
         verify(transactionRepository, never())
-                .findTransactionLevySourceRows(any(), any(), any(), any());
+                .findTransactionLevySourceRows(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -668,7 +673,7 @@ class TransactionLevyReportServiceTest {
                 });
 
         verify(transactionRepository, never())
-                .findTransactionLevySourceRows(any(), any(), any(), any());
+                .findTransactionLevySourceRows(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -684,7 +689,7 @@ class TransactionLevyReportServiceTest {
 
         assertThat(report.getRows()).hasSize(1);
         verify(transactionRepository).findTransactionLevySourceRows(
-                eq(COMPANY_ID), eq(BRANCH_ID_001), eq(FROM), eq(TO));
+                eq(COMPANY_ID), eq(BRANCH_ID_001), eq(FROM), eq(TO), isNull());
     }
 
     // ============================ B18–B19: D7 fail-closed ============================
@@ -728,7 +733,7 @@ class TransactionLevyReportServiceTest {
         service.getReport(null, FROM, TO);
 
         verify(transactionRepository, times(1))
-                .findTransactionLevySourceRows(eq(COMPANY_ID), isNull(), eq(FROM), eq(TO));
+                .findTransactionLevySourceRows(eq(COMPANY_ID), isNull(), eq(FROM), eq(TO), isNull());
         verify(rateHistoryRepository, times(1))
                 .findByCompanyIdOrderByEffectiveFromDesc(COMPANY_ID);
     }
@@ -742,7 +747,7 @@ class TransactionLevyReportServiceTest {
                 .isInstanceOf(ValidationException.class);
 
         verify(transactionRepository, never())
-                .findTransactionLevySourceRows(any(), any(), any(), any());
+                .findTransactionLevySourceRows(any(), any(), any(), any(), any());
     }
 
     // ============================ B22: több ráta-sor ============================
@@ -805,7 +810,7 @@ class TransactionLevyReportServiceTest {
                 .hasMessageContaining("62 nap");
 
         verify(transactionRepository, never())
-                .findTransactionLevySourceRows(any(), any(), any(), any());
+                .findTransactionLevySourceRows(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -831,6 +836,208 @@ class TransactionLevyReportServiceTest {
                 .hasMessageStartingWith("VV-AUTH-006");
 
         verify(transactionRepository, never())
-                .findTransactionLevySourceRows(any(), any(), any(), any());
+                .findTransactionLevySourceRows(any(), any(), any(), any(), any());
+    }
+
+    // ============================ B36–B40: FK-100 FR-3 — üres hónap appliedRates ============================
+
+    /** FK-100 FR-6: aktív REGION dictionary-bejegyzés mockja. */
+    private static Dictionary regionEntry(String code, boolean active) {
+        return Dictionary.builder()
+                .category("REGION")
+                .code(code)
+                .name(code)
+                .isActive(active)
+                .build();
+    }
+
+    @Test
+    @DisplayName("B36/FR-3: 0 forrás-sor + 2013-as ráta → appliedRates=[2013], küszöb-badge adat, totals 0")
+    void b36_emptyMonthPopulatesCoveringRate() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows();
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).isEmpty();
+        assertThat(report.getTotals().getLevyTotal()).isEqualByComparingTo("0");
+        assertThat(report.getAppliedRates())
+                .as("B36/FR-3: üres hónapra is megjelenik az időszakra hatályos ráta")
+                .hasSize(1);
+        assertThat(report.getAppliedRates().get(0).getEffectiveFrom()).isEqualTo(LocalDate.of(2013, 1, 1));
+        assertThat(report.getAppliedRates().get(0).getThresholdHuf()).isEqualByComparingTo("4444445");
+    }
+
+    @Test
+    @DisplayName("B37/FR-3 él: 0 forrás-sor + NINCS ráta → üres appliedRates, NEM D7 fail-closed 400")
+    void b37_emptyMonthWithoutRatesIsEmptyNotFailClosed() {
+        authenticate("FOERTEKTAR");
+        stubRates();
+        stubRows();
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).isEmpty();
+        assertThat(report.getAppliedRates()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("B38/FR-3: két lefedő ráta (2013 + 2026-08-15) → appliedRates ASC, mindkét derived küszöbbel")
+    void b38_emptyMonthPopulatesBothCoveringRatesAscending() {
+        authenticate("FOERTEKTAR");
+        // DESC fixture (a repository DESC-ben adja): az újabb ráta előbb.
+        stubRates(rateRow(LocalDate.of(2026, 8, 15), "0.300", "15000.00", true), seedRate());
+        stubRows();
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getAppliedRates())
+                .extracting(r -> r.getEffectiveFrom())
+                .containsExactly(LocalDate.of(2013, 1, 1), LocalDate.of(2026, 8, 15));
+        assertThat(report.getAppliedRates().get(0).getThresholdHuf()).isEqualByComparingTo("4444445");
+        assertThat(report.getAppliedRates().get(1).getThresholdHuf()).isEqualByComparingTo("5000000");
+    }
+
+    @Test
+    @DisplayName("B39/FR-3 él: a 'to'-nál későbbi ráta (2026-09-15) NEM kerül appliedRates-be")
+    void b39_futureOnlyRateExcludedFromEmptyMonth() {
+        authenticate("FOERTEKTAR");
+        stubRates(rateRow(LocalDate.of(2026, 9, 15), "0.300", "15000.00", true), seedRate());
+        stubRows();
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getAppliedRates())
+                .as("B39: csak a 2013-as ráta fed le; a 09-15-ös az időszak után lép hatályba")
+                .hasSize(1);
+        assertThat(report.getAppliedRates().get(0).getEffectiveFrom()).isEqualTo(LocalDate.of(2013, 1, 1));
+    }
+
+    @Test
+    @DisplayName("B40/FR-3 regresszió: nem üres forrás → appliedRates továbbra is CSAK fold-alapú")
+    void b40_nonEmptySourceKeepsFoldOnlyPopulation() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // B7 lejátszása: egy önálló BUY sor.
+        stubRows(buyRow(D1, "3000000", "C1"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).hasSize(1);
+        assertThat(report.getAppliedRates())
+                .as("B40: nem üres forrásnál a fold recordAppliedRate az egyetlen forrás")
+                .hasSize(1);
+        assertThat(report.getAppliedRates().get(0).getEffectiveFrom()).isEqualTo(LocalDate.of(2013, 1, 1));
+    }
+
+    // ============================ B41–B46: FK-100 FR-6 — region-szűrő ============================
+
+    @Test
+    @DisplayName("B41/FR-6: region null → finder region=null-lal hívódik, az eredmény a mai")
+    void b41_nullRegionPassesNullToFinder() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(buyRow(D1, "3000000", "C1"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO, null);
+
+        assertThat(report.getRows()).hasSize(1);
+        verify(transactionRepository, times(1)).findTransactionLevySourceRows(
+                eq(COMPANY_ID), isNull(), eq(FROM), eq(TO), isNull());
+    }
+
+    @Test
+    @DisplayName("B42/FR-6: region SZEGED (dictionary aktív) → finder SZEGED-del hívódik")
+    void b42_validRegionPassesThroughToFinder() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(buyRow(D1, "3000000", "C1"));
+        when(dictionaryRepository.findByCategoryAndCode("REGION", "SZEGED"))
+                .thenReturn(Optional.of(regionEntry("SZEGED", true)));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO, "SZEGED");
+
+        assertThat(report.getRows()).hasSize(1);
+        verify(transactionRepository, times(1)).findTransactionLevySourceRows(
+                eq(COMPANY_ID), isNull(), eq(FROM), eq(TO), eq("SZEGED"));
+    }
+
+    @Test
+    @DisplayName("B43/FR-6: ismeretlen region-kód (üres dictionary) → ValidationException, finder NEM fut")
+    void b43_unknownRegionRejectedBeforeSourceQuery() {
+        authenticate("FOERTEKTAR");
+        when(dictionaryRepository.findByCategoryAndCode("REGION", "ISMERETLEN"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getReport(null, FROM, TO, "ISMERETLEN"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("ISMERETLEN");
+
+        verify(transactionRepository, never())
+                .findTransactionLevySourceRows(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("B44/FR-6: ismert, de inaktív REGION bejegyzés → ValidationException")
+    void b44_inactiveRegionRejected() {
+        authenticate("FOERTEKTAR");
+        when(dictionaryRepository.findByCategoryAndCode("REGION", "SZEGED"))
+                .thenReturn(Optional.of(regionEntry("SZEGED", false)));
+
+        assertThatThrownBy(() -> service.getReport(null, FROM, TO, "SZEGED"))
+                .isInstanceOf(ValidationException.class);
+
+        verify(transactionRepository, never())
+                .findTransactionLevySourceRows(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("B45/FR-6: '  SZEGED  ' → trimmelve: dictionary ÉS finder is 'SZEGED'-del hívódik")
+    void b45_regionIsTrimmedForValidationAndFinder() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(buyRow(D1, "3000000", "C1"));
+        when(dictionaryRepository.findByCategoryAndCode("REGION", "SZEGED"))
+                .thenReturn(Optional.of(regionEntry("SZEGED", true)));
+
+        service.getReport(null, FROM, TO, "  SZEGED  ");
+
+        verify(dictionaryRepository).findByCategoryAndCode("REGION", "SZEGED");
+        verify(transactionRepository, times(1)).findTransactionLevySourceRows(
+                eq(COMPANY_ID), isNull(), eq(FROM), eq(TO), eq("SZEGED"));
+    }
+
+    @Test
+    @DisplayName("B45b/FR-6: whitespace-only region '   ' → nincs szűrő: finder region=null (no-filter)")
+    void b45b_blankRegionMeansNoFilter() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows(buyRow(D1, "3000000", "C1"));
+
+        service.getReport(null, FROM, TO, "   ");
+
+        verify(dictionaryRepository, never()).findByCategoryAndCode(any(), any());
+        verify(transactionRepository, times(1)).findTransactionLevySourceRows(
+                eq(COMPANY_ID), isNull(), eq(FROM), eq(TO), isNull());
+    }
+
+    @Test
+    @DisplayName("B46/FR-6+FR-3: region valid + 0 sor + seedRate → appliedRates töltött (badge-adat van)")
+    void b46_regionFilterWithEmptyMonthStillPopulatesRates() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        stubRows();
+        when(dictionaryRepository.findByCategoryAndCode("REGION", "SZEGED"))
+                .thenReturn(Optional.of(regionEntry("SZEGED", true)));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO, "SZEGED");
+
+        assertThat(report.getRows()).isEmpty();
+        assertThat(report.getAppliedRates())
+                .as("B46: region-szűrt üres hónapnál is van küszöb-badge adat")
+                .hasSize(1);
+        assertThat(report.getAppliedRates().get(0).getEffectiveFrom()).isEqualTo(LocalDate.of(2013, 1, 1));
+        assertThat(report.getAppliedRates().get(0).getThresholdHuf()).isEqualByComparingTo("4444445");
     }
 }
