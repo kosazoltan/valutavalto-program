@@ -95,7 +95,7 @@ async function mockInventoryApis(page: Page) {
     }
 
     const bodyByPath: Record<string, unknown> = {
-      // FK-040: a "Mobil készlet-riportok" deviza-legördülő a currencyApi.list()-ből (GET /currencies)
+      // FKH-043: a "Mobil készlet-riportok" panel rejtve; a currency mock a flag-visszakapcsoláshoz marad.
       // töltődik; e nélkül a lista üres és a "Művelet rögzítése" gomb disabled marad.
       '/api/v1/currencies': [
         { id: 978, code: 'EUR', name: 'Euró', decimals: 2, active: true, displayOrder: 1 },
@@ -224,7 +224,7 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/central-workstation$/)
 }
 
-test('inventory műveleti panel mobil viewporton valós backend szerződésekre köt', async ({
+test('FKH-043: /inventory mobil viewporton NEM mutatja a Mobil készlet-riportok panelt, a záró HUF kártyát igen', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -232,33 +232,9 @@ test('inventory műveleti panel mobil viewporton valós backend szerződésekre 
   await login(page)
 
   await page.goto('/inventory', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByTestId('inventory-operation-panel')).toBeVisible()
-  await expect(page.getByText('Mobil készlet-riportok')).toBeVisible()
-
-  // FK-040: a deviza-legördülő betölt (currencyApi.list) és auto-kiválasztja az első devizát;
-  // a "Művelet rögzítése" gomb csak ezután engedélyezett.
-  await expect(page.getByLabel('Deviza kiválasztása')).toContainText('EUR')
-
-  await page.getByPlaceholder('Összeg').fill('250')
-  await page.getByPlaceholder('Opcionális').fill('Mobil E2E bank kivét')
-  const bankWithdrawRequest = page.waitForRequest(
-    (request) => request.method() === 'POST' && request.url().includes('/inventory/bank-withdraw'),
-  )
-  await page.getByRole('button', { name: 'Művelet rögzítése' }).click()
-  await bankWithdrawRequest
-
-  const approveRequest = page.waitForRequest(
-    (request) => request.method() === 'POST' && request.url().includes('/inventory/77/approve'),
-  )
-  await page.getByRole('button', { name: 'Készletmozgás #77 jóváhagyása' }).click()
-  await approveRequest
-
-  const regenerationRequest = page.waitForRequest(
-    (request) =>
-      request.method() === 'POST' && request.url().includes('/inventory/regeneration/run'),
-  )
-  await page.getByRole('button', { name: 'Regenerálás futtatása' }).click()
-  await regenerationRequest
+  await expect(page.getByText('Értéktári záró HUF készlet')).toBeVisible()
+  await expect(page.getByTestId('inventory-operation-panel')).toHaveCount(0)
+  await expect(page.getByText('Mobil készlet-riportok')).toHaveCount(0)
 
   const horizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,

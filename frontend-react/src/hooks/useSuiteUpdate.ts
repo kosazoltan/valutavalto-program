@@ -6,6 +6,7 @@ import { useAppMode } from './useAppMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
 import { useAuthStore } from '../stores/authStore'
 import { canonicalizeRoleForAppMode } from '../utils/appModeRoles'
+import { rememberOpenDayObservation, clearOpenDayObservation } from '../utils/openDayMarker'
 
 /**
  * A pénztárgép munkafolyamat-állapota a suite-frissítés szempontjából.
@@ -126,8 +127,16 @@ export function useSuiteUpdate(): {
       try {
         const isOpen = await dailySessionApi.isOpen()
         if (isOpen) {
+          // Pozitív bizonyíték: a nap NYITVA -> a belépőképernyő nem állíthatja,
+          // hogy „a nap még nem indult el" (C3). A marker localStorage-ban él:
+          // túléli az app.quit()-et (Google-OTP hurok) is, éjfélkor magától elévül.
+          rememberOpenDayObservation()
           next = 'SHIFT_OPEN'
         } else {
+          // Pozitív bizonyíték: a nap NINCS nyitva -> a marker törlendő. Hálózati
+          // hiba esetén az isOpen() dob, tehát ide sosem jutunk el — a catch-ág
+          // szándékosan NEM nyúl a markerhez (döntés 4: hiba nem gyárthat ablakot).
+          clearOpenDayObservation()
           // Nincs nyitott munkamenet: a mai nap már lezárult, vagy még el sem indult.
           // A kettő telepítés szempontjából egyenértékű (mindkettő ablak), de a
           // dialógus szövege eltér, ezért megkülönböztetjük.

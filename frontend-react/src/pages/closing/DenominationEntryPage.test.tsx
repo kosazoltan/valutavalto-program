@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DenominationEntryPage from './DenominationEntryPage'
+import { formatDecimal } from '../../utils/numberFormat'
 
 /**
  * FK-078 — kozos, kategoria-tudatos becimletezo oldal.
@@ -116,6 +117,37 @@ const EUR_DENOMINATIONS = [
     active: true,
   },
 ]
+
+/** FKH-042 T3b: kétvalutás törzs — a valuta-váltás a már lekért tömböt szűri, nem hív újra. */
+const TWO_CURRENCIES = [
+  { id: 1, code: 'EUR', name: 'Euró' },
+  { id: 2, code: 'HUF', name: 'Forint' },
+]
+const SELF_CHECK_TWO = [
+  {
+    currencyCode: 'EUR',
+    currencyId: 1,
+    denominatedAmount: 0,
+    expectedBalance: 150,
+    difference: -150,
+    matches: false,
+  },
+  {
+    currencyCode: 'HUF',
+    currencyId: 2,
+    denominatedAmount: 0,
+    expectedBalance: 5000,
+    difference: -5000,
+    matches: false,
+  },
+]
+
+/**
+ * FKH-042 P1: a `formatDecimal` hu-HU lokalizációja U+00A0 (NBSP) ezreselválasztót ad
+ * ≥ 10 000 esetén — az ASCII-szóközös assert tévesen bukmna. Ez a normalizáló minden
+ * összeg-assert előtt összecsukja a törhetetlen szóközöket.
+ */
+const normalizeAmount = (el: HTMLElement) => (el.textContent ?? '').replace(/[\u00a0\u202f]/g, ' ')
 
 function renderPage() {
   return render(<DenominationEntryPage />)
@@ -538,7 +570,267 @@ describe('DenominationEntryPage — FK-078', () => {
 
     await user.click(await screen.findByTestId('denomination-entry-save'))
 
-    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(1))
-    expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'EVENING')
+    // FKH-042 D13 (deklarált kontraktus-frissítés, nem tesztgyengítés): a mountkori
+    // self-check (FR-1) új, szándékos viselkedés — így a mentés utáni hívással együtt
+    // 2 hívás várható, és MINDKETTŐ a helyes EVENING kategóriával kell menjen
+    // (FKH-038 regresszióőr — a kategória-assert sosem törlődik).
+    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(2))
+    expect(
+      mocks.balancesSelfCheck.mock.calls.every((c) => c[0] === 'branch-1' && c[1] === 'EVENING'),
+    ).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FKH-042 — Élő célösszeg („Elvárt készlet") a címlettáblázat FELETT (RED:
+// a tesztek a még nem implementált viselkedést rögzítik).
+//
+//  FR-1: mountkor self-check hívás Mentés nélkül; a táblázat felett megjelenik
+//        az „Elvárt készlet: X <CODE>".
+//  FR-2: minden Darab-változás kliens-oldalon (0 extra API-hívás) frissíti az
+//        eltérést: expectedBalance − calculatedTotal (pozitív = még hiányzik).
+//  FR-3: EVENING / HANDLING_FEE / VAT — ugyanaz a komponens, nincs klón.
+//  FR-4: a lap alji Önellenőrzés blokk megmarad (T5).
+//  FR-5: az elvárt érték KIZÁRÓLAG a meglévő DTO expectedBalance-e (T6).
+//
+//  P1: az összeg-assertek a normalizeAmount() helperrel futnak (NBSP-elválasztó).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('DenominationEntryPage — FKH-042 élő célösszeg', () => {
+  const SELF_CHECK_EUR_150 = [
+    {
+      currencyCode: 'EUR',
+      currencyId: 1,
+      denominatedAmount: 0,
+      expectedBalance: 150,
+      difference: -150,
+      matches: false,
+    },
+  ]
+
+  it('T1 (FR-1): mountkor — Mentés nélkül — lefut a self-check, és az „Elvárt készlet" a táblázat fölé kerül', async () => {
+    mocks.balancesSelfCheck.mockResolvedValue(SELF_CHECK_EUR_150)
+    renderPage()
+
+    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'EVENING'))
+    expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(1)
+
+    expect(screen.getByTestId('denomination-entry-expected-panel')).toBeInTheDocument()
+    const expected = normalizeAmount(await screen.findByTestId('denomination-entry-expected'))
+    expect(expected).toContain('150,00')
+    expect(expected).toContain('EUR')
+
+    // FR-1: mindez Mentés nélkül — a payload-API nem hívódhat.
+    expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
+  })
+
+  it('T1b (AC-2): az elvártkészlet-panel DOM-sorrendben a táblázat Összesen sora ELŐTT áll', async () => {
+    mocks.balancesSelfCheck.mockResolvedValue(SELF_CHECK_EUR_150)
+    renderPage()
+
+    const panel = await screen.findByTestId('denomination-entry-expected-panel')
+    const total = await screen.findByTestId('denomination-entry-total')
+    expect(panel.compareDocumentPosition(total) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('T2 (FR-2/AC-3): Darab-beírás az eltérést kliens-oldalon frissíti — nulla extra self-check hívás', async () => {
+    mocks.balancesSelfCheck.mockResolvedValue([
+      {
+        currencyCode: 'EUR',
+        currencyId: 1,
+        denominatedAmount: 0,
+        expectedBalance: 100,
+        difference: -100,
+        matches: false,
+      },
+    ])
+    const user = userEvent.setup()
+    renderPage()
+
+    const qty = await screen.findByTestId('denomination-entry-qty-10')
+    await user.type(qty, '2') // 2 × 50 EUR = 100
+
+    await waitFor(() =>
+      expect(normalizeAmount(screen.getByTestId('denomination-entry-total'))).toContain('100,00'),
+    )
+    await waitFor(() =>
+      expect(normalizeAmount(screen.getByTestId('denomination-entry-diff'))).toContain('0,00'),
+    )
+    // AC-3: pontosan egy (mountkori) hívás — a Darab onChange sosem hív API-t.
+    expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(1)
+    expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
+  })
+
+  it('T3 (FR-2/D2): az élő eltérés előjele helyes — pozitív = még hiányzik, negatív = többlet', async () => {
+    mocks.balancesSelfCheck.mockResolvedValue(SELF_CHECK_EUR_150)
+    const user = userEvent.setup()
+    renderPage()
+
+    const qty = await screen.findByTestId('denomination-entry-qty-10')
+    await user.type(qty, '1') // 1 × 50 = 50 → eltérés = 150 − 50 = +100
+
+    await waitFor(() => {
+      const diff = normalizeAmount(screen.getByTestId('denomination-entry-diff'))
+      expect(diff).toContain('100,00')
+      expect(diff).not.toContain('-')
+    })
+
+    await user.type(qty, '{backspace}4') // 4 × 50 = 200 → eltérés = 150 − 200 = −50
+    await waitFor(() =>
+      expect(normalizeAmount(screen.getByTestId('denomination-entry-diff'))).toContain('-50,00'),
+    )
+    expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(1)
+  })
+
+  it('T3b (D4): valuta-váltás a már lekért self-check tömböt szűri — nincs újrakérés', async () => {
+    mocks.currencyGetActive.mockResolvedValue(TWO_CURRENCIES)
+    mocks.balancesSelfCheck.mockResolvedValue(SELF_CHECK_TWO)
+    const user = userEvent.setup()
+    renderPage()
+
+    const expectedBefore = normalizeAmount(await screen.findByTestId('denomination-entry-expected'))
+    expect(expectedBefore).toContain('150,00')
+    expect(expectedBefore).toContain('EUR')
+
+    await user.selectOptions(await screen.findByTestId('denomination-entry-currency'), '2')
+
+    await waitFor(() => {
+      const expectedAfter = normalizeAmount(screen.getByTestId('denomination-entry-expected'))
+      expect(expectedAfter).toContain('5000,00')
+      expect(expectedAfter).toContain('HUF')
+    })
+    // D4: currency change does NOT refetch.
+    expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['HANDLING_FEE', 'VAT'] as const)(
+    'T4 (FR-3): %s kategórián ugyanaz a komponens adja a fejlécet, a helyes kategóriával hívva',
+    async (category) => {
+      categoryParam = category
+      mocks.balancesSelfCheck.mockResolvedValue([
+        {
+          currencyCode: 'EUR',
+          currencyId: 1,
+          denominatedAmount: 0,
+          expectedBalance: 9000,
+          difference: -9000,
+          matches: false,
+        },
+      ])
+      renderPage()
+
+      await waitFor(() =>
+        expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', category),
+      )
+      const expected = normalizeAmount(await screen.findByTestId('denomination-entry-expected'))
+      expect(expected).toContain('9000,00')
+    },
+  )
+
+  it('T5 (FR-4 pin): Mentés után az alji Önellenőrzés blokk továbbra is megjelenik', async () => {
+    mocks.balancesSelfCheck.mockResolvedValue(SELF_CHECK_EUR_150)
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-save'))
+
+    expect(await screen.findByTestId('denomination-entry-selfcheck')).toBeInTheDocument()
+    expect(screen.getByTestId('denomination-entry-selfcheck-EUR')).toBeInTheDocument()
+  })
+
+  it('T6 (FR-5/AC-6): a fejléc és az alji blokk UGYANAZT a számot mutatja — egy API, nincs második formula', async () => {
+    const shared = SELF_CHECK_EUR_150
+    mocks.balancesSelfCheck.mockResolvedValue(shared)
+    const user = userEvent.setup()
+    renderPage()
+
+    const headerBefore = normalizeAmount(await screen.findByTestId('denomination-entry-expected'))
+    expect(headerBefore).toContain(formatDecimal(150, 2, 2))
+
+    await user.click(await screen.findByTestId('denomination-entry-save'))
+
+    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(2))
+    // Egy API, egy szám: a fejléc és a mentés utáni alji sor ugyanazt a 150,00-t mutatja.
+    expect(normalizeAmount(screen.getByTestId('denomination-entry-expected'))).toContain(
+      formatDecimal(150, 2, 2),
+    )
+    const bottomRow = screen.getByTestId('denomination-entry-selfcheck-EUR')
+    expect(normalizeAmount(bottomRow)).toContain('150,00')
+    // Mindkét hívás (mount + mentés) EVENING kategóriával ment.
+    expect(mocks.balancesSelfCheck.mock.calls.map((c) => c[1])).toEqual(['EVENING', 'EVENING'])
+  })
+
+  it('T8 (FK-079 pin): a tört névértékű sor sem az összegbe, sem az élő eltérésbe nem szivárog', async () => {
+    mocks.balancesGetByCurrency.mockResolvedValue([
+      { denominationId: '13', quantity: 10 }, // 0,5 EUR × 10 — ki kell esnie
+      { denominationId: '12', quantity: 6 }, // 1 EUR × 6 = 6,00
+    ])
+    mocks.balancesSelfCheck.mockResolvedValue([
+      {
+        currencyCode: 'EUR',
+        currencyId: 1,
+        denominatedAmount: 6,
+        expectedBalance: 10,
+        difference: -4,
+        matches: false,
+      },
+    ])
+    renderPage()
+
+    await waitFor(() =>
+      expect(normalizeAmount(screen.getByTestId('denomination-entry-total'))).toContain('6,00'),
+    )
+    // 10 − 6 = 4,00: a tört sor az élő eltérésbe sem folyik bele.
+    await waitFor(() =>
+      expect(normalizeAmount(screen.getByTestId('denomination-entry-diff'))).toContain('4,00'),
+    )
+  })
+
+  it('E1 (D6): a mountkori self-check hiba néma — nincs toast, a táblázat nem ürül ki', async () => {
+    mocks.balancesSelfCheck.mockRejectedValue(new Error('self-check 500'))
+    renderPage()
+
+    const expected = await screen.findByTestId('denomination-entry-expected')
+    await waitFor(() => expect(expected.textContent).toBe('—'))
+    // A táblázat (loadAll) ettől függetlenül renderel.
+    expect(await screen.findByTestId('denomination-entry-qty-10')).toBeInTheDocument()
+    expect(mocks.toastWarning).not.toHaveBeenCalled()
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('denomination-entry-load-error')).toBeNull()
+  })
+
+  it('E2 (D3/P6): ha a kiválasztott valutához nincs self-check sor, em-dash jelenik meg — sosem 0,00', async () => {
+    mocks.balancesSelfCheck.mockResolvedValue([
+      {
+        currencyCode: 'USD',
+        currencyId: 9,
+        denominatedAmount: 0,
+        expectedBalance: 7000,
+        difference: -7000,
+        matches: false,
+      },
+    ])
+    renderPage()
+
+    await waitFor(() =>
+      expect(screen.getByTestId('denomination-entry-expected').textContent).toBe('—'),
+    )
+    expect(screen.getByTestId('denomination-entry-diff').textContent).toBe('—')
+  })
+
+  it('E3 (D3): currencyId-drift esetén a currencyCode fallback dönt', async () => {
+    mocks.balancesSelfCheck.mockResolvedValue([
+      {
+        currencyCode: 'EUR',
+        currencyId: 999, // id-drift: a kiválasztott EUR id=1, de a kód egyezik
+        denominatedAmount: 0,
+        expectedBalance: 150,
+        difference: -150,
+        matches: false,
+      },
+    ])
+    renderPage()
+
+    const expected = normalizeAmount(await screen.findByTestId('denomination-entry-expected'))
+    expect(expected).toContain('150,00')
   })
 })
