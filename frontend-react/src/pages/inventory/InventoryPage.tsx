@@ -10,6 +10,15 @@ import { useVaultStockUpdates } from '../../hooks/useVaultStockUpdates'
 import i18n from '../../i18n'
 
 /**
+ * FKH-043 (2026-08-31): a "Mobil készlet-riportok" panel (legacy Inventory-alrendszer UI)
+ * el van rejtve az Értéktári készlet oldalon. A JSX SZÁNDÉKOSAN a fájlban marad: a
+ * visszakapcsolás = ennek a konstansnak a `true`-ra állítása, semmi más.
+ * A flag a mount-hívásokat is kapuzza (loadOperationalInventory + loadInventoryCurrencies),
+ * mert azok kizárólag ezt a panelt szolgálják ki.
+ * A vault-stock nézet (záró HUF kártya, flow tábla) és a címletszintű készlet NEM érintett.
+ */
+export const SHOW_MOBILE_INVENTORY_REPORTS = false
+/**
  * v2.4.9: Az "Értéktári készlet" oldal — KIZÁRÓLAG az értéktár saját készletét
  * mutatja, valutánként a napi flow-val (nyitó / átvett / átadott / záró).
  *
@@ -437,8 +446,12 @@ export default function InventoryPage() {
   useEffect(() => {
     void loadData()
     void loadBanknoteInventory()
-    void loadOperationalInventory()
-    void loadInventoryCurrencies()
+    // FKH-043 / FR-3: a legacy operatív riport-GET-ek és a devizalista csak a rejtett panelt
+    // szolgálják ki — flag off mellett nem indítjuk őket.
+    if (SHOW_MOBILE_INVENTORY_REPORTS) {
+      void loadOperationalInventory()
+      void loadInventoryCurrencies()
+    }
   }, [loadData, loadBanknoteInventory, loadOperationalInventory, loadInventoryCurrencies])
 
   useEffect(() => {
@@ -763,382 +776,389 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <section className="no-print form-panel p-0">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-secondary-900">
-                {i18n.t('literals.mobil-keszlet-riportok')}
-              </h2>
-              {isVaultOperationalContext && (
-                <span
-                  data-testid="vault-context-badge"
-                  className="text-[9px] font-bold uppercase bg-amber-500 text-white rounded px-1 py-px shrink-0"
-                >
-                  {t('inventory.ertektarBadge')}
-                </span>
-              )}
+      {SHOW_MOBILE_INVENTORY_REPORTS && (
+        <section className="no-print form-panel p-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-secondary-900">
+                  {i18n.t('literals.mobil-keszlet-riportok')}
+                </h2>
+                {isVaultOperationalContext && (
+                  <span
+                    data-testid="vault-context-badge"
+                    className="text-[9px] font-bold uppercase bg-amber-500 text-white rounded px-1 py-px shrink-0"
+                  >
+                    {t('inventory.ertektarBadge')}
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-gray-500">
+                {t('inventory.operativRiportokAlcim')}
+                {isVaultOperationalContext
+                  ? ` · ${t('inventory.ertektariCurrencyStockKonyveles')}`
+                  : ''}
+              </div>
             </div>
-            <div className="text-xs text-gray-500">
-              {t('inventory.operativRiportokAlcim')}
-              {isVaultOperationalContext
-                ? ` · ${t('inventory.ertektariCurrencyStockKonyveles')}`
-                : ''}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadOperationalInventory()}
-            className="form-button h-8 text-xs flex items-center gap-1"
-          >
-            <RefreshCw className="h-3 w-3" />
-            {i18n.t('literals.riportok-frissitese')}
-          </button>
-        </div>
-        <div
-          className="border-b border-gray-200 bg-white px-3 py-3"
-          data-testid="inventory-operation-panel"
-        >
-          <div className="grid gap-2 lg:grid-cols-[160px_120px_120px_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-end">
-            <label className="block">
-              <span className="form-label">{i18n.t('literals.muvelet')}</span>
-              <select
-                className="form-input w-full"
-                value={inventoryOperationType}
-                onChange={(event) =>
-                  setInventoryOperationType(event.target.value as InventoryOperationType)
-                }
-                aria-label="Készletművelet típusa"
-              >
-                <option value="bankWithdraw">{i18n.t('literals.bankbol-kivet')}</option>
-                <option value="bankDeposit">{i18n.t('literals.bankba-befizetes')}</option>
-                <option value="transfer">{i18n.t('literals.irodak-kozti-atadas')}</option>
-                <option value="correction">{i18n.t('literals.korrekcio')}</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="form-label">{i18n.t('literals.deviza-2')}</span>
-              <select
-                className="form-input w-full"
-                value={inventoryCurrencyId}
-                onChange={(event) => setInventoryCurrencyId(event.target.value)}
-                aria-label="Deviza kiválasztása"
-                disabled={inventoryCurrenciesLoading || inventoryCurrencies.length === 0}
-              >
-                <option value="">
-                  {inventoryCurrenciesLoading ? 'Devizák betöltése...' : 'Válassz devizát'}
-                </option>
-                {inventoryCurrencies.map((currency) => (
-                  <option key={currency.id} value={currency.id}>
-                    {currency.code}
-                    {i18n.t('literals.lit-32')}
-                    {currency.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="form-label">
-                {inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}
-              </span>
-              <input
-                className="form-input w-full font-mono"
-                inputMode="decimal"
-                value={inventoryAmount}
-                onChange={(event) => setInventoryAmount(event.target.value)}
-                placeholder={inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}
-              />
-            </label>
-            <label className="block">
-              <span className="form-label">{t('inventory.celTelephely')}</span>
-              <select
-                className="form-input w-full"
-                value={inventoryOperationType === 'transfer' ? inventoryTargetBranchId : ''}
-                onChange={(event) => setInventoryTargetBranchId(event.target.value)}
-                disabled={
-                  inventoryOperationType !== 'transfer' ||
-                  transferTargetsLoading ||
-                  (transferTargetsLoaded && transferTargets.length === 0)
-                }
-                aria-label={t('inventory.celTelephelyKivalasztasa')}
-              >
-                <option value="">
-                  {inventoryOperationType !== 'transfer'
-                    ? t('inventory.csakAtadasnal')
-                    : transferTargetsLoading
-                      ? t('inventory.celTelephelyekBetoltese')
-                      : t('inventory.valasszCelTelephelyet')}
-                </option>
-                {transferTargets.map((target) => (
-                  <option key={target.branchId} value={target.branchId}>
-                    {target.code}
-                    {i18n.t('literals.lit-18')}
-                    {target.name}
-                    {target.isVault ? ` · ${t('inventory.ertektarBadge')}` : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="form-label">
-                {inventoryOperationType === 'correction' ? 'Indoklás' : 'Megjegyzés'}
-              </span>
-              <input
-                className="form-input w-full"
-                value={inventoryNotes}
-                onChange={(event) => setInventoryNotes(event.target.value)}
-                placeholder={
-                  inventoryOperationType === 'correction' ? 'Kötelező indoklás' : 'Opcionális'
-                }
-              />
-            </label>
             <button
               type="button"
-              onClick={() => void submitInventoryOperation()}
-              disabled={
-                inventoryOperationLoading ||
-                inventoryCurrenciesLoading ||
-                inventoryCurrencies.length === 0
-              }
-              className="form-button-primary h-9 text-xs"
+              onClick={() => void loadOperationalInventory()}
+              className="form-button h-8 text-xs flex items-center gap-1"
             >
-              {inventoryOperationLoading ? 'Mentés...' : 'Művelet rögzítése'}
+              <RefreshCw className="h-3 w-3" />
+              {i18n.t('literals.riportok-frissitese')}
             </button>
           </div>
-          {inventoryOperationMessage && (
-            <p className="mt-2 text-xs text-gray-600">{inventoryOperationMessage}</p>
-          )}
-          {inventoryCurrenciesError && (
-            <p className="mt-2 text-xs text-red-700">
-              {i18n.t('literals.devizalista-betoltesi-hiba')}
-              {inventoryCurrenciesError}
-            </p>
-          )}
-          {inventoryOperationType === 'transfer' &&
-            transferTargetsLoaded &&
-            transferTargets.length === 0 &&
-            !transferTargetsLoading && (
-              <p className="mt-2 text-xs text-gray-600">
-                {t('inventory.nincsElerhetoCelTelephely')}
+          <div
+            className="border-b border-gray-200 bg-white px-3 py-3"
+            data-testid="inventory-operation-panel"
+          >
+            <div className="grid gap-2 lg:grid-cols-[160px_120px_120px_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-end">
+              <label className="block">
+                <span className="form-label">{i18n.t('literals.muvelet')}</span>
+                <select
+                  className="form-input w-full"
+                  value={inventoryOperationType}
+                  onChange={(event) =>
+                    setInventoryOperationType(event.target.value as InventoryOperationType)
+                  }
+                  aria-label="Készletművelet típusa"
+                >
+                  <option value="bankWithdraw">{i18n.t('literals.bankbol-kivet')}</option>
+                  <option value="bankDeposit">{i18n.t('literals.bankba-befizetes')}</option>
+                  <option value="transfer">{i18n.t('literals.irodak-kozti-atadas')}</option>
+                  <option value="correction">{i18n.t('literals.korrekcio')}</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="form-label">{i18n.t('literals.deviza-2')}</span>
+                <select
+                  className="form-input w-full"
+                  value={inventoryCurrencyId}
+                  onChange={(event) => setInventoryCurrencyId(event.target.value)}
+                  aria-label="Deviza kiválasztása"
+                  disabled={inventoryCurrenciesLoading || inventoryCurrencies.length === 0}
+                >
+                  <option value="">
+                    {inventoryCurrenciesLoading ? 'Devizák betöltése...' : 'Válassz devizát'}
+                  </option>
+                  {inventoryCurrencies.map((currency) => (
+                    <option key={currency.id} value={currency.id}>
+                      {currency.code}
+                      {i18n.t('literals.lit-32')}
+                      {currency.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="form-label">
+                  {inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}
+                </span>
+                <input
+                  className="form-input w-full font-mono"
+                  inputMode="decimal"
+                  value={inventoryAmount}
+                  onChange={(event) => setInventoryAmount(event.target.value)}
+                  placeholder={inventoryOperationType === 'correction' ? 'Új egyenleg' : 'Összeg'}
+                />
+              </label>
+              <label className="block">
+                <span className="form-label">{t('inventory.celTelephely')}</span>
+                <select
+                  className="form-input w-full"
+                  value={inventoryOperationType === 'transfer' ? inventoryTargetBranchId : ''}
+                  onChange={(event) => setInventoryTargetBranchId(event.target.value)}
+                  disabled={
+                    inventoryOperationType !== 'transfer' ||
+                    transferTargetsLoading ||
+                    (transferTargetsLoaded && transferTargets.length === 0)
+                  }
+                  aria-label={t('inventory.celTelephelyKivalasztasa')}
+                >
+                  <option value="">
+                    {inventoryOperationType !== 'transfer'
+                      ? t('inventory.csakAtadasnal')
+                      : transferTargetsLoading
+                        ? t('inventory.celTelephelyekBetoltese')
+                        : t('inventory.valasszCelTelephelyet')}
+                  </option>
+                  {transferTargets.map((target) => (
+                    <option key={target.branchId} value={target.branchId}>
+                      {target.code}
+                      {i18n.t('literals.lit-18')}
+                      {target.name}
+                      {target.isVault ? ` · ${t('inventory.ertektarBadge')}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="form-label">
+                  {inventoryOperationType === 'correction' ? 'Indoklás' : 'Megjegyzés'}
+                </span>
+                <input
+                  className="form-input w-full"
+                  value={inventoryNotes}
+                  onChange={(event) => setInventoryNotes(event.target.value)}
+                  placeholder={
+                    inventoryOperationType === 'correction' ? 'Kötelező indoklás' : 'Opcionális'
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void submitInventoryOperation()}
+                disabled={
+                  inventoryOperationLoading ||
+                  inventoryCurrenciesLoading ||
+                  inventoryCurrencies.length === 0
+                }
+                className="form-button-primary h-9 text-xs"
+              >
+                {inventoryOperationLoading ? 'Mentés...' : 'Művelet rögzítése'}
+              </button>
+            </div>
+            {inventoryOperationMessage && (
+              <p className="mt-2 text-xs text-gray-600">{inventoryOperationMessage}</p>
+            )}
+            {inventoryCurrenciesError && (
+              <p className="mt-2 text-xs text-red-700">
+                {i18n.t('literals.devizalista-betoltesi-hiba')}
+                {inventoryCurrenciesError}
               </p>
             )}
-          {transferTargetsError && (
-            <p className="mt-2 text-xs text-red-700">
-              {t('inventory.celTelephelyListaBetoltesiHiba')}
-              {i18n.t('literals.lit-22')}
-              {transferTargetsError}
-            </p>
-          )}
-        </div>
-        <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs uppercase text-gray-500">
-              {i18n.t('literals.sajat-penztarkeszlet')}
-            </div>
-            <div className="mt-1 text-xl font-bold text-secondary-900">
-              {branchStockRows.length}
-            </div>
-            <div className="mt-1 text-xs text-gray-600">
-              {branchStockRows[0]
-                ? `${branchStockRows[0].currencyCode ?? '-'}: ${formatAmount(branchStockRows[0].currentBalance, branchStockRows[0].currencyCode)}`
-                : 'Nincs sor'}
-            </div>
-          </div>
-          <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs uppercase text-gray-500">
-              {i18n.t('literals.keszletmatrix')}
-            </div>
-            <div className="mt-1 text-xl font-bold text-secondary-900">
-              {stockMatrixInfo.branches}
-              {i18n.t('literals.lit-10')}
-              {stockMatrixInfo.currencies}
-            </div>
-            <div className="mt-1 text-xs text-gray-600">{i18n.t('literals.telephely-valuta')}</div>
-          </div>
-          <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs uppercase text-gray-500">
-              {i18n.t('literals.napi-egyenleg')}
-            </div>
-            <div className="mt-1 text-xl font-bold text-secondary-900">
-              {formatAmount(dailyBalance?.closingBalance, dailyBalance?.currencyCode)}
-            </div>
-            <div className="mt-1 text-xs text-gray-600">
-              {i18n.t('literals.be')}
-              {formatAmount(dailyBalance?.totalIn, dailyBalance?.currencyCode)}
-              {i18n.t('literals.ki')}{' '}
-              {formatAmount(dailyBalance?.totalOut, dailyBalance?.currencyCode)}
-            </div>
-          </div>
-          <div className="rounded border border-gray-200 bg-white p-3">
-            <div className="text-xs uppercase text-gray-500">
-              {i18n.t('literals.utolso-regeneralas')}
-            </div>
-            <div className="mt-1 text-xl font-bold text-secondary-900">
-              {lastRegeneration?.discrepancyCount ?? 0}
-              {i18n.t('literals.elteres')}
-            </div>
-            <div className="mt-1 text-xs text-gray-600">
-              {i18n.t('literals.javitva')}
-              {lastRegeneration?.correctedCount ?? 0}
-            </div>
-            <button
-              type="button"
-              onClick={() => void runInventoryRegeneration()}
-              disabled={regenerationRunning}
-              className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-700 disabled:opacity-60"
-            >
-              {regenerationRunning ? 'Regenerálás...' : 'Regenerálás futtatása'}
-            </button>
-          </div>
-        </div>
-        <div className="grid gap-3 border-t border-gray-200 p-3 lg:grid-cols-2">
-          <div>
-            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
-              {i18n.t('literals.mozgasok')}
-            </div>
-            <div className="space-y-2">
-              {movementRows.slice(0, 3).map((movement, idx) => (
-                <div
-                  key={movement.id ?? idx}
-                  className="rounded border border-gray-200 bg-white px-3 py-2 text-xs"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-secondary-900">
-                      {movement.currencyCode ?? '-'}
-                    </span>
-                    <span className="font-mono">
-                      {formatAmount(movement.amount, movement.currencyCode)}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between gap-2 text-gray-600">
-                    <span>
-                      {movement.movementTypeDisplay ?? movement.movementType ?? 'Mozgás'}
-                      {i18n.t('literals.lit-29')} {movement.statusDisplay ?? movement.status ?? '-'}
-                    </span>
-                    {movement.id != null && (
-                      <button
-                        type="button"
-                        onClick={() => void loadMovementDetail(movement.id)}
-                        disabled={movementDetailLoadingId === movement.id}
-                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-60"
-                      >
-                        {movementDetailLoadingId === movement.id ? 'Betöltés...' : 'Részlet'}
-                      </button>
-                    )}
-                  </div>
-                  {movement.id != null && (
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void runMovementAction(movement, 'approve')}
-                        disabled={
-                          movement.status !== 'PENDING' ||
-                          movementActionId === `${movement.id}:approve`
-                        }
-                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
-                        aria-label={`Készletmozgás #${movement.id} jóváhagyása`}
-                      >
-                        {i18n.t('literals.jovahagy')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void runMovementAction(movement, 'receive')}
-                        disabled={
-                          !['IN_TRANSIT', 'APPROVED'].includes(movement.status ?? '') ||
-                          movementActionId === `${movement.id}:receive`
-                        }
-                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
-                        aria-label={`Készletmozgás #${movement.id} fogadása`}
-                      >
-                        {i18n.t('literals.fogad')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void runMovementAction(movement, 'cancel')}
-                        disabled={
-                          movement.status !== 'PENDING' ||
-                          movementActionId === `${movement.id}:cancel`
-                        }
-                        className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
-                        aria-label={`Készletmozgás #${movement.id} visszavonása`}
-                      >
-                        {i18n.t('literals.visszavon')}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {movementRows.length === 0 && (
-                <div className="text-xs text-gray-500">{i18n.t('literals.nincs-mozgas-adat')}</div>
+            {inventoryOperationType === 'transfer' &&
+              transferTargetsLoaded &&
+              transferTargets.length === 0 &&
+              !transferTargetsLoading && (
+                <p className="mt-2 text-xs text-gray-600">
+                  {t('inventory.nincsElerhetoCelTelephely')}
+                </p>
               )}
-            </div>
-            {selectedMovementDetail && (
-              <div
-                className="mt-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-950"
-                data-testid="inventory-movement-detail"
-              >
-                <div className="font-semibold">
-                  {i18n.t('literals.mozgas-reszlete')}
-                  {selectedMovementDetail.id}
-                </div>
-                <div className="mt-1 grid gap-1 sm:grid-cols-2">
-                  <span>
-                    {i18n.t('literals.valuta-2')}
-                    {selectedMovementDetail.currencyCode ?? '-'}
-                  </span>
-                  <span>
-                    {i18n.t('literals.osszeg-2')}{' '}
-                    {formatAmount(
-                      selectedMovementDetail.amount,
-                      selectedMovementDetail.currencyCode,
-                    )}
-                  </span>
-                  <span>
-                    {i18n.t('literals.statusz-2')}{' '}
-                    {selectedMovementDetail.statusDisplay ?? selectedMovementDetail.status ?? '-'}
-                  </span>
-                  <span>
-                    {i18n.t('literals.tipus-2')}{' '}
-                    {selectedMovementDetail.movementTypeDisplay ??
-                      selectedMovementDetail.movementType ??
-                      '-'}
-                  </span>
-                </div>
-              </div>
+            {transferTargetsError && (
+              <p className="mt-2 text-xs text-red-700">
+                {t('inventory.celTelephelyListaBetoltesiHiba')}
+                {i18n.t('literals.lit-22')}
+                {transferTargetsError}
+              </p>
             )}
           </div>
-          <div>
-            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
-              {i18n.t('literals.napi-mozgasnaplo')}
+          <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded border border-gray-200 bg-white p-3">
+              <div className="text-xs uppercase text-gray-500">
+                {i18n.t('literals.sajat-penztarkeszlet')}
+              </div>
+              <div className="mt-1 text-xl font-bold text-secondary-900">
+                {branchStockRows.length}
+              </div>
+              <div className="mt-1 text-xs text-gray-600">
+                {branchStockRows[0]
+                  ? `${branchStockRows[0].currencyCode ?? '-'}: ${formatAmount(branchStockRows[0].currentBalance, branchStockRows[0].currencyCode)}`
+                  : 'Nincs sor'}
+              </div>
             </div>
-            <div className="space-y-2">
-              {movementLogRows.slice(0, 3).map((movement, idx) => (
+            <div className="rounded border border-gray-200 bg-white p-3">
+              <div className="text-xs uppercase text-gray-500">
+                {i18n.t('literals.keszletmatrix')}
+              </div>
+              <div className="mt-1 text-xl font-bold text-secondary-900">
+                {stockMatrixInfo.branches}
+                {i18n.t('literals.lit-10')}
+                {stockMatrixInfo.currencies}
+              </div>
+              <div className="mt-1 text-xs text-gray-600">
+                {i18n.t('literals.telephely-valuta')}
+              </div>
+            </div>
+            <div className="rounded border border-gray-200 bg-white p-3">
+              <div className="text-xs uppercase text-gray-500">
+                {i18n.t('literals.napi-egyenleg')}
+              </div>
+              <div className="mt-1 text-xl font-bold text-secondary-900">
+                {formatAmount(dailyBalance?.closingBalance, dailyBalance?.currencyCode)}
+              </div>
+              <div className="mt-1 text-xs text-gray-600">
+                {i18n.t('literals.be')}
+                {formatAmount(dailyBalance?.totalIn, dailyBalance?.currencyCode)}
+                {i18n.t('literals.ki')}{' '}
+                {formatAmount(dailyBalance?.totalOut, dailyBalance?.currencyCode)}
+              </div>
+            </div>
+            <div className="rounded border border-gray-200 bg-white p-3">
+              <div className="text-xs uppercase text-gray-500">
+                {i18n.t('literals.utolso-regeneralas')}
+              </div>
+              <div className="mt-1 text-xl font-bold text-secondary-900">
+                {lastRegeneration?.discrepancyCount ?? 0}
+                {i18n.t('literals.elteres')}
+              </div>
+              <div className="mt-1 text-xs text-gray-600">
+                {i18n.t('literals.javitva')}
+                {lastRegeneration?.correctedCount ?? 0}
+              </div>
+              <button
+                type="button"
+                onClick={() => void runInventoryRegeneration()}
+                disabled={regenerationRunning}
+                className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-700 disabled:opacity-60"
+              >
+                {regenerationRunning ? 'Regenerálás...' : 'Regenerálás futtatása'}
+              </button>
+            </div>
+          </div>
+          <div className="grid gap-3 border-t border-gray-200 p-3 lg:grid-cols-2">
+            <div>
+              <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
+                {i18n.t('literals.mozgasok')}
+              </div>
+              <div className="space-y-2">
+                {movementRows.slice(0, 3).map((movement, idx) => (
+                  <div
+                    key={movement.id ?? idx}
+                    className="rounded border border-gray-200 bg-white px-3 py-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-secondary-900">
+                        {movement.currencyCode ?? '-'}
+                      </span>
+                      <span className="font-mono">
+                        {formatAmount(movement.amount, movement.currencyCode)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-2 text-gray-600">
+                      <span>
+                        {movement.movementTypeDisplay ?? movement.movementType ?? 'Mozgás'}
+                        {i18n.t('literals.lit-29')}{' '}
+                        {movement.statusDisplay ?? movement.status ?? '-'}
+                      </span>
+                      {movement.id != null && (
+                        <button
+                          type="button"
+                          onClick={() => void loadMovementDetail(movement.id)}
+                          disabled={movementDetailLoadingId === movement.id}
+                          className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-60"
+                        >
+                          {movementDetailLoadingId === movement.id ? 'Betöltés...' : 'Részlet'}
+                        </button>
+                      )}
+                    </div>
+                    {movement.id != null && (
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void runMovementAction(movement, 'approve')}
+                          disabled={
+                            movement.status !== 'PENDING' ||
+                            movementActionId === `${movement.id}:approve`
+                          }
+                          className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
+                          aria-label={`Készletmozgás #${movement.id} jóváhagyása`}
+                        >
+                          {i18n.t('literals.jovahagy')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void runMovementAction(movement, 'receive')}
+                          disabled={
+                            !['IN_TRANSIT', 'APPROVED'].includes(movement.status ?? '') ||
+                            movementActionId === `${movement.id}:receive`
+                          }
+                          className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
+                          aria-label={`Készletmozgás #${movement.id} fogadása`}
+                        >
+                          {i18n.t('literals.fogad')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void runMovementAction(movement, 'cancel')}
+                          disabled={
+                            movement.status !== 'PENDING' ||
+                            movementActionId === `${movement.id}:cancel`
+                          }
+                          className="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700 disabled:opacity-50"
+                          aria-label={`Készletmozgás #${movement.id} visszavonása`}
+                        >
+                          {i18n.t('literals.visszavon')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {movementRows.length === 0 && (
+                  <div className="text-xs text-gray-500">
+                    {i18n.t('literals.nincs-mozgas-adat')}
+                  </div>
+                )}
+              </div>
+              {selectedMovementDetail && (
                 <div
-                  key={movement.id ?? idx}
-                  className="rounded border border-gray-200 bg-white px-3 py-2 text-xs"
+                  className="mt-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-950"
+                  data-testid="inventory-movement-detail"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-secondary-900">
-                      {movement.currencyCode ?? '-'}
+                  <div className="font-semibold">
+                    {i18n.t('literals.mozgas-reszlete')}
+                    {selectedMovementDetail.id}
+                  </div>
+                  <div className="mt-1 grid gap-1 sm:grid-cols-2">
+                    <span>
+                      {i18n.t('literals.valuta-2')}
+                      {selectedMovementDetail.currencyCode ?? '-'}
                     </span>
-                    <span className="font-mono">
-                      {formatAmount(movement.amount, movement.currencyCode)}
+                    <span>
+                      {i18n.t('literals.osszeg-2')}{' '}
+                      {formatAmount(
+                        selectedMovementDetail.amount,
+                        selectedMovementDetail.currencyCode,
+                      )}
+                    </span>
+                    <span>
+                      {i18n.t('literals.statusz-2')}{' '}
+                      {selectedMovementDetail.statusDisplay ?? selectedMovementDetail.status ?? '-'}
+                    </span>
+                    <span>
+                      {i18n.t('literals.tipus-2')}{' '}
+                      {selectedMovementDetail.movementTypeDisplay ??
+                        selectedMovementDetail.movementType ??
+                        '-'}
                     </span>
                   </div>
-                  <div className="mt-1 text-gray-600">
-                    {(movement.fromBranchName ?? '-') + ' -> ' + (movement.toBranchName ?? '-')}
-                  </div>
-                </div>
-              ))}
-              {movementLogRows.length === 0 && (
-                <div className="text-xs text-gray-500">
-                  {i18n.t('literals.nincs-napi-mozgasnaplo-adat')}
                 </div>
               )}
             </div>
+            <div>
+              <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
+                {i18n.t('literals.napi-mozgasnaplo')}
+              </div>
+              <div className="space-y-2">
+                {movementLogRows.slice(0, 3).map((movement, idx) => (
+                  <div
+                    key={movement.id ?? idx}
+                    className="rounded border border-gray-200 bg-white px-3 py-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-secondary-900">
+                        {movement.currencyCode ?? '-'}
+                      </span>
+                      <span className="font-mono">
+                        {formatAmount(movement.amount, movement.currencyCode)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-gray-600">
+                      {(movement.fromBranchName ?? '-') + ' -> ' + (movement.toBranchName ?? '-')}
+                    </div>
+                  </div>
+                ))}
+                {movementLogRows.length === 0 && (
+                  <div className="text-xs text-gray-500">
+                    {i18n.t('literals.nincs-napi-mozgasnaplo-adat')}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Vault flow tábla */}
       <div className="form-panel p-0">
