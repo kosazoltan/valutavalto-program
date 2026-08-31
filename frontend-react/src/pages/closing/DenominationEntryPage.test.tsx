@@ -629,7 +629,6 @@ describe('DenominationEntryPage — FKH-042 élő célösszeg', () => {
 
     const panel = await screen.findByTestId('denomination-entry-expected-panel')
     const total = await screen.findByTestId('denomination-entry-total')
-    // eslint-disable-next-line no-bitwise
     expect(panel.compareDocumentPosition(total) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
