@@ -242,6 +242,10 @@ export const menuGroups: MenuGroup[] = [
       // de tartományra és a teljes körzetre, nem egy napra és egy fiókra.
       { path: '/reports/cash-flow', label: 'Pénzforgalom riport', icon: FileText },
       { path: '/evening-closing', label: 'Napi zárás', icon: FileText },
+      // FKH-042 FR-6: a MEGLÉVŐ „Címletezés – zárások" hub (/closing/denominations-menu,
+      // ClosingDenominationMenuPage) az Értéktár menüből is elérhető — nincs oldal-klón, és az
+      // EveningClosingPage CTA-i (FKH-036) VÁLTOZATLANUL maradnak.
+      { path: '/closing/denominations-menu', label: 'Címletezés – zárások', icon: FileText },
       // FKH-036 FR-9: a Pénztári zárás-varázsló Értéktár-módban használhatatlan (az 1. lépés
       // pénztári napi munkamenetet követel), ezért az értéktáros elől rejtett. A route és a
       // ClosingWizardPage VÁLTOZATLAN (FR-10); a felügyeleti bypass továbbra is látja.

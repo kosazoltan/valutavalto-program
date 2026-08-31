@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react'
 import { vi, describe, beforeEach, afterEach, it, expect } from 'vitest'
-import InventoryPage from './InventoryPage'
+import InventoryPage, { SHOW_MOBILE_INVENTORY_REPORTS } from './InventoryPage'
 
 // FR-1..6 (2026-06-17): KÜLÖNBSÉG + FRISSÍTVE oszlop eltávolítva; nyomtatás; automatikus
 // frissítés (WebSocket-invalidáció + change-detection). A WS-hookot mockoljuk, és elkapjuk a
@@ -181,6 +181,18 @@ function setupApiGet() {
   })
 }
 
+function expectOperationalGetsNotCalled() {
+  const paths = mocks.apiGet.mock.calls.map((c) => String(c[0]))
+  expect(paths.some((p) => p.includes('/inventory/stock/'))).toBe(false)
+  expect(paths).not.toContain('/inventory/matrix')
+  expect(paths).not.toContain('/inventory/movements')
+  expect(paths).not.toContain('/inventory-movements/movement-log')
+  expect(paths).not.toContain('/inventory-movements/daily-balance')
+  expect(paths).not.toContain('/inventory/regeneration/last')
+  expect(paths).not.toContain('/inventory/transfer-targets')
+  expect(mocks.currencyList).not.toHaveBeenCalled()
+}
+
 async function clickEnabledButton(name: string | RegExp): Promise<void> {
   const button = await screen.findByRole('button', { name })
   await waitFor(() => expect(button).toBeEnabled())
@@ -294,54 +306,18 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     expect(screen.getAllByText('Alacsony').length).toBeGreaterThan(0)
   })
 
-  it('inventory riportok: beköti a stock, matrix, movements, movement-log, daily-balance és regeneration read endpointokat', async () => {
+  it('FKH-043: flag off mellett az operatív riport-endpointok NEM hívódnak', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByText('Mobil készlet-riportok')).toBeInTheDocument())
-
-    // FK-037: az operatív read-hívások `_skipGlobal403Toast: true` configgal mennek (a 403-at
-    // hívásonként kezeljük, Promise.allSettled-del, nem globális toasttal).
-    expect(mocks.apiGet).toHaveBeenCalledWith(
-      '/inventory/stock/11111111-1111-1111-1111-111111111111',
-      {
-        _skipGlobal403Toast: true,
-      },
-    )
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/matrix', { _skipGlobal403Toast: true })
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/movements', {
-      params: {
-        branchId: '11111111-1111-1111-1111-111111111111',
-        size: 5,
-        sort: 'createdAt,desc',
-      },
-      _skipGlobal403Toast: true,
-    })
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory-movements/movement-log', {
-      params: {
-        branchId: '11111111-1111-1111-1111-111111111111',
-        date: expect.any(String),
-      },
-      _skipGlobal403Toast: true,
-    })
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory-movements/daily-balance', {
-      params: {
-        branchId: '11111111-1111-1111-1111-111111111111',
-        date: expect.any(String),
-      },
-      _skipGlobal403Toast: true,
-    })
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/regeneration/last', {
-      params: { branchId: '11111111-1111-1111-1111-111111111111' },
-      _skipGlobal403Toast: true,
-    })
-    expect(screen.getByText('Készletmátrix')).toBeInTheDocument()
-    expect(await screen.findByTestId('inventory-operation-panel')).toBeInTheDocument()
-    await waitFor(() =>
-      expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent('EUR – Euró'),
-    )
-    expect(screen.getByText('telephely / valuta')).toBeInTheDocument()
-    expect(screen.getByText('Utolsó regenerálás')).toBeInTheDocument()
-    expect(screen.getByText('Napi mozgásnapló')).toBeInTheDocument()
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByText('Mobil készlet-riportok')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('inventory-operation-panel')).not.toBeInTheDocument()
+    expect(screen.queryByText('Készletmátrix')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Deviza kiválasztása')).not.toBeInTheDocument()
+    expect(screen.queryByText('telephely / valuta')).not.toBeInTheDocument()
+    expect(screen.queryByText('Utolsó regenerálás')).not.toBeInTheDocument()
+    expect(screen.queryByText('Napi mozgásnapló')).not.toBeInTheDocument()
+    expectOperationalGetsNotCalled()
   })
 
   it('FK-037: részleges 403 NEM nullázza az értéktári záró készletet, és nincs hibabanner (allSettled)', async () => {
@@ -371,9 +347,11 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     await waitFor(() => expect(screen.getByText('500')).toBeInTheDocument())
     // 403 = várt jogosultság-hiány → NINCS "Készlet riportok betöltési hiba" banner.
     expect(screen.queryByText(/Készlet riportok betöltési hiba/)).not.toBeInTheDocument()
+    // FKH-043: flag off mellett a 403-as operatív út el sem indul.
+    expect(mocks.apiGet).not.toHaveBeenCalledWith('/inventory/matrix', expect.anything())
   })
 
-  it('FK-037: valódi (nem-403) hiba az operatív riportokon hibabannert mutat', async () => {
+  it('FKH-043: flag off mellett az operatív 500 sem tud bannert hozni (a hívás el sem indul)', async () => {
     const serverError = { response: { status: 500 }, message: 'szerverhiba' }
     mocks.apiGet.mockImplementation((path: string) => {
       if (path === '/inventory/vault-stock') return Promise.resolve({ data: ROWS })
@@ -384,179 +362,64 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     render(<InventoryPage />)
 
-    // A nem-403 (500) hiba VALÓDI hiba → megjelenik a "Készlet riportok betöltési hiba" banner.
-    await waitFor(() =>
-      expect(screen.getByText(/Készlet riportok betöltési hiba/)).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(screen.getByText('500')).toBeInTheDocument())
+    expect(screen.queryByText(/Készlet riportok betöltési hiba/)).not.toBeInTheDocument()
+    expect(mocks.apiGet).not.toHaveBeenCalledWith('/inventory/matrix', expect.anything())
   })
 
-  it('inventory mozgás részlet: a listából lekéri a /inventory/movements/{id} detail endpointot', async () => {
+  it('FKH-043: mozgás-részlet vezérlők nincsenek a DOM-ban', async () => {
     render(<InventoryPage />)
 
-    await screen.findByText('Mozgások')
-    const detailBtns = await screen.findAllByRole('button', { name: 'Részlet' })
-    fireEvent.click(detailBtns[0]!)
-
-    await waitFor(() => {
-      expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/movements/77')
-      expect(screen.getByTestId('inventory-movement-detail')).toHaveTextContent(
-        'Mozgás részlete #77',
-      )
-      expect(screen.getByTestId('inventory-movement-detail')).toHaveTextContent(
-        'Részletesen jóváhagyva',
-      )
-    })
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByText('Mozgások')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: 'Részlet' })).toHaveLength(0)
+    expect(screen.queryByTestId('inventory-movement-detail')).not.toBeInTheDocument()
+    expect(mocks.apiGet).not.toHaveBeenCalledWith('/inventory/movements/77')
   })
 
-  it('inventory műveletek: beköti a bank withdraw, bank deposit, transfer és correction backend szerződéseket', async () => {
+  it('FKH-043: bank withdraw/deposit/transfer/correction űrlap nincs a DOM-ban', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
-
-    fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '250' } })
-    fireEvent.change(screen.getByPlaceholderText('Opcionális'), {
-      target: { value: 'Teszt bank kivét' },
-    })
-    await clickEnabledButton('Művelet rögzítése')
-
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/bank-withdraw', {
-        branchId: '11111111-1111-1111-1111-111111111111',
-        currencyId: 978,
-        amount: 250,
-        notes: 'Teszt bank kivét',
-      })
-    })
-
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
-      target: { value: 'bankDeposit' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '125' } })
-    await clickEnabledButton('Művelet rögzítése')
-
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/bank-deposit', {
-        branchId: '11111111-1111-1111-1111-111111111111',
-        currencyId: 978,
-        amount: 125,
-        notes: 'Teszt bank kivét',
-      })
-    })
-
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
-      target: { value: 'transfer' },
-    })
-    const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
-    await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
-    fireEvent.change(targetSelect, { target: { value: '22222222-2222-2222-2222-222222222222' } })
-    fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '75' } })
-    await clickEnabledButton('Művelet rögzítése')
-
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/transfer', {
-        fromBranchId: '11111111-1111-1111-1111-111111111111',
-        toBranchId: '22222222-2222-2222-2222-222222222222',
-        currencyId: 978,
-        amount: 75,
-        notes: 'Teszt bank kivét',
-      })
-    })
-
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
-      target: { value: 'correction' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('Új egyenleg'), { target: { value: '1000' } })
-    fireEvent.change(screen.getByPlaceholderText('Kötelező indoklás'), {
-      target: { value: 'Leltár korrekció' },
-    })
-    await clickEnabledButton('Művelet rögzítése')
-
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/correction', {
-        branchId: '11111111-1111-1111-1111-111111111111',
-        currencyId: 978,
-        newAmount: 1000,
-        reason: 'Leltár korrekció',
-      })
-    })
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByTestId('inventory-operation-panel')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Összeg')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Művelet rögzítése' })).not.toBeInTheDocument()
+    const posts = mocks.apiPost.mock.calls.map((c) => String(c[0]))
+    expect(posts).not.toContain('/inventory/bank-withdraw')
+    expect(posts).not.toContain('/inventory/bank-deposit')
+    expect(posts).not.toContain('/inventory/transfer')
+    expect(posts).not.toContain('/inventory/correction')
   })
 
-  it('inventory műveletek: a deviza legördülőből kiválasztott currencyId Long kerül küldésre', async () => {
+  it('FKH-043: Deviza kiválasztása nincs a DOM-ban, currencyList nem hívódik', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() =>
-      expect(screen.getByLabelText('Deviza kiválasztása')).toHaveTextContent(
-        'USD – Amerikai dollár',
-      ),
-    )
-    fireEvent.change(screen.getByLabelText('Deviza kiválasztása'), { target: { value: '840' } })
-    fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '250' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
-
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/bank-withdraw', {
-        branchId: '11111111-1111-1111-1111-111111111111',
-        currencyId: 840,
-        amount: 250,
-        notes: undefined,
-      })
-    })
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Deviza kiválasztása')).not.toBeInTheDocument()
+    expect(mocks.currencyList).not.toHaveBeenCalled()
   })
 
-  it('inventory műveletek: transfer kiválasztásakor cél telephely dropdown töltődik és branchId-t küld', async () => {
+  it('FKH-043: transfer cél dropdown nincs a DOM-ban, transfer-targets nem hívódik', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
-      target: { value: 'transfer' },
-    })
-
-    const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
-    await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
-    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/transfer-targets', {
-      _skipGlobal403Toast: true,
-    })
-
-    fireEvent.change(targetSelect, { target: { value: '22222222-2222-2222-2222-222222222222' } })
-    fireEvent.change(screen.getByPlaceholderText('Összeg'), { target: { value: '75' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Művelet rögzítése' }))
-
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/transfer', {
-        fromBranchId: '11111111-1111-1111-1111-111111111111',
-        toBranchId: '22222222-2222-2222-2222-222222222222',
-        currencyId: 978,
-        amount: 75,
-        notes: undefined,
-      })
-    })
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Készletművelet típusa')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Cél telephely kiválasztása')).not.toBeInTheDocument()
+    expect(mocks.apiGet).not.toHaveBeenCalledWith('/inventory/transfer-targets', expect.anything())
   })
 
-  it('inventory műveletek: transfer cél dropdown csak az értéktár célpontot jelöli Értéktár badge-szöveggel', async () => {
+  it('FKH-043: transfer cél dropdown (Értéktár badge) nincs a DOM-ban', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
-      target: { value: 'transfer' },
-    })
-
-    const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
-    await waitFor(() =>
-      expect(targetSelect).toHaveTextContent('VLT02 — Szeged Értéktár · Értéktár'),
-    )
-    expect(
-      within(targetSelect).getByRole('option', { name: 'BR002 — Szeged Pénztár' }),
-    ).toBeInTheDocument()
-    expect(
-      within(targetSelect).getByRole('option', { name: 'VLT02 — Szeged Értéktár · Értéktár' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Cél telephely kiválasztása')).not.toBeInTheDocument()
   })
 
-  it('inventory riportok: vault kontextusban fejléc Értéktár badge-et mutat', async () => {
+  it('FKH-043: vault-context-badge a rejtett panel fejlécében van, nem jelenik meg', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByText('Mobil készlet-riportok')).toBeInTheDocument())
-    expect(screen.getByTestId('vault-context-badge')).toHaveTextContent('Értéktár')
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByTestId('vault-context-badge')).not.toBeInTheDocument()
   })
 
   it('inventory riportok: üres vault-stock lista mellett nincs fejléc Értéktár badge', async () => {
@@ -573,8 +436,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByText('Mobil készlet-riportok')).toBeInTheDocument())
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
     expect(screen.queryByTestId('vault-context-badge')).not.toBeInTheDocument()
+    expect(screen.queryByText('Mobil készlet-riportok')).not.toBeInTheDocument()
   })
 
   it('inventory műveletek: üres transfer cél lista disabled selectet és magyarázatot mutat', async () => {
@@ -592,80 +456,50 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
 
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByTestId('inventory-operation-panel')).toBeInTheDocument())
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
-      target: { value: 'transfer' },
-    })
-
-    const targetSelect = await screen.findByLabelText('Cél telephely kiválasztása')
-    await waitFor(() => expect(targetSelect).toBeDisabled())
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Cél telephely kiválasztása')).not.toBeInTheDocument()
     expect(
-      screen.getByText('Nincs elérhető cél telephely a jelenlegi jogosultsági körben.'),
-    ).toBeInTheDocument()
+      screen.queryByText('Nincs elérhető cél telephely a jelenlegi jogosultsági körben.'),
+    ).not.toBeInTheDocument()
   })
 
-  it('inventory műveletek: devizalista betöltése alatt a rögzítés disabled, cél telephely csak transfernél aktív', async () => {
-    let resolveCurrencies: (value: typeof INVENTORY_CURRENCIES) => void = () => {}
-    mocks.currencyList.mockReturnValue(
-      new Promise((resolve) => {
-        resolveCurrencies = resolve
-      }),
-    )
+  it('FKH-043: Művelet rögzítése nincs a DOM-ban, currencyList mountkor nem hívódik', async () => {
+    mocks.currencyList.mockReturnValue(new Promise(() => {}))
 
     render(<InventoryPage />)
 
-    const submitButton = await screen.findByRole('button', { name: 'Művelet rögzítése' })
-    const targetSelect = screen.getByLabelText('Cél telephely kiválasztása')
-    expect(submitButton).toBeDisabled()
-    expect(targetSelect).toBeDisabled()
-
-    await act(async () => {
-      resolveCurrencies(INVENTORY_CURRENCIES)
-    })
-
-    await waitFor(() => expect(submitButton).not.toBeDisabled())
-    expect(targetSelect).toBeDisabled()
-
-    fireEvent.change(screen.getByLabelText('Készletművelet típusa'), {
-      target: { value: 'transfer' },
-    })
-    await waitFor(() => expect(targetSelect).toHaveTextContent('BR002 — Szeged Pénztár'))
-    expect(targetSelect).not.toBeDisabled()
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Művelet rögzítése' })).not.toBeInTheDocument()
+    expect(mocks.currencyList).not.toHaveBeenCalled()
   })
 
-  it('inventory mozgás státuszok: beköti az approve, receive és cancel workflow endpointokat', async () => {
+  it('FKH-043: approve/receive/cancel gombok nincsenek a DOM-ban', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByText('Mozgások')).toBeInTheDocument())
-
-    fireEvent.click(screen.getByRole('button', { name: 'Készletmozgás #77 jóváhagyása' }))
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/77/approve')
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Készletmozgás #78 fogadása' }))
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/78/receive', { receivedAmount: 400 })
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Készletmozgás #77 visszavonása' }))
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/77/cancel')
-    })
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Készletmozgás #77 jóváhagyása' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Készletmozgás #78 fogadása' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Készletmozgás #77 visszavonása' }),
+    ).not.toBeInTheDocument()
+    const posts = mocks.apiPost.mock.calls.map((c) => String(c[0]))
+    expect(posts).not.toContain('/inventory/77/approve')
+    expect(posts).not.toContain('/inventory/78/receive')
+    expect(posts).not.toContain('/inventory/77/cancel')
   })
 
-  it('inventory regenerálás: beköti a /inventory/regeneration/run backend műveletet', async () => {
-    mocks.apiPost.mockResolvedValueOnce({ data: { discrepancyCount: 2, correctedCount: 2 } })
+  it('FKH-043: regenerálás vezérlők nincsenek a DOM-ban', async () => {
     render(<InventoryPage />)
 
-    await waitFor(() => expect(screen.getByText('Utolsó regenerálás')).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: 'Regenerálás futtatása' }))
-
-    await waitFor(() => {
-      expect(mocks.apiPost).toHaveBeenCalledWith('/inventory/regeneration/run', null, {
-        params: { branchId: '11111111-1111-1111-1111-111111111111' },
-      })
-    })
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByText('Utolsó regenerálás')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Regenerálás futtatása' })).not.toBeInTheDocument()
+    const posts = mocks.apiPost.mock.calls.map((c) => String(c[0]))
+    expect(posts).not.toContain('/inventory/regeneration/run')
   })
 
   it('banknote-inventory: beköti az add, remove, count és thresholds backend műveleteket', async () => {
@@ -729,5 +563,58 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
         },
       })
     })
+  })
+})
+
+describe('FKH-043 — Mobil készlet-riportok elrejtve', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.wsCallback.current = null
+    setupApiGet()
+    mocks.currencyList.mockResolvedValue(INVENTORY_CURRENCIES)
+    mocks.apiPost.mockResolvedValue({ data: BANKNOTE_ROWS[0] })
+    mocks.apiPut.mockResolvedValue({ data: BANKNOTE_ROWS[0] })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('T1: panel nincs a DOM-ban, HUF kártya és címletszintű készlet igen', async () => {
+    render(<InventoryPage />)
+
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(screen.queryByText('Mobil készlet-riportok')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('inventory-operation-panel')).not.toBeInTheDocument()
+    expect(screen.getByText('700')).toBeInTheDocument()
+    expect(screen.getByText('Címletszintű értéktári készlet')).toBeInTheDocument()
+  })
+
+  it('T2: operatív GET-ek és currencyList nem indulnak mountkor', async () => {
+    render(<InventoryPage />)
+
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expectOperationalGetsNotCalled()
+  })
+
+  it('T3: vault-stock és banknote-inventory GET-ek továbbra is mennek, EUR záró 500 látszik', async () => {
+    render(<InventoryPage />)
+
+    expect(await screen.findByText('Értéktári záró HUF készlet')).toBeInTheDocument()
+    expect(mocks.apiGet).toHaveBeenCalledWith('/inventory/vault-stock')
+    expect(mocks.apiGet).toHaveBeenCalledWith(
+      '/banknote-inventory/branch/11111111-1111-1111-1111-111111111111',
+    )
+    expect(mocks.apiGet).toHaveBeenCalledWith(
+      '/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/low-stock',
+    )
+    expect(mocks.apiGet).toHaveBeenCalledWith(
+      '/banknote-inventory/branch/11111111-1111-1111-1111-111111111111/over-stock',
+    )
+    expect(screen.getByText('500')).toBeInTheDocument()
+  })
+
+  it('T6: SHOW_MOBILE_INVENTORY_REPORTS exportált const false', () => {
+    expect(SHOW_MOBILE_INVENTORY_REPORTS).toBe(false)
   })
 })

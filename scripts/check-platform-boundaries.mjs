@@ -619,19 +619,36 @@ for (const client of CLIENTS) {
   if (existsSync(loginIdleHook)) {
     const src = readFileSync(loginIdleHook, 'utf8')
     check(
-      'frontend: a LoginPage jelentés hideg indításon IDLE, logout után SHIFT_OPEN',
+      'frontend: a LoginPage jelentés fail-safe ternárja megmaradt (logout -> SHIFT_OPEN)',
       src.includes('HAD_AUTH_SESSION_KEY') &&
         src.includes("hadAuth ? 'SHIFT_OPEN' : 'IDLE_BEFORE_OPEN'"),
       'mindig-IDLE a nyitott műszak alatti logoutnál csendes telepítést okozna',
     )
+    check(
+      'frontend: aktív belépőképernyő / nyitott nap alatt tilos telepítési ablakot jelenteni (Google-OTP hurok)',
+      src.includes("activity === 'ACTIVE'") && src.includes('hasOpenDayObservedToday'),
+      'a mountkori IDLE_BEFORE_OPEN + 10 mp-es READY a Google OTP (2-3 perc) alatt app.quit()-et okozott',
+    )
+  }
+
+  const loginUpdateWindowHook = join('frontend-react', 'src', 'hooks', 'useLoginScreenUpdateWindow.ts')
+  if (existsSync(loginUpdateWindowHook)) {
+    const src = readFileSync(loginUpdateWindowHook, 'utf8')
+    check(
+      'frontend: a belépőképernyő telepítési ablaka mért idle-timeout után nyílik csak',
+      src.includes('LOGIN_IDLE_TIMEOUT_MS'),
+      'IDLE_BEFORE_OPEN kizárólag mért tétlenség után jelenthető, futó belépési lépés alatt soha',
+    )
+  } else {
+    check('frontend: a belépőképernyő telepítési ablaka mért idle-timeout után nyílik csak', false, 'hiányzó useLoginScreenUpdateWindow.ts')
   }
 
   const loginPage = join('frontend-react', 'src', 'pages', 'auth', 'LoginPage.tsx')
   if (existsSync(loginPage)) {
     const src = readFileSync(loginPage, 'utf8')
     check(
-      'frontend: a LoginPage suite-update állapotot jelent (belépés nélkül is telepíthető)',
-      src.includes('reportLoginScreenIdleForUpdate'),
+      'frontend: a LoginPage a useLoginScreenUpdateWindow hookon át jelent (mount = ACTIVE, idle mért)',
+      src.includes('useLoginScreenUpdateWindow'),
       'ha csak a MainLayout jelentene, a belépni nem tudó gép SHIFT_OPEN-on ragadna',
     )
   }

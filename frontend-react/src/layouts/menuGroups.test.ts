@@ -229,6 +229,9 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       // FKH-030 FR-1: uj menupont a Naplokonyv mellett (Penzforgalom riport).
       'Pénzforgalom riport',
       'Napi zárás',
+      // FKH-042 FR-6: a meglévő „Címletezés – zárások" hub az Értéktár csoportban,
+      // közvetlenül a „Napi zárás" után (kontraktus-frissítés — nem gyengítés).
+      'Címletezés – zárások',
       // FKH-036 FR-9: a „Napzárás” bejegyzés rejtett lett az értéktáros elől
       // (hidden: true) — ezért a látható listából kikerül; a foertektar-bypass
       // lista (lent) VÁLTOZATLANUL tartalmazza.
@@ -279,6 +282,8 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       // FKH-030 FR-1: uj menupont a Naplokonyv mellett (Penzforgalom riport).
       'Pénzforgalom riport',
       'Napi zárás',
+      // FKH-042 FR-6: a foertektar bypass ugyanazt a bejegyzést látja (P12).
+      'Címletezés – zárások',
       'Napzárás',
       'Havi zárás',
       'Ügyfelek',
@@ -370,5 +375,44 @@ describe('FK-086 — Napi ellenőrző lista a Központ csoportban', () => {
       'foertektar',
       'ugyvezeto',
     ])
+  })
+})
+
+describe('FKH-042 FR-6 — „Címletezés – zárások" hub az Értéktár (lokál) csoportban', () => {
+  it('T7a: az értéktáros látja a hubot, közvetlenül a „Napi zárás" után', () => {
+    const labels = fkh026VisibleItemLabels('ertektar', ['ertektar'])
+    expect(labels).toContain('Címletezés – zárások')
+    expect(labels).toContain('Napi zárás')
+    expect(labels.indexOf('Címletezés – zárások')).toBe(labels.indexOf('Napi zárás') + 1)
+  })
+
+  it('T7b őr: a penztár-csoport listája VÁLTOZATLAN (nincs duplikáció, nincs törlés)', () => {
+    expect(fkh026VisibleItemLabels('penztar', ['penztar'])).toEqual([
+      'Pénztáros főmenü',
+      'Napnyitás',
+      'Valuta vétel / eladás',
+      'Konverzió',
+      'Irodaközi trade',
+      'Kassza / készlet',
+      'Címletezés – zárások',
+      'Címletképek (valuta)',
+      'Ügyfelek',
+      'Átadás-átvétel visszaigazolás (aláírás)',
+      'Napzárás',
+      'Árfolyamok (nézet)',
+      'Tranzakciólista',
+      'Egyéb feladatok',
+      'Kezelési költség beállítások',
+    ])
+  })
+
+  it('T7c (P11): a /closing/denominations-menu route-gate uniója ertektar+penztar, pontosan 2 bejegyzéssel', () => {
+    expect(
+      [...(effectiveCanonicalRolesForPath(menuGroups, '/closing/denominations-menu') ?? [])].sort(),
+    ).toEqual(['ertektar', 'penztar'])
+    // Nincs oldal-klón: a hub pontosan egy bejegyzés csoportonként (Pénztár + Értéktár).
+    expect(
+      menuGroups.flatMap((g) => g.items).filter((i) => i.path === '/closing/denominations-menu'),
+    ).toHaveLength(2)
   })
 })

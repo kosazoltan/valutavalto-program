@@ -27,7 +27,7 @@ import {
 } from '../../utils/clientEnv'
 import type { AppMode } from '../../types/appMode'
 import { useTranslation } from 'react-i18next'
-import { reportLoginScreenIdleForUpdate } from '../../hooks/reportLoginScreenIdleForUpdate'
+import { useLoginScreenUpdateWindow } from '../../hooks/useLoginScreenUpdateWindow'
 import i18n from '../../i18n'
 
 /**
@@ -55,15 +55,6 @@ export default function LoginPage() {
   // FKH-041 D8: az appMode a jelentés ELŐTT kell feloldódjon (useAppMode Electronban
   // aszinkron tölt az SQLite config store-ból) — ezért a hook-hívás az effekt ELŐTT áll.
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
-
-  // Hideg indítás pénztár módban: IDLE (telepíthető). Logout után: SHIFT_OPEN.
-  // FKH-041 FR-3 / C6: értéktár módban SOHA nem IDLE — a belépés előtti csendes
-  // telepítés szakította meg a bejelentkezést. Amíg az appMode nem oldódott fel
-  // (appModeLoading), NEM jelentünk: a korai IDLE épp a javított hibát nyitná újra.
-  useEffect(() => {
-    if (appModeLoading) return
-    void reportLoginScreenIdleForUpdate(undefined, undefined, appMode)
-  }, [appMode, appModeLoading])
 
   // v2.3.0: pre-fill a setup wizard altal beallitott kivalasztott dolgozoval
   const setupConfig = readSetupConfig()
@@ -158,6 +149,26 @@ export default function LoginPage() {
     Boolean(window.electronAPI?.googleOAuthFlow) &&
     !googleOAuthDisabled
   const [googleLoadingElectron, setGoogleLoadingElectron] = useState(false)
+
+  // A belépés BÁRMELY lépése alatt tilos telepítési ablakot jelenteni (Google OTP 2-3 perc).
+  const loginInteractionInFlight =
+    googleLoadingElectron ||
+    loading ||
+    mfaLoading ||
+    roleLoading ||
+    modeLoading ||
+    vaultLoading ||
+    showMfaChallenge ||
+    showRoleSelector ||
+    showModeSelector ||
+    showVaultWorkerSelect ||
+    showForgotPassword
+
+  useLoginScreenUpdateWindow({
+    appMode,
+    appModeLoading,
+    interactionInFlight: loginInteractionInFlight,
+  })
 
   /**
    * v2.1.4: Penztarosok lekerese a penztar regioja alapjan (no cache, mindig friss).

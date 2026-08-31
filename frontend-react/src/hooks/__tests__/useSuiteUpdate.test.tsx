@@ -12,6 +12,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import type { AppMode } from '../../types/appMode'
+import {
+  OPEN_DAY_OBSERVED_KEY,
+  rememberOpenDayObservation,
+  hasOpenDayObservedToday,
+} from '../../utils/openDayMarker'
 
 const isOpenMock = vi.fn()
 const getCurrentMock = vi.fn()
@@ -125,6 +130,7 @@ describe('useSuiteUpdate — jelentés a main processnek', () => {
     authMock.mockReset()
     authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
     readyCallback = null
+    localStorage.clear()
   })
 
   afterEach(() => {
@@ -135,6 +141,13 @@ describe('useSuiteUpdate — jelentés a main processnek', () => {
     isOpenMock.mockResolvedValue(true)
     renderHook(() => useSuiteUpdate())
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+  })
+
+  it('G8b: nyitott munkamenet -> a nyitottnap-marker a mai napra íródik (C3)', async () => {
+    isOpenMock.mockResolvedValue(true)
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(hasOpenDayObservedToday()).toBe(true)
   })
 
   it('lezárt napzárás -> CLOSED_AFTER_DAY_END jelentés', async () => {
@@ -413,5 +426,53 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
     authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
     renderHook(() => useSuiteUpdate())
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+  })
+})
+
+describe('useSuiteUpdate — nyitottnap-marker életciklus (Google-OTP hurok, C3)', () => {
+  beforeEach(() => {
+    isOpenMock.mockReset()
+    getCurrentMock.mockReset()
+    setShiftStateMock.mockClear()
+    statusMock.mockClear()
+    onReadyMock.mockClear()
+    isElectronMock.mockReturnValue(true)
+    appModeMock.mockReset()
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReset()
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    readyCallback = null
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('G12a: isOpen()===false + getCurrent hibazik -> IDLE_BEFORE_OPEN ÉS marker törlése (pozitív bizonyíték a nem-nyitott napról)', async () => {
+    rememberOpenDayObservation()
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+    expect(hasOpenDayObservedToday()).toBe(false)
+  })
+
+  it('G12b: isOpen() hibazik (halozat) -> SHIFT_OPEN ÉS marker ÉRINTETLEN (hiba nem gyarthat ablakot)', async () => {
+    rememberOpenDayObservation()
+    isOpenMock.mockRejectedValue(new Error('serverUnreachable'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(hasOpenDayObservedToday()).toBe(true)
+  })
+
+  it('G12c: nem-penztar mod -> SHIFT_OPEN, isOpen NEM hívódik, marker ÉRINTETLEN (FKH-041 FR-3)', async () => {
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    rememberOpenDayObservation()
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(isOpenMock).not.toHaveBeenCalled()
+    expect(hasOpenDayObservedToday()).toBe(true)
+    expect(localStorage.getItem(OPEN_DAY_OBSERVED_KEY)).not.toBeNull()
   })
 })

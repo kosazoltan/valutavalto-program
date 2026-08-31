@@ -124,6 +124,21 @@ export default function DenominationEntryPage() {
     [visibleDenominations, editingQuantities],
   )
 
+  /** FKH-042 FR-2 (D3): a kiválasztott valuta sora a már lekért self-check tömbből. */
+  const selectedSelfCheckRow = useMemo(() => {
+    if (!selfCheck || selectedCurrencyId === null) return null
+    return (
+      selfCheck.find((r) => Number(r.currencyId) === selectedCurrencyId) ??
+      selfCheck.find((r) => r.currencyCode === selectedCurrency?.code) ??
+      null
+    )
+  }, [selfCheck, selectedCurrencyId, selectedCurrency?.code])
+
+  /** FR-5: kizárólag a DTO expectedBalance — nincs új számítási logika. */
+  const expectedBalance = selectedSelfCheckRow ? Number(selectedSelfCheckRow.expectedBalance) : null
+  /** FR-2 (D2): pozitív = még hiányzik a becímletezésből; a DTO.difference ELLENTÉTES előjelű és állott. */
+  const liveDifference = expectedBalance === null ? null : expectedBalance - calculatedTotal
+
   const loadCurrencies = useCallback(async () => {
     try {
       const data = await currencyApi.getActive()
@@ -181,9 +196,28 @@ export default function DenominationEntryPage() {
     setLoading(false)
   }, [selectedCashDeskId, selectedCurrencyId, category])
 
+  /**
+   * FKH-042 FR-1: az elvárt készlet a MEGLÉVŐ self-check DTO-ból, mountkor — Mentés nélkül.
+   * FKH-038 örökség: a `category` paramétert MINDIG átadjuk (kategória-keveredés tilos).
+   */
+  const loadSelfCheck = useCallback(async () => {
+    if (!selfCheckEnabled || !selectedCashDeskId) return
+    try {
+      setSelfCheck(await denominationBalanceApi.selfCheck(selectedCashDeskId, category))
+    } catch (error) {
+      // FKH-042 FR-1 nem blokkoló: a fejléc üres marad, a táblázat (loadAll) érintetlen.
+      logger.warn('DenominationEntryPage', 'Elvárt készlet (önellenőrzés) nem elérhető:', error)
+      setSelfCheck(null)
+    }
+  }, [selfCheckEnabled, selectedCashDeskId, category])
+
   useEffect(() => {
     void loadCurrencies()
   }, [loadCurrencies])
+
+  useEffect(() => {
+    void loadSelfCheck()
+  }, [loadSelfCheck])
 
   useEffect(() => {
     if (selectedCurrencyId && selectedCashDeskId) {
@@ -342,6 +376,37 @@ export default function DenominationEntryPage() {
             ))}
           </select>
         </div>
+
+        {/* FKH-042 FR-1/FR-2: elvárt készlet + élő eltérés a táblázat FELETT, Mentés nélkül. */}
+        {selfCheckEnabled && (
+          <div
+            data-testid="denomination-entry-expected-panel"
+            className="flex flex-wrap items-center gap-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm"
+          >
+            <span className="text-secondary-700">
+              {i18n.t('literals.elvart-keszlet')}{' '}
+              <span
+                className="font-mono font-bold text-blue-700"
+                data-testid="denomination-entry-expected"
+              >
+                {expectedBalance === null
+                  ? '—'
+                  : `${formatDecimal(expectedBalance, 2, 2)} ${selectedCurrency?.code ?? ''}`}
+              </span>
+            </span>
+            <span className="text-secondary-700">
+              {i18n.t('literals.elo-elteres')}{' '}
+              <span
+                className={`font-mono font-bold ${liveDifference === 0 ? 'text-green-700' : 'text-red-700'}`}
+                data-testid="denomination-entry-diff"
+              >
+                {liveDifference === null
+                  ? '—'
+                  : `${formatDecimal(liveDifference, 2, 2)} ${selectedCurrency?.code ?? ''}`}
+              </span>
+            </span>
+          </div>
+        )}
 
         {loading ? (
           <p className="text-sm text-secondary-500">{i18n.t('literals.betoltes-3')}</p>
