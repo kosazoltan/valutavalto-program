@@ -611,9 +611,7 @@ describe('DenominationEntryPage — FKH-042 élő célösszeg', () => {
     mocks.balancesSelfCheck.mockResolvedValue(SELF_CHECK_EUR_150)
     renderPage()
 
-    await waitFor(() =>
-      expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'EVENING'),
-    )
+    await waitFor(() => expect(mocks.balancesSelfCheck).toHaveBeenCalledWith('branch-1', 'EVENING'))
     expect(mocks.balancesSelfCheck).toHaveBeenCalledTimes(1)
 
     expect(screen.getByTestId('denomination-entry-expected-panel')).toBeInTheDocument()

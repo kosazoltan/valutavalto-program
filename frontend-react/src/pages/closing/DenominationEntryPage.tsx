@@ -135,9 +135,7 @@ export default function DenominationEntryPage() {
   }, [selfCheck, selectedCurrencyId, selectedCurrency?.code])
 
   /** FR-5: kizárólag a DTO expectedBalance — nincs új számítási logika. */
-  const expectedBalance = selectedSelfCheckRow
-    ? Number(selectedSelfCheckRow.expectedBalance)
-    : null
+  const expectedBalance = selectedSelfCheckRow ? Number(selectedSelfCheckRow.expectedBalance) : null
   /** FR-2 (D2): pozitív = még hiányzik a becímletezésből; a DTO.difference ELLENTÉTES előjelű és állott. */
   const liveDifference = expectedBalance === null ? null : expectedBalance - calculatedTotal
 
