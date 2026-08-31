@@ -181,7 +181,6 @@ function setupApiGet() {
   })
 }
 
-
 function expectOperationalGetsNotCalled() {
   const paths = mocks.apiGet.mock.calls.map((c) => String(c[0]))
   expect(paths.some((p) => p.includes('/inventory/stock/'))).toBe(false)
@@ -481,7 +480,9 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     expect(
       screen.queryByRole('button', { name: 'Készletmozgás #77 jóváhagyása' }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Készletmozgás #78 fogadása' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Készletmozgás #78 fogadása' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Készletmozgás #77 visszavonása' }),
     ).not.toBeInTheDocument()
@@ -564,7 +565,6 @@ describe('InventoryPage – Értéktári készlet (FR-1..6)', () => {
     })
   })
 })
-
 
 describe('FKH-043 — Mobil készlet-riportok elrejtve', () => {
   beforeEach(() => {
