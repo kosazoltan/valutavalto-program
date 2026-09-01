@@ -213,6 +213,29 @@ public class DailySessionService {
     }
 
     /**
+     * A mai session lekérése BÁRMELY státusszal (kanban #4, FR-3).
+     *
+     * <p>A {@link #getCurrentSession()} csak OPEN státuszú sessiont ad vissza
+     * (ugyanaz a query, státusz-szűrővel), ezért napzárás után mindig
+     * {@link ValidationException}-t dob — a renderer ebből sosem tudhatná meg,
+     * hogy a nap LEZÁRULT (a napzárás utáni telepítési ablak állapota,
+     * {@code CLOSED_AFTER_DAY_END}). Ez a metódus ADDITÍV (FK-075 §7): a mai
+     * sessiont bármely státusszal adja vissza, rekord hiányában
+     * {@link Optional#empty()}-t — nem dob kivételt. A tenant-szűrés
+     * (companyId + branchId) a security contextből jön, ugyanúgy, ahogy a
+     * {@link #getCurrentSession()} esetén, így más cég/iroda rekordja nem
+     * kerülhet vissza.
+     */
+    @Transactional(readOnly = true)
+    public Optional<DailySession> findTodaySession() {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        UUID branchId = SecurityUtils.getCurrentBranchId();
+        LocalDate today = LocalDate.now();
+
+        return dailySessionRepository.findByBranchIdAndSessionDateWithDetails(companyId, branchId, today);
+    }
+
+    /**
      * Van-e nyitott session?
      */
     @Transactional(readOnly = true)

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -76,6 +77,27 @@ public class DailySessionController {
     public ResponseEntity<DailySessionDto> getCurrentSession() {
         DailySession session = dailySessionService.getCurrentSession();
         return ResponseEntity.ok(dailySessionMapper.toDto(session));
+    }
+
+    /**
+     * A mai session lekérdezése BÁRMELY státusszal (kanban #4, FR-3).
+     *
+     * <p>ADDITÍV endpoint (FK-075 §7): a {@code /current} változatlan marad,
+     * mert az csak OPEN sessiont ad vissza és napzárás után mindig hibát dobna —
+     * így a renderer napzárás UTÁNI telepítési ablaka (CLOSED_AFTER_DAY_END)
+     * nem kaphatna belőle állapotot. Ez az endpoint a mai sessiont bármilyen
+     * státusszal adja vissza (200), rekord hiányában 204 No Contentet. A 204
+     * NEM hiba: azt jelenti, hogy a nap még el sem indult.
+     *
+     * GET /api/v1/daily-sessions/today
+     */
+    @GetMapping("/today")
+    public ResponseEntity<DailySessionDto> getTodaySession() {
+        Optional<DailySession> session = dailySessionService.findTodaySession();
+        if (session.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(dailySessionMapper.toDto(session.get()));
     }
 
     /**
