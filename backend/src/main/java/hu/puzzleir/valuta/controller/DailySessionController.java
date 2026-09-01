@@ -90,8 +90,16 @@ public class DailySessionController {
      * NEM hiba: azt jelenti, hogy a nap még el sem indult.
      *
      * GET /api/v1/daily-sessions/today
+     *
+     * <p>Explicit {@code @PreAuthorize} (deny-by-default, ArchUnit
+     * {@code restControllersMustBeSecured}): the neighbouring read endpoints are
+     * grandfathered in the freeze store, but a NEW endpoint must carry its own role
+     * gate. Roles mirror {@code openDay}/{@code closeDay} — the day-session owners.
+     * A caller outside these roles gets 403, which the renderer's outer catch maps
+     * to SHIFT_OPEN (fail-safe: no install), so the gate cannot cause a silent install.
      */
     @GetMapping("/today")
+    @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
     public ResponseEntity<DailySessionDto> getTodaySession() {
         Optional<DailySession> session = dailySessionService.findTodaySession();
         if (session.isEmpty()) {
