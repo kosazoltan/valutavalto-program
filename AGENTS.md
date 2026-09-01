@@ -475,6 +475,17 @@ Csak a közös blokk alapján dolgozni tilos, ha a repo saját szabályt tartalm
 telepített közös blokk a repo saját szövegét nem törölheti és nem írhatja át
 kézzel; csak markerelt blokkban frissíthető.
 
+- **Munkanyelv — gép-gép ANGOL, ember-felé MAGYAR (kötelező).** A pipeline-lelkek
+  (planner/coder/ellenor1/ellenor2/biro) és minden agent-agent artefaktum
+  (`.hermes/pipeline/**` terv, implementációs riport, verdikt, ruling, input-fájlok),
+  valamint a kód, a kommitüzenetek, a kód-kommentek és a gépi kapu-üzenetek nyelve
+  **ANGOL**. Magyarul CSAK a felhasználónak szóló zárójelentés, a státusz-összefoglaló
+  és a végfelhasználói UI-szöveg készül. Indok (mérve 2026-09-01, kanban #4): a
+  magyar nyelvű agent-közti kommentek félrefordítást hordoztak — a PR #1685 magyar
+  kommentje („a lezárt nap CLOSED_AFTER_DAY_END marad telepíthető") tényszerűen hamis
+  állítást rögzített, amit két reviewer és a bíró is átengedett. A meglévő magyar
+  kód-kommenteket NEM kell visszamenőleg átírni (az külön, mérhető feladat) — de új
+  vagy módosított agent-artefaktum és kód-komment már angolul készül.
 - Magyarul kommunikálj a felhasználóval, kivéve ha a repo vagy a feladat más
   nyelvet kér a végtermékben.
 - Tényből dolgozz: ne találj ki fájlt, API-t, route-ot, teszteredményt, logot,
