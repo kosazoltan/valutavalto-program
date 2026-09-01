@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.DailySession;
+import hu.puzzleir.valuta.entity.DailySessionStatus;
 import hu.puzzleir.valuta.entity.Worker;
 import hu.puzzleir.valuta.entity.WorkerRole;
 import hu.puzzleir.valuta.repository.BranchRepository;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -258,5 +260,58 @@ class DailySessionServiceTest {
 
         verify(dailySessionRepository, never()).findByBranchIdAndSessionDateAndCompanyIdForUpdate(
                 eq(branchId), eq(LocalDate.now()), eq(otherCompanyId));
+    }
+
+    // === kanban #4 (2026-09-01) — napzaras utani telepitesi ablak (FR-3) ===
+    // A hitelesitett penztaros gep suite-telepitesi ablakanak allapotforrasa a
+    // GET /daily-sessions/today: a mai session BARMELY statusszal visszakerul
+    // (nem csak OPEN), igy a renderer a CLOSED_AFTER_DAY_END allapotot lathatja.
+
+    @Test
+    @DisplayName("kanban #4 T1: findTodaySession - a mai CLOSED sessiont adja vissza, NEM dob ValidationException-t (FR-3)")
+    void findTodaySession_closedToday_returnsSessionWithoutThrow() {
+        DailySession closedSession = DailySession.builder()
+                .id(31L)
+                .sessionDate(LocalDate.now())
+                .status(DailySessionStatus.CLOSED)
+                .build();
+        when(dailySessionRepository.findByBranchIdAndSessionDateWithDetails(
+                eq(companyId), eq(branchId), eq(LocalDate.now())))
+                .thenReturn(Optional.of(closedSession));
+
+        Optional<DailySession> result = service.findTodaySession();
+
+        assertThat(result).containsSame(closedSession);
+    }
+
+    @Test
+    @DisplayName("kanban #4 T2: findTodaySession - a mai OPEN session szures nelkul visszakerul (nincs .filter)")
+    void findTodaySession_openToday_returnsSessionUnfiltered() {
+        DailySession openSession = DailySession.builder()
+                .id(32L)
+                .sessionDate(LocalDate.now())
+                .status(DailySessionStatus.OPEN)
+                .build();
+        when(dailySessionRepository.findByBranchIdAndSessionDateWithDetails(
+                eq(companyId), eq(branchId), eq(LocalDate.now())))
+                .thenReturn(Optional.of(openSession));
+
+        Optional<DailySession> result = service.findTodaySession();
+
+        assertThat(result).containsSame(openSession);
+    }
+
+    @Test
+    @DisplayName("kanban #4 T3: findTodaySession - nincs mai rekord -> Optional.empty, NEM dob; a tenant-szures a security fixture-bol jon (AC-6)")
+    void findTodaySession_noRecordToday_returnsEmptyWithoutThrow() {
+        when(dailySessionRepository.findByBranchIdAndSessionDateWithDetails(
+                eq(companyId), eq(branchId), eq(LocalDate.now())))
+                .thenReturn(Optional.empty());
+
+        Optional<DailySession> result = service.findTodaySession();
+
+        assertThat(result).isEmpty();
+        verify(dailySessionRepository).findByBranchIdAndSessionDateWithDetails(
+                companyId, branchId, LocalDate.now());
     }
 }

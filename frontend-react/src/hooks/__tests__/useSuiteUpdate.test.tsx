@@ -20,6 +20,8 @@ import {
 
 const isOpenMock = vi.fn()
 const getCurrentMock = vi.fn()
+// kanban #4 (FR-3): a napzaras UTANI ablak allapotforrasa a GET /daily-sessions/today.
+const getTodaySessionMock = vi.fn()
 const setShiftStateMock = vi.fn((_state: string) =>
   Promise.resolve({ accepted: true, shiftState: _state }),
 )
@@ -50,6 +52,7 @@ vi.mock('../../services/api/index', () => ({
   dailySessionApi: {
     isOpen: () => isOpenMock(),
     getCurrent: () => getCurrentMock(),
+    getTodaySession: () => getTodaySessionMock(),
   },
 }))
 
@@ -543,5 +546,57 @@ describe('useSuiteUpdate — hitelesített pénztáros SOHA nem IDLE (kanban #3)
     expect(clampIdleForAuthenticatedCashier('IDLE_BEFORE_OPEN')).toBe('SHIFT_OPEN')
     expect(clampIdleForAuthenticatedCashier('SHIFT_OPEN')).toBe('SHIFT_OPEN')
     expect(clampIdleForAuthenticatedCashier('CLOSED_AFTER_DAY_END')).toBe('CLOSED_AFTER_DAY_END')
+  })
+})
+
+describe('useSuiteUpdate — napzaras utani telepitesi ablak a /today-bol (kanban #4, FR-3)', () => {
+  beforeEach(() => {
+    isOpenMock.mockReset()
+    getTodaySessionMock.mockReset()
+    setShiftStateMock.mockClear()
+    statusMock.mockClear()
+    onReadyMock.mockClear()
+    isElectronMock.mockReturnValue(true)
+    appModeMock.mockReset()
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReset()
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    readyCallback = null
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('T6: penztar mod + penztar szerep + isOpen=false + /today CLOSED -> CLOSED_AFTER_DAY_END (FR-3: az egyetlen viselkedesvaltozas)', async () => {
+    isOpenMock.mockResolvedValue(false)
+    getTodaySessionMock.mockResolvedValue({ status: 'CLOSED', closedAt: '2026-09-01T18:00:00Z' })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('CLOSED_AFTER_DAY_END'))
+  })
+
+  it('T7: penztar mod + isOpen=false + /today null -> SHIFT_OPEN, soha IDLE_BEFORE_OPEN (FR-2/FR-4: a clamp tovabbra is aktiv)', async () => {
+    isOpenMock.mockResolvedValue(false)
+    getTodaySessionMock.mockResolvedValue(null)
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('T8: penztar mod + isOpen=false + /today halozati hiba -> SHIFT_OPEN (AC-3 fail-safe: a meglevo kulso catch-ág)', async () => {
+    isOpenMock.mockResolvedValue(false)
+    getTodaySessionMock.mockRejectedValue(new Error('serverUnreachable'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+  })
+
+  it('T9: ertektar mod + CLOSED session a /today-ban -> SHIFT_OPEN es a /today-t SEM hivjuk (FR-5 / FKH-041 never-install)', async () => {
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    isOpenMock.mockResolvedValue(false)
+    getTodaySessionMock.mockResolvedValue({ status: 'CLOSED', closedAt: '2026-09-01T18:00:00Z' })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(getTodaySessionMock).not.toHaveBeenCalled()
   })
 })

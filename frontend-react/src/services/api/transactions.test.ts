@@ -860,3 +860,31 @@ describe('shipmentRequestApi (backend /api/v1/shipments)', () => {
     expect(result.requestStatus).toBe('CANCELLED')
   })
 })
+
+// kanban #4 (2026-09-01): a napzaras UTANI telepitesi ablak (FR-3) allapotforrasa
+// a GET /daily-sessions/today. A /current ugyanazzal a kulccsal szuri a napot
+// (companyId+branchId+today+OPEN), mint az isOpen(), ezert CLOSED napra mindig
+// hibazna — erre a kerdesre nem tud valaszolni. A 204 nem hiba: nincs mai rekord.
+describe('dailySessionApi.getTodaySession contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('T4: 200 + CLOSED session -> visszaadja az objektumot es a /daily-sessions/today-t hivja', async () => {
+    const closedSession = { status: 'CLOSED', closedAt: '2026-09-01T18:00:00Z' }
+    mockApi.get.mockResolvedValue({ status: 200, data: closedSession })
+
+    const result = await dailySessionApi.getTodaySession()
+
+    expect(mockApi.get).toHaveBeenCalledWith('/daily-sessions/today')
+    expect(result).toEqual(closedSession)
+  })
+
+  it('T5: 204 No Content -> null (nincs mai rekord: a nap meg el sem indult)', async () => {
+    mockApi.get.mockResolvedValue({ status: 204, data: '' })
+
+    const result = await dailySessionApi.getTodaySession()
+
+    expect(result).toBeNull()
+  })
+})
