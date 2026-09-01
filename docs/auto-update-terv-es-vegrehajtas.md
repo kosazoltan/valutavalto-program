@@ -484,3 +484,9 @@ Szabályok, amelyek ebből következnek:
 > állapotgépe `IDLE → CHECKING → DOWNLOADING → VERIFYING → READY → (ablak) → INSTALLING`,
 > és a `READY → INSTALLING` átmenet **kizárólag** `IDLE_BEFORE_OPEN` vagy
 > `CLOSED_AFTER_DAY_END` állapotban, felhasználói megerősítéssel történhet.
+
+> **Kanban #4 (2026-09-01):** a `GET /daily-sessions/current` nem tudja kifejezni, hogy
+> „a nap ma már lezárult" (ugyanazzal a companyId+branchId+today+OPEN kulccsal szűr, mint az
+> `isOpen()`, ezért napzárás után mindig hibát dob), ezért a `CLOSED_AFTER_DAY_END` állapot
+> (FR-3) forrása a kiegészítő `GET /daily-sessions/today` végpont: ez a mai sessiont bármely
+> státusszal adja vissza (rekord hiányában 204 No Content).
