@@ -157,21 +157,17 @@ export function useSuiteUpdate(): {
           // szándékosan NEM nyúl a markerhez (döntés 4: hiba nem gyárthat ablakot).
           clearOpenDayObservation()
           // Nincs nyitott munkamenet: a mai nap már lezárult, vagy még el sem indult.
-          // A kettő telepítés szempontjából EGYÁLTALÁN nem egyenértékű a hitelesített
-          // pénztáros képernyőn (kanban #3): az „el sem indult" ág clampelve van
-          // SHIFT_OPEN-ra, a lezárt nap (CLOSED_AFTER_DAY_END) marad telepíthető.
-          try {
-            const current = await dailySessionApi.getCurrent()
-            next = clampIdleForAuthenticatedCashier(mapSessionToShiftState(current))
-          } catch {
-            // Nincs mai munkamenet-rekord -> a nap még nem indult el; hitelesített
-            // pénztáros munkamenetben ez SEM telepíthető ablak (kanban #3).
-            logger.info(
-              'SuiteUpdate',
-              'Nincs mai munkamenet-rekord: hitelesített pénztárosként SHIFT_OPEN-t jelentünk (kanban #3, telepítési ablak letiltva)',
-            )
-            next = clampIdleForAuthenticatedCashier('IDLE_BEFORE_OPEN')
-          }
+          // A /current erre a kérdésre NEM tud válaszolni: ugyanazzal a
+          // companyId+branchId+today+OPEN kulccsal szűr, mint az isOpen(), ezért
+          // napzárás után mindig hibát dobna (az a try-ág halott kód volt). A
+          // GET /daily-sessions/today (kanban #4) a mai sessiont BÁRMELY státusszal
+          // adja vissza: CLOSED -> CLOSED_AFTER_DAY_END (telepíthető), nincs rekord
+          // -> null -> IDLE_BEFORE_OPEN, amit a clamp SHIFT_OPEN-ra szorít a
+          // hitelesített pénztárosnál. Hálózati hiba esetén a getTodaySession() dob,
+          // és a MEGLEVŐ külső catch-ág gondoskodik a fail-safe SHIFT_OPEN-ról.
+          next = clampIdleForAuthenticatedCashier(
+            mapSessionToShiftState(await dailySessionApi.getTodaySession()),
+          )
         }
       } catch (error) {
         // Fail-safe: nem megállapítható állapot -> nyitott műszakként kezeljük.
