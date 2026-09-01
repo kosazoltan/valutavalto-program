@@ -599,6 +599,11 @@ for (const client of CLIENTS) {
         !/next = 'IDLE_BEFORE_OPEN'/.test(src),
       'hitelesitett penztaros munkamenet SOHA nem nyithat telepitesi ablakot (kanban #3)',
     )
+    check(
+      'frontend: napzaras utan a CLOSED_AFTER_DAY_END ablak a /daily-sessions/today-bol jon (kanban #4)',
+      src.includes('getTodaySession(') && !src.includes('getCurrent('),
+      'napzaras utan a CLOSED_AFTER_DAY_END ablak a /daily-sessions/today-bol jon; a /current sosem adhat CLOSED-t (kanban #4)',
+    )
   }
 
   const mainLayout = join('frontend-react', 'src', 'layouts', 'MainLayout.tsx')
