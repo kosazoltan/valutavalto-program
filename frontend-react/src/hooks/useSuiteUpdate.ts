@@ -57,6 +57,25 @@ export function mapSessionToShiftState(
 }
 
 /**
+ * Hitelesített pénztáros munkamenetben az `IDLE_BEFORE_OPEN` állapotot
+ * `SHIFT_OPEN`-ra szorítja vissza (minden más állapot változatlan).
+ *
+ * Ticket 2026-09-01 kanban #3: a hitelesített pénztáros képernyő SOHA nem
+ * nyithat telepítési ablakot. A tiszta mapper (`mapSessionToShiftState`)
+ * szerződése változatlan marad — a politika ott él, ahol a hitelesítés ismert
+ * (a hook pénztáros ágában). Ha tegnap még OPEN volt a nap és ma nincs
+ * munkamenet-rekord, a backend `isOpen()===false`-t ad; ebből a main process
+ * korábban csendes telepítést és `app.quit()`-et indított volna a műszak
+ * (és a Google-OAuth) közepén.
+ */
+export function clampIdleForAuthenticatedCashier(state: ShiftState): ShiftState {
+  if (state === 'IDLE_BEFORE_OPEN') {
+    return 'SHIFT_OPEN'
+  }
+  return state
+}
+
+/**
  * Jelenti a műszak-állapotot a main processnek, és fogadja a "frissítés készen áll"
  * jelzést.
  *
@@ -138,14 +157,20 @@ export function useSuiteUpdate(): {
           // szándékosan NEM nyúl a markerhez (döntés 4: hiba nem gyárthat ablakot).
           clearOpenDayObservation()
           // Nincs nyitott munkamenet: a mai nap már lezárult, vagy még el sem indult.
-          // A kettő telepítés szempontjából egyenértékű (mindkettő ablak), de a
-          // dialógus szövege eltér, ezért megkülönböztetjük.
+          // A kettő telepítés szempontjából EGYÁLTALÁN nem egyenértékű a hitelesített
+          // pénztáros képernyőn (kanban #3): az „el sem indult" ág clampelve van
+          // SHIFT_OPEN-ra, a lezárt nap (CLOSED_AFTER_DAY_END) marad telepíthető.
           try {
             const current = await dailySessionApi.getCurrent()
-            next = mapSessionToShiftState(current)
+            next = clampIdleForAuthenticatedCashier(mapSessionToShiftState(current))
           } catch {
-            // Nincs mai munkamenet-rekord -> a nap még nem indult el.
-            next = 'IDLE_BEFORE_OPEN'
+            // Nincs mai munkamenet-rekord -> a nap még nem indult el; hitelesített
+            // pénztáros munkamenetben ez SEM telepíthető ablak (kanban #3).
+            logger.info(
+              'SuiteUpdate',
+              'Nincs mai munkamenet-rekord: hitelesített pénztárosként SHIFT_OPEN-t jelentünk (kanban #3, telepítési ablak letiltva)',
+            )
+            next = clampIdleForAuthenticatedCashier('IDLE_BEFORE_OPEN')
           }
         }
       } catch (error) {
