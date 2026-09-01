@@ -29,8 +29,9 @@ import { isInRollout } from '../../packages/electron-platform/src/auto-update';
  *   - nyitott muszak alatt (SHIFT_OPEN): CSAK JELZES (ertesites + renderer-jelolo),
  *     a letoltes es az ellenorzes a hatterben lefut, telepito NEM indul;
  *   - napzaras UTAN (CLOSED_AFTER_DAY_END) vagy napnyitas ELOTT (IDLE_BEFORE_OPEN):
- *     a telepites AUTOMATIKUSAN indul (nincs „Frissítés most” kattintás —
- *     a belépés nélküli gépek is frissüljenek).
+ *     a telepites AUTOMATIKUSAN indul (a belepes nelkuli gepek is frissuljenek);
+ *   - explicit "Telepites most" a renderer banneren SHIFT_OPEN alatt is
+ *     (suiteUpdate:startInstall) — READY + verified exe, shift ignored.
  *
  * Az allapotot a renderer jelenti (`suiteUpdate:setShiftState`). Ha az allapot NEM
  * megallapithato, konzervativan `SHIFT_OPEN`-nek tekintjuk -> nem telepitunk.
@@ -94,6 +95,14 @@ export function shouldAutoStartInstall(
   shiftState: ShiftState,
 ): boolean {
   return suiteState === 'READY' && isInstallWindow(shiftState);
+}
+
+/** Explicit banner click: READY + verified exe. Shift state is ignored. */
+export function canStartInstallOnDemand(
+  state: SuiteUpdateState,
+  verifiedExePath: string | null,
+): boolean {
+  return state === 'READY' && typeof verifiedExePath === 'string' && verifiedExePath.length > 0;
 }
 
 /**
@@ -419,6 +428,14 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
     mandatory: runtime.manifest?.mandatory === true,
   }));
 
+  ipcMain.handle('suiteUpdate:startInstall', () => {
+    if (!canStartInstallOnDemand(runtime.state, runtime.verifiedExePath) || !runtime.manifest) {
+      return { started: false, reason: 'NOT_READY' as const };
+    }
+    startSilentInstall(runtime.verifiedExePath!, runtime.manifest);
+    return { started: true };
+  });
+
   const initialTimer = setTimeout(() => void check(), INITIAL_DELAY_MS);
   const intervalTimer = setInterval(() => void check(), POLL_INTERVAL_MS);
 
@@ -438,6 +455,7 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
       clearInterval(intervalTimer);
       ipcMain.removeHandler('suiteUpdate:setShiftState');
       ipcMain.removeHandler('suiteUpdate:status');
+      ipcMain.removeHandler('suiteUpdate:startInstall');
     },
   };
 

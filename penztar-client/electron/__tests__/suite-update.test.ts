@@ -49,6 +49,7 @@ const {
   parseManifest,
   isInstallWindow,
   shouldAutoStartInstall,
+  canStartInstallOnDemand,
   isSafeInstallerFileName,
   isAcceptableCacheCandidate,
   selectStaleCacheEntries,
@@ -111,6 +112,19 @@ describe('shouldAutoStartInstall — belépés nélküli automatikus telepítés
     expect(shouldAutoStartInstall('DOWNLOADING', 'IDLE_BEFORE_OPEN')).toBe(false);
     expect(shouldAutoStartInstall('VERIFYING', 'IDLE_BEFORE_OPEN')).toBe(false);
     expect(shouldAutoStartInstall('IDLE', 'IDLE_BEFORE_OPEN')).toBe(false);
+  });
+});
+
+describe('canStartInstallOnDemand — explicit banner install (kanban #7)', () => {
+  it('T-gate-ready: READY + non-empty path is allowed', () => {
+    expect(canStartInstallOnDemand('READY', 'verified-exe-path')).toBe(true);
+  });
+
+  it('T-gate-blocked: IDLE/DOWNLOADING/null/empty path is refused', () => {
+    expect(canStartInstallOnDemand('IDLE', 'verified-exe-path')).toBe(false);
+    expect(canStartInstallOnDemand('DOWNLOADING', 'verified-exe-path')).toBe(false);
+    expect(canStartInstallOnDemand('READY', null)).toBe(false);
+    expect(canStartInstallOnDemand('READY', '')).toBe(false);
   });
 });
 
