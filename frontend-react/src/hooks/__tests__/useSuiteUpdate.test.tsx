@@ -92,7 +92,8 @@ vi.mock('../../stores/authStore', () => ({
   useAuthStore: () => authMock(),
 }))
 
-const { useSuiteUpdate, mapSessionToShiftState } = await import('../useSuiteUpdate')
+const { useSuiteUpdate, mapSessionToShiftState, clampIdleForAuthenticatedCashier } =
+  await import('../useSuiteUpdate')
 
 describe('mapSessionToShiftState — fail-safe leképezés', () => {
   it('nincs mai munkamenet -> napnyitás előtt (telepíthető)', () => {
@@ -157,11 +158,15 @@ describe('useSuiteUpdate — jelentés a main processnek', () => {
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('CLOSED_AFTER_DAY_END'))
   })
 
-  it('nincs mai munkamenet -> IDLE_BEFORE_OPEN jelentés', async () => {
+  it('nincs mai munkamenet -> SHIFT_OPEN jelentés (hitelesített pénztáros soha nem IDLE)', async () => {
+    // 2026-09-01 kanban #3: hitelesített pénztáros munkamenet SOHA nem nyithat
+    // telepítési ablakot — a korábbi IDLE_BEFORE_OPEN várakozás hibás volt
+    // (nap közbeni csendes telepítés + app.quit()).
     isOpenMock.mockResolvedValue(false)
     getCurrentMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
   })
 
   it('BACKEND HIBA -> SHIFT_OPEN (fail-safe: nem telepítünk)', async () => {
@@ -280,13 +285,16 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
   })
 
-  it('C7: penztar mod + penztar szerep + nincs session + getCurrent hibazik -> IDLE_BEFORE_OPEN (penztaros ablak megmarad)', async () => {
+  it('C7: penztar mod + penztar szerep + nincs session + getCurrent hibazik -> SHIFT_OPEN (hitelesitett penztaros soha nem IDLE)', async () => {
+    // 2026-09-01 kanban #3: a hitelesitett penztaros kepernyo SOHA nem nyithat
+    // telepitesi ablakot — a korabbi IDLE_BEFORE_OPEN varakozast a ticket felulirja.
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
     isOpenMock.mockResolvedValue(false)
     getCurrentMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
   })
 
   it('C8: penztar mod + nyitott session -> SHIFT_OPEN (valtozatlan)', async () => {
@@ -304,20 +312,22 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     expect(setShiftStateMock).not.toHaveBeenCalled()
   })
 
-  it('R3: appMode atmenet penztar -> ertektar -> ujra-jelentes SHIFT_OPEN-nal (korrekciós mechanizmus, D6)', async () => {
-    // Indulas: penztar mod, nincs nyitott session -> IDLE_BEFORE_OPEN.
+  it('R3: appMode atmenet penztar -> ertektar -> SHIFT_OPEN jelentes mindket allapotban (korrekciós mechanizmus, D6)', async () => {
+    // 2026-09-01 kanban #3: indulas penztar modban is SHIFT_OPEN-nal tortenik
+    // (hitelesitett penztaros soha nem IDLE); a modatmenet utan is SHIFT_OPEN marad.
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     isOpenMock.mockResolvedValue(false)
     getCurrentMock.mockRejectedValue(new Error('404'))
     const { rerender } = renderHook(() => useSuiteUpdate())
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
 
     // Az SQLite app_mode feloldas utan a terminal ertektar modra valt:
-    // a hooknak ujra kell jelentenie, es a SHIFT_OPEN felulirja az IDLE-t.
+    // a hook ujra-jelentese SHIFT_OPEN-t ad, IDLE sosem jelenik meg.
     appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
     rerender()
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
-    expect(setShiftStateMock).toHaveBeenLastCalledWith('SHIFT_OPEN')
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenLastCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
   })
 })
 
@@ -380,13 +390,16 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
     expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
   })
 
-  it('C14: penztar mod + activeRole=null, user.role=CASHIER -> IDLE_BEFORE_OPEN (legacy kanonizáció + user.role fallback, regresszió-pin)', async () => {
+  it('C14: penztar mod + activeRole=null, user.role=CASHIER -> SHIFT_OPEN (legacy kanonizáció + user.role fallback: penztaros soha nem IDLE)', async () => {
+    // 2026-09-01 kanban #3: a szerep-fallback penztar-ra oldodik, ezert a
+    // napi-session API hivodik, de a hitelesitett penztaros ablak SOHA nem IDLE.
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     authMock.mockReturnValue({ activeRole: null, user: { role: 'CASHIER' } })
     isOpenMock.mockResolvedValue(false)
     getCurrentMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
   })
 
   it('C15: penztar mod + ertektar szerep -> a napi-session API-t NEM hívjuk (backend-kör nélkül)', async () => {
@@ -449,13 +462,16 @@ describe('useSuiteUpdate — nyitottnap-marker életciklus (Google-OTP hurok, C3
     vi.useRealTimers()
   })
 
-  it('G12a: isOpen()===false + getCurrent hibazik -> IDLE_BEFORE_OPEN ÉS marker törlése (pozitív bizonyíték a nem-nyitott napról)', async () => {
+  it('G12a: isOpen()===false + getCurrent hibazik -> SHIFT_OPEN ÉS marker törlése (pozitív bizonyíték a nem-nyitott napról)', async () => {
+    // 2026-09-01 kanban #3: a marker torlese valtozatlanul megmarad, de a
+    // jelentett allapot SHIFT_OPEN (hitelesitett penztaros soha nem IDLE).
     rememberOpenDayObservation()
     isOpenMock.mockResolvedValue(false)
     getCurrentMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('IDLE_BEFORE_OPEN'))
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
     expect(hasOpenDayObservedToday()).toBe(false)
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
   })
 
   it('G12b: isOpen() hibazik (halozat) -> SHIFT_OPEN ÉS marker ÉRINTETLEN (hiba nem gyarthat ablakot)', async () => {
@@ -474,5 +490,58 @@ describe('useSuiteUpdate — nyitottnap-marker életciklus (Google-OTP hurok, C3
     expect(isOpenMock).not.toHaveBeenCalled()
     expect(hasOpenDayObservedToday()).toBe(true)
     expect(localStorage.getItem(OPEN_DAY_OBSERVED_KEY)).not.toBeNull()
+  })
+})
+
+describe('useSuiteUpdate — hitelesített pénztáros SOHA nem IDLE (kanban #3)', () => {
+  beforeEach(() => {
+    isOpenMock.mockReset()
+    getCurrentMock.mockReset()
+    setShiftStateMock.mockClear()
+    statusMock.mockClear()
+    onReadyMock.mockClear()
+    isElectronMock.mockReturnValue(true)
+    appModeMock.mockReset()
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReset()
+    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    readyCallback = null
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('N1: hitelesitett penztar + isOpen=false + getCurrent=null -> SHIFT_OPEN (soha IDLE_BEFORE_OPEN)', async () => {
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockResolvedValue(null)
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('N2: hitelesitett penztar + isOpen=false + getCurrent hibazik -> SHIFT_OPEN (soha IDLE_BEFORE_OPEN)', async () => {
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('N2b: N2 + preset nyitottnap-marker -> SHIFT_OPEN ES a marker torlodik (G12a spec)', async () => {
+    rememberOpenDayObservation()
+    isOpenMock.mockResolvedValue(false)
+    getCurrentMock.mockRejectedValue(new Error('404'))
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(hasOpenDayObservedToday()).toBe(false)
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('N2c: clampIdleForAuthenticatedCashier tiszta fuggveny (IDLE->SHIFT_OPEN, mas allapot valtozatlan)', () => {
+    expect(clampIdleForAuthenticatedCashier('IDLE_BEFORE_OPEN')).toBe('SHIFT_OPEN')
+    expect(clampIdleForAuthenticatedCashier('SHIFT_OPEN')).toBe('SHIFT_OPEN')
+    expect(clampIdleForAuthenticatedCashier('CLOSED_AFTER_DAY_END')).toBe('CLOSED_AFTER_DAY_END')
   })
 })

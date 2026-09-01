@@ -593,6 +593,12 @@ for (const client of CLIENTS) {
       src.includes("return 'CLOSED_AFTER_DAY_END'"),
       'napzaras utan telepitheto ablak van',
     )
+    check(
+      'frontend: hitelesitett penztaros clamp letiltja az IDLE_BEFORE_OPEN ablakot (kanban #3)',
+      src.includes('export function clampIdleForAuthenticatedCashier') &&
+        !/next = 'IDLE_BEFORE_OPEN'/.test(src),
+      'hitelesitett penztaros munkamenet SOHA nem nyithat telepitesi ablakot (kanban #3)',
+    )
   }
 
   const mainLayout = join('frontend-react', 'src', 'layouts', 'MainLayout.tsx')
