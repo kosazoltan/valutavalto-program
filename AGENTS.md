@@ -377,6 +377,52 @@ ellenorzes `npm run format:check`. Modul-elteres: `penztar-client` pontosvesszos
 pontosvesszo nelkuli. Az ESLint NEM formaz, igy nincs utkozes a Prettierrel. Reszletes
 leiras es a masik-gep / masik-ugynok munkafolyamat: `docs/code-style.md`.
 
+## 10. Incidens-eredetu szabalyok (2026-09-01, penztar auto-update)
+
+> REPO-SAJAT szekcio. Szandekosan a markerelt blokkokon KIVUL all
+> (`agentic-qa-kit`, `CODEX_SHARED_QUALITY_RULES`), mert azokat kulso eszkoz
+> ujragenaralja — az oda irt repo-specifikus szabalyt a kovetkezo frissites
+> elsodorna. Ide irj minden sajat, mert szabalyt.
+
+- **Elérhetőség-bizonyítás kötelező.** Viselkedés-állítást CSAK a hívási lánc
+  végigkövetésével szabad igazolni (hook → api-kliens → controller → service →
+  repository), fájl:sor hivatkozással minden lépésre. A komment vagy a teszt neve
+  NEM bizonyíték. Mért eset: a `hasOpenSession` és a `getCurrentSession`
+  UGYANARRA a kulcsra szűr (companyId + branchId + mai nap + OPEN), ezért
+  `isOpen()===false` esetén a második hívás MINDIG dob — a rá épülő ág holt kód
+  volt, a hozzá írt komment pedig hamis állítást rögzített, amit két ellenőr és a
+  bíró is átengedett (PR #1685 → javítás #1686). Ha egy diff olyan if/else-t tart
+  életben, amelynek ágai KÉT külön hívásból jönnek, bizonyítani kell MINDKÉT ág
+  elérhetőségét, vagy ki kell mondani, hogy az egyik halott.
+- **A komment felülvizsgálat alá eső artefaktum.** A hamis komment ugyanolyan
+  súlyú defekt, mint a hamis kód — pontosan azt hiszi el a következő olvasó.
+- **Új elérhetőség = új viselkedés.** Ha egy változás miatt korábban lehetetlen
+  érték jut el egy mapperhez vagy ághoz (pl. harmadik enum-eset, új státusz), azt
+  explicit módon el kell bírálni, nem elhallgatni.
+- **Renderer-javítás NEM jut ki a gépekre szerver-deployjal.** A
+  `deploy-hetzner.yml` a backendet és a web-frontendet frissíti; az Electron
+  kliensek csak új ALÁÍRT telepítőből (`windows-signed-release.yml`) frissülnek.
+  Amíg nincs új aláírt verzió felrakva, a jelentésben tilos „a hiba javítva a
+  gépeken” állítás. Ha épp az auto-update logika volt hibás, az első telepítés
+  szükségszerűen KÉZI (a régi kliens a hibás logikával nem tudja behúzni a saját
+  javítását).
+- **Új backend endpoint = ArchUnit `restControllersMustBeSecured` bukás.** A
+  szabály FreezingArchRule: a régi metódusok be vannak fagyasztva, egy ÚJ metódus
+  új sértés, és a required `Backend Build + Test` elbukik. Javítás a forrásnál:
+  explicit `@PreAuthorize` az új végponton, a testvérmetódusok szerep-listáját
+  követve. A `backend/archunit_store/` bővítése TILOS — az legitimálná az
+  adósságot, amit a kapu megállítani hivatott.
+- **Munkanyelv — gép-gép ANGOL, ember-felé MAGYAR (kötelező).** A pipeline-lelkek
+  (planner/coder/ellenor1/ellenor2/biro) és minden agent-agent artefaktum
+  (`.hermes/pipeline/**` terv, implementációs riport, verdikt, ruling,
+  input-fájlok), valamint a kód, a kommitüzenetek, a kód-kommentek és a gépi
+  kapu-üzenetek nyelve **ANGOL**. Magyarul CSAK a felhasználónak szóló
+  zárójelentés, a státusz-összefoglaló és a végfelhasználói UI-szöveg készül.
+  Indok: a PR #1685 magyar kommentje („a lezárt nap CLOSED_AFTER_DAY_END marad
+  telepíthető") tényszerűen hamis állítást rögzített, amit három ellenőrzés is
+  átengedett. A meglévő magyar kód-kommentek visszamenőleges átírása NEM feladat —
+  de új vagy módosított agent-artefaktum és kód-komment már angolul készül.
+
 <!-- agentic-qa-kit:begin v1.2 — NE szerkeszd kézzel a blokkon belül; frissítés: update-all.mjs -->
 ## Agentic QA szabályok (agentic-qa-kit v1.2)
 
@@ -475,17 +521,6 @@ Csak a közös blokk alapján dolgozni tilos, ha a repo saját szabályt tartalm
 telepített közös blokk a repo saját szövegét nem törölheti és nem írhatja át
 kézzel; csak markerelt blokkban frissíthető.
 
-- **Munkanyelv — gép-gép ANGOL, ember-felé MAGYAR (kötelező).** A pipeline-lelkek
-  (planner/coder/ellenor1/ellenor2/biro) és minden agent-agent artefaktum
-  (`.hermes/pipeline/**` terv, implementációs riport, verdikt, ruling, input-fájlok),
-  valamint a kód, a kommitüzenetek, a kód-kommentek és a gépi kapu-üzenetek nyelve
-  **ANGOL**. Magyarul CSAK a felhasználónak szóló zárójelentés, a státusz-összefoglaló
-  és a végfelhasználói UI-szöveg készül. Indok (mérve 2026-09-01, kanban #4): a
-  magyar nyelvű agent-közti kommentek félrefordítást hordoztak — a PR #1685 magyar
-  kommentje („a lezárt nap CLOSED_AFTER_DAY_END marad telepíthető") tényszerűen hamis
-  állítást rögzített, amit két reviewer és a bíró is átengedett. A meglévő magyar
-  kód-kommenteket NEM kell visszamenőleg átírni (az külön, mérhető feladat) — de új
-  vagy módosított agent-artefaktum és kód-komment már angolul készül.
 - Magyarul kommunikálj a felhasználóval, kivéve ha a repo vagy a feladat más
   nyelvet kér a végtermékben.
 - Tényből dolgozz: ne találj ki fájlt, API-t, route-ot, teszteredményt, logot,
