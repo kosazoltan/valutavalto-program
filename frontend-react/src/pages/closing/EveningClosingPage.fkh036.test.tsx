@@ -80,6 +80,14 @@ vi.mock('../../components/ui/toaster', () => ({
   },
 }))
 
+vi.mock('../../hooks/useAppMode', () => ({
+  useAppMode: () => ({ mode: 'ertektar', isLoading: false }),
+}))
+
+vi.mock('../../utils/suiteUpdateSignal', () => ({
+  requestShiftStateRefresh: () => undefined,
+}))
+
 vi.mock('../../utils/logger', () => ({
   logger: {
     error: mocks.loggerError,

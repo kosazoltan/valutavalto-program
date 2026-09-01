@@ -1,26 +1,19 @@
 import { useTranslation } from 'react-i18next'
 import { Download } from 'lucide-react'
 import type { SuiteUpdateReady } from '../hooks/useSuiteUpdate'
+import { getElectronAPI } from '../utils/electron'
+import { logger } from '../utils/logger'
 
 type SuiteUpdateBadgeProps = {
   readyUpdate: SuiteUpdateReady | null
 }
 
 /**
- * „Frissítés készen áll" jelölő a fejlécben.
+ * Header marker for a verified suite update.
  *
- * MIÉRT ÍGY: a pénztárgépen a frissítés nem szakíthat meg pénzügyi folyamatot, de a
- * kollégának LÁTNIA kell, hogy van kész frissítés — különben nem tudja, mi történik,
- * és a gép csendben elmaradhatna. Ezért:
- *
- *  - nyitott műszak alatt: állandó, nem tolakodó jelölő azzal a szöveggel, hogy a
- *    telepítés a következő napnyitás előtt / napzárás után indul;
- *  - telepíthető ablakban (napnyitás előtt vagy napzárás után): kiemelt jelölő, mert
- *    ilyenkor a main process fel is ajánlja a telepítést egy dialógussal.
- *
- * Ez a komponens SEMMIT nem indít el — a telepítés kizárólag a main process
- * állapotgépén keresztül, felhasználói megerősítéssel történhet
- * (`docs/auto-update-terv-es-vegrehajtas.md` 3.6).
+ * Display-only until the user confirms "Telepítés most". Auto-install still
+ * runs in the main process on CLOSED_AFTER_DAY_END / IDLE_BEFORE_OPEN.
+ * Explicit start is allowed while SHIFT_OPEN (kanban #7).
  */
 export default function SuiteUpdateBadge({ readyUpdate }: SuiteUpdateBadgeProps) {
   const { t } = useTranslation()
@@ -30,6 +23,14 @@ export default function SuiteUpdateBadge({ readyUpdate }: SuiteUpdateBadgeProps)
   const title = installable
     ? t('suiteUpdate.readyInstallable', { version: readyUpdate.version })
     : t('suiteUpdate.readyWaiting', { version: readyUpdate.version })
+
+  const onInstallNow = () => {
+    const ok = window.confirm(t('suiteUpdate.readyInstallable', { version: readyUpdate.version }))
+    if (!ok) return
+    void getElectronAPI()
+      ?.suiteUpdate?.startInstall()
+      ?.catch((error: unknown) => logger.warn('SuiteUpdate', 'startInstall failed', error))
+  }
 
   return (
     <div
@@ -47,6 +48,14 @@ export default function SuiteUpdateBadge({ readyUpdate }: SuiteUpdateBadgeProps)
           ? t('suiteUpdate.badgeInstallable', { version: readyUpdate.version })
           : t('suiteUpdate.badgeWaiting', { version: readyUpdate.version })}
       </span>
+      <button
+        type="button"
+        data-testid="suite-update-install-now"
+        className="ml-1 rounded border border-current px-2 py-0.5 text-xs font-semibold"
+        onClick={onInstallNow}
+      >
+        {t('suiteUpdate.installNow')}
+      </button>
     </div>
   )
 }

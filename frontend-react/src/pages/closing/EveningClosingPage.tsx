@@ -17,6 +17,8 @@ import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useAuthStore } from '../../stores/authStore'
+import { useAppMode } from '../../hooks/useAppMode'
+import { requestShiftStateRefresh } from '../../utils/suiteUpdateSignal'
 import { closingWizardApi, eveningClosingApi } from '../../services/api/index'
 import { useTranslation } from 'react-i18next'
 import VaultClosingChecklistPanel from '../../components/closing/VaultClosingChecklistPanel'
@@ -72,6 +74,7 @@ interface EveningClosingReport {
 export default function EveningClosingPage() {
   const { t } = useTranslation()
   const worker = useAuthStore((state) => state.worker)
+  const { mode: appMode } = useAppMode()
   const branchId = worker?.branchId || ''
   const [date, setDate] = useState(localIsoDate())
   const [preview, setPreview] = useState<EveningClosingPreview | null>(null)
@@ -151,6 +154,9 @@ export default function EveningClosingPage() {
       await eveningClosingApi.send(branchId, date)
       toast.success('Esti zárás elküldve')
       await loadPreview()
+      if (appMode === 'ertektar') {
+        requestShiftStateRefresh()
+      }
     } catch (err) {
       setError(getErrorMessage(err))
       toast.error('Hiba', getErrorMessage(err))

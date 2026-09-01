@@ -643,6 +643,7 @@ export interface ElectronAPI {
       readyVersion: string | null
       mandatory: boolean
     }>
+    startInstall(): Promise<{ started: boolean; reason?: string }>
     /** Akkor tüzel, amikor egy ellenőrzött frissítés készen áll. Unsubscribe-ot ad vissza. */
     onReady(
       cb: (payload: {

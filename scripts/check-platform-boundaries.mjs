@@ -573,6 +573,16 @@ for (const client of CLIENTS) {
       src.includes('suiteUpdate:') && src.includes("invoke('suiteUpdate:setShiftState'"),
       'enelkul a renderer nem tudja jelenteni a muszak-allapotot',
     )
+    const suiteUpdateSrc = existsSync(join('penztar-client', 'electron', 'suite-update.ts'))
+      ? readFileSync(join('penztar-client', 'electron', 'suite-update.ts'), 'utf8')
+      : ''
+    check(
+      'penztar suiteUpdate:startInstall chain (preload + handler + gate)',
+      src.includes("invoke('suiteUpdate:startInstall'") &&
+        suiteUpdateSrc.includes("ipcMain.handle('suiteUpdate:startInstall'") &&
+        suiteUpdateSrc.includes('export function canStartInstallOnDemand'),
+      'explicit Telepites most must reach startSilentInstall through the same verified exe',
+    )
   }
 
   const suiteHook = join('frontend-react', 'src', 'hooks', 'useSuiteUpdate.ts')

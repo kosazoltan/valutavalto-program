@@ -21,6 +21,7 @@ import {
 const isOpenMock = vi.fn()
 // kanban #4 (FR-3): a napzaras UTANI ablak allapotforrasa a GET /daily-sessions/today.
 const getTodaySessionMock = vi.fn()
+const previewMock = vi.fn()
 const setShiftStateMock = vi.fn((_state: string) =>
   Promise.resolve({ accepted: true, shiftState: _state }),
 )
@@ -52,6 +53,9 @@ vi.mock('../../services/api/index', () => ({
     isOpen: () => isOpenMock(),
     getCurrent: () => getTodaySessionMock(),
     getTodaySession: () => getTodaySessionMock(),
+  },
+  eveningClosingApi: {
+    preview: (...args: unknown[]) => previewMock(...args),
   },
 }))
 
@@ -86,10 +90,17 @@ vi.mock('../useAppMode', () => ({
 // FKH-041 round 2 (D6): a hook a kanonikus szerepet az auth store-ból olvassa
 // (zéró-argumentumú hook, nem-selector destrukturálás). Alapértelmezés: penztár
 // szerep, így a meglévő esetek BIZONYÍTOTT pénztáros munkamenetben futnak.
-const authMock = vi.fn((): { activeRole: string | null; user: { role: string } | null } => ({
-  activeRole: 'penztar',
-  user: { role: 'penztar' },
-}))
+const authMock = vi.fn(
+  (): {
+    activeRole: string | null
+    user: { role: string } | null
+    worker: { branchId: string } | null
+  } => ({
+    activeRole: 'penztar',
+    user: { role: 'penztar' },
+    worker: { branchId: '1' },
+  }),
+)
 vi.mock('../../stores/authStore', () => ({
   useAuthStore: () => authMock(),
 }))
@@ -124,6 +135,8 @@ describe('useSuiteUpdate — jelentés a main processnek', () => {
   beforeEach(() => {
     isOpenMock.mockReset()
     getTodaySessionMock.mockReset()
+    previewMock.mockReset()
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
     setShiftStateMock.mockClear()
     statusMock.mockClear()
     onReadyMock.mockClear()
@@ -131,7 +144,11 @@ describe('useSuiteUpdate — jelentés a main processnek', () => {
     appModeMock.mockReset()
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     authMock.mockReset()
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     readyCallback = null
     localStorage.clear()
   })
@@ -223,6 +240,8 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
   beforeEach(() => {
     isOpenMock.mockReset()
     getTodaySessionMock.mockReset()
+    previewMock.mockReset()
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
     setShiftStateMock.mockClear()
     statusMock.mockClear()
     onReadyMock.mockClear()
@@ -230,7 +249,11 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     appModeMock.mockReset()
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     authMock.mockReset()
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     readyCallback = null
   })
 
@@ -238,22 +261,23 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     vi.useRealTimers()
   })
 
-  it('C1: ertektar mod + nincs nyitott session + getCurrent hibazik -> SHIFT_OPEN, soha IDLE_BEFORE_OPEN', async () => {
+  it('C1: ertektar mod + preview rejects -> SHIFT_OPEN, soha IDLE_BEFORE_OPEN (T-work-vault)', async () => {
     appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
-    isOpenMock.mockResolvedValue(false)
-    getTodaySessionMock.mockRejectedValue(new Error('404'))
+    previewMock.mockRejectedValue(new Error('serverUnreachable'))
     renderHook(() => useSuiteUpdate())
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
     expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+    expect(isOpenMock).not.toHaveBeenCalled()
+    expect(getTodaySessionMock).not.toHaveBeenCalled()
   })
 
-  it('C2: ertektar mod + CLOSED session -> SHIFT_OPEN (soha CLOSED_AFTER_DAY_END)', async () => {
+  it('C2: ertektar mod + preview SENT -> CLOSED_AFTER_DAY_END (T-auto-vault)', async () => {
     appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
-    isOpenMock.mockResolvedValue(false)
-    getTodaySessionMock.mockResolvedValue({ status: 'CLOSED', closedAt: '2026-08-12T18:00:00Z' })
+    previewMock.mockResolvedValue({ status: 'SENT' })
     renderHook(() => useSuiteUpdate())
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
-    expect(setShiftStateMock).not.toHaveBeenCalledWith('CLOSED_AFTER_DAY_END')
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('CLOSED_AFTER_DAY_END'))
+    expect(isOpenMock).not.toHaveBeenCalled()
+    expect(getTodaySessionMock).not.toHaveBeenCalled()
   })
 
   it('C3: ertektar modban a napi-session API-t NEM hivjuk (felesleges backend-kör nem kell)', async () => {
@@ -264,11 +288,13 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     expect(getTodaySessionMock).not.toHaveBeenCalled()
   })
 
-  it('C4: ertektar mod + isOpen hibazik -> SHIFT_OPEN (fail-safe valtozatlan)', async () => {
+  it('C4: ertektar mod + preview PREVIEW -> SHIFT_OPEN (T-work-vault)', async () => {
     appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
-    isOpenMock.mockRejectedValue(new Error('serverUnreachable'))
+    previewMock.mockResolvedValue({ status: 'PREVIEW' })
     renderHook(() => useSuiteUpdate())
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+    expect(isOpenMock).not.toHaveBeenCalled()
   })
 
   it('C5: full mod -> SHIFT_OPEN', async () => {
@@ -291,7 +317,11 @@ describe('useSuiteUpdate — appMode-tudatos jelentés (FKH-041 FR-3)', () => {
     // 2026-09-01 kanban #3: a hitelesitett penztaros kepernyo SOHA nem nyithat
     // telepitesi ablakot — a korabbi IDLE_BEFORE_OPEN varakozast a ticket felulirja.
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     isOpenMock.mockResolvedValue(false)
     getTodaySessionMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
@@ -337,6 +367,8 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
   beforeEach(() => {
     isOpenMock.mockReset()
     getTodaySessionMock.mockReset()
+    previewMock.mockReset()
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
     setShiftStateMock.mockClear()
     statusMock.mockClear()
     onReadyMock.mockClear()
@@ -344,7 +376,11 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
     appModeMock.mockReset()
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     authMock.mockReset()
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     readyCallback = null
   })
 
@@ -354,7 +390,11 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
 
   it('C10: penztar mod + ertektar szerep -> SHIFT_OPEN (soha IDLE_BEFORE_OPEN)', async () => {
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
-    authMock.mockReturnValue({ activeRole: 'ertektar', user: { role: 'ertektar' } })
+    authMock.mockReturnValue({
+      activeRole: 'ertektar',
+      user: { role: 'ertektar' },
+      worker: { branchId: '1' },
+    })
     isOpenMock.mockResolvedValue(false)
     getTodaySessionMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
@@ -364,7 +404,11 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
 
   it('C11: penztar mod + foertektar szerep + CLOSED session -> SHIFT_OPEN (soha CLOSED_AFTER_DAY_END)', async () => {
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
-    authMock.mockReturnValue({ activeRole: 'foertektar', user: { role: 'foertektar' } })
+    authMock.mockReturnValue({
+      activeRole: 'foertektar',
+      user: { role: 'foertektar' },
+      worker: { branchId: '1' },
+    })
     isOpenMock.mockResolvedValue(false)
     getTodaySessionMock.mockResolvedValue({ status: 'CLOSED', closedAt: '2026-08-12T18:00:00Z' })
     renderHook(() => useSuiteUpdate())
@@ -374,7 +418,11 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
 
   it('C12: penztar mod + TREASURY_MANAGER (legacy -> ertektar) -> SHIFT_OPEN (soha IDLE_BEFORE_OPEN)', async () => {
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
-    authMock.mockReturnValue({ activeRole: 'TREASURY_MANAGER', user: null })
+    authMock.mockReturnValue({
+      activeRole: 'TREASURY_MANAGER',
+      user: null,
+      worker: { branchId: '1' },
+    })
     isOpenMock.mockResolvedValue(false)
     getTodaySessionMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
@@ -384,7 +432,7 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
 
   it('C13: penztar mod + ismeretlen/hiányzó szerep (activeRole=null, user=null) -> SHIFT_OPEN (fail closed)', async () => {
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
-    authMock.mockReturnValue({ activeRole: null, user: null })
+    authMock.mockReturnValue({ activeRole: null, user: null, worker: { branchId: '1' } })
     isOpenMock.mockResolvedValue(false)
     getTodaySessionMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
@@ -396,7 +444,11 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
     // 2026-09-01 kanban #3: a szerep-fallback penztar-ra oldodik, ezert a
     // napi-session API hivodik, de a hitelesitett penztaros ablak SOHA nem IDLE.
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
-    authMock.mockReturnValue({ activeRole: null, user: { role: 'CASHIER' } })
+    authMock.mockReturnValue({
+      activeRole: null,
+      user: { role: 'CASHIER' },
+      worker: { branchId: '1' },
+    })
     isOpenMock.mockResolvedValue(false)
     getTodaySessionMock.mockRejectedValue(new Error('404'))
     renderHook(() => useSuiteUpdate())
@@ -406,7 +458,11 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
 
   it('C15: penztar mod + ertektar szerep -> a napi-session API-t NEM hívjuk (backend-kör nélkül)', async () => {
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
-    authMock.mockReturnValue({ activeRole: 'ertektar', user: { role: 'ertektar' } })
+    authMock.mockReturnValue({
+      activeRole: 'ertektar',
+      user: { role: 'ertektar' },
+      worker: { branchId: '1' },
+    })
     renderHook(() => useSuiteUpdate())
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
     expect(isOpenMock).not.toHaveBeenCalled()
@@ -415,7 +471,11 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
 
   it('C16: amíg az appMode isLoading=true, SEMMIT nem jelent (D8, ITEM 1c)', async () => {
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: true })
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     isOpenMock.mockResolvedValue(false)
     renderHook(() => useSuiteUpdate())
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -424,7 +484,11 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
 
   it('C17: isLoading=true -> false átmenet után jelent (a guard késleltet, nem nyom el)', async () => {
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: true })
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     isOpenMock.mockResolvedValue(true)
     const { rerender } = renderHook(() => useSuiteUpdate())
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -436,11 +500,17 @@ describe('useSuiteUpdate — ROLE-ELSŐ telepítési ablak (FKH-041 round 2, D5/
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
   })
 
-  it('C18: ertektar mod + penztar szerep -> SHIFT_OPEN (a mód-ág továbbra is elsőbbséget élvez, regresszió-pin)', async () => {
+  it('C18: ertektar mod + penztar szerep + preview SENT -> CLOSED_AFTER_DAY_END (mode-first, preview-driven)', async () => {
     appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
+    previewMock.mockResolvedValue({ status: 'SENT' })
     renderHook(() => useSuiteUpdate())
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('CLOSED_AFTER_DAY_END'))
+    expect(isOpenMock).not.toHaveBeenCalled()
   })
 })
 
@@ -448,6 +518,8 @@ describe('useSuiteUpdate — nyitottnap-marker életciklus (Google-OTP hurok, C3
   beforeEach(() => {
     isOpenMock.mockReset()
     getTodaySessionMock.mockReset()
+    previewMock.mockReset()
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
     setShiftStateMock.mockClear()
     statusMock.mockClear()
     onReadyMock.mockClear()
@@ -455,7 +527,11 @@ describe('useSuiteUpdate — nyitottnap-marker életciklus (Google-OTP hurok, C3
     appModeMock.mockReset()
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     authMock.mockReset()
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     readyCallback = null
     localStorage.clear()
   })
@@ -484,8 +560,9 @@ describe('useSuiteUpdate — nyitottnap-marker életciklus (Google-OTP hurok, C3
     expect(hasOpenDayObservedToday()).toBe(true)
   })
 
-  it('G12c: nem-penztar mod -> SHIFT_OPEN, isOpen NEM hívódik, marker ÉRINTETLEN (FKH-041 FR-3)', async () => {
+  it('G12c: ertektar + NOT_STARTED -> SHIFT_OPEN, isOpen NEM hivodik, marker ERINTETLEN', async () => {
     appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
     rememberOpenDayObservation()
     renderHook(() => useSuiteUpdate())
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
@@ -499,6 +576,8 @@ describe('useSuiteUpdate — hitelesített pénztáros SOHA nem IDLE (kanban #3)
   beforeEach(() => {
     isOpenMock.mockReset()
     getTodaySessionMock.mockReset()
+    previewMock.mockReset()
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
     setShiftStateMock.mockClear()
     statusMock.mockClear()
     onReadyMock.mockClear()
@@ -506,7 +585,11 @@ describe('useSuiteUpdate — hitelesített pénztáros SOHA nem IDLE (kanban #3)
     appModeMock.mockReset()
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     authMock.mockReset()
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     readyCallback = null
     localStorage.clear()
   })
@@ -552,6 +635,8 @@ describe('useSuiteUpdate — napzaras utani telepitesi ablak a /today-bol (kanba
   beforeEach(() => {
     isOpenMock.mockReset()
     getTodaySessionMock.mockReset()
+    previewMock.mockReset()
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
     setShiftStateMock.mockClear()
     statusMock.mockClear()
     onReadyMock.mockClear()
@@ -559,7 +644,11 @@ describe('useSuiteUpdate — napzaras utani telepitesi ablak a /today-bol (kanba
     appModeMock.mockReset()
     appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
     authMock.mockReset()
-    authMock.mockReturnValue({ activeRole: 'penztar', user: { role: 'penztar' } })
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
     readyCallback = null
     localStorage.clear()
   })
@@ -590,12 +679,96 @@ describe('useSuiteUpdate — napzaras utani telepitesi ablak a /today-bol (kanba
     await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
   })
 
-  it('T9: ertektar mod + CLOSED session a /today-ban -> SHIFT_OPEN es a /today-t SEM hivjuk (FR-5 / FKH-041 never-install)', async () => {
+  it('T9: ertektar mod + preview CONFIRMED -> CLOSED_AFTER_DAY_END, /today NEM hivodik (T-auto-vault)', async () => {
     appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
-    isOpenMock.mockResolvedValue(false)
+    previewMock.mockResolvedValue({ status: 'CONFIRMED' })
     getTodaySessionMock.mockResolvedValue({ status: 'CLOSED', closedAt: '2026-09-01T18:00:00Z' })
     renderHook(() => useSuiteUpdate())
-    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('CLOSED_AFTER_DAY_END'))
     expect(getTodaySessionMock).not.toHaveBeenCalled()
+    expect(isOpenMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('useSuiteUpdate — treasury evening-closing window (kanban #7)', () => {
+  beforeEach(() => {
+    isOpenMock.mockReset()
+    getTodaySessionMock.mockReset()
+    previewMock.mockReset()
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
+    setShiftStateMock.mockClear()
+    statusMock.mockClear()
+    onReadyMock.mockClear()
+    isElectronMock.mockReturnValue(true)
+    appModeMock.mockReset()
+    appModeMock.mockReturnValue({ mode: 'ertektar' as const, isLoading: false })
+    authMock.mockReset()
+    authMock.mockReturnValue({
+      activeRole: 'ertektar',
+      user: { role: 'ertektar' },
+      worker: { branchId: '1' },
+    })
+    readyCallback = null
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('T-work-vault: preview null / empty / NOT_STARTED never IDLE', async () => {
+    for (const preview of [null, {}, { status: 'NOT_STARTED' }]) {
+      setShiftStateMock.mockClear()
+      previewMock.mockResolvedValue(preview)
+      const { unmount } = renderHook(() => useSuiteUpdate())
+      await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+      expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+      unmount()
+    }
+  })
+
+  it('T-vault-no-branch: worker null -> SHIFT_OPEN, preview not called', async () => {
+    authMock.mockReturnValue({ activeRole: 'ertektar', user: { role: 'ertektar' }, worker: null })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(previewMock).not.toHaveBeenCalled()
+    expect(setShiftStateMock).not.toHaveBeenCalledWith('IDLE_BEFORE_OPEN')
+  })
+
+  it('T-no-reopen-hole: C10/C11 preview not used in penztar mode', async () => {
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReturnValue({
+      activeRole: 'ertektar',
+      user: { role: 'ertektar' },
+      worker: { branchId: '1' },
+    })
+    previewMock.mockResolvedValue({ status: 'SENT' })
+    isOpenMock.mockResolvedValue(false)
+    getTodaySessionMock.mockResolvedValue({ status: 'CLOSED' })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    expect(previewMock).not.toHaveBeenCalled()
+  })
+
+  it('T-close-prompt: refresh after SENT without waiting 60s', async () => {
+    previewMock
+      .mockResolvedValueOnce({ status: 'PREVIEW' })
+      .mockResolvedValueOnce({ status: 'SENT' })
+    renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('SHIFT_OPEN'))
+    const { requestShiftStateRefresh } = await import('../../utils/suiteUpdateSignal')
+    requestShiftStateRefresh()
+    await waitFor(() => expect(setShiftStateMock).toHaveBeenCalledWith('CLOSED_AFTER_DAY_END'))
+  })
+
+  it('mapper unit: SENT/CONFIRMED vs fail-safe', async () => {
+    const { mapEveningClosingToShiftState } = await import('../useSuiteUpdate')
+    expect(mapEveningClosingToShiftState({ status: 'SENT' })).toBe('CLOSED_AFTER_DAY_END')
+    expect(mapEveningClosingToShiftState({ status: 'CONFIRMED' })).toBe('CLOSED_AFTER_DAY_END')
+    expect(mapEveningClosingToShiftState({ status: 'NOT_STARTED' })).toBe('SHIFT_OPEN')
+    expect(mapEveningClosingToShiftState({ status: 'PREVIEW' })).toBe('SHIFT_OPEN')
+    expect(mapEveningClosingToShiftState(undefined)).toBe('SHIFT_OPEN')
+    expect(mapEveningClosingToShiftState(null)).toBe('SHIFT_OPEN')
+    expect(mapEveningClosingToShiftState({ status: 'GARBAGE' })).toBe('SHIFT_OPEN')
   })
 })

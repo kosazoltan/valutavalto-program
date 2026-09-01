@@ -972,6 +972,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       readyVersion: string | null;
       mandatory: boolean;
     }> => ipcRenderer.invoke('suiteUpdate:status'),
+    startInstall: (): Promise<{ started: boolean; reason?: string }> =>
+      ipcRenderer.invoke('suiteUpdate:startInstall'),
     /** Akkor tuzel, amikor egy ellenorzott frissites keszen all (jelolo a felulethez). */
     onReady: (
       cb: (payload: {
