@@ -987,6 +987,22 @@ export const dailySessionApi = {
     const response = await api.get<DailySession>('/daily-sessions/current')
     return response.data
   },
+  /**
+   * A mai session lekérése BÁRMELY státusszal (kanban #4, FR-3).
+   *
+   * A napzárás UTÁNI telepítési ablak (CLOSED_AFTER_DAY_END) állapotforrása.
+   * A `/current` NEM változott meg: az csak OPEN sessiont ad vissza, ezért
+   * napzárás után mindig hibát dobna — arra a kérdésre nem tud válaszolni.
+   * A backend `GET /daily-sessions/today` rekord hiányában 204 No Contentet ad
+   * (a nap még el sem indult) — azt `null`-ként adjuk tovább, nem hibaként.
+   */
+  getTodaySession: async (): Promise<DailySession | null> => {
+    const response = await api.get<DailySession | ''>('/daily-sessions/today')
+    if (response.status === 204 || !response.data) {
+      return null
+    }
+    return response.data
+  },
   isOpen: async (): Promise<boolean> => {
     const response = await api.get<boolean>('/daily-sessions/is-open')
     return response.data
