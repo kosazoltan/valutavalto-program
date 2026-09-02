@@ -560,11 +560,53 @@ public class ClosingWizardService {
             result.put(currencyCode, Map.of("denominations", denomDetails, "total", total));
         }
 
+        // FKH-044: snapshot-replace — zero same-day EVENING rows omitted from this payload
+        // so step 2 reflects the LATEST submitted denomination set, not a running union.
+        List<Map<String, Object>> zeroedEveningRows = zeroOmittedEveningRows(
+                branchId, businessDate, submittedDenominationIds);
+
         result.put("totals", totals);
         result.put("savedRecords", savedRecords);
         log.info("countDenominations: branchId={}, savedRecords={}, currencies={}",
                 branchId, savedRecords, denomCounts.keySet());
         return result;
+    }
+
+    /**
+     * FKH-044: zero out same-desk EVENING rows of the business date whose denomination is
+     * absent from the submitted payload, so step 2 is a snapshot of the LAST submission.
+     * Runs inside the class-level transaction (same tx as the upserts and the audit).
+     * Empty payload -> no-op: an empty submit must never wipe a counted evening.
+     * Only currently non-zero rows are zeroed (idempotent, meaningful audit trail).
+     * Rows are NOT deleted — the V378 unique-key row must survive for the next upsert.
+     */
+    private List<Map<String, Object>> zeroOmittedEveningRows(
+            UUID branchId, LocalDate businessDate, Set<Long> submittedDenominationIds) {
+        List<Map<String, Object>> zeroed = new ArrayList<>();
+        if (submittedDenominationIds.isEmpty()) {
+            return zeroed;
+        }
+        List<DenominationBalance> eveningRows = denominationBalanceRepository
+                .findAllByBranchIdAndDateAndCategoryIncludingZero(
+                        branchId, businessDate, DenominationCategory.EVENING);
+        for (DenominationBalance row : eveningRows) {
+            if (submittedDenominationIds.contains(row.getDenomination().getId())
+                    || (row.getQuantity() == 0 && row.getTotalValue().signum() == 0)) {
+                continue;
+            }
+            int previousQuantity = row.getQuantity();
+            BigDecimal previousTotalValue = row.getTotalValue();
+            row.setQuantity(0);
+            row.setTotalValue(BigDecimal.ZERO);
+            denominationBalanceRepository.save(row);
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("currency_code", row.getDenomination().getCurrency().getCode());
+            detail.put("face_value", row.getDenomination().getFaceValue().toPlainString());
+            detail.put("previous_quantity", previousQuantity);
+            detail.put("previous_total_value", previousTotalValue.toPlainString());
+            zeroed.add(detail);
+        }
+        return zeroed;
     }
 
     /**

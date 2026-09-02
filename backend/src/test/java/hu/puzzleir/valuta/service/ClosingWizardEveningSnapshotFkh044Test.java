@@ -395,7 +395,9 @@ class ClosingWizardEveningSnapshotFkh044Test {
             assertThat(eur100Row.getQuantity()).isZero();
             assertThat(eur100Row.getTotalValue()).isEqualByComparingTo(BigDecimal.ZERO);
             ArgumentCaptor<DenominationBalance> secondCaptor = ArgumentCaptor.forClass(DenominationBalance.class);
-            verify(denominationBalanceRepository, times(2)).save(secondCaptor.capture());
+            // Cumulative across both calls: 1 (first submit) + 2 (second submit: EUR 50
+            // upsert + EUR 100 zeroing) = 3.
+            verify(denominationBalanceRepository, times(3)).save(secondCaptor.capture());
             assertThat(secondCaptor.getAllValues()).anySatisfy(b -> {
                 assertThat(b.getDenomination().getId()).isEqualTo(101L);
                 assertThat(b.getQuantity()).isEqualTo(1);
