@@ -157,6 +157,22 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     );
 
     /**
+     * FKH-044: same filter as {@link #findByBranchIdAndDateAndCategory} but WITHOUT the
+     * {@code quantity > 0} predicate — the step 2 snapshot-replace must also see rows that
+     * are currently zero to decide which omitted denominations still need zeroing.
+     * The existing method above stays untouched because other callers rely on the filter.
+     */
+    @Query("SELECT db FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :branchId " +
+           "AND db.submissionDate = :date " +
+           "AND db.denominationCategory = :category")
+    List<DenominationBalance> findAllByBranchIdAndDateAndCategoryIncludingZero(
+        @Param("branchId") UUID branchId,
+        @Param("date") java.time.LocalDate date,
+        @Param("category") DenominationCategory category
+    );
+
+    /**
      * FK-046 FR-2: a záráskori (EVENING) fizikailag leszámolt készlet (SZÁMZÁR) valutakódonként
      * összesítve — egy branch + egy nap. A címletenkénti {@code totalValue} sorokat a valuta kódja
      * szerint csoportosítja, így a kliens metódus valutánként megkapja a leszámolt záró készletet.
