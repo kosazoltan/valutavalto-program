@@ -24,6 +24,18 @@ type SuiteUpdateBadgeProps = {
 export default function SuiteUpdateBadge({ readyUpdate, installFailure }: SuiteUpdateBadgeProps) {
   const { t } = useTranslation()
 
+  // Shared explicit-install flow: confirm, then ask the main process to start.
+  // The error variant uses the SAME control (kanban #8 rework: the cashier
+  // must be able to retry the prompt from the failure surface; the main
+  // process accepts INSTALL_FAILED via canStartInstallOnDemand).
+  const confirmAndStartInstall = (message: string) => {
+    const ok = window.confirm(message)
+    if (!ok) return
+    void getElectronAPI()
+      ?.suiteUpdate?.startInstall()
+      ?.catch((error: unknown) => logger.warn('SuiteUpdate', 'startInstall failed', error))
+  }
+
   if (installFailure) {
     const failedTitle =
       installFailure.reason === 'ELEVATION_REFUSED'
@@ -43,6 +55,14 @@ export default function SuiteUpdateBadge({ readyUpdate, installFailure }: SuiteU
       >
         <AlertTriangle size={16} aria-hidden="true" />
         <span>{failedTitle}</span>
+        <button
+          type="button"
+          data-testid="suite-update-install-now"
+          className="ml-1 rounded border border-current px-2 py-0.5 text-xs font-semibold"
+          onClick={() => confirmAndStartInstall(failedTitle)}
+        >
+          {t('suiteUpdate.installNow')}
+        </button>
       </div>
     )
   }
@@ -55,11 +75,7 @@ export default function SuiteUpdateBadge({ readyUpdate, installFailure }: SuiteU
     : t('suiteUpdate.readyWaiting', { version: readyUpdate.version })
 
   const onInstallNow = () => {
-    const ok = window.confirm(t('suiteUpdate.readyInstallable', { version: readyUpdate.version }))
-    if (!ok) return
-    void getElectronAPI()
-      ?.suiteUpdate?.startInstall()
-      ?.catch((error: unknown) => logger.warn('SuiteUpdate', 'startInstall failed', error))
+    confirmAndStartInstall(t('suiteUpdate.readyInstallable', { version: readyUpdate.version }))
   }
 
   return (

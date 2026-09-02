@@ -2801,8 +2801,8 @@
     "badgeInstallable": "Frissítés telepíthető (v{{version}})",
     "readyWaiting": "A v{{version}} frissítés letöltve és ellenőrizve. A telepítés a következő napnyitás előtt vagy a napzárás után indul, hogy ne szakítsa meg a munkát.",
     "readyInstallable": "A v{{version}} frissítés telepíthető. A program bezár, a frissítés kb. 2-3 percig tart, utána automatikusan elindul. Az adatbázis és a beállítások megmaradnak.",
-    "installFailed": "A v{{version}} frissítés telepítése nem sikerült. A telepítő: {{path}}. Kérjük, próbálja újra a Frissítés most gombbal, vagy szóljon a központnak.",
-    "installFailedElevation": "A v{{version}} frissítés telepítéséhez rendszergazdai jogosultság szükséges, de a jogosultság-kérés el lett utasítva. A telepítő: {{path}}. Kérjük, ismételje meg a telepítést, és erősítse meg a rendszergazdai jogosultság kérését."
+    "installFailed": "A v{{version}} frissítés telepítése nem sikerült. A telepítő: {{path}}. Kérjük, próbálja újra a Telepítés most gombbal, vagy szóljon a központnak.",
+    "installFailedElevation": "A v{{version}} frissítés telepítéséhez rendszergazdai jogosultság szükséges, de a jogosultság-kérés el lett utasítva. A telepítő: {{path}}. Kérjük, próbálja újra a Telepítés most gombbal, és erősítse meg a rendszergazdai jogosultság kérését."
   },
   "literals": {
     "0": "0 - ",
