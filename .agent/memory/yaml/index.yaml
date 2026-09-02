@@ -1,6 +1,6 @@
-generated_at: 2026-09-02T15:13:27.780Z
+generated_at: 2026-09-02T15:15:05.076Z
 schema_version: 1
-source_count: 1083
+source_count: 1084
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,14 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: fa5a796cb0ea78dd
-    title: "2026-04-29 — v2.3.8 NSIS bug fix (PowerShell -like + ICACLS + backend timeout)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-v2.3.8-nsis-bug-fix.md
-    sha256: 4a1050b0488cf22bd4fe89aae2e485b20cd8c295b9761f082b8b65ba60ebd488
-    summary: "--- date: 2026-04-29 session_type: NSIS-bug-fix + version-bump context: v2.3.7 reinstall debugging session után — 3 fix v2.3.8 build-hez priority: P0 — éles teszt-blokk --- # 2026-04-29 — v2.3.8 NSIS bug fix (PowerShell -like + ICACLS + backend timeout) ## User-direktíva > \"v2.3.8 NSIS bug fix — PowerShell -like parser + ICACLS Hungarian locale (SID *S-1-5-32-544) + backend wait timeout 60s→90s\" ## Fix #1: PowerShell"
-    areas: [database, deploy, frontend, installer, penztar, security]
-    keywords: [2026, nsis, bug, fix, powershell, like, icacls, backend, timeout, date, session_type, version]
   - id: e34293963e8d9718
     title: "Főértéktáros Chrome MCP audit + v2.3.60 batch fix (37 ékezet hiba)"
     type: medium-term-episodic
@@ -1703,6 +1695,14 @@ medium_term:
     summary: "# Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart"
     areas: [deploy, ertektar, napzaras]
     keywords: [handoff, ertektar, auto, update, fkh, 041, never, install, repeal, date, 2026, kanban]
+  - id: dfb18dc9929896bc
+    title: "Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-02-tudas-hygiene-repo-hygiene.md
+    sha256: 33bbe12ae661f4ae609b783866bcb35862917f9fef4e881e5a5d4552f5e946b4
+    summary: "# Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene ## Done (evidence) - Working language rule (machine-to-machine ENGLISH): AGENTS.md §10 (db31113b), `.hermes.md` copy, 10 SOUL `## Working language` blocks, fact-gate `verify_artifact.py` INC-LANG-01 (mutation-proven). - Knowledge placement rule (never edit bundled skills; own skill + allowlist): root SOUL, `.hermes.md`, `hermes-local-environme"
+    areas: []
+    keywords: [handoff, 2026, hermes, knowledge, hygiene, valutavalto, repo, done, evidence, working, language, rule]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

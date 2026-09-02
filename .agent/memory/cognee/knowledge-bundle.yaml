@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-09-02T15:13:27.780Z
+generated_at: 2026-09-02T15:15:05.076Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7569,6 +7569,13 @@ nodes:
     summary: "# Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart"
     tags: [handoff, ertektar, auto, update, fkh, 041, never, install, repeal, date]
     areas: [deploy, ertektar, napzaras]
+  - id: dfb18dc9929896bc
+    type: medium-term-episodic
+    title: "Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene"
+    source_path: vault/sessions/handoff-2026-09-02-tudas-hygiene-repo-hygiene.md
+    summary: "# Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene ## Done (evidence) - Working language rule (machine-to-machine ENGLISH): AGENTS.md §10 (db31113b), `.hermes.md` copy, 10 SOUL `## Working language` blocks, fact-gate `verify_artifact.py` INC-LANG-01 (mutation-proven). - Knowledge placement rule (never edit bundled skills; own skill + allowlist): root SOUL, `.hermes.md`, `hermes-local-environme"
+    tags: [handoff, 2026, hermes, knowledge, hygiene, valutavalto, repo, done, evidence, working]
+    areas: []
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -23106,9 +23113,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 056ec259872d08b3
-    to: repo_project_state
-    relation: informs
   - from: 5c2419b5a435dc10
     to: repo_project_state
     relation: informs
@@ -23338,6 +23342,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 514a51bc2e33802d
+    to: repo_project_state
+    relation: informs
+  - from: dfb18dc9929896bc
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

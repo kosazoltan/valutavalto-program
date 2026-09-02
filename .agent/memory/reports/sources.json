@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-02T15:13:27.780Z",
-  "source_count": 1083,
+  "generated_at": "2026-09-02T15:15:05.076Z",
+  "source_count": 1084,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12703,6 +12703,12 @@
         "ertektar",
         "napzaras"
       ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-02-tudas-hygiene-repo-hygiene.md",
+      "sha256": "33bbe12ae661f4ae609b783866bcb35862917f9fef4e881e5a5d4552f5e946b4",
+      "type": "medium-term-episodic",
+      "areas": []
     },
     {
       "path": "vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md",

@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-02T15:13:27.780Z
+generated: 2026-09-02T15:15:05.076Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-19-ertektar-batch-r2-budget-stop.md`
-  - summary: # Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19) - Stable task-id: `VALUTA-ERTEKTAR-BATCH-20260719-R2`. - Planner (Fable-5) lefutott; verdict READY. - Kanonikus terv: `.hermes/dev-loop/VALUTA-ERTEKTAR-BATCH-20260718-PLAN.md` (SHA-256 `3faf4488a304e3b707ea5fc13436a986cecc75abfee4a779a0dec37b0ff58d85`). - Holdout: `D:/repo/Hermes-agent/pipeline/.runtime/VALUTA-ERTEKTAR-BATCH-20260719-R2/HOLDOUT.md` (40 eset).
 
 - **Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-19-fk057-mainlayout.md`
@@ -243,6 +239,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-02-ertektar-auto-update.md`
   - summary: # Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart
+
+- **Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-02-tudas-hygiene-repo-hygiene.md`
+  - summary: # Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene ## Done (evidence) - Working language rule (machine-to-machine ENGLISH): AGENTS.md §10 (db31113b), `.hermes.md` copy, 10 SOUL `## Working language` blocks, fact-gate `verify_artifact.py` INC-LANG-01 (mutation-proven). - Knowledge placement rule (never edit bundled skills; own skill + allowlist): root SOUL, `.hermes.md`, `hermes-local-environme
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
