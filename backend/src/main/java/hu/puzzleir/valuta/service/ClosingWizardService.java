@@ -504,6 +504,9 @@ public class ClosingWizardService {
         Map<String, Object> result = new LinkedHashMap<>();
         Map<String, BigDecimal> totals = new LinkedHashMap<>();
         int savedRecords = 0;
+        // FKH-044: denomination ids submitted in this payload — the snapshot-replace
+        // below zeroes same-day EVENING rows whose denomination is NOT in this set.
+        Set<Long> submittedDenominationIds = new LinkedHashSet<>();
 
         for (Map.Entry<String, Map<Integer, Integer>> entry : denomCounts.entrySet()) {
             String currencyCode = entry.getKey();
@@ -548,8 +551,8 @@ public class ClosingWizardService {
                 ));
 
                 // Issue #117: persist DenominationBalance rekordot
-                saveDenominationBalance(
-                        branchId, currency, BigDecimal.valueOf(value), count, subtotal, businessDate);
+                submittedDenominationIds.add(saveDenominationBalance(
+                        branchId, currency, BigDecimal.valueOf(value), count, subtotal, businessDate));
                 savedRecords++;
             }
 
@@ -557,11 +560,73 @@ public class ClosingWizardService {
             result.put(currencyCode, Map.of("denominations", denomDetails, "total", total));
         }
 
+        // FKH-044: snapshot-replace — zero same-day EVENING rows omitted from this payload
+        // so step 2 reflects the LATEST submitted denomination set, not a running union.
+        List<Map<String, Object>> zeroedEveningRows = zeroOmittedEveningRows(
+                branchId, businessDate, submittedDenominationIds);
+        if (!zeroedEveningRows.isEmpty() && auditLogService != null) {
+            // One audit entry per submit, KAT=TX, same transaction as the zeroing (E2):
+            // a rollback must discard the audit too — plain log(...), not logInNewTransaction*.
+            Map<String, Object> changes = new LinkedHashMap<>();
+            changes.put("KAT", "TX");
+            changes.put("business_date", businessDate.toString());
+            changes.put("branch_id", branchId.toString());
+            changes.put("zeroed", zeroedEveningRows);
+            auditLogService.log(
+                    "CLOSING_DENOMINATION_SNAPSHOT_ZEROED",
+                    "DenominationBalance",
+                    branchId.toString(),
+                    SecurityUtils.getCurrentWorkerCode(),
+                    null,
+                    branchId.toString(),
+                    null,
+                    objectMapper.writeValueAsString(changes),
+                    null,
+                    null);
+        }
+
         result.put("totals", totals);
         result.put("savedRecords", savedRecords);
-        log.info("countDenominations: branchId={}, savedRecords={}, currencies={}",
-                branchId, savedRecords, denomCounts.keySet());
+        log.info("countDenominations: branchId={}, savedRecords={}, zeroedEveningRows={}, currencies={}",
+                branchId, savedRecords, zeroedEveningRows.size(), denomCounts.keySet());
         return result;
+    }
+
+    /**
+     * FKH-044: zero out same-desk EVENING rows of the business date whose denomination is
+     * absent from the submitted payload, so step 2 is a snapshot of the LAST submission.
+     * Runs inside the class-level transaction (same tx as the upserts and the audit).
+     * Empty payload -> no-op: an empty submit must never wipe a counted evening.
+     * Only currently non-zero rows are zeroed (idempotent, meaningful audit trail).
+     * Rows are NOT deleted — the V378 unique-key row must survive for the next upsert.
+     */
+    private List<Map<String, Object>> zeroOmittedEveningRows(
+            UUID branchId, LocalDate businessDate, Set<Long> submittedDenominationIds) {
+        List<Map<String, Object>> zeroed = new ArrayList<>();
+        if (submittedDenominationIds.isEmpty()) {
+            return zeroed;
+        }
+        List<DenominationBalance> eveningRows = denominationBalanceRepository
+                .findAllByBranchIdAndDateAndCategoryIncludingZero(
+                        branchId, businessDate, DenominationCategory.EVENING);
+        for (DenominationBalance row : eveningRows) {
+            if (submittedDenominationIds.contains(row.getDenomination().getId())
+                    || (row.getQuantity() == 0 && row.getTotalValue().signum() == 0)) {
+                continue;
+            }
+            int previousQuantity = row.getQuantity();
+            BigDecimal previousTotalValue = row.getTotalValue();
+            row.setQuantity(0);
+            row.setTotalValue(BigDecimal.ZERO);
+            denominationBalanceRepository.save(row);
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("currency_code", row.getDenomination().getCurrency().getCode());
+            detail.put("face_value", row.getDenomination().getFaceValue().toPlainString());
+            detail.put("previous_quantity", previousQuantity);
+            detail.put("previous_total_value", previousTotalValue.toPlainString());
+            zeroed.add(detail);
+        }
+        return zeroed;
     }
 
     /**
@@ -569,7 +634,7 @@ public class ClosingWizardService {
      * Idempotens: ha letezik (branchId, denominationId) rekord -> UPDATE. Ha nem -> INSERT.
      * Denomination auto-create, ha a branch-currency-faceValue kombora meg nem letezik.
      */
-    private void saveDenominationBalance(
+    private Long saveDenominationBalance(
             UUID branchId,
             hu.puzzleir.valuta.entity.Currency currency,
             BigDecimal faceValue,
@@ -667,6 +732,9 @@ public class ClosingWizardService {
         balance.setDenominationCategory(DenominationCategory.EVENING);
         balance.setSubmissionDate(businessDate);
         denominationBalanceRepository.save(balance);
+        // FKH-044: hand the resolved denomination id back so countDenominations can build
+        // the submitted-id set without a second lookup (NFR-3: one extra SELECT total).
+        return denomination.getId();
     }
 
     private Branch findBranchInCurrentCompany(UUID branchId) {
