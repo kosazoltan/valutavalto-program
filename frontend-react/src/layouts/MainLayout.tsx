@@ -392,55 +392,55 @@ export default function MainLayout() {
           className={`${sidebarOpen ? 'block' : 'hidden md:block'} flex-1 min-h-0 py-2 overflow-y-auto`}
         >
           {resolvedGroups.map((group) => (
-              <div key={group.label} className="mb-3">
-                {sidebarOpen && (
-                  // FK-069 FR-1/FR-3: kattintható csoport-fejléc chevronnal.
-                  <button
-                    type="button"
-                    onClick={() => toggleMenuGroup(group.label)}
-                    aria-expanded={openMenuGroups.has(group.label)}
-                    data-testid={`menu-group-toggle-${group.label}`}
-                    className="w-full flex items-center gap-1 px-4 mb-1 text-[10px] font-semibold text-secondary-400 uppercase tracking-wider hover:text-secondary-200 transition-colors"
-                  >
-                    <ChevronRight
-                      size={12}
-                      className={`shrink-0 transition-transform ${
-                        openMenuGroups.has(group.label) ? 'rotate-90' : ''
-                      }`}
-                    />
-                    <span className="truncate">{group.label}</span>
-                  </button>
-                )}
-                {/* FK-069 FR-2: csukott állapotban az itemek nem renderelődnek.
+            <div key={group.label} className="mb-3">
+              {sidebarOpen && (
+                // FK-069 FR-1/FR-3: kattintható csoport-fejléc chevronnal.
+                <button
+                  type="button"
+                  onClick={() => toggleMenuGroup(group.label)}
+                  aria-expanded={openMenuGroups.has(group.label)}
+                  data-testid={`menu-group-toggle-${group.label}`}
+                  className="w-full flex items-center gap-1 px-4 mb-1 text-[10px] font-semibold text-secondary-400 uppercase tracking-wider hover:text-secondary-200 transition-colors"
+                >
+                  <ChevronRight
+                    size={12}
+                    className={`shrink-0 transition-transform ${
+                      openMenuGroups.has(group.label) ? 'rotate-90' : ''
+                    }`}
+                  />
+                  <span className="truncate">{group.label}</span>
+                </button>
+              )}
+              {/* FK-069 FR-2: csukott állapotban az itemek nem renderelődnek.
                     Összecsukott sidebaron (ikonsáv) az itemek mindig látszanak,
                     mert ott nincs kattintható fejléc. */}
-                {(!sidebarOpen || openMenuGroups.has(group.label)) &&
-                  group.items
-                    .filter((item) =>
-                      fallbackApplied ? true : isMenuItemVisible(item, group, menuVisibilityCtx),
-                    )
-                    .map((item) => (
-                      <NavLink
-                        key={item.path}
-                        to={item.path}
-                        // v2.5.54 #11 + Codex #904: `end` CSAK a prefix-szülő útvonalakra (pl. /rates),
-                        // hogy ne ütközzön a /rates/history-val; a sima menüpontok szülő-highlightja megmarad.
-                        end={parentPrefixPaths.has(item.path)}
-                        onClick={closeMobileSidebar}
-                        className={({ isActive }) =>
-                          `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
-                            isActive
-                              ? 'bg-primary-600 text-white border-l-4 border-accent-400'
-                              : 'text-secondary-300 hover:bg-secondary-800 hover:text-white'
-                          }`
-                        }
-                      >
-                        <item.icon size={16} className="shrink-0" />
-                        {sidebarOpen && <span className="truncate">{item.label}</span>}
-                      </NavLink>
-                    ))}
-              </div>
-            ))}
+              {(!sidebarOpen || openMenuGroups.has(group.label)) &&
+                group.items
+                  .filter((item) =>
+                    fallbackApplied ? true : isMenuItemVisible(item, group, menuVisibilityCtx),
+                  )
+                  .map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      // v2.5.54 #11 + Codex #904: `end` CSAK a prefix-szülő útvonalakra (pl. /rates),
+                      // hogy ne ütközzön a /rates/history-val; a sima menüpontok szülő-highlightja megmarad.
+                      end={parentPrefixPaths.has(item.path)}
+                      onClick={closeMobileSidebar}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
+                          isActive
+                            ? 'bg-primary-600 text-white border-l-4 border-accent-400'
+                            : 'text-secondary-300 hover:bg-secondary-800 hover:text-white'
+                        }`
+                      }
+                    >
+                      <item.icon size={16} className="shrink-0" />
+                      {sidebarOpen && <span className="truncate">{item.label}</span>}
+                    </NavLink>
+                  ))}
+            </div>
+          ))}
         </nav>
 
         {/* User info & Logout */}

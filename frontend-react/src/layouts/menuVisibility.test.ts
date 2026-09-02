@@ -568,7 +568,9 @@ describe('resolveVisibleMenuGroups — zero-visible-group fallback (kanban #8)',
     const resolved = resolveVisibleMenuGroups(menuGroups, ctx)
     expect(resolved.fallbackApplied).toBe(true)
     expect(resolved.groups.map((g) => g.label)).toEqual(['Pénztár (Valutaváltó)'])
-    expect(resolved.groups[0].items.length).toBeGreaterThan(0)
+    const firstGroup = resolved.groups[0]
+    expect(firstGroup).toBeDefined()
+    expect(firstGroup?.items.length ?? 0).toBeGreaterThan(0)
   })
 
   it('no roles at all, ertektar mode -> fallback to the ertektar default group', () => {

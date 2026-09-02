@@ -846,11 +846,7 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
    * (0 = indult, 3 = UAC elutasitva), es `app.quit()` CSAK sikeres indulas utan
    * johet — korai kilepes megolne a fuggoben levo UAC-promptot.
    */
-  function relaunchElevated(
-    exePath: string,
-    args: string[],
-    manifest: SuiteUpdateManifest,
-  ): void {
+  function relaunchElevated(exePath: string, args: string[], manifest: SuiteUpdateManifest): void {
     log.info(`[suiteUpdate] EACCES/EPERM — UAC runas ujrainditas: ${exePath}`);
     try {
       const helper = spawn(

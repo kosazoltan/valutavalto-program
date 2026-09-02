@@ -256,10 +256,7 @@ export function useSuiteUpdate(): {
       setInstallFailure(null)
     })
     const unsubscribeInstallFailed = electronAPI.suiteUpdate.onInstallFailed((payload) => {
-      logger.warn(
-        'SuiteUpdate',
-        `Telepítés sikertelen: v${payload.version}, ok=${payload.reason}`,
-      )
+      logger.warn('SuiteUpdate', `Telepítés sikertelen: v${payload.version}, ok=${payload.reason}`)
       setInstallFailure(payload)
     })
     const unsubscribeRefresh = subscribeShiftStateRefresh(() => {

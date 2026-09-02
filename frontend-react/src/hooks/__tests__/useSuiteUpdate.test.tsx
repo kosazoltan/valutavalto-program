@@ -827,7 +827,9 @@ describe('useSuiteUpdate — installFailure surface (kanban #8)', () => {
     })
     await waitFor(() => expect(result.current.installFailure?.version).toBe('2.28.96'))
     expect(result.current.installFailure?.reason).toBe('ELEVATION_REFUSED')
-    expect(result.current.installFailure?.installerPath).toBe('C:\\cache\\Penztar-Setup-2.28.96.exe')
+    expect(result.current.installFailure?.installerPath).toBe(
+      'C:\\cache\\Penztar-Setup-2.28.96.exe',
+    )
   })
 
   it('F3: a new suiteUpdate:ready clears the failure (fresh attempt possible)', async () => {
