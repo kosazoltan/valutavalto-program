@@ -532,3 +532,70 @@ describe('verifyAuthenticode — KETTOS feltetel (status ES subject)', () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe('INSTALL_FAILED — elevation-refused recovery path (kanban #8)', () => {
+  const installerPath =
+    'C:\\zk\\Downloads\\valutavalto-v2.28.96\\Penztar-Setup-2.28.96-20260902.exe';
+
+  it('canStartInstallOnDemand accepts INSTALL_FAILED (the banner may retry the prompt)', () => {
+    expect(canStartInstallOnDemand('INSTALL_FAILED', installerPath)).toBe(true);
+  });
+
+  it('canStartInstallOnDemand still refuses ERROR (unchanged semantics)', () => {
+    expect(canStartInstallOnDemand('ERROR', installerPath)).toBe(false);
+  });
+
+  it('shouldAutoStartInstall never auto-starts from INSTALL_FAILED (no silent retry loop)', () => {
+    expect(shouldAutoStartInstall('INSTALL_FAILED', 'IDLE_BEFORE_OPEN')).toBe(false);
+  });
+
+  it('evaluateInstallAttempt: old version + ELEVATION_REFUSED hint -> ELEVATION_REFUSED', () => {
+    const marker = {
+      version: '2.28.96',
+      startedAt: '',
+      installerFile: 'Penztar-Setup-2.28.96.exe',
+      outcomeHint: 'ELEVATION_REFUSED',
+    };
+    expect(evaluateInstallAttempt(marker, '2.28.92')).toBe('ELEVATION_REFUSED');
+  });
+
+  it('evaluateInstallAttempt: old version without the hint -> FAILED (unchanged)', () => {
+    const marker = {
+      version: '2.28.96',
+      startedAt: '',
+      installerFile: 'Penztar-Setup-2.28.96.exe',
+    };
+    expect(evaluateInstallAttempt(marker, '2.28.92')).toBe('FAILED');
+  });
+
+  it('evaluateInstallAttempt: target version running -> SUCCESS regardless of hint', () => {
+    const marker = {
+      version: '2.28.96',
+      startedAt: '',
+      installerFile: 'Penztar-Setup-2.28.96.exe',
+      outcomeHint: 'ELEVATION_REFUSED',
+    };
+    expect(evaluateInstallAttempt(marker, '2.28.96')).toBe('SUCCESS');
+  });
+
+  it('parseInstallMarker drops an unknown outcomeHint value', () => {
+    const parsed = parseInstallMarker({
+      version: '2.28.96',
+      startedAt: '2026-09-02T05:00:00Z',
+      installerFile: 'Penztar-Setup-2.28.96.exe',
+      outcomeHint: 'NONSENSE',
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed?.outcomeHint).toBeUndefined();
+  });
+
+  it('parseInstallMarker keeps the ELEVATION_REFUSED hint', () => {
+    const parsed = parseInstallMarker({
+      version: '2.28.96',
+      startedAt: '2026-09-02T05:00:00Z',
+      installerFile: 'Penztar-Setup-2.28.96.exe',
+      outcomeHint: 'ELEVATION_REFUSED',
+    });
+    expect(parsed?.outcomeHint).toBe('ELEVATION_REFUSED');
+  });
+});

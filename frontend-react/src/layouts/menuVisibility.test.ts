@@ -9,6 +9,7 @@ import {
   isMenuItemVisible,
   isMenuGroupVisible,
   effectiveCanonicalRolesForPath,
+  resolveVisibleMenuGroups,
   type MenuVisibilityContext,
 } from './menuVisibility'
 
@@ -545,5 +546,52 @@ describe('menuVisibility — FK-099: tranzakciós illeték riport + ráta-beáll
         ...(effectiveCanonicalRolesForPath(menuGroups, '/reports/transaction-levy-rates') ?? []),
       ].sort(),
     ).toEqual(['belso_ellenor', 'foertektar', 'ugyvezeto'])
+  })
+})
+
+describe('resolveVisibleMenuGroups — zero-visible-group fallback (kanban #8)', () => {
+  // The authenticated BALI-like user (cashier + supervisor) sees the normal groups.
+  it('penztar+foertektar roles, penztar mode -> no fallback, normal groups', () => {
+    const ctx = ctxFor(['penztar', 'foertektar'], 'penztar')
+    const resolved = resolveVisibleMenuGroups(menuGroups, ctx)
+    expect(resolved.fallbackApplied).toBe(false)
+    expect(resolved.groups.map((g) => g.label)).toContain('Pénztár (Valutaváltó)')
+  })
+
+  it('no roles at all, penztar mode -> fallback to the app-mode default group', () => {
+    const ctx: MenuVisibilityContext = {
+      appMode: 'penztar',
+      hasCanonicalRole: () => false,
+      hasRole: () => false,
+      featureFlags: {},
+    }
+    const resolved = resolveVisibleMenuGroups(menuGroups, ctx)
+    expect(resolved.fallbackApplied).toBe(true)
+    expect(resolved.groups.map((g) => g.label)).toEqual(['Pénztár (Valutaváltó)'])
+    expect(resolved.groups[0].items.length).toBeGreaterThan(0)
+  })
+
+  it('no roles at all, ertektar mode -> fallback to the ertektar default group', () => {
+    const ctx: MenuVisibilityContext = {
+      appMode: 'ertektar',
+      hasCanonicalRole: () => false,
+      hasRole: () => false,
+      featureFlags: {},
+    }
+    const resolved = resolveVisibleMenuGroups(menuGroups, ctx)
+    expect(resolved.fallbackApplied).toBe(true)
+    expect(resolved.groups.map((g) => g.label)).toEqual(['Értéktár (lokál)'])
+  })
+
+  it('no roles at all, full mode -> NO fallback (admin surface keeps least-privilege)', () => {
+    const ctx: MenuVisibilityContext = {
+      appMode: 'full',
+      hasCanonicalRole: () => false,
+      hasRole: () => false,
+      featureFlags: {},
+    }
+    const resolved = resolveVisibleMenuGroups(menuGroups, ctx)
+    expect(resolved.fallbackApplied).toBe(false)
+    expect(resolved.groups.length).toBe(0)
   })
 })
