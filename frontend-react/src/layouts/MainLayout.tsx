@@ -105,7 +105,7 @@ export default function MainLayout() {
   // tudható, van-e nyitott napi munkamenet), és innen kapjuk a "készen áll" jelzést.
   // A telepítést NEM ez indítja — az a main process állapotgépén, felhasználói
   // megerősítéssel történik (docs/auto-update-terv-es-vegrehajtas.md 3.6).
-  const { readyUpdate } = useSuiteUpdate()
+  const { readyUpdate, installFailure } = useSuiteUpdate()
 
   // Codex #904: a NavLink `end` (exact-match) CSAK azokra a menüpontokra kell, amelyek egy másik
   // menüpont szegmens-prefixei (pl. `/rates` ⊂ `/rates/history`) — különben együtt highlightolnának.
@@ -451,7 +451,7 @@ export default function MainLayout() {
           <div className="flex min-w-0 flex-wrap items-center gap-4">
             {/* Suite-frissítés jelölő — a telepítés a main process állapotgépén megy
                 (napnyitás előtt / napzárás után), ez csak láthatóvá teszi. */}
-            <SuiteUpdateBadge readyUpdate={readyUpdate} />
+            <SuiteUpdateBadge readyUpdate={readyUpdate} installFailure={installFailure} />
 
             {/* v2.1.4: Uton levo csomagok badge — FKH-026 v3: menüpont-láthatósághoz kötve */}
             {transitBadgeVisible && <TransitBadge />}

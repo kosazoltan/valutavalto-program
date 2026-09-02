@@ -653,6 +653,10 @@ export interface ElectronAPI {
         installableNow: boolean
       }) => void,
     ): () => void
+    /** Sikertelen telepítés (UAC elutasítva / indítási hiba). Unsubscribe-ot ad vissza. */
+    onInstallFailed(
+      cb: (payload: { version: string; reason: string; installerPath: string }) => void,
+    ): () => void
     /** Letöltési folyamat. Unsubscribe-ot ad vissza. */
     onProgress(cb: (payload: unknown) => void): () => void
   }

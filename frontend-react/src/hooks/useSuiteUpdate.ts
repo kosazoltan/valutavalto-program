@@ -29,6 +29,17 @@ export type SuiteUpdateReady = {
   installableNow: boolean
 }
 
+/**
+ * A main processből kapott "telepítés sikertelen" jelzés (kanban #8).
+ * `reason`: 'ELEVATION_REFUSED' (UAC-elutasítás) vagy 'LAUNCH_FAILED'.
+ * Egy új `suiteUpdate:ready` jelzés törli — a következő kisérlet tiszta lappal indul.
+ */
+export type SuiteUpdateInstallFailure = {
+  version: string
+  reason: string
+  installerPath: string
+}
+
 /** Milyen gyakran jelentjük újra az állapotot (a napzárás közben is friss legyen). */
 const REPORT_INTERVAL_MS = 60 * 1000
 
@@ -107,9 +118,11 @@ export function clampIdleForAuthenticatedCashier(state: ShiftState): ShiftState 
 export function useSuiteUpdate(): {
   shiftState: ShiftState | null
   readyUpdate: SuiteUpdateReady | null
+  installFailure: SuiteUpdateInstallFailure | null
 } {
   const [shiftState, setShiftState] = useState<ShiftState | null>(null)
   const [readyUpdate, setReadyUpdate] = useState<SuiteUpdateReady | null>(null)
+  const [installFailure, setInstallFailure] = useState<SuiteUpdateInstallFailure | null>(null)
   const lastReportedRef = useRef<ShiftState | null>(null)
   // D6 (round 2): a hook zéró-argumentumú marad (a boundary gate a `useSuiteUpdate()`
   // hívást rögzíti a MainLayout-ban); az appMode ÉS a kanonikus szerep belsőleg
@@ -238,6 +251,16 @@ export function useSuiteUpdate(): {
     const unsubscribe = electronAPI.suiteUpdate.onReady((payload) => {
       logger.info('SuiteUpdate', `Frissítés készen áll: v${payload.version}`)
       setReadyUpdate(payload)
+      // A friss "készen áll" jelzés felülírja a korábbi sikertelen kisérletet:
+      // a banner újra telepíthető, a hibajelzés ne maradjon kint mellette.
+      setInstallFailure(null)
+    })
+    const unsubscribeInstallFailed = electronAPI.suiteUpdate.onInstallFailed((payload) => {
+      logger.warn(
+        'SuiteUpdate',
+        `Telepítés sikertelen: v${payload.version}, ok=${payload.reason}`,
+      )
+      setInstallFailure(payload)
     })
     const unsubscribeRefresh = subscribeShiftStateRefresh(() => {
       void reportState()
@@ -246,9 +269,10 @@ export function useSuiteUpdate(): {
     return () => {
       window.clearInterval(intervalId)
       unsubscribe()
+      unsubscribeInstallFailed()
       unsubscribeRefresh()
     }
   }, [reportState])
 
-  return { shiftState, readyUpdate }
+  return { shiftState, readyUpdate, installFailure }
 }

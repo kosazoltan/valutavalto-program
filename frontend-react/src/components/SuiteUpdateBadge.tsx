@@ -1,11 +1,13 @@
 import { useTranslation } from 'react-i18next'
-import { Download } from 'lucide-react'
-import type { SuiteUpdateReady } from '../hooks/useSuiteUpdate'
+import { Download, AlertTriangle } from 'lucide-react'
+import type { SuiteUpdateReady, SuiteUpdateInstallFailure } from '../hooks/useSuiteUpdate'
 import { getElectronAPI } from '../utils/electron'
 import { logger } from '../utils/logger'
 
 type SuiteUpdateBadgeProps = {
   readyUpdate: SuiteUpdateReady | null
+  /** kanban #8: a failed install must stay VISIBLE (no silent READY revert). */
+  installFailure?: SuiteUpdateInstallFailure | null
 }
 
 /**
@@ -14,9 +16,37 @@ type SuiteUpdateBadgeProps = {
  * Display-only until the user confirms "Telepítés most". Auto-install still
  * runs in the main process on CLOSED_AFTER_DAY_END / IDLE_BEFORE_OPEN.
  * Explicit start is allowed while SHIFT_OPEN (kanban #7).
+ *
+ * kanban #8: when the install attempt FAILED (UAC refused / launch error) the
+ * badge switches to an error variant carrying the version and installer path —
+ * the failure is never invisible.
  */
-export default function SuiteUpdateBadge({ readyUpdate }: SuiteUpdateBadgeProps) {
+export default function SuiteUpdateBadge({ readyUpdate, installFailure }: SuiteUpdateBadgeProps) {
   const { t } = useTranslation()
+
+  if (installFailure) {
+    const failedTitle =
+      installFailure.reason === 'ELEVATION_REFUSED'
+        ? t('suiteUpdate.installFailedElevation', {
+            version: installFailure.version,
+            path: installFailure.installerPath,
+          })
+        : t('suiteUpdate.installFailed', {
+            version: installFailure.version,
+            path: installFailure.installerPath,
+          })
+    return (
+      <div
+        data-testid="suite-update-failed"
+        title={failedTitle}
+        className="flex items-center gap-2 rounded-lg border border-danger-300 bg-danger-50 px-3 py-1.5 text-sm font-medium text-danger-800"
+      >
+        <AlertTriangle size={16} aria-hidden="true" />
+        <span>{failedTitle}</span>
+      </div>
+    )
+  }
+
   if (!readyUpdate) return null
 
   const installable = readyUpdate.installableNow

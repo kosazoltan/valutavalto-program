@@ -988,6 +988,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('suiteUpdate:ready', handler);
       return () => ipcRenderer.removeListener('suiteUpdate:ready', handler);
     },
+    /** A telepités SIKERTELEN maradt (UAC elutasitva vagy inditasi hiba) — lathato hibajelzes. */
+    onInstallFailed: (
+      cb: (payload: { version: string; reason: string; installerPath: string }) => void,
+    ): (() => void) => {
+      const handler = (_e: unknown, p: unknown): void =>
+        cb(p as { version: string; reason: string; installerPath: string });
+      ipcRenderer.on('suiteUpdate:installFailed', handler);
+      return () => ipcRenderer.removeListener('suiteUpdate:installFailed', handler);
+    },
     /** Letoltesi folyamat (a meglevo autoUpdate:progress csatornat hasznalja ujra). */
     onProgress: (cb: (payload: unknown) => void): (() => void) => {
       const handler = (_e: unknown, p: unknown): void => cb(p);
