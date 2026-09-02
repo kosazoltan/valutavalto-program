@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { authApi, dailySessionApi } from '../services/api/index'
-import type { DailySession } from '../services/api/index'
 import {
   LogOut,
   Menu,
@@ -25,7 +24,12 @@ import { isElectron as isElectronRuntime } from '../utils/electron'
 import { logger } from '../utils/logger'
 
 import { menuGroups } from './menuGroups'
-import { isMenuGroupVisible, isMenuItemVisible, type MenuVisibilityContext } from './menuVisibility'
+import {
+  isMenuGroupVisible,
+  isMenuItemVisible,
+  resolveVisibleMenuGroups,
+  type MenuVisibilityContext,
+} from './menuVisibility'
 import { useFeatureFlags } from '../hooks/useFeatureFlags'
 import TransitBadge from '../components/TransitBadge'
 import SuiteUpdateBadge from '../components/SuiteUpdateBadge'
@@ -71,6 +75,18 @@ export async function performBackendAwareLogout(
   }
 }
 
+/**
+ * kanban #8: a "Nap nyitva" jelző a MAI sessionből él (GET /daily-sessions/today),
+ * NEM a napnyitás-kapu belső állapotából — a kapu hibája vagy megkerülése így sem
+ * okoz téves/hiányzó jelzőt. Csak pénztár módban és csak OPEN státusznál látszik.
+ */
+export function shouldShowDayOpenIndicator(
+  appMode: AppMode,
+  todaySession: { status?: string } | null,
+): boolean {
+  return appMode === CASHIER_APP_MODE && todaySession?.status === 'OPEN'
+}
+
 export default function MainLayout() {
   const { t } = useTranslation()
   const featureFlags = useFeatureFlags()
@@ -96,16 +112,18 @@ export default function MainLayout() {
     })
   }
   const [sessionReady, setSessionReady] = useState(false)
-  const [sessionInfo, setSessionInfo] = useState<DailySession | null>(null)
+  // kanban #8: a "Nap nyitva" jelző forrása — a gate-től FÜGGETLENül töltött
+  // mai session (GET /daily-sessions/today, 204 -> null).
+  const [todaySession, setTodaySession] = useState<{ status?: string } | null>(null)
   const [showSessionDialog, setShowSessionDialog] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
-  const { user, logout, hasRole, hasCanonicalRole, activeRole } = useAuthStore()
+  const { user, logout, hasRole, hasCanonicalRole, activeRole, roles } = useAuthStore()
 
   // Suite-frissítés: a renderer jelenti a műszak-állapotot a main processnek (csak itt
   // tudható, van-e nyitott napi munkamenet), és innen kapjuk a "készen áll" jelzést.
   // A telepítést NEM ez indítja — az a main process állapotgépén, felhasználói
   // megerősítéssel történik (docs/auto-update-terv-es-vegrehajtas.md 3.6).
-  const { readyUpdate } = useSuiteUpdate()
+  const { readyUpdate, installFailure } = useSuiteUpdate()
 
   // Codex #904: a NavLink `end` (exact-match) CSAK azokra a menüpontokra kell, amelyek egy másik
   // menüpont szegmens-prefixei (pl. `/rates` ⊂ `/rates/history`) — különben együtt highlightolnának.
@@ -145,8 +163,14 @@ export default function MainLayout() {
       ),
   )
 
+  // kanban #8: zero-visible fallback — egy hitelesített dolgozó sidebarja soha
+  // nem lehet üres; az appMode alapértelmezett csoportja ugrik be (ld. menuVisibility).
+  const { groups: resolvedGroups, fallbackApplied } = resolveVisibleMenuGroups(
+    menuGroups,
+    menuVisibilityCtx,
+  )
+
   const markSessionReadyWithoutDailyGate = useCallback(() => {
-    setSessionInfo(null)
     setSessionError(null)
     setShowSessionDialog(false)
     setSessionReady(true)
@@ -178,13 +202,7 @@ export default function MainLayout() {
       const isOpen = await dailySessionApi.isOpen()
 
       if (isOpen) {
-        // Már nyitott — lekérjük az infót és folytatjuk
-        try {
-          const current = await dailySessionApi.getCurrent()
-          setSessionInfo(current)
-        } catch {
-          /* session info nem kritikus */
-        }
+        // Már nyitott — folytatjuk (a jelzőt a todaySession-effect tölti).
         setSessionReady(true)
         return
       }
@@ -208,6 +226,41 @@ export default function MainLayout() {
 
     initSession()
   }, [appModeLoading, initSession])
+
+  // kanban #8: a today-session betöltése a napnyitás-kaputól FÜGGETLEN effectben —
+  // a "Nap nyitva" jelző forrása a GET /daily-sessions/today (204 -> null), nem a
+  // gate belső állapota. Csak pénztár módban él; hiba esetén warn + null (nincs jelző).
+  useEffect(() => {
+    if (appModeLoading) return
+    if (appMode !== CASHIER_APP_MODE) {
+      setTodaySession(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const session = await dailySessionApi.getTodaySession()
+        if (!cancelled) setTodaySession(session)
+      } catch (error) {
+        logger.warn('MainLayout', 'A mai session lekérése sikertelen', error)
+        if (!cancelled) setTodaySession(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [appMode, appModeLoading, sessionReady])
+
+  // kanban #8: a zero-visible fallback átmenetének strukturált naplózása —
+  // átmenetenként EGYSZER (a ref-guard a React 19 StrictMode dupla-futtatását
+  // is kizárja), hogy a sérült szerep-hozzárendelés a main.log-ból látszódjon.
+  const fallbackLoggedRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (fallbackLoggedRef.current === fallbackApplied) return
+    fallbackLoggedRef.current = fallbackApplied
+    if (!fallbackApplied) return
+    logger.error('MainLayout', 'Empty navigation fallback', { appMode, activeRole, roles })
+  }, [fallbackApplied, appMode, activeRole, roles])
 
   const handleRetryOpen = async () => {
     try {
@@ -338,56 +391,56 @@ export default function MainLayout() {
         <nav
           className={`${sidebarOpen ? 'block' : 'hidden md:block'} flex-1 min-h-0 py-2 overflow-y-auto`}
         >
-          {menuGroups
-            .filter((group) => isMenuGroupVisible(group, menuVisibilityCtx))
-            .map((group) => (
-              <div key={group.label} className="mb-3">
-                {sidebarOpen && (
-                  // FK-069 FR-1/FR-3: kattintható csoport-fejléc chevronnal.
-                  <button
-                    type="button"
-                    onClick={() => toggleMenuGroup(group.label)}
-                    aria-expanded={openMenuGroups.has(group.label)}
-                    data-testid={`menu-group-toggle-${group.label}`}
-                    className="w-full flex items-center gap-1 px-4 mb-1 text-[10px] font-semibold text-secondary-400 uppercase tracking-wider hover:text-secondary-200 transition-colors"
-                  >
-                    <ChevronRight
-                      size={12}
-                      className={`shrink-0 transition-transform ${
-                        openMenuGroups.has(group.label) ? 'rotate-90' : ''
-                      }`}
-                    />
-                    <span className="truncate">{group.label}</span>
-                  </button>
-                )}
-                {/* FK-069 FR-2: csukott állapotban az itemek nem renderelődnek.
+          {resolvedGroups.map((group) => (
+            <div key={group.label} className="mb-3">
+              {sidebarOpen && (
+                // FK-069 FR-1/FR-3: kattintható csoport-fejléc chevronnal.
+                <button
+                  type="button"
+                  onClick={() => toggleMenuGroup(group.label)}
+                  aria-expanded={openMenuGroups.has(group.label)}
+                  data-testid={`menu-group-toggle-${group.label}`}
+                  className="w-full flex items-center gap-1 px-4 mb-1 text-[10px] font-semibold text-secondary-400 uppercase tracking-wider hover:text-secondary-200 transition-colors"
+                >
+                  <ChevronRight
+                    size={12}
+                    className={`shrink-0 transition-transform ${
+                      openMenuGroups.has(group.label) ? 'rotate-90' : ''
+                    }`}
+                  />
+                  <span className="truncate">{group.label}</span>
+                </button>
+              )}
+              {/* FK-069 FR-2: csukott állapotban az itemek nem renderelődnek.
                     Összecsukott sidebaron (ikonsáv) az itemek mindig látszanak,
                     mert ott nincs kattintható fejléc. */}
-                {(!sidebarOpen || openMenuGroups.has(group.label)) &&
-                  group.items
-                    .filter((item) => isMenuItemVisible(item, group, menuVisibilityCtx))
-                    .map((item) => (
-                      <NavLink
-                        key={item.path}
-                        to={item.path}
-                        // v2.5.54 #11 + Codex #904: `end` CSAK a prefix-szülő útvonalakra (pl. /rates),
-                        // hogy ne ütközzön a /rates/history-val; a sima menüpontok szülő-highlightja megmarad.
-                        end={parentPrefixPaths.has(item.path)}
-                        onClick={closeMobileSidebar}
-                        className={({ isActive }) =>
-                          `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
-                            isActive
-                              ? 'bg-primary-600 text-white border-l-4 border-accent-400'
-                              : 'text-secondary-300 hover:bg-secondary-800 hover:text-white'
-                          }`
-                        }
-                      >
-                        <item.icon size={16} className="shrink-0" />
-                        {sidebarOpen && <span className="truncate">{item.label}</span>}
-                      </NavLink>
-                    ))}
-              </div>
-            ))}
+              {(!sidebarOpen || openMenuGroups.has(group.label)) &&
+                group.items
+                  .filter((item) =>
+                    fallbackApplied ? true : isMenuItemVisible(item, group, menuVisibilityCtx),
+                  )
+                  .map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      // v2.5.54 #11 + Codex #904: `end` CSAK a prefix-szülő útvonalakra (pl. /rates),
+                      // hogy ne ütközzön a /rates/history-val; a sima menüpontok szülő-highlightja megmarad.
+                      end={parentPrefixPaths.has(item.path)}
+                      onClick={closeMobileSidebar}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
+                          isActive
+                            ? 'bg-primary-600 text-white border-l-4 border-accent-400'
+                            : 'text-secondary-300 hover:bg-secondary-800 hover:text-white'
+                        }`
+                      }
+                    >
+                      <item.icon size={16} className="shrink-0" />
+                      {sidebarOpen && <span className="truncate">{item.label}</span>}
+                    </NavLink>
+                  ))}
+            </div>
+          ))}
         </nav>
 
         {/* User info & Logout */}
@@ -437,7 +490,7 @@ export default function MainLayout() {
                 weekday: 'short',
               })}
             </div>
-            {sessionInfo && (
+            {shouldShowDayOpenIndicator(appMode, todaySession) && (
               <>
                 <div className="h-6 w-px bg-secondary-200"></div>
                 <div className="flex items-center gap-1.5 text-sm">
@@ -451,7 +504,7 @@ export default function MainLayout() {
           <div className="flex min-w-0 flex-wrap items-center gap-4">
             {/* Suite-frissítés jelölő — a telepítés a main process állapotgépén megy
                 (napnyitás előtt / napzárás után), ez csak láthatóvá teszi. */}
-            <SuiteUpdateBadge readyUpdate={readyUpdate} />
+            <SuiteUpdateBadge readyUpdate={readyUpdate} installFailure={installFailure} />
 
             {/* v2.1.4: Uton levo csomagok badge — FKH-026 v3: menüpont-láthatósághoz kötve */}
             {transitBadgeVisible && <TransitBadge />}

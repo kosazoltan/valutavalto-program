@@ -47,6 +47,13 @@ const onReadyMock = vi.fn((cb: (payload: unknown) => void) => {
     readyCallback = null
   }
 })
+let installFailedCallback: ((payload: unknown) => void) | null = null
+const onInstallFailedMock = vi.fn((cb: (payload: unknown) => void) => {
+  installFailedCallback = cb
+  return () => {
+    installFailedCallback = null
+  }
+})
 
 vi.mock('../../services/api/index', () => ({
   dailySessionApi: {
@@ -71,6 +78,7 @@ vi.mock('../../utils/electron', () => ({
       setShiftState: (state: string) => setShiftStateMock(state),
       status: () => statusMock(),
       onReady: (cb: (payload: unknown) => void) => onReadyMock(cb),
+      onInstallFailed: (cb: (payload: unknown) => void) => onInstallFailedMock(cb),
       onProgress: () => () => {},
     },
   }),
@@ -770,5 +778,71 @@ describe('useSuiteUpdate — treasury evening-closing window (kanban #7)', () =>
     expect(mapEveningClosingToShiftState(undefined)).toBe('SHIFT_OPEN')
     expect(mapEveningClosingToShiftState(null)).toBe('SHIFT_OPEN')
     expect(mapEveningClosingToShiftState({ status: 'GARBAGE' })).toBe('SHIFT_OPEN')
+  })
+})
+
+describe('useSuiteUpdate — installFailure surface (kanban #8)', () => {
+  beforeEach(() => {
+    isOpenMock.mockReset()
+    getTodaySessionMock.mockReset()
+    previewMock.mockReset()
+    previewMock.mockResolvedValue({ status: 'NOT_STARTED' })
+    setShiftStateMock.mockClear()
+    statusMock.mockClear()
+    onReadyMock.mockClear()
+    onInstallFailedMock.mockClear()
+    isElectronMock.mockReturnValue(true)
+    appModeMock.mockReset()
+    appModeMock.mockReturnValue({ mode: 'penztar' as const, isLoading: false })
+    authMock.mockReset()
+    authMock.mockReturnValue({
+      activeRole: 'penztar',
+      user: { role: 'penztar' },
+      worker: { branchId: '1' },
+    })
+    readyCallback = null
+    installFailedCallback = null
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('F1: installFailure starts null', async () => {
+    isOpenMock.mockResolvedValue(true)
+    const { result } = renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(installFailedCallback).not.toBeNull())
+    expect(result.current.installFailure).toBeNull()
+  })
+
+  it('F2: suiteUpdate:installFailed event surfaces version/reason/installerPath', async () => {
+    isOpenMock.mockResolvedValue(true)
+    const { result } = renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(installFailedCallback).not.toBeNull())
+    installFailedCallback?.({
+      version: '2.28.96',
+      reason: 'ELEVATION_REFUSED',
+      installerPath: 'C:\\cache\\Penztar-Setup-2.28.96.exe',
+    })
+    await waitFor(() => expect(result.current.installFailure?.version).toBe('2.28.96'))
+    expect(result.current.installFailure?.reason).toBe('ELEVATION_REFUSED')
+    expect(result.current.installFailure?.installerPath).toBe(
+      'C:\\cache\\Penztar-Setup-2.28.96.exe',
+    )
+  })
+
+  it('F3: a new suiteUpdate:ready clears the failure (fresh attempt possible)', async () => {
+    isOpenMock.mockResolvedValue(true)
+    const { result } = renderHook(() => useSuiteUpdate())
+    await waitFor(() => expect(installFailedCallback).not.toBeNull())
+    installFailedCallback?.({
+      version: '2.28.96',
+      reason: 'LAUNCH_FAILED',
+      installerPath: 'C:\\cache\\Penztar-Setup-2.28.96.exe',
+    })
+    await waitFor(() => expect(result.current.installFailure?.version).toBe('2.28.96'))
+    readyCallback?.({ version: '2.28.96', mandatory: false, notes: null, installableNow: true })
+    await waitFor(() => expect(result.current.installFailure).toBeNull())
   })
 })

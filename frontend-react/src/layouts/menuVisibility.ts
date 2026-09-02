@@ -64,6 +64,49 @@ export function isMenuGroupVisible(group: MenuGroup, ctx: MenuVisibilityContext)
 }
 
 /**
+ * kanban #8: az appMode szerinti alapértelmezett csoport címkéje a zero-visible
+ * fallbackhez. `full` SZÁNDÉKOSAN nincs a térképben: a központi admin felület
+ * least-privilege szigorítása megmarad (üres menü = nincs jogosultság).
+ */
+export const FALLBACK_GROUP_LABEL_BY_MODE: Partial<Record<AppMode, string>> = {
+  penztar: 'Pénztár (Valutaváltó)',
+  ertektar: 'Értéktár (lokál)',
+}
+
+export interface ResolvedMenuGroups {
+  groups: MenuGroup[]
+  fallbackApplied: boolean
+}
+
+/**
+ * kanban #8: a látható csoportok feloldása zero-visible fallbackkel.
+ *
+ * Ha egy hitelesített dolgozónak EGY látható csoport sincs (sérült
+ * szerep-hozzárendelés, legacy-orphan worker), a sidebar az appMode
+ * alapértelmezett operatív csoportját mutatja üres navigáció helyett —
+ * a fallback items-jei CSAK modes/hidden szerint szűröttek (a szerep-szűrő
+ * bypassolt, különben a nav üres maradna), a rejtett felügyeleti bejegyzések
+ * rejtve maradnak. A fallback-csoport másolata friss items-tömbbel tér vissza
+ * (a közös `menuGroups` definíció nem mutálódik).
+ */
+export function resolveVisibleMenuGroups(
+  groups: MenuGroup[],
+  ctx: MenuVisibilityContext,
+): ResolvedMenuGroups {
+  const visible = groups.filter((group) => isMenuGroupVisible(group, ctx))
+  if (visible.length > 0) return { groups: visible, fallbackApplied: false }
+  const fallbackLabel = FALLBACK_GROUP_LABEL_BY_MODE[ctx.appMode]
+  const fallback = fallbackLabel ? groups.find((g) => g.label === fallbackLabel) : undefined
+  if (!fallback) return { groups: [], fallbackApplied: false }
+  const items = fallback.items.filter((item) => {
+    if (item.modes && !item.modes.includes(ctx.appMode)) return false
+    if (item.hidden) return false
+    return true
+  })
+  return { groups: [{ ...fallback, items }], fallbackApplied: true }
+}
+
+/**
  * Egy útvonal effektív canonicalRoles-a a menüből (a route-szintű RoleGate-hez, single source
  * of truth). Ha az útvonal több csoportban szerepel, a szerepkörök UNIÓJA. Ha bármely előfordulása
  * korlátlan (nincs item- és csoport-szintű canonicalRoles), `undefined` (nem gateljük szerepkörrel).

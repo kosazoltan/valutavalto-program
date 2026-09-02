@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AppMode } from '../types/appMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
-import { performBackendAwareLogout, shouldRequireDailySession } from './MainLayout'
+import {
+  performBackendAwareLogout,
+  shouldRequireDailySession,
+  shouldShowDayOpenIndicator,
+} from './MainLayout'
 
 describe('MainLayout daily session gate', () => {
   it('requires day-open session only in cashier app mode', () => {
@@ -121,5 +125,23 @@ describe('MainLayout logout', () => {
     expect(warn).toHaveBeenCalledWith(error)
     expect(localLogout).toHaveBeenCalledOnce()
     expect(navigateToLogin).toHaveBeenCalledOnce()
+  })
+})
+
+describe('shouldShowDayOpenIndicator — driven by today session, not the gate (kanban #8)', () => {
+  it('penztar mode + OPEN session -> true', () => {
+    expect(shouldShowDayOpenIndicator('penztar', { status: 'OPEN' })).toBe(true)
+  })
+
+  it('penztar mode + CLOSED session -> false', () => {
+    expect(shouldShowDayOpenIndicator('penztar', { status: 'CLOSED' })).toBe(false)
+  })
+
+  it('penztar mode + no session (204 -> null) -> false', () => {
+    expect(shouldShowDayOpenIndicator('penztar', null)).toBe(false)
+  })
+
+  it('ertektar mode + OPEN session -> false (indicator is cashier-only)', () => {
+    expect(shouldShowDayOpenIndicator('ertektar', { status: 'OPEN' })).toBe(false)
   })
 })
