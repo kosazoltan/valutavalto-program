@@ -8,6 +8,14 @@ import path from 'node:path';
 // az pedig `electron-log/main`-t -> `electron`-t koveteli meg mar import-idoben, ami
 // unit-teszt kontextusban nem letezik. Az `auto-update` modul dontesi resze pure.
 import { isInRollout } from '../../packages/electron-platform/src/auto-update';
+// Pure elevation decisions (leaf module, no electron import) — the OS contract
+// stays testable without spawning an admin installer.
+import {
+  buildElevatedLaunchArgv,
+  classifyElevatedExit,
+  classifySpawnFailure,
+  resolvePowerShellPath,
+} from './install-launcher';
 
 /**
  * Penztar SUITE-updater — a teljes alairt telepitovel frissit.
@@ -439,7 +447,10 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
   ipcMain.handle('suiteUpdate:status', () => ({
     state: runtime.state,
     shiftState: runtime.shiftState,
-    readyVersion: runtime.state === 'READY' ? (runtime.manifest?.version ?? null) : null,
+    readyVersion:
+      runtime.state === 'READY' || runtime.state === 'INSTALL_FAILED'
+        ? (runtime.manifest?.version ?? null)
+        : null,
     mandatory: runtime.manifest?.mandatory === true,
   }));
 
@@ -802,26 +813,111 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
 
       // Az `error` event AZONNALI (a spawn maga bukik: hianyzo fajl, EACCES), tehat
       // ez a listener meg a kilepes elott lefut — ellentetben az `exit`-tel.
+      // EACCES/EPERM = standard user admin-jog nelkul -> UAC runas fallback;
+      // minden mas spawn-hiba lathato INSTALL_FAILED, nincs csendben READY-visszaallas.
       child.on('error', (err) => {
         log.error('[suiteUpdate] a telepito-folyamat NEM indult el:', err);
-        clearInstallMarker();
-        runtime.state = 'READY';
-        runtime.promptedForVersion = null;
+        const kind = classifySpawnFailure(err);
+        if (kind === 'ELEVATION_REQUIRED') {
+          relaunchElevated(resolved, args, manifest);
+        } else {
+          failInstall('LAUNCH_FAILED', manifest, resolved);
+        }
       });
 
-      child.unref();
-      // A telepito allitja le/inditja a service-eket es a vegen a Penztar.exe-t.
-      setTimeout(() => app.quit(), 1_000);
+      // A `spawn` event CSAK sikeres CreateProcess utan fut — a quit-idozites
+      // ide kerult (korabban a spawn utan azonnal volt, ami EACCES-nel a fuggoben
+      // levo hibakezeles elott zarta be az appot). A telepito allitja le/inditja
+      // a service-eket es a vegen a Penztar.exe-t.
+      child.on('spawn', () => {
+        child.unref();
+        setTimeout(() => app.quit(), 1_000);
+      });
     } catch (err) {
       log.error('[suiteUpdate] a telepito nem indult el:', err);
+      failInstall('LAUNCH_FAILED', manifest, resolved);
+    }
+  }
+
+  /**
+   * UAC runas fallback: a csendes spawn EACCES/EPERM-mel bukott (standard user),
+   * ezert egy rejtett PowerShell `Start-Process -Verb RunAs` inditja a telepitot.
+   * A segito NEM detached ES megvarjuk: az exit-kodja az egyetlen beleegyezes-jel
+   * (0 = indult, 3 = UAC elutasitva), es `app.quit()` CSAK sikeres indulas utan
+   * johet — korai kilepes megolne a fuggoben levo UAC-promptot.
+   */
+  function relaunchElevated(
+    exePath: string,
+    args: string[],
+    manifest: SuiteUpdateManifest,
+  ): void {
+    log.info(`[suiteUpdate] EACCES/EPERM — UAC runas ujrainditas: ${exePath}`);
+    try {
+      const helper = spawn(
+        resolvePowerShellPath(process.env),
+        buildElevatedLaunchArgv(exePath, args),
+        { detached: false, stdio: 'ignore', windowsHide: true, shell: false },
+      );
+      helper.on('error', (err) => {
+        log.error('[suiteUpdate] az elevation-seged NEM indult el:', err);
+        failInstall('LAUNCH_FAILED', manifest, exePath);
+      });
+      helper.on('exit', (code) => {
+        const outcome = classifyElevatedExit(code);
+        if (outcome === 'STARTED') {
+          setTimeout(() => app.quit(), 1_000);
+        } else {
+          failInstall(outcome, manifest, exePath);
+        }
+      });
+    } catch (err) {
+      log.error('[suiteUpdate] az elevation-seged inditasa hibara futott:', err);
+      failInstall('LAUNCH_FAILED', manifest, exePath);
+    }
+  }
+
+  /**
+   * Lathato hibaallapot: NEM terunk vissza csendben READY-re (a korabbi viselkedes
+   * a hibakat lathatatlanna tette). INSTALL_FAILED-bol a banner ujra probalkozhat
+   * (canStartInstallOnDemand); a readyVersion megmarad. Elutasitott UAC-nal a marker
+   * outcomeHint-et kap, hogy a kovetkezo indulas is a pontos okot jelentse.
+   */
+  function failInstall(
+    reason: 'ELEVATION_REFUSED' | 'LAUNCH_FAILED',
+    manifest: SuiteUpdateManifest,
+    installerPath: string,
+  ): void {
+    log.error(
+      `[suiteUpdate] elevation ${reason === 'ELEVATION_REFUSED' ? 'REFUSED' : 'FAILED'} — ` +
+        `a telepites nem indult el (${reason}): ${installerPath}`,
+    );
+    runtime.state = 'INSTALL_FAILED';
+    // A verifiedExePath MEGMARAD — a banner retries-hoz kell.
+    if (reason === 'ELEVATION_REFUSED') {
+      writeInstallMarker(manifest, 'ELEVATION_REFUSED');
+    } else {
       clearInstallMarker();
-      runtime.state = 'READY';
-      runtime.promptedForVersion = null;
+    }
+    notify(
+      'Frissítés sikertelen',
+      reason === 'ELEVATION_REFUSED'
+        ? `A v${manifest.version} telepítése nem indult el: a rendszergazdai jogosultság kérése el lett utasítva.`
+        : `A v${manifest.version} telepítése nem indult el. Próbálja újra a frissítés jelzésből.`,
+    );
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('suiteUpdate:installFailed', {
+        version: manifest.version,
+        reason,
+        installerPath,
+      });
     }
   }
 
   /** A telepitesi kiserlet markerjenek kiirasa (a kimenet utolagos felismereséhez). */
-  function writeInstallMarker(manifest: SuiteUpdateManifest): void {
+  function writeInstallMarker(
+    manifest: SuiteUpdateManifest,
+    outcomeHint?: 'ELEVATION_REFUSED',
+  ): void {
     try {
       const dir = updateCacheDir(app.getPath('temp'));
       fs.mkdirSync(dir, { recursive: true });
@@ -829,6 +925,7 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
         version: manifest.version,
         startedAt: new Date().toISOString(),
         installerFile: manifest.penztar.file,
+        ...(outcomeHint ? { outcomeHint } : {}),
       };
       fs.writeFileSync(path.join(dir, INSTALL_MARKER_FILE), JSON.stringify(marker), 'utf8');
     } catch (err) {
@@ -868,6 +965,16 @@ export function initSuiteUpdate(mainWindow: BrowserWindow | null): SuiteUpdateHa
       safeUnlink(markerPath);
       // A telepito mar nem kell.
       if (marker) safeUnlink(path.join(updateCacheDir(app.getPath('temp')), marker.installerFile));
+      return;
+    }
+    if (outcome === 'ELEVATION_REFUSED') {
+      log.error(
+        `[suiteUpdate] RIASZTAS: az elozo frissitesi kiserlet (v${marker?.version}, inditva: ` +
+          `${marker?.startedAt || 'ismeretlen'}) ELUTASITOTT UAC-jogosultsag miatt nem fejezodott ` +
+          `be — a gep tovabbra is v${app.getVersion()}-en fut. A telepiteshez rendszergazdai ` +
+          'jogosultsag kell; a frissites a jelzesbol ujra indithato.',
+      );
+      safeUnlink(markerPath);
       return;
     }
     if (outcome === 'FAILED') {
