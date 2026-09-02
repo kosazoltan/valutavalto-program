@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-30T11:14:26.550Z",
-  "source_count": 1080,
+  "generated_at": "2026-09-02T15:13:27.780Z",
+  "source_count": 1083,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -18,7 +18,7 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "663033d66e5e8aa87a43da6f5770d3b45e2b300d90ebd6030253ce27f1f8e178",
+      "sha256": "43cb97fba3a6455d08c32ee822c02c582013d48bc5cd0d834c7ac9780e7370e6",
       "type": "short-term-core",
       "areas": [
         "aml",
@@ -12664,6 +12664,44 @@
       "areas": [
         "database",
         "deploy"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-31-fk100-v2.28.94.md",
+      "sha256": "91fb7ad0375291f256f3bf41bad4afcde7c9a770bf8a4687b8d049e9b5197370",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy",
+        "installer",
+        "napzaras",
+        "penztar",
+        "riport",
+        "security"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-08-31-fkh042-fkh043-google-hurok-v2.28.93.md",
+      "sha256": "1fc6375dc6053a5ad2552c50313c645ff3350e1fdce13b13627fd71fe79a326d",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "ertektar",
+        "installer",
+        "napzaras",
+        "penztar",
+        "riport"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-02-ertektar-auto-update.md",
+      "sha256": "6b221049ba1487148e08228bfe833828dd3fc02476e04387ef6b12a18cd5968c",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "ertektar",
+        "napzaras"
       ]
     },
     {

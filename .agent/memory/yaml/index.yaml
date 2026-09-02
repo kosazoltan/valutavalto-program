@@ -1,12 +1,12 @@
-generated_at: 2026-08-30T11:14:26.550Z
+generated_at: 2026-09-02T15:13:27.780Z
 schema_version: 1
-source_count: 1080
+source_count: 1083
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
     type: short-term-core
     path: AGENTS.md
-    sha256: 663033d66e5e8aa87a43da6f5770d3b45e2b300d90ebd6030253ce27f1f8e178
+    sha256: 43cb97fba3a6455d08c32ee822c02c582013d48bc5cd0d834c7ac9780e7370e6
     summary: "# AGENTS.md - AI coding agent szabalyzat > ## ⛔ KÖTELEZŐ ÉRVÉNYŰ SZABÁLY — TESZT-INTEGRITÁS (NINCS KIVÉTEL, MINDEN MODELLRE KÖTELEZŐ) > > **TILOS A TESZTET ÁTÍRNI AZÉRT, HOGY ZÖLD LEGYEN.** SEMMIKÉPPEN NEM LEHET EGY BUKÓ TESZTET > ÁTÍRNI, GYENGÍTENI, TÖRÖLNI, SKIPPELNI VAGY KIKOMMENTEZNI CSAK A ZÖLD EREDMÉNYÉRT. HA EGY > TESZT BUKIK, ÁT KELL NÉZNI A TELJES KÓDOT ÉS A SPECET, ÉS AZ IMPLEMENTÁCIÓT VAGY A SPECET > KELL"
     areas: [aml, arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, legacy, napzaras, penztar, riport, security, specifikacio, sync, tenant]
     keywords: [agents, coding, agent, szabalyzat, kotelezo, ervenyu, szabaly, teszt, integritas, nincs, kivetel, minden]
@@ -390,31 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 5b33f31c3229fe59
-    title: "2026-04-29 — v2.3.12 sprint: 4/5 defer-elt E-B bug megoldása"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-v2.3.12-ertektar-audit-followup.md
-    sha256: 57cf21cdd7f021c15ce2755529dec8205f33a22bf11f60f7d80ab05be789cc98
-    summary: "--- date: 2026-04-29 session_type: v2.3.12-sprint context: PR #274 — defer-elt 5 értéktári E-B bug követőjavítása priority: P1 — sidebar coherence + audit nyomvonal --- # 2026-04-29 — v2.3.12 sprint: 4/5 defer-elt E-B bug megoldása ## Release info - **Verzió:** 2.3.11 → 2.3.12 (4 modul) - **PR:** #274 — auto-merge enabled (admin-bypass szükséges) - **Branch:** `fix/v2.3.12-ertektar-eb-bugs` (post-merge törölve) ## Me"
-    areas: [deploy, ertektar, frontend, penztar, security]
-    keywords: [2026, sprint, defer, elt, bug, megoldasa, date, session_type, context, 274, ertektari, kovetojavitasa]
-  - id: b3b8f9ed830ecfc2
-    title: "2026-04-29 — Hetzner v2.3.12 deploy smoke teszt eredménye"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-v2.3.12-hetzner-smoke-verify.md
-    sha256: 82e8687e1e9656d30af6ef2a8133e308471ac08734438fede97795b334c0c67b
-    summary: "--- date: 2026-04-29 session_type: hetzner-smoke-verify context: v2.3.12 deploy verifikálása excvaluta.com production-on (Chrome MCP) priority: P0 — production verify --- # 2026-04-29 — Hetzner v2.3.12 deploy smoke teszt eredménye ## Setup - **URL:** https://excvaluta.com (Hetzner production) - **Tool:** `mcp__Claude_in_Chrome__*` (felhasználó saját Chrome browser-jén) - **User session:** auto-login (cookie aktív, mo"
-    areas: [arfolyam, deploy, ertektar, frontend, penztar]
-    keywords: [2026, hetzner, deploy, smoke, teszt, eredmenye, date, session_type, verify, context, verifikalasa, excvaluta]
-  - id: ea587dd056273482
-    title: "v2.3.31 Flyway Emergency Incident — V168/V169 'active' → 'is_active' column mismatch"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-29-v2.3.31-flyway-emergency-incident.md
-    status: resolved
-    sha256: 546694fc12f0c08fd022f3ef6fa2ded5467c537e28bc82e0ff1489db0977c9ae
-    summary: "--- date: 2026-04-29 title: v2.3.31 Flyway Emergency Incident — V168/V169 'active' → 'is_active' column mismatch type: incident severity: P0 status: resolved duration: ~50 perc (4 deploy fail + emergency hotfix + verify) --- # v2.3.31 Flyway Emergency Incident ## Tünet A Hetzner production HTTP **502** Bad Gateway 4 deploy-on keresztül: - v2.3.27 (PR #292) — első fail - v2.3.28 (PR #293) - v2.3.29 (PR #294) - v2.3.30"
-    areas: [database, deploy]
-    keywords: [flyway, emergency, incident, v168, v169, active, is_active, column, mismatch, date, 2026, title]
   - id: fa5a796cb0ea78dd
     title: "2026-04-29 — v2.3.8 NSIS bug fix (PowerShell -like + ICACLS + backend timeout)"
     type: medium-term-episodic
@@ -1704,6 +1679,30 @@ medium_term:
     summary: "# Handoff — FK-099 round-3: PR #1675 bot-review hibajavítások (2026-08-30) Job `20260829-fk099-tranzakcios-dij`, RULING: **PASS** (round 3). Merge = user döntés. ## Mit csináltunk - 9 bot-komment triage: 6 valós defekt (javítva), 1 dokumentációs (válaszban zárva), 1 üzlemi (T8 illeték-alap) — **tulajdonosi döntés: hufAmount MARAD** (spec FR-13 szó szerinti bemenet + D6 + 2 vak-review + Bíró PASS). Jogszabályi ellenőr"
     areas: [database, deploy]
     keywords: [handoff, 099, round, 1675, bot, review, hibajavitasok, 2026, job, 20260829, fk099, tranzakcios]
+  - id: 1c807327a7970e1f
+    title: "Handoff — FK-100 kiegészítő javítások + v2.28.94 LEZÁRVA (2026-08-31)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-31-fk100-v2.28.94.md
+    sha256: 91fb7ad0375291f256f3bf41bad4afcde7c9a770bf8a4687b8d049e9b5197370
+    summary: "# Handoff — FK-100 kiegészítő javítások + v2.28.94 LEZÁRVA (2026-08-31) Az FK-100 (Tranzakciós díjak jelentése — kiegészítő javítások) pipeline jobja már korábban PASS volt, de a merge kimaradt a v2.28.93 ciklusból; a tulajdonos 2026-08-31-én jóváhagyta a teljes ciklust, ami lefutott és le van zárva. ## Mit szállított az FK-100 (5 kérés-spec FR, pipeline PASS) - FR-3 „Nincs adat\" állapot javítása; FR-4 megerősítő abl"
+    areas: [database, deploy, installer, napzaras, penztar, riport, security]
+    keywords: [handoff, 100, kiegeszito, javitasok, lezarva, 2026, tranzakcios, dijak, jelentese, pipeline, jobja, mar]
+  - id: 5f1d89c2c203d622
+    title: "Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-08-31-fkh042-fkh043-google-hurok-v2.28.93.md
+    sha256: 1fc6375dc6053a5ad2552c50313c645ff3350e1fdce13b13627fd71fe79a326d
+    summary: "# Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31) Jobok: `20260830-penztar-google-autoupdate-hurok` + `20260831-fkh042-elo-celosszeg` + `20260831-fkh043-inventory-panel-elrejtese` — mindhárom `status: pass` (round-1, bíró PASS). ## Mit szállított - **Google-hurok P0:** Google-OTP alatt nincs csendes telepítés/app.quit; nyitott napot nem hazudja; KASZA-útvonal és értéktár ne"
+    areas: [cimletezes, deploy, ertektar, installer, napzaras, penztar, riport]
+    keywords: [handoff, google, hurok, fkh, 042, 043, stacked, ciklus, lezarva, 2026, jobok, 20260830]
+  - id: 514a51bc2e33802d
+    title: "Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-02-ertektar-auto-update.md
+    sha256: 6b221049ba1487148e08228bfe833828dd3fc02476e04387ef6b12a18cd5968c
+    summary: "# Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart"
+    areas: [deploy, ertektar, napzaras]
+    keywords: [handoff, ertektar, auto, update, fkh, 041, never, install, repeal, date, 2026, kanban]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic
