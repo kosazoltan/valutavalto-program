@@ -504,6 +504,9 @@ public class ClosingWizardService {
         Map<String, Object> result = new LinkedHashMap<>();
         Map<String, BigDecimal> totals = new LinkedHashMap<>();
         int savedRecords = 0;
+        // FKH-044: denomination ids submitted in this payload — the snapshot-replace
+        // below zeroes same-day EVENING rows whose denomination is NOT in this set.
+        Set<Long> submittedDenominationIds = new LinkedHashSet<>();
 
         for (Map.Entry<String, Map<Integer, Integer>> entry : denomCounts.entrySet()) {
             String currencyCode = entry.getKey();
@@ -548,8 +551,8 @@ public class ClosingWizardService {
                 ));
 
                 // Issue #117: persist DenominationBalance rekordot
-                saveDenominationBalance(
-                        branchId, currency, BigDecimal.valueOf(value), count, subtotal, businessDate);
+                submittedDenominationIds.add(saveDenominationBalance(
+                        branchId, currency, BigDecimal.valueOf(value), count, subtotal, businessDate));
                 savedRecords++;
             }
 
@@ -569,7 +572,7 @@ public class ClosingWizardService {
      * Idempotens: ha letezik (branchId, denominationId) rekord -> UPDATE. Ha nem -> INSERT.
      * Denomination auto-create, ha a branch-currency-faceValue kombora meg nem letezik.
      */
-    private void saveDenominationBalance(
+    private Long saveDenominationBalance(
             UUID branchId,
             hu.puzzleir.valuta.entity.Currency currency,
             BigDecimal faceValue,
@@ -667,6 +670,9 @@ public class ClosingWizardService {
         balance.setDenominationCategory(DenominationCategory.EVENING);
         balance.setSubmissionDate(businessDate);
         denominationBalanceRepository.save(balance);
+        // FKH-044: hand the resolved denomination id back so countDenominations can build
+        // the submitted-id set without a second lookup (NFR-3: one extra SELECT total).
+        return denomination.getId();
     }
 
     private Branch findBranchInCurrentCompany(UUID branchId) {
