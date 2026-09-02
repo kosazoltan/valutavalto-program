@@ -564,11 +564,31 @@ public class ClosingWizardService {
         // so step 2 reflects the LATEST submitted denomination set, not a running union.
         List<Map<String, Object>> zeroedEveningRows = zeroOmittedEveningRows(
                 branchId, businessDate, submittedDenominationIds);
+        if (!zeroedEveningRows.isEmpty() && auditLogService != null) {
+            // One audit entry per submit, KAT=TX, same transaction as the zeroing (E2):
+            // a rollback must discard the audit too — plain log(...), not logInNewTransaction*.
+            Map<String, Object> changes = new LinkedHashMap<>();
+            changes.put("KAT", "TX");
+            changes.put("business_date", businessDate.toString());
+            changes.put("branch_id", branchId.toString());
+            changes.put("zeroed", zeroedEveningRows);
+            auditLogService.log(
+                    "CLOSING_DENOMINATION_SNAPSHOT_ZEROED",
+                    "DenominationBalance",
+                    branchId.toString(),
+                    SecurityUtils.getCurrentWorkerCode(),
+                    null,
+                    branchId.toString(),
+                    null,
+                    objectMapper.writeValueAsString(changes),
+                    null,
+                    null);
+        }
 
         result.put("totals", totals);
         result.put("savedRecords", savedRecords);
-        log.info("countDenominations: branchId={}, savedRecords={}, currencies={}",
-                branchId, savedRecords, denomCounts.keySet());
+        log.info("countDenominations: branchId={}, savedRecords={}, zeroedEveningRows={}, currencies={}",
+                branchId, savedRecords, zeroedEveningRows.size(), denomCounts.keySet());
         return result;
     }
 
