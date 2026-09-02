@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-08-30T11:14:26.550Z
+generated_at: 2026-09-02T15:15:05.076Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7548,6 +7548,34 @@ nodes:
     summary: "# Handoff — FK-099 round-3: PR #1675 bot-review hibajavítások (2026-08-30) Job `20260829-fk099-tranzakcios-dij`, RULING: **PASS** (round 3). Merge = user döntés. ## Mit csináltunk - 9 bot-komment triage: 6 valós defekt (javítva), 1 dokumentációs (válaszban zárva), 1 üzlemi (T8 illeték-alap) — **tulajdonosi döntés: hufAmount MARAD** (spec FR-13 szó szerinti bemenet + D6 + 2 vak-review + Bíró PASS). Jogszabályi ellenőr"
     tags: [handoff, 099, round, 1675, bot, review, hibajavitasok, 2026, job, 20260829]
     areas: [database, deploy]
+  - id: 1c807327a7970e1f
+    type: medium-term-episodic
+    title: "Handoff — FK-100 kiegészítő javítások + v2.28.94 LEZÁRVA (2026-08-31)"
+    source_path: vault/sessions/handoff-2026-08-31-fk100-v2.28.94.md
+    summary: "# Handoff — FK-100 kiegészítő javítások + v2.28.94 LEZÁRVA (2026-08-31) Az FK-100 (Tranzakciós díjak jelentése — kiegészítő javítások) pipeline jobja már korábban PASS volt, de a merge kimaradt a v2.28.93 ciklusból; a tulajdonos 2026-08-31-én jóváhagyta a teljes ciklust, ami lefutott és le van zárva. ## Mit szállított az FK-100 (5 kérés-spec FR, pipeline PASS) - FR-3 „Nincs adat\" állapot javítása; FR-4 megerősítő abl"
+    tags: [handoff, 100, kiegeszito, javitasok, lezarva, 2026, tranzakcios, dijak, jelentese, pipeline]
+    areas: [database, deploy, installer, napzaras, penztar, riport, security]
+  - id: 5f1d89c2c203d622
+    type: medium-term-episodic
+    title: "Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31)"
+    source_path: vault/sessions/handoff-2026-08-31-fkh042-fkh043-google-hurok-v2.28.93.md
+    summary: "# Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31) Jobok: `20260830-penztar-google-autoupdate-hurok` + `20260831-fkh042-elo-celosszeg` + `20260831-fkh043-inventory-panel-elrejtese` — mindhárom `status: pass` (round-1, bíró PASS). ## Mit szállított - **Google-hurok P0:** Google-OTP alatt nincs csendes telepítés/app.quit; nyitott napot nem hazudja; KASZA-útvonal és értéktár ne"
+    tags: [handoff, google, hurok, fkh, 042, 043, stacked, ciklus, lezarva, 2026]
+    areas: [cimletezes, deploy, ertektar, installer, napzaras, penztar, riport]
+  - id: 514a51bc2e33802d
+    type: medium-term-episodic
+    title: "Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96"
+    source_path: vault/sessions/handoff-2026-09-02-ertektar-auto-update.md
+    summary: "# Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart"
+    tags: [handoff, ertektar, auto, update, fkh, 041, never, install, repeal, date]
+    areas: [deploy, ertektar, napzaras]
+  - id: dfb18dc9929896bc
+    type: medium-term-episodic
+    title: "Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene"
+    source_path: vault/sessions/handoff-2026-09-02-tudas-hygiene-repo-hygiene.md
+    summary: "# Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene ## Done (evidence) - Working language rule (machine-to-machine ENGLISH): AGENTS.md §10 (db31113b), `.hermes.md` copy, 10 SOUL `## Working language` blocks, fact-gate `verify_artifact.py` INC-LANG-01 (mutation-proven). - Knowledge placement rule (never edit bundled skills; own skill + allowlist): root SOUL, `.hermes.md`, `hermes-local-environme"
+    tags: [handoff, 2026, hermes, knowledge, hygiene, valutavalto, repo, done, evidence, working]
+    areas: []
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -22977,6 +23005,57 @@ edges:
   - from: 0da86256ed22c2fe
     to: area_deploy
     relation: belongs_to_area
+  - from: 1c807327a7970e1f
+    to: area_database
+    relation: belongs_to_area
+  - from: 1c807327a7970e1f
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 1c807327a7970e1f
+    to: area_installer
+    relation: belongs_to_area
+  - from: 1c807327a7970e1f
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 1c807327a7970e1f
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 1c807327a7970e1f
+    to: area_riport
+    relation: belongs_to_area
+  - from: 1c807327a7970e1f
+    to: area_security
+    relation: belongs_to_area
+  - from: 5f1d89c2c203d622
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 5f1d89c2c203d622
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 5f1d89c2c203d622
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 5f1d89c2c203d622
+    to: area_installer
+    relation: belongs_to_area
+  - from: 5f1d89c2c203d622
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 5f1d89c2c203d622
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 5f1d89c2c203d622
+    to: area_riport
+    relation: belongs_to_area
+  - from: 514a51bc2e33802d
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 514a51bc2e33802d
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 514a51bc2e33802d
+    to: area_napzaras
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -23034,18 +23113,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: b3a98d9481145608
-    to: repo_project_state
-    relation: informs
-  - from: ea125d4e7d2689ba
-    to: repo_project_state
-    relation: informs
-  - from: 5cb729e2b8a0581f
-    to: repo_project_state
-    relation: informs
-  - from: 056ec259872d08b3
-    to: repo_project_state
-    relation: informs
   - from: 5c2419b5a435dc10
     to: repo_project_state
     relation: informs
@@ -23266,6 +23333,18 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 0da86256ed22c2fe
+    to: repo_project_state
+    relation: informs
+  - from: 1c807327a7970e1f
+    to: repo_project_state
+    relation: informs
+  - from: 5f1d89c2c203d622
+    to: repo_project_state
+    relation: informs
+  - from: 514a51bc2e33802d
+    to: repo_project_state
+    relation: informs
+  - from: dfb18dc9929896bc
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

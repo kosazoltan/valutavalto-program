@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-08-30T11:14:26.550Z
+generated: 2026-09-02T15:15:05.076Z
 format: gfm
 ---
 
@@ -111,22 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-12-fs11-def-release-chain.md`
-  - summary: # FS11-DEF release chain — TELJESEN LEZÁRVA — 2026-07-12 ## Teljes lánc végigvitel (a felhasználó kérésére: "Push, merge, lint, deploy és telepítő") 1. **PR #1425** (FS11-DEF slice 3/3 frontend) — mergelve, deploy éles v2.28.33-ban. 2. **Both-origin freshness** (Hetzner + Scaleway hot standby) verifikálva PASS mindkét deployra (v2.28.33 és v2.28.34). 3. **Lint**: `npm run lint` → 0 error (2447 pre-existing warning, n
-
-- **FK09/FK10 rate-maker handoff — 2026-07-18** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-18-fk09-fk10-rate-maker.md`
-  - summary: # FK09/FK10 rate-maker handoff — 2026-07-18 - PR #1454 MERGED: https://github.com/kosazoltan/valutavalto-program/pull/1454 - Main/release SHA: `e0db5f395ea8601493cece45a25e971ef2e9fb3e` - Release: `v2.28.44` — https://github.com/kosazoltan/valutavalto-program/releases/tag/v2.28.44 - FK09: online/offline fejlécállapot látható, regressziós teszt lefedi. - FK10: 0/nem pozitív forrás látható képlethiba; előző jó érték me
-
-- **Handoff — FKH-018 + Ollama indítási hiba** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-18-fkh018-ollama.md`
-  - summary: # Handoff — FKH-018 + Ollama indítási hiba - Időpont: 2026-07-18 14:31 +0200. - Repo: `D:/repo/valutavalto-program`; branch: `feature/ertektar-atvetel-jovahagyas-nelkul`; HEAD: `e0db5f39`. - Worktree: 41 módosított/untracked bejegyzés; semmi nincs commitolva vagy pusholva. - Első következő feladat: az Ollama nem indul el; bizonyíték-első hibakereséssel javítandó, utána folytatni FKH-018-at. - Session elején ellenőriz
-
-- **Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-19-ertektar-batch-r2-budget-stop.md`
-  - summary: # Handoff — VALUTA-ERTEKTAR-BATCH-20260718 R2 (2026-07-19) - Stable task-id: `VALUTA-ERTEKTAR-BATCH-20260719-R2`. - Planner (Fable-5) lefutott; verdict READY. - Kanonikus terv: `.hermes/dev-loop/VALUTA-ERTEKTAR-BATCH-20260718-PLAN.md` (SHA-256 `3faf4488a304e3b707ea5fc13436a986cecc75abfee4a779a0dec37b0ff58d85`). - Holdout: `D:/repo/Hermes-agent/pipeline/.runtime/VALUTA-ERTEKTAR-BATCH-20260719-R2/HOLDOUT.md` (40 eset).
 
 - **Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-19-fk057-mainlayout.md`
@@ -243,6 +227,22 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — FK-099 round-3: PR #1675 bot-review hibajavítások (2026-08-30)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-30-fk099-r3-pr1675-bot-fixek.md`
   - summary: # Handoff — FK-099 round-3: PR #1675 bot-review hibajavítások (2026-08-30) Job `20260829-fk099-tranzakcios-dij`, RULING: **PASS** (round 3). Merge = user döntés. ## Mit csináltunk - 9 bot-komment triage: 6 valós defekt (javítva), 1 dokumentációs (válaszban zárva), 1 üzlemi (T8 illeték-alap) — **tulajdonosi döntés: hufAmount MARAD** (spec FR-13 szó szerinti bemenet + D6 + 2 vak-review + Bíró PASS). Jogszabályi ellenőr
+
+- **Handoff — FK-100 kiegészítő javítások + v2.28.94 LEZÁRVA (2026-08-31)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-31-fk100-v2.28.94.md`
+  - summary: # Handoff — FK-100 kiegészítő javítások + v2.28.94 LEZÁRVA (2026-08-31) Az FK-100 (Tranzakciós díjak jelentése — kiegészítő javítások) pipeline jobja már korábban PASS volt, de a merge kimaradt a v2.28.93 ciklusból; a tulajdonos 2026-08-31-én jóváhagyta a teljes ciklust, ami lefutott és le van zárva. ## Mit szállított az FK-100 (5 kérés-spec FR, pipeline PASS) - FR-3 „Nincs adat" állapot javítása; FR-4 megerősítő abl
+
+- **Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-08-31-fkh042-fkh043-google-hurok-v2.28.93.md`
+  - summary: # Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31) Jobok: `20260830-penztar-google-autoupdate-hurok` + `20260831-fkh042-elo-celosszeg` + `20260831-fkh043-inventory-panel-elrejtese` — mindhárom `status: pass` (round-1, bíró PASS). ## Mit szállított - **Google-hurok P0:** Google-OTP alatt nincs csendes telepítés/app.quit; nyitott napot nem hazudja; KASZA-útvonal és értéktár ne
+
+- **Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-02-ertektar-auto-update.md`
+  - summary: # Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart
+
+- **Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-02-tudas-hygiene-repo-hygiene.md`
+  - summary: # Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene ## Done (evidence) - Working language rule (machine-to-machine ENGLISH): AGENTS.md §10 (db31113b), `.hermes.md` copy, 10 SOUL `## Working language` blocks, fact-gate `verify_artifact.py` INC-LANG-01 (mutation-proven). - Knowledge placement rule (never edit bundled skills; own skill + allowlist): root SOUL, `.hermes.md`, `hermes-local-environme
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
