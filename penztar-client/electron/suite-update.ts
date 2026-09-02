@@ -60,6 +60,7 @@ export type SuiteUpdateState =
   | 'VERIFYING'
   | 'READY'
   | 'INSTALLING'
+  | 'INSTALL_FAILED'
   | 'ERROR';
 
 export interface SuiteUpdateManifestEntry {
@@ -97,12 +98,16 @@ export function shouldAutoStartInstall(
   return suiteState === 'READY' && isInstallWindow(shiftState);
 }
 
-/** Explicit banner click: READY + verified exe. Shift state is ignored. */
+/** Explicit banner click: READY/INSTALL_FAILED + verified exe. Shift state is ignored. */
 export function canStartInstallOnDemand(
   state: SuiteUpdateState,
   verifiedExePath: string | null,
 ): boolean {
-  return state === 'READY' && typeof verifiedExePath === 'string' && verifiedExePath.length > 0;
+  return (
+    (state === 'READY' || state === 'INSTALL_FAILED') &&
+    typeof verifiedExePath === 'string' &&
+    verifiedExePath.length > 0
+  );
 }
 
 /**
@@ -192,6 +197,12 @@ export interface InstallAttemptMarker {
   version: string;
   startedAt: string;
   installerFile: string;
+  /**
+   * Optional narrowing hint for a failed attempt: the user refused the UAC
+   * elevation prompt. Kept across boots so the refusal is reported instead of
+   * a generic FAILED. Unknown values are dropped by `parseInstallMarker`.
+   */
+  outcomeHint?: 'ELEVATION_REFUSED';
 }
 
 /**
@@ -210,7 +221,7 @@ export interface InstallAttemptMarker {
  *   - a verzio a markerben szereplo cel-verzio  -> SUCCESS (a telepites lefutott)
  *   - a verzio valtozatlanul a regi             -> FAILED (elakadt vagy hibara futott)
  */
-export type InstallAttemptOutcome = 'NONE' | 'SUCCESS' | 'FAILED';
+export type InstallAttemptOutcome = 'NONE' | 'SUCCESS' | 'FAILED' | 'ELEVATION_REFUSED';
 
 /**
  * Kiertekeli az elozo telepitesi kiserletet a MOST futo verzio alapjan.
@@ -228,6 +239,8 @@ export function evaluateInstallAttempt(
   if (runningVersion === marker.version || isNewerVersion(runningVersion, marker.version)) {
     return 'SUCCESS';
   }
+  // A regi verzio fut ES a marker a UAC-elutasitast rogziti -> pontos ok.
+  if (marker.outcomeHint === 'ELEVATION_REFUSED') return 'ELEVATION_REFUSED';
   return 'FAILED';
 }
 
@@ -243,6 +256,8 @@ export function parseInstallMarker(raw: unknown): InstallAttemptMarker | null {
     version: obj.version,
     startedAt: typeof obj.startedAt === 'string' ? obj.startedAt : '',
     installerFile: obj.installerFile,
+    // Only the known hint survives; anything else is dropped (old markers parse).
+    outcomeHint: obj.outcomeHint === 'ELEVATION_REFUSED' ? obj.outcomeHint : undefined,
   };
 }
 
