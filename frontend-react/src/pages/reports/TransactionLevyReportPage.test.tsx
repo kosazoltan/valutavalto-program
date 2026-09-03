@@ -476,10 +476,11 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     expect(monthlyTable.querySelector('dl')).toBeNull()
 
     // Column headers reuse table.buy/table.sell — scope with within() because
-    // "Vétel"/"Eladás" also exist as main-table group headers.
-    const colHeaders = Array.from(
-      within(monthlyTable).getAllByRole('columnheader'),
-    ) as HTMLTableCellElement[]
+    // "Vétel"/"Eladás" also exist as main-table group headers. The corner th
+    // has no scope attribute (plan design decision 2), so filter by scope.
+    const colHeaders = (
+      Array.from(within(monthlyTable).getAllByRole('columnheader')) as HTMLTableCellElement[]
+    ).filter((th) => th.scope === 'col')
     expect(colHeaders.map((th) => th.textContent)).toEqual(['Vétel', 'Eladás', 'Összesen'])
     colHeaders.forEach((th) => {
       expect(th.tagName).toBe('TH')
