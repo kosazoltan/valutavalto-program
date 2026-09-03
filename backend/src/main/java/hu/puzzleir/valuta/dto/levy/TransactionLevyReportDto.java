@@ -29,7 +29,7 @@ public class TransactionLevyReportDto {
     /** A riportban ténylegesen felhasznált ráta-sorok, effectiveFrom ASC. */
     private List<AppliedRateDto> appliedRates;
 
-    /** Pénztár-nap sorok, date ASC, branchCode ASC rendezésben. */
+    /** Pénztár-nap sorok, branchCode ASC, date ASC rendezésben. */
     private List<Row> rows;
 
     /** FR-11: backend-számolt ÖSSZESEN sor (date/branchId/branchCode/branchName = null). */

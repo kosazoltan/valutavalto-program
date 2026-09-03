@@ -195,16 +195,15 @@ public class TransactionLevyReportService {
             populateCoveringRates(state, ratesDesc, from, to);
         }
 
-        // D1 (round-3): sorrend-szerződés (TransactionLevyReportDto.rows): date ASC,
-        // branchCode ASC. A rowsByKey beszúrás-rendű (az önálló sorok foldolódnak
-        // előbb), ezért CSAK a rendezés garantálja a szerződést — sort csak,
-        // újra-aggregálás NINCS. A nullsLast csak a teljesítési irányt tűzi (a
-        // riport-sorokon date/branchCode sosem null; a totals külön épül).
+        // FK-101 FR-1: row order is branchCode ASC primary, date ASC secondary.
+        // rowsByKey is insertion-ordered, so ONLY this sort guarantees the contract
+        // — sort only, no re-aggregation. nullsLast is the completion direction
+        // (report rows never have null date/branchCode; totals are built separately).
         List<TransactionLevyReportDto.Row> rows = state.rowsByKey.values().stream()
                 .sorted(Comparator
-                        .comparing(TransactionLevyReportDto.Row::getDate,
+                        .comparing(TransactionLevyReportDto.Row::getBranchCode,
                                 Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparing(TransactionLevyReportDto.Row::getBranchCode,
+                        .thenComparing(TransactionLevyReportDto.Row::getDate,
                                 Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
         return TransactionLevyReportDto.builder()
