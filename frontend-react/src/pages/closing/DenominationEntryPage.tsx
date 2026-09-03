@@ -310,10 +310,19 @@ export default function DenominationEntryPage() {
    * FKH-036 kieg. #2 FR-11: vault-kontextusban (van valid returnTo) ez a gomb a Kilepes
    * gombbal AZONOS célpontra visz — csak visszanavigal a hivo oldalra, zaras-kuldes nelkul.
    * FR-12: returnTo nelkul valtozatlanul a varazslo.
+   *
+   * FKH-047 FR-1/FR-2: a vault user without a valid returnTo must NOT land on the
+   * cashier-only closing wizard — navigate to resolveClosingDenominationExitRoute(true)
+   * (/evening-closing) and do NOT set startingWizard (the wizard never mounts).
+   * Order: returnToRoute first (FR-3 unchanged), then the vault arm, then the cashier tail.
    */
   const handleStartClosing = () => {
     if (returnToRoute) {
       navigate(returnToRoute)
+      return
+    }
+    if (isVaultContext) {
+      navigate(resolveClosingDenominationExitRoute(isVaultContext))
       return
     }
     setStartingWizard(true)
