@@ -45,7 +45,7 @@ export default function TransactionLevyReportPage() {
       .getByCategory('REGION')
       .then((entries) => {
         if (!cancelled) {
-          setRegions(entries)
+          setRegions(entries.filter((e) => e.code !== 'IRODA'))
         }
       })
       .catch(() => {
@@ -138,7 +138,7 @@ export default function TransactionLevyReportPage() {
             <option value="">{t('reports.transactionLevy.regionAll')}</option>
             {regions.map((entry) => (
               <option key={entry.code} value={entry.code}>
-                {entry.name}
+                {entry.nameHu?.trim() ? entry.nameHu : entry.name}
               </option>
             ))}
           </select>
@@ -379,6 +379,14 @@ function MonthlyPanel({
         <Metric
           label={t('reports.transactionLevy.monthly.aboveSell')}
           value={`${fmt.format(summary.aboveThresholdSellHuf)} Ft`}
+        />
+        <Metric
+          label={t('reports.transactionLevy.monthly.belowTotal')}
+          value={`${fmt.format(summary.belowThresholdTotalHuf)} Ft`}
+        />
+        <Metric
+          label={t('reports.transactionLevy.monthly.aboveTotal')}
+          value={`${fmt.format(summary.aboveThresholdTotalHuf)} Ft`}
         />
       </dl>
     </section>

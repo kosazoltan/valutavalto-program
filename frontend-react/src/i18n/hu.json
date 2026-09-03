@@ -1659,7 +1659,9 @@
         "belowBuy": "Küszöb alatti vétel forgalom",
         "belowSell": "Küszöb alatti eladás forgalom",
         "aboveBuy": "Küszöb feletti vétel forgalom",
-        "aboveSell": "Küszöb feletti eladás forgalom"
+        "aboveSell": "Küszöb feletti eladás forgalom",
+        "belowTotal": "Küszöb alatti forgalom összesen",
+        "aboveTotal": "Küszöb feletti forgalom összesen"
       },
       "table": {
         "date": "Dátum",
