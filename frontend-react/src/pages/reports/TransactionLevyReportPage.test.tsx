@@ -479,7 +479,7 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     // "Vétel"/"Eladás" also exist as main-table group headers.
     const colHeaders = Array.from(
       within(monthlyTable).getAllByRole('columnheader'),
-    ) as HTMLElement[]
+    ) as HTMLTableCellElement[]
     expect(colHeaders.map((th) => th.textContent)).toEqual(['Vétel', 'Eladás', 'Összesen'])
     colHeaders.forEach((th) => {
       expect(th.tagName).toBe('TH')
@@ -488,7 +488,7 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
 
     const rowHeaders = Array.from(
       within(monthlyTable).getAllByRole('rowheader'),
-    ) as HTMLElement[]
+    ) as HTMLTableCellElement[]
     expect(rowHeaders.map((th) => th.textContent)).toEqual([
       'Darabszám',
       'Küszöb alatti forgalom',

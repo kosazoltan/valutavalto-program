@@ -44,4 +44,7 @@ public class MonthlySummaryDto {
 
     /** Combined above-threshold Buy+Sell HUF (derived; conversion excluded). */
     private BigDecimal aboveThresholdTotalHuf;
+
+    /** Additive transaction count: buyCount + sellCount (conversion excluded). */
+    private long totalCount;
 }
