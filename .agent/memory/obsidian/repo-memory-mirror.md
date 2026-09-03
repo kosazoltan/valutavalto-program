@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-09-02T15:15:05.076Z
+generated: 2026-09-03T06:11:15.104Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-09-02T15:15:05.076Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1084
-- generated: 2026-09-02T15:15:05.076Z
+- sources: 1086
+- generated: 2026-09-03T06:11:15.104Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1092,7 +1092,9 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Handoff — FK-099 round-3: PR #1675 bot-review hibajavítások (2026-08-30)]] — `vault/sessions/handoff-2026-08-30-fk099-r3-pr1675-bot-fixek.md` (medium-term-episodic)
 - [[Handoff — FK-100 kiegészítő javítások + v2.28.94 LEZÁRVA (2026-08-31)]] — `vault/sessions/handoff-2026-08-31-fk100-v2.28.94.md` (medium-term-episodic)
 - [[Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31)]] — `vault/sessions/handoff-2026-08-31-fkh042-fkh043-google-hurok-v2.28.93.md` (medium-term-episodic)
+- [[Handoff 2026-09-02 — Suite auto-update elevation gap + üres menü → v2.28.97]] — `vault/sessions/handoff-2026-09-02-elevation-v2.28.97.md` (medium-term-episodic)
 - [[Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96]] — `vault/sessions/handoff-2026-09-02-ertektar-auto-update.md` (medium-term-episodic)
+- [[Handoff 2026-09-02 — FKH-044 Gate B + élő EVENING prod-ops]] — `vault/sessions/handoff-2026-09-02-fkh044-evening-prodops.md` (medium-term-episodic)
 - [[Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene]] — `vault/sessions/handoff-2026-09-02-tudas-hygiene-repo-hygiene.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)

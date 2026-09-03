@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-02T15:15:05.076Z",
-  "source_count": 1084,
+  "generated_at": "2026-09-03T06:11:15.104Z",
+  "source_count": 1086,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12695,6 +12695,17 @@
       ]
     },
     {
+      "path": "vault/sessions/handoff-2026-09-02-elevation-v2.28.97.md",
+      "sha256": "01a151d7df52ef3033152787d491af8b360e24582b175c070c9c0a040a926579",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "ertektar",
+        "penztar",
+        "riport"
+      ]
+    },
+    {
       "path": "vault/sessions/handoff-2026-09-02-ertektar-auto-update.md",
       "sha256": "6b221049ba1487148e08228bfe833828dd3fc02476e04387ef6b12a18cd5968c",
       "type": "medium-term-episodic",
@@ -12702,6 +12713,19 @@
         "deploy",
         "ertektar",
         "napzaras"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-02-fkh044-evening-prodops.md",
+      "sha256": "cb070ff8904346fc2a290c57ac8e4a112591332fcc78c864be94e9dc2c0a93d0",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "ertektar",
+        "installer",
+        "napzaras",
+        "penztar"
       ]
     },
     {

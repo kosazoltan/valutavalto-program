@@ -1,6 +1,6 @@
-generated_at: 2026-09-02T15:15:05.076Z
+generated_at: 2026-09-03T06:11:15.104Z
 schema_version: 1
-source_count: 1084
+source_count: 1086
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,24 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: e34293963e8d9718
-    title: "Főértéktáros Chrome MCP audit + v2.3.60 batch fix (37 ékezet hiba)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-30-foertektar-chrome-mcp-audit-v2.3.60.md
-    status: closed
-    sha256: 2a208b39d0ebe0eb4d175fc0298670a3933e2d457c196d6309e460a6c3cd79a1
-    summary: "--- date: 2026-04-30 title: Főértéktáros Chrome MCP audit + v2.3.60 batch fix (37 ékezet hiba) type: session duration: 00:30 → 01:05 CEST (35 perc) status: closed --- # Főértéktáros Chrome MCP audit + v2.3.60 batch fix ## Felhasználói direktíva > \"Készítsd el elálló autonommódon a teszteket a főértéktárosi oldalon. Nem nekem kell screenshotokat csinálni, hanem te. Már csináltál ilyet, megoldottad, folyamatosan szépen"
-    areas: [deploy, ertektar, frontend, penztar, riport, security]
-    keywords: [foertektaros, chrome, mcp, audit, batch, fix, ekezet, hiba, date, 2026, title, type]
-  - id: 2e848a0cf7ec9d78
-    title: "v2.3.60 release - Installer build + autonóm session FINAL"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-30-v2.3.60-release-installer-FINAL.md
-    status: closed
-    sha256: e8367264411f9b488299d458dd12e3fbdd5bd208771108da43c1a81d218f022f
-    summary: "--- date: 2026-04-30 title: v2.3.60 release - Installer build + autonóm session FINAL type: release duration: 22:00 (2026-04-29) → 06:05 (2026-04-30) CEST = 8h 5min status: closed total_prs: 30 final_version: 2.3.60 --- # v2.3.60 release — Installer build + autonóm session FINAL ## Telepítő fájlok v2.3.60 (LEGFRISSEBB) `installer/build/` + másolva `%USERPROFILE%\\Downloads\\`-ba: - **`Penztar-Setup-2.3.60-20260430.exe`"
-    areas: [cimletezes, database, deploy, ertektar, frontend, installer, penztar, tenant]
-    keywords: [release, installer, build, autonom, session, final, date, 2026, title, type, duration, cest]
   - id: e9c9ebd3d8ecd2e9
     title: "v2.3.X Penztar/Ertektar UI audit (computer-use, élő Penztar.exe)"
     type: medium-term-episodic
@@ -1687,6 +1669,14 @@ medium_term:
     summary: "# Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31) Jobok: `20260830-penztar-google-autoupdate-hurok` + `20260831-fkh042-elo-celosszeg` + `20260831-fkh043-inventory-panel-elrejtese` — mindhárom `status: pass` (round-1, bíró PASS). ## Mit szállított - **Google-hurok P0:** Google-OTP alatt nincs csendes telepítés/app.quit; nyitott napot nem hazudja; KASZA-útvonal és értéktár ne"
     areas: [cimletezes, deploy, ertektar, installer, napzaras, penztar, riport]
     keywords: [handoff, google, hurok, fkh, 042, 043, stacked, ciklus, lezarva, 2026, jobok, 20260830]
+  - id: 3e462d67bffca004
+    title: "Handoff 2026-09-02 — Suite auto-update elevation gap + üres menü → v2.28.97"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-02-elevation-v2.28.97.md
+    sha256: 01a151d7df52ef3033152787d491af8b360e24582b175c070c9c0a040a926579
+    summary: "# Handoff 2026-09-02 — Suite auto-update elevation gap + üres menü → v2.28.97 - **Kanban #8 / ticket** `.hermes/tickets/2026-09-02-auto-update-elevation-es-ures-menu.md`; pipeline `.hermes/pipeline/20260902-auto-update-elevation-ures-menu/` (round-2 PASS, pass_head `5fd961fa`). - **Gyökérok (élőben bizonyítva):** `installer/Penztar-Setup.nsi:112 RequestExecutionLevel admin` → requireAdministrator manifest; a kliens n"
+    areas: [deploy, ertektar, penztar, riport]
+    keywords: [handoff, 2026, suite, auto, update, elevation, gap, ures, menu, kanban, ticket, hermes]
   - id: 514a51bc2e33802d
     title: "Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96"
     type: medium-term-episodic
@@ -1695,6 +1685,14 @@ medium_term:
     summary: "# Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart"
     areas: [deploy, ertektar, napzaras]
     keywords: [handoff, ertektar, auto, update, fkh, 041, never, install, repeal, date, 2026, kanban]
+  - id: c7525aeac40821a6
+    title: "Handoff 2026-09-02 — FKH-044 Gate B + élő EVENING prod-ops"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-02-fkh044-evening-prodops.md
+    sha256: cb070ff8904346fc2a290c57ac8e4a112591332fcc78c864be94e9dc2c0a93d0
+    summary: "# Handoff 2026-09-02 — FKH-044 Gate B + élő EVENING prod-ops - PR #1694 main `559bcc0e` éles. Telepítő nem kellett (backend-only). - **Gate B Neon INFORMÁLIS:** run 33670388954 job 100383215247. `job.success` NEM elég (continue-on-error). Mért: `MIGRATE_OUTCOME=success`, `VERIFY_OUTCOME=success`, Neon V384 = repo V384. Új Flyway nem volt. - **Élő takarítás:** Hetzner `valuta`, séma előbb. `audit_log.entry_hash` → SQL"
+    areas: [cimletezes, deploy, ertektar, installer, napzaras, penztar]
+    keywords: [handoff, 2026, fkh, 044, gate, elo, evening, prod, ops, 1694, main, 559bcc0e]
   - id: dfb18dc9929896bc
     title: "Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene"
     type: medium-term-episodic

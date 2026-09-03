@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-09-02T15:15:05.076Z
+generated_at: 2026-09-03T06:11:15.104Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7562,6 +7562,13 @@ nodes:
     summary: "# Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31) Jobok: `20260830-penztar-google-autoupdate-hurok` + `20260831-fkh042-elo-celosszeg` + `20260831-fkh043-inventory-panel-elrejtese` — mindhárom `status: pass` (round-1, bíró PASS). ## Mit szállított - **Google-hurok P0:** Google-OTP alatt nincs csendes telepítés/app.quit; nyitott napot nem hazudja; KASZA-útvonal és értéktár ne"
     tags: [handoff, google, hurok, fkh, 042, 043, stacked, ciklus, lezarva, 2026]
     areas: [cimletezes, deploy, ertektar, installer, napzaras, penztar, riport]
+  - id: 3e462d67bffca004
+    type: medium-term-episodic
+    title: "Handoff 2026-09-02 — Suite auto-update elevation gap + üres menü → v2.28.97"
+    source_path: vault/sessions/handoff-2026-09-02-elevation-v2.28.97.md
+    summary: "# Handoff 2026-09-02 — Suite auto-update elevation gap + üres menü → v2.28.97 - **Kanban #8 / ticket** `.hermes/tickets/2026-09-02-auto-update-elevation-es-ures-menu.md`; pipeline `.hermes/pipeline/20260902-auto-update-elevation-ures-menu/` (round-2 PASS, pass_head `5fd961fa`). - **Gyökérok (élőben bizonyítva):** `installer/Penztar-Setup.nsi:112 RequestExecutionLevel admin` → requireAdministrator manifest; a kliens n"
+    tags: [handoff, 2026, suite, auto, update, elevation, gap, ures, menu, kanban]
+    areas: [deploy, ertektar, penztar, riport]
   - id: 514a51bc2e33802d
     type: medium-term-episodic
     title: "Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96"
@@ -7569,6 +7576,13 @@ nodes:
     summary: "# Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart"
     tags: [handoff, ertektar, auto, update, fkh, 041, never, install, repeal, date]
     areas: [deploy, ertektar, napzaras]
+  - id: c7525aeac40821a6
+    type: medium-term-episodic
+    title: "Handoff 2026-09-02 — FKH-044 Gate B + élő EVENING prod-ops"
+    source_path: vault/sessions/handoff-2026-09-02-fkh044-evening-prodops.md
+    summary: "# Handoff 2026-09-02 — FKH-044 Gate B + élő EVENING prod-ops - PR #1694 main `559bcc0e` éles. Telepítő nem kellett (backend-only). - **Gate B Neon INFORMÁLIS:** run 33670388954 job 100383215247. `job.success` NEM elég (continue-on-error). Mért: `MIGRATE_OUTCOME=success`, `VERIFY_OUTCOME=success`, Neon V384 = repo V384. Új Flyway nem volt. - **Élő takarítás:** Hetzner `valuta`, séma előbb. `audit_log.entry_hash` → SQL"
+    tags: [handoff, 2026, fkh, 044, gate, elo, evening, prod, ops, 1694]
+    areas: [cimletezes, deploy, ertektar, installer, napzaras, penztar]
   - id: dfb18dc9929896bc
     type: medium-term-episodic
     title: "Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene"
@@ -23047,6 +23061,18 @@ edges:
   - from: 5f1d89c2c203d622
     to: area_riport
     relation: belongs_to_area
+  - from: 3e462d67bffca004
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 3e462d67bffca004
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 3e462d67bffca004
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 3e462d67bffca004
+    to: area_riport
+    relation: belongs_to_area
   - from: 514a51bc2e33802d
     to: area_deploy
     relation: belongs_to_area
@@ -23055,6 +23081,24 @@ edges:
     relation: belongs_to_area
   - from: 514a51bc2e33802d
     to: area_napzaras
+    relation: belongs_to_area
+  - from: c7525aeac40821a6
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: c7525aeac40821a6
+    to: area_deploy
+    relation: belongs_to_area
+  - from: c7525aeac40821a6
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: c7525aeac40821a6
+    to: area_installer
+    relation: belongs_to_area
+  - from: c7525aeac40821a6
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: c7525aeac40821a6
+    to: area_penztar
     relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
@@ -23113,12 +23157,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 5c2419b5a435dc10
-    to: repo_project_state
-    relation: informs
-  - from: f1298254fd12819b
-    to: repo_project_state
-    relation: informs
   - from: 7889b22bccfeea4a
     to: repo_project_state
     relation: informs
@@ -23341,7 +23379,13 @@ edges:
   - from: 5f1d89c2c203d622
     to: repo_project_state
     relation: informs
+  - from: 3e462d67bffca004
+    to: repo_project_state
+    relation: informs
   - from: 514a51bc2e33802d
+    to: repo_project_state
+    relation: informs
+  - from: c7525aeac40821a6
     to: repo_project_state
     relation: informs
   - from: dfb18dc9929896bc
