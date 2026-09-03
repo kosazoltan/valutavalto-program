@@ -51,6 +51,7 @@ export interface MonthlySummary {
   aboveThresholdSellHuf: number
   belowThresholdTotalHuf: number
   aboveThresholdTotalHuf: number
+  totalCount: number
 }
 
 export interface TransactionLevyReport {

@@ -456,6 +456,7 @@ public class TransactionLevyReportService {
                     .aboveThresholdSellHuf(aboveThresholdSellHuf)
                     .belowThresholdTotalHuf(belowThresholdBuyHuf.add(belowThresholdSellHuf))
                     .aboveThresholdTotalHuf(aboveThresholdBuyHuf.add(aboveThresholdSellHuf))
+                    .totalCount(buyCount + sellCount)
                     .build();
         }
     }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TransactionLevyReportPage from './TransactionLevyReportPage'
@@ -25,15 +25,11 @@ const translations: Record<string, string> = vi.hoisted(() => ({
   'reports.transactionLevy.region': 'Terület',
   'reports.transactionLevy.regionAll': 'Összes terület',
   'reports.transactionLevy.monthly.title': 'Havi összesítő',
-  'reports.transactionLevy.monthly.buyCount': 'Vételek száma',
-  'reports.transactionLevy.monthly.sellCount': 'Eladások száma',
   'reports.transactionLevy.monthly.customerCount': 'Ügyfelek száma',
-  'reports.transactionLevy.monthly.belowBuy': 'Küszöb alatti vétel forgalom',
-  'reports.transactionLevy.monthly.belowSell': 'Küszöb alatti eladás forgalom',
-  'reports.transactionLevy.monthly.aboveBuy': 'Küszöb feletti vétel forgalom',
-  'reports.transactionLevy.monthly.aboveSell': 'Küszöb feletti eladás forgalom',
-  'reports.transactionLevy.monthly.belowTotal': 'Küszöb alatti forgalom összesen',
-  'reports.transactionLevy.monthly.aboveTotal': 'Küszöb feletti forgalom összesen',
+  'reports.transactionLevy.monthly.colTotal': 'Összesen',
+  'reports.transactionLevy.monthly.rowCount': 'Darabszám',
+  'reports.transactionLevy.monthly.rowBelow': 'Küszöb alatti forgalom',
+  'reports.transactionLevy.monthly.rowAbove': 'Küszöb feletti forgalom',
   'reports.transactionLevy.table.date': 'Dátum',
   'reports.transactionLevy.table.branch': 'Pénztár',
   'reports.transactionLevy.table.buy': 'Vétel',
@@ -120,6 +116,7 @@ function emptyReport() {
       aboveThresholdSellHuf: 0,
       belowThresholdTotalHuf: 0,
       aboveThresholdTotalHuf: 0,
+      totalCount: 0,
     },
   }
 }
@@ -163,6 +160,7 @@ function reportWithBranch(branchCode: string) {
       aboveThresholdSellHuf: 0,
       belowThresholdTotalHuf: 0,
       aboveThresholdTotalHuf: 0,
+      totalCount: 0,
     },
   }
 }
@@ -251,6 +249,7 @@ function fixtureReport(totalsLevyTotal = 67000) {
       aboveThresholdSellHuf: 4444445,
       belowThresholdTotalHuf: 4000000,
       aboveThresholdTotalHuf: 9444445,
+      totalCount: 19,
     },
   }
 }
@@ -328,13 +327,25 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     await waitFor(() => expect(screen.getByText('Havi összesítő')).toBeInTheDocument())
     const panel = screen.getByText('Havi összesítő').closest('section') as HTMLElement
     expect(panel).not.toBeNull()
-    expect(panel).toHaveTextContent(fmtText(12))
-    expect(panel).toHaveTextContent(fmtText(7))
+    // FK-102: the 9 matrix values now live in the monthly table cells.
+    const monthlyTable = document.querySelectorAll('table')[1] as HTMLTableElement
+    expect(monthlyTable).not.toBeUndefined()
+    const cells = Array.from(monthlyTable.querySelectorAll('tbody td')).map((td) =>
+      td.textContent?.replace(/\s+/g, ' '),
+    )
+    expect(cells).toEqual([
+      fmtText(12),
+      fmtText(7),
+      fmtText(19),
+      `${fmtText(3000000)} Ft`,
+      `${fmtText(1000000)} Ft`,
+      `${fmtText(4000000)} Ft`,
+      `${fmtText(5000000)} Ft`,
+      `${fmtText(4444445)} Ft`,
+      `${fmtText(9444445)} Ft`,
+    ])
+    // customerCount stays a Metric above the table.
     expect(panel).toHaveTextContent(fmtText(5))
-    expect(panel).toHaveTextContent(fmtText(3000000))
-    expect(panel).toHaveTextContent(fmtText(1000000))
-    expect(panel).toHaveTextContent(fmtText(5000000))
-    expect(panel).toHaveTextContent(fmtText(4444445))
     expect(panel).not.toHaveTextContent('Konverzió')
   })
 
@@ -442,35 +453,75 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     expect(document.querySelector('.bg-red-50')).toBeNull()
   })
 
-  it('F10/D3: mind a 7 havi metrika dt-címkéje és dd-értéke EGY wrapperben van (dl > div > dt+dd)', async () => {
+  it('F10/FK-102 FR-2: a havi panel egyetlen 3x3 táblázat — oszlop/sor fejlécek és 9 cella', async () => {
     mockGetReport.mockResolvedValue(fixtureReport())
 
     render(<TransactionLevyReportPage />)
 
     await waitFor(() => expect(screen.getByText('Havi összesítő')).toBeInTheDocument())
+    const panel = screen.getByText('Havi összesítő').closest('section') as HTMLElement
+    // The panel renders exactly ONE table.
+    expect(panel.querySelectorAll('table')).toHaveLength(1)
+    const monthlyTable = panel.querySelector('table') as HTMLTableElement
+    expect(monthlyTable).not.toBeNull()
+    // No <dl> inside the table (customerCount dl lives above it).
+    expect(monthlyTable.querySelector('dl')).toBeNull()
 
-    const expected: [string, string][] = [
-      ['Vételek száma', fmtText(12)],
-      ['Eladások száma', fmtText(7)],
-      ['Ügyfelek száma', fmtText(5)],
-      ['Küszöb alatti vétel forgalom', `${fmtText(3000000)} Ft`],
-      ['Küszöb alatti eladás forgalom', `${fmtText(1000000)} Ft`],
-      ['Küszöb feletti vétel forgalom', `${fmtText(5000000)} Ft`],
-      ['Küszöb feletti eladás forgalom', `${fmtText(4444445)} Ft`],
-      ['Küszöb alatti forgalom összesen', `${fmtText(4000000)} Ft`],
-      ['Küszöb feletti forgalom összesen', `${fmtText(9444445)} Ft`],
-    ]
-    expect(expected).toHaveLength(9)
-    expected.forEach(([label, value]) => {
-      const dt = screen.getByText(label)
-      expect(dt.tagName).toBe('DT')
-      const wrapper = dt.parentElement as HTMLElement
-      // Fragment-alakban a parent maga a DL — a wrappernek DIV-nek kell lennie.
-      expect(wrapper.tagName).toBe('DIV')
-      const dd = wrapper.querySelector('dd')
-      expect(dd).not.toBeNull()
-      expect(dd?.textContent?.replace(/\s+/g, ' ')).toBe(value)
+    // Column headers reuse table.buy/table.sell — scope with within() because
+    // "Vétel"/"Eladás" also exist as main-table group headers. The corner th
+    // has no scope attribute (plan design decision 2), so filter by scope.
+    const colHeaders = (
+      Array.from(within(monthlyTable).getAllByRole('columnheader')) as HTMLTableCellElement[]
+    ).filter((th) => th.scope === 'col')
+    expect(colHeaders.map((th) => th.textContent)).toEqual(['Vétel', 'Eladás', 'Összesen'])
+    colHeaders.forEach((th) => {
+      expect(th.tagName).toBe('TH')
+      expect(th.scope).toBe('col')
     })
+
+    const rowHeaders = Array.from(
+      within(monthlyTable).getAllByRole('rowheader'),
+    ) as HTMLTableCellElement[]
+    expect(rowHeaders.map((th) => th.textContent)).toEqual([
+      'Darabszám',
+      'Küszöb alatti forgalom',
+      'Küszöb feletti forgalom',
+    ])
+    rowHeaders.forEach((th) => {
+      expect(th.tagName).toBe('TH')
+      expect(th.scope).toBe('row')
+    })
+
+    // 9 data cells, row-major. totalCount (19) = buyCount (12) + sellCount (7).
+    const cells = Array.from(monthlyTable.querySelectorAll('tbody td')).map((td) =>
+      td.textContent?.replace(/\s+/g, ' '),
+    )
+    expect(cells).toEqual([
+      fmtText(12),
+      fmtText(7),
+      fmtText(19),
+      `${fmtText(3000000)} Ft`,
+      `${fmtText(1000000)} Ft`,
+      `${fmtText(4000000)} Ft`,
+      `${fmtText(5000000)} Ft`,
+      `${fmtText(4444445)} Ft`,
+      `${fmtText(9444445)} Ft`,
+    ])
+  })
+
+  it('F10b/FK-102 FR-3: az ügyfél-szám Metric a táblázat FELETT marad (dt + dd, table-n kívül)', async () => {
+    mockGetReport.mockResolvedValue(fixtureReport())
+
+    render(<TransactionLevyReportPage />)
+
+    await waitFor(() => expect(screen.getByText('Ügyfelek száma')).toBeInTheDocument())
+    const dt = screen.getByText('Ügyfelek száma')
+    expect(dt.tagName).toBe('DT')
+    const wrapper = dt.parentElement as HTMLElement
+    const dd = wrapper.querySelector('dd')
+    expect(dd).not.toBeNull()
+    expect(dd?.textContent?.replace(/\s+/g, ' ')).toBe(fmtText(5))
+    expect(dt.closest('table')).toBeNull()
   })
 
   it('F11/D4: a fő tábla overflow-x-auto scroll-konténerben van', async () => {
@@ -483,6 +534,23 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     const table = document.querySelector('table') as HTMLTableElement
     expect(table).not.toBeNull()
     expect(table.closest('.overflow-x-auto')).not.toBeNull()
+  })
+
+  it('F15/FK-102 FR-4: a havi táblázat saját overflow-x-auto wrapperben van (nem a fő tábláé)', async () => {
+    mockGetReport.mockResolvedValue(fixtureReport())
+
+    render(<TransactionLevyReportPage />)
+
+    await waitFor(() => expect(screen.getByText('Havi összesítő')).toBeInTheDocument())
+    const panel = screen.getByText('Havi összesítő').closest('section') as HTMLElement
+    const monthlyTable = panel.querySelector('table') as HTMLTableElement
+    const mainTable = document.querySelector('table') as HTMLTableElement
+    expect(mainTable).not.toBeNull()
+    expect(monthlyTable).not.toBe(mainTable)
+
+    const monthlyWrapper = monthlyTable.closest('.overflow-x-auto')
+    expect(monthlyWrapper).not.toBeNull()
+    expect(monthlyWrapper).not.toBe(mainTable.closest('.overflow-x-auto'))
   })
 
   // ============================ F12–F13: FK-100 FR-6 — region-legördülő ============================

@@ -338,7 +338,12 @@ function TotalsRow({
   )
 }
 
-/** FR-12/13/14: havi cég-szintű panel — konverziós adat SZÁNDÉKOSAN nincs (TBD-3 OUT). */
+/**
+ * FK-102 FR-2/3/4: monthly company-level panel as one semantic 3x3 table
+ * (columns Buy/Sell/Total; rows count/below-threshold/above-threshold HUF).
+ * customerCount stays a Metric above the table (FR-3). Conversion data is
+ * intentionally excluded (ticket TBD-3 OUT).
+ */
 function MonthlyPanel({
   summary,
   fmt,
@@ -351,44 +356,75 @@ function MonthlyPanel({
   return (
     <section className="mt-6 rounded border border-gray-200 bg-gray-50 p-4">
       <h2 className="mb-3 text-lg font-semibold">{t('reports.transactionLevy.monthly.title')}</h2>
-      <dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm md:grid-cols-3">
-        <Metric
-          label={t('reports.transactionLevy.monthly.buyCount')}
-          value={fmt.format(summary.buyCount)}
-        />
-        <Metric
-          label={t('reports.transactionLevy.monthly.sellCount')}
-          value={fmt.format(summary.sellCount)}
-        />
+      <dl className="mb-3 text-sm">
         <Metric
           label={t('reports.transactionLevy.monthly.customerCount')}
           value={fmt.format(summary.customerCount)}
         />
-        <Metric
-          label={t('reports.transactionLevy.monthly.belowBuy')}
-          value={`${fmt.format(summary.belowThresholdBuyHuf)} Ft`}
-        />
-        <Metric
-          label={t('reports.transactionLevy.monthly.belowSell')}
-          value={`${fmt.format(summary.belowThresholdSellHuf)} Ft`}
-        />
-        <Metric
-          label={t('reports.transactionLevy.monthly.aboveBuy')}
-          value={`${fmt.format(summary.aboveThresholdBuyHuf)} Ft`}
-        />
-        <Metric
-          label={t('reports.transactionLevy.monthly.aboveSell')}
-          value={`${fmt.format(summary.aboveThresholdSellHuf)} Ft`}
-        />
-        <Metric
-          label={t('reports.transactionLevy.monthly.belowTotal')}
-          value={`${fmt.format(summary.belowThresholdTotalHuf)} Ft`}
-        />
-        <Metric
-          label={t('reports.transactionLevy.monthly.aboveTotal')}
-          value={`${fmt.format(summary.aboveThresholdTotalHuf)} Ft`}
-        />
       </dl>
+      {/* FR-4: own horizontal scroll container, same idiom as the main table. */}
+      <div className="overflow-x-auto">
+        <table className="border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className="border border-gray-300 px-2 py-1" />
+              <th scope="col" className="border border-gray-300 px-2 py-1 text-right">
+                {t('reports.transactionLevy.table.buy')}
+              </th>
+              <th scope="col" className="border border-gray-300 px-2 py-1 text-right">
+                {t('reports.transactionLevy.table.sell')}
+              </th>
+              <th scope="col" className="border border-gray-300 px-2 py-1 text-right">
+                {t('reports.transactionLevy.monthly.colTotal')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" className="border border-gray-300 px-2 py-1 text-left">
+                {t('reports.transactionLevy.monthly.rowCount')}
+              </th>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {fmt.format(summary.buyCount)}
+              </td>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {fmt.format(summary.sellCount)}
+              </td>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {fmt.format(summary.totalCount)}
+              </td>
+            </tr>
+            <tr>
+              <th scope="row" className="border border-gray-300 px-2 py-1 text-left">
+                {t('reports.transactionLevy.monthly.rowBelow')}
+              </th>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {`${fmt.format(summary.belowThresholdBuyHuf)} Ft`}
+              </td>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {`${fmt.format(summary.belowThresholdSellHuf)} Ft`}
+              </td>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {`${fmt.format(summary.belowThresholdTotalHuf)} Ft`}
+              </td>
+            </tr>
+            <tr>
+              <th scope="row" className="border border-gray-300 px-2 py-1 text-left">
+                {t('reports.transactionLevy.monthly.rowAbove')}
+              </th>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {`${fmt.format(summary.aboveThresholdBuyHuf)} Ft`}
+              </td>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {`${fmt.format(summary.aboveThresholdSellHuf)} Ft`}
+              </td>
+              <td className="border border-gray-300 px-2 py-1 text-right">
+                {`${fmt.format(summary.aboveThresholdTotalHuf)} Ft`}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   )
 }

@@ -570,6 +570,9 @@ class TransactionLevyReportServiceTest {
         assertThat(report.getMonthlySummary().getBuyCount()).isEqualTo(2);
         assertThat(report.getMonthlySummary().getSellCount()).isEqualTo(2);
         assertThat(report.getMonthlySummary().getCustomerCount()).isEqualTo(2);
+        // FK-102 FR-1: additive transaction count (conversion never reaches this
+        // fixture, so it equals buyCount + sellCount).
+        assertThat(report.getMonthlySummary().getTotalCount()).isEqualTo(4);
     }
 
     @Test
@@ -678,6 +681,42 @@ class TransactionLevyReportServiceTest {
                 .isEqualByComparingTo("4000000");
         assertThat(report.getMonthlySummary().getAboveThresholdTotalHuf())
                 .isEqualByComparingTo("0");
+    }
+
+    // ============================ B48: FK-102 FR-1 — additive totalCount ============================
+
+    @Test
+    @DisplayName("B48/FK-102 FR-1: totalCount = buyCount + sellCount (additive transaction count)")
+    void b48_totalCountIsBuyPlusSell() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // B11 fixture: one BUY + one SELL row.
+        stubRows(buyRow(D1, "3000000", "C1"), sellRow(D1, "1000000", "C2"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getMonthlySummary().getTotalCount()).isEqualTo(2);
+        assertThat(report.getMonthlySummary().getTotalCount())
+                .isEqualTo(report.getMonthlySummary().getBuyCount()
+                        + report.getMonthlySummary().getSellCount());
+    }
+
+    @Test
+    @DisplayName("B48/FK-102 FR-1: conversion group contributes nothing to totalCount")
+    void b48_conversionExcludedFromTotalCount() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // B13 fixture: standalone buy + sell plus a full conversion group.
+        stubRows(
+                buyRow(D1, "3000000", "C1"),
+                sellRow(D1, "1000000", "C2"),
+                conversionParentRow(), convBuyChildRow(), convSellChildRow());
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getMonthlySummary().getBuyCount()).isEqualTo(1);
+        assertThat(report.getMonthlySummary().getSellCount()).isEqualTo(1);
+        assertThat(report.getMonthlySummary().getTotalCount()).isEqualTo(2);
     }
 
     // ============================ B14–B17: RBAC + cross-tenant ============================
