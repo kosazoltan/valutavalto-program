@@ -380,6 +380,14 @@ function MonthlyPanel({
           label={t('reports.transactionLevy.monthly.aboveSell')}
           value={`${fmt.format(summary.aboveThresholdSellHuf)} Ft`}
         />
+        <Metric
+          label={t('reports.transactionLevy.monthly.belowTotal')}
+          value={`${fmt.format(summary.belowThresholdTotalHuf)} Ft`}
+        />
+        <Metric
+          label={t('reports.transactionLevy.monthly.aboveTotal')}
+          value={`${fmt.format(summary.aboveThresholdTotalHuf)} Ft`}
+        />
       </dl>
     </section>
   )
