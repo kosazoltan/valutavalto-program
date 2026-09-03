@@ -60,8 +60,9 @@ public class DenominationBalanceService {
     private final ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     private final CurrencyRepository currencyRepository;
     private final VatSupplyStockRepository vatSupplyStockRepository;
-    // FKH-046: a vault-agu self-check "elvart" erteke innen jon (entity_type=VAULT,
-    // entity_id=vault_territory_id), nem a penztar-mintaju cash_balance-bol.
+    // FKH-046: the vault-arm self-check "expected" value comes from this repository
+    // (entity_type=VAULT, entity_id=vault_territory_id), not from the
+    // cashier-pattern cash_balance table.
     private final CurrencyStockRepository currencyStockRepository;
 
     /**
@@ -313,11 +314,13 @@ public class DenominationBalanceService {
         List<DenominationSelfCheckDto> result = new ArrayList<>();
         Branch branch = branchRepository.findByIdAndCompanyId(cashDeskId, companyId).orElse(null);
         if (isVaultContext(branch)) {
-            // FKH-046: vault-ag — az "elvart" ertek a currency_stock (VAULT) tablabol jon,
-            // a ClosingWizardService vault-agaval azonos forrasbol (konzisztencia, FR-4).
+            // FKH-046: vault arm — the "expected" value comes from the
+            // currency_stock (VAULT) table, from the same source as the
+            // ClosingWizardService vault arm (consistency, FR-4).
             if (branch.getVaultTerritoryId() == null) {
-                // Torzsadat-hiba: territory nelkul nincs feloldhato vault-keszlet — fail-closed.
-                log.warn("selfCheck: vault branch ({}) vault_territory_id nelkul → fail-closed (ures lista)",
+                // Master-data defect: without a territory the vault stock cannot be
+                // resolved — fail closed.
+                log.warn("selfCheck: vault branch ({}) without vault_territory_id -> fail-closed (empty list)",
                         branch.getCode());
                 return result;
             }

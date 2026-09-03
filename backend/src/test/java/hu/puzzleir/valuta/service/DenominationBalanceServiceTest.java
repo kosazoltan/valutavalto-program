@@ -541,7 +541,8 @@ class DenominationBalanceServiceTest {
         when(currencyStockRepository.findByCompanyIdAndEntityTypeAndEntityId(companyId, "VAULT", "7"))
                 .thenReturn(List.of(
                         CurrencyStock.builder().currencyCode("HUF").quantity(new BigDecimal("220500000")).build(),
-                        CurrencyStock.builder().currencyCode("EUR").quantity(new BigDecimal("2200")).build()));
+                        CurrencyStock.builder().currencyCode("EUR").quantity(new BigDecimal("2200")).build(),
+                        CurrencyStock.builder().currencyCode("GBP").quantity(null).build()));
         when(currencyRepository.findByCode("HUF"))
                 .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));
         when(currencyRepository.findByCode("EUR"))
@@ -553,7 +554,7 @@ class DenominationBalanceServiceTest {
             result = service().selfCheck(branchId, DenominationCategory.EVENING);
         }
 
-        assertThat(result).hasSize(2);
+        assertThat(result).hasSize(3);
         DenominationSelfCheckDto huf = result.stream()
                 .filter(r -> "HUF".equals(r.getCurrencyCode())).findFirst().orElseThrow();
         assertThat(huf.getExpectedBalance()).isEqualByComparingTo("220500000.00");
@@ -561,6 +562,11 @@ class DenominationBalanceServiceTest {
         DenominationSelfCheckDto eur = result.stream()
                 .filter(r -> "EUR".equals(r.getCurrencyCode())).findFirst().orElseThrow();
         assertThat(eur.getExpectedBalance()).isEqualByComparingTo("2200.00");
+        // FKH-046 (review nit W3): a null quantity is treated as ZERO expected,
+        // never as an NPE or an unscaled null.
+        DenominationSelfCheckDto gbp = result.stream()
+                .filter(r -> "GBP".equals(r.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(gbp.getExpectedBalance()).isEqualByComparingTo("0.00");
         verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
     }
 
