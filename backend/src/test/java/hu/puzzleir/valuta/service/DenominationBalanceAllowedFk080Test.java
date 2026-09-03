@@ -13,6 +13,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
@@ -68,6 +69,7 @@ class DenominationBalanceAllowedFk080Test {
     @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     @Mock private CurrencyRepository currencyRepository;
     @Mock private VatSupplyStockRepository vatSupplyStockRepository;
+    @Mock private CurrencyStockRepository currencyStockRepository;
 
     private final UUID companyId = UUID.randomUUID();
     private final UUID otherCompanyId = UUID.randomUUID();
@@ -77,7 +79,8 @@ class DenominationBalanceAllowedFk080Test {
         return new DenominationBalanceService(
                 balanceRepository, denominationRepository, cashRegisterDeviceRepository, branchRepository,
                 cashBalanceRepository, denominationAllowedRepository,
-                shipmentHandlingFeeRepository, currencyRepository, vatSupplyStockRepository);
+                shipmentHandlingFeeRepository, currencyRepository, vatSupplyStockRepository,
+                currencyStockRepository);
     }
 
     private Denomination row(long id, UUID owner, String code, long currencyId,

@@ -494,6 +494,24 @@ class EveningClosingServiceTest {
                 .build();
     }
 
+    @Test
+    @DisplayName("FKH-045 FR-5: artifact-írási (fájlrendszeri) hiba esetén NEM a nyers útvonal jelenik meg")
+    void sendToHeadquarters_artifactWriteFailureHasFriendlyMessage() throws Exception {
+        stubArtifactSync();
+        when(fileTransportService.writeJson(anyString(), eq("evening_daily_report"), any()))
+                .thenThrow(new java.nio.file.NoSuchFileException("/home/valuta/.valuta/integrations/branch-sync"));
+
+        DataSyncResult result = service.sendToHeadquarters(emptyPackage());
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage())
+                .as("FR-5: érthető, üzemeltetésre utaló üzenet")
+                .contains("üzemeltetés");
+        assertThat(result.getMessage())
+                .as("FR-5: a nyers fájlrendszer-útvonal NEM kerülhet a felhasználói üzenetbe")
+                .doesNotContain("/home/valuta");
+    }
+
     private void stubArtifactSync() throws Exception {
         IntegrationTransportProperties.Sync sync = new IntegrationTransportProperties.Sync();
         sync.setDir("branch-sync");

@@ -7,6 +7,7 @@ import hu.puzzleir.valuta.dto.denomination.DenominationSelfCheckDto;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.CurrencyStock;
 import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationBalance;
@@ -17,6 +18,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
@@ -58,6 +60,10 @@ public class DenominationBalanceService {
     private final ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     private final CurrencyRepository currencyRepository;
     private final VatSupplyStockRepository vatSupplyStockRepository;
+    // FKH-046: the vault-arm self-check "expected" value comes from this repository
+    // (entity_type=VAULT, entity_id=vault_territory_id), not from the
+    // cashier-pattern cash_balance table.
+    private final CurrencyStockRepository currencyStockRepository;
 
     /**
      * FK-080 (FR-5): a mentes elott a hivatkozott denomination sort ELLENORIZZUK.
@@ -306,6 +312,34 @@ public class DenominationBalanceService {
         }
 
         List<DenominationSelfCheckDto> result = new ArrayList<>();
+        Branch branch = branchRepository.findByIdAndCompanyId(cashDeskId, companyId).orElse(null);
+        if (isVaultContext(branch)) {
+            // FKH-046: vault arm — the "expected" value comes from the
+            // currency_stock (VAULT) table, from the same source as the
+            // ClosingWizardService vault arm (consistency, FR-4).
+            if (branch.getVaultTerritoryId() == null) {
+                // Master-data defect: without a territory the vault stock cannot be
+                // resolved — fail closed.
+                log.warn("selfCheck: vault branch ({}) without vault_territory_id -> fail-closed (empty list)",
+                        branch.getCode());
+                return result;
+            }
+            for (CurrencyStock stock : currencyStockRepository
+                    .findByCompanyIdAndEntityTypeAndEntityId(
+                            companyId, "VAULT", branch.getVaultTerritoryId().toString())) {
+                String currencyCode = stock.getCurrencyCode();
+                BigDecimal denominatedAmount = denominated
+                        .getOrDefault(currencyCode, BigDecimal.ZERO)
+                        .setScale(2, RoundingMode.HALF_UP);
+                BigDecimal expected = (stock.getQuantity() == null
+                        ? BigDecimal.ZERO : stock.getQuantity())
+                        .setScale(2, RoundingMode.HALF_UP);
+                Currency currency = currencyRepository.findByCode(currencyCode).orElse(null);
+                result.add(selfCheckRow(currencyCode, currency != null ? currency.getId() : 0L,
+                        denominatedAmount, expected));
+            }
+            return result;
+        }
         for (CashBalance cashBalance : cashBalanceRepository
                 .findByBranchIdAndCompanyId(cashDeskId, companyId)) {
             String currencyCode = cashBalance.getCurrency().getCode();
@@ -354,6 +388,10 @@ public class DenominationBalanceService {
                 .findByCompanyIdAndVaultTerritoryId(companyId, branch.getVaultTerritoryId())
                 .map(VatSupplyStock::getCurrentBalance)
                 .orElse(BigDecimal.ZERO);
+    }
+
+    private static boolean isVaultContext(Branch branch) {
+        return branch != null && Boolean.TRUE.equals(branch.getIsVault());
     }
 
     /**

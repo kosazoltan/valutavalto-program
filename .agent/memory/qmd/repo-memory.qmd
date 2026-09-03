@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-02T15:15:05.076Z
+generated: 2026-09-03T06:11:15.104Z
 format: gfm
 ---
 
@@ -111,14 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-19-fk057-mainlayout.md`
-  - summary: # Handoff — 2026-07-19 — FK-057 MainLayout görgetési architektúra - Forrás: `FK-057_MainLayout_gorgetesi_architektura_javitas_v2.md` R4, SHA-256 ellenőrizve. - A gyökérlayout viewport-magasságú (`h-screen overflow-hidden`); nincs dokumentumszintű görgetés. - A Sidebar navigáció és a `.app-print-content` külön függőleges scrollport. - Mobilon a `main` explicit `minHeight: 0`; a nyitott sidebar `min-h-0 max-h-full`. -
-
-- **Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-07-19-v2.28.45-release.md`
-  - summary: # Handoff — v2.28.45 shipment/FK-057 release — 2026-07-19 - PR #1456 merged (squash): https://github.com/kosazoltan/valutavalto-program/pull/1456 - Main/release SHA: `f3ac9fad0b992ef6f7c0f41cd954c413f825c59c` - PR CI: all required checks PASS after fixing the CashierStocks async test race. - CI fix: await rendered `Baja Tesco` option; 10/10 repeated targeted coverage runs PASS; dual review+jury APPROVE. - Local gates
 
 - **Handoff — FK-058 + FK-051v2 + v2.28.53 release — 2026-07-23** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-07-23-fk058-fk051v2-v2.28.53.md`
@@ -236,9 +228,17 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `vault/sessions/handoff-2026-08-31-fkh042-fkh043-google-hurok-v2.28.93.md`
   - summary: # Handoff — Google-hurok P0 + FKH-042 + FKH-043 stacked ciklus, v2.28.93 LEZÁRVA (2026-08-31) Jobok: `20260830-penztar-google-autoupdate-hurok` + `20260831-fkh042-elo-celosszeg` + `20260831-fkh043-inventory-panel-elrejtese` — mindhárom `status: pass` (round-1, bíró PASS). ## Mit szállított - **Google-hurok P0:** Google-OTP alatt nincs csendes telepítés/app.quit; nyitott napot nem hazudja; KASZA-útvonal és értéktár ne
 
+- **Handoff 2026-09-02 — Suite auto-update elevation gap + üres menü → v2.28.97** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-02-elevation-v2.28.97.md`
+  - summary: # Handoff 2026-09-02 — Suite auto-update elevation gap + üres menü → v2.28.97 - **Kanban #8 / ticket** `.hermes/tickets/2026-09-02-auto-update-elevation-es-ures-menu.md`; pipeline `.hermes/pipeline/20260902-auto-update-elevation-ures-menu/` (round-2 PASS, pass_head `5fd961fa`). - **Gyökérok (élőben bizonyítva):** `installer/Penztar-Setup.nsi:112 RequestExecutionLevel admin` → requireAdministrator manifest; a kliens n
+
 - **Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-02-ertektar-auto-update.md`
   - summary: # Handoff — Értéktár auto-update (FKH-041 never-install repeal), v2.28.96 Date: 2026-09-02 · kanban #7 · pipeline job 20260901-ertektar-auto-update · status: pass ## Mi készült - PR #1690 (squash, main `e705a9bd931a991ef5c22d73cf1e820b285f110f`): értéktár (`appMode==='ertektar'`) esti zárás `SENT`/`CONFIRMED` → `CLOSED_AFTER_DAY_END` → auto-telepítés; banner „Telepítés most” (`suiteUpdate:startInstall` IPC, `canStart
+
+- **Handoff 2026-09-02 — FKH-044 Gate B + élő EVENING prod-ops** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-02-fkh044-evening-prodops.md`
+  - summary: # Handoff 2026-09-02 — FKH-044 Gate B + élő EVENING prod-ops - PR #1694 main `559bcc0e` éles. Telepítő nem kellett (backend-only). - **Gate B Neon INFORMÁLIS:** run 33670388954 job 100383215247. `job.success` NEM elég (continue-on-error). Mért: `MIGRATE_OUTCOME=success`, `VERIFY_OUTCOME=success`, Neon V384 = repo V384. Új Flyway nem volt. - **Élő takarítás:** Hetzner `valuta`, séma előbb. `audit_log.entry_hash` → SQL
 
 - **Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-02-tudas-hygiene-repo-hygiene.md`
