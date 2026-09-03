@@ -4,6 +4,7 @@ import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.CashBalance;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.Currency;
+import hu.puzzleir.valuta.entity.CurrencyStock;
 import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationBalance;
@@ -18,6 +19,7 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CashBalanceRepository;
 import hu.puzzleir.valuta.repository.CashRegisterDeviceRepository;
 import hu.puzzleir.valuta.repository.CurrencyRepository;
+import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
@@ -54,12 +56,14 @@ class DenominationBalanceServiceTest {
     @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     @Mock private CurrencyRepository currencyRepository;
     @Mock private VatSupplyStockRepository vatSupplyStockRepository;
+    @Mock private CurrencyStockRepository currencyStockRepository;
 
     private DenominationBalanceService service() {
         return new DenominationBalanceService(
                 balanceRepository, denominationRepository, cashRegisterDeviceRepository, branchRepository,
                 cashBalanceRepository, denominationAllowedRepository,
-                shipmentHandlingFeeRepository, currencyRepository, vatSupplyStockRepository);
+                shipmentHandlingFeeRepository, currencyRepository, vatSupplyStockRepository,
+                currencyStockRepository);
     }
 
     @Test
@@ -511,6 +515,110 @@ class DenominationBalanceServiceTest {
             assertThat(result.get(0).getExpectedBalance()).isEqualByComparingTo("12000.00");
             assertThat(result.get(0).isMatches()).isTrue();
         }
+    }
+
+    // =====================================================================
+    // FKH-046 — vault self-check reads currency_stock (VAULT), not cash_balance
+    // =====================================================================
+
+    /**
+     * FKH-046 FR-1/FR-2: vault branch EVENING self-check reads the expected
+     * balance from currency_stock (entity_type=VAULT, entity_id=vaultTerritoryId),
+     * never from cash_balance (which holds only the vault's booking mirror).
+     */
+    @Test
+    void selfCheckVaultBranchReadsCurrencyStock() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = Branch.builder().id(branchId).isVault(true).vaultTerritoryId(7).build();
+        when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
+        when(branchRepository.findByIdAndCompanyId(branchId, companyId)).thenReturn(Optional.of(branch));
+        when(balanceRepository.sumActualStockByCurrency(
+                branchId, LocalDate.now(), DenominationCategory.EVENING))
+                .thenReturn(List.<Object[]>of(
+                        new Object[]{"HUF", new BigDecimal("220500000.00")},
+                        new Object[]{"EUR", new BigDecimal("2200.00")}));
+        when(currencyStockRepository.findByCompanyIdAndEntityTypeAndEntityId(companyId, "VAULT", "7"))
+                .thenReturn(List.of(
+                        CurrencyStock.builder().currencyCode("HUF").quantity(new BigDecimal("220500000")).build(),
+                        CurrencyStock.builder().currencyCode("EUR").quantity(new BigDecimal("2200")).build()));
+        when(currencyRepository.findByCode("HUF"))
+                .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));
+        when(currencyRepository.findByCode("EUR"))
+                .thenReturn(Optional.of(Currency.builder().id(2L).code("EUR").build()));
+
+        List<DenominationSelfCheckDto> result;
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            result = service().selfCheck(branchId, DenominationCategory.EVENING);
+        }
+
+        assertThat(result).hasSize(2);
+        DenominationSelfCheckDto huf = result.stream()
+                .filter(r -> "HUF".equals(r.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(huf.getExpectedBalance()).isEqualByComparingTo("220500000.00");
+        assertThat(huf.isMatches()).isTrue();
+        DenominationSelfCheckDto eur = result.stream()
+                .filter(r -> "EUR".equals(r.getCurrencyCode())).findFirst().orElseThrow();
+        assertThat(eur.getExpectedBalance()).isEqualByComparingTo("2200.00");
+        verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
+    }
+
+    /**
+     * FKH-046 FR-3: non-vault branch behavior is UNCHANGED (cash_balance source,
+     * currency_stock never queried).
+     */
+    @Test
+    void selfCheckNonVaultBranchStillUsesCashBalance() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = Branch.builder().id(branchId).isVault(false).build();
+        when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
+        when(branchRepository.findByIdAndCompanyId(branchId, companyId)).thenReturn(Optional.of(branch));
+        when(balanceRepository.sumActualStockByCurrency(
+                branchId, LocalDate.now(), DenominationCategory.EVENING))
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("125000.00")}));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId))
+                .thenReturn(List.of(cashBalance(1L, "HUF", new BigDecimal("125000.00"))));
+
+        List<DenominationSelfCheckDto> result;
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            result = service().selfCheck(branchId, DenominationCategory.EVENING);
+        }
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getExpectedBalance()).isEqualByComparingTo("125000.00");
+        assertThat(result.get(0).isMatches()).isTrue();
+        verify(currencyStockRepository, never())
+                .findByCompanyIdAndEntityTypeAndEntityId(any(), any(), any());
+    }
+
+    /**
+     * FKH-046 edge case: vault branch WITHOUT vaultTerritoryId fails closed
+     * (empty result, no exception) instead of reading the wrong cash_balance row.
+     */
+    @Test
+    void selfCheckVaultBranchWithoutTerritoryFailsClosed() {
+        UUID companyId = UUID.randomUUID();
+        UUID branchId = UUID.randomUUID();
+        Branch branch = Branch.builder().id(branchId).isVault(true).vaultTerritoryId(null).build();
+        when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
+        when(branchRepository.findByIdAndCompanyId(branchId, companyId)).thenReturn(Optional.of(branch));
+        when(balanceRepository.sumActualStockByCurrency(
+                branchId, LocalDate.now(), DenominationCategory.EVENING))
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("1000.00")}));
+
+        List<DenominationSelfCheckDto> result;
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getCurrentCompanyId).thenReturn(companyId);
+            result = service().selfCheck(branchId, DenominationCategory.EVENING);
+        }
+
+        assertThat(result).isEmpty();
+        verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
+        verify(currencyStockRepository, never())
+                .findByCompanyIdAndEntityTypeAndEntityId(any(), any(), any());
     }
 
     private static CashBalance cashBalance(Long currencyId, String code, BigDecimal balance) {
