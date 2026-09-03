@@ -45,7 +45,7 @@ export default function TransactionLevyReportPage() {
       .getByCategory('REGION')
       .then((entries) => {
         if (!cancelled) {
-          setRegions(entries)
+          setRegions(entries.filter((e) => e.code !== 'IRODA'))
         }
       })
       .catch(() => {
@@ -138,7 +138,7 @@ export default function TransactionLevyReportPage() {
             <option value="">{t('reports.transactionLevy.regionAll')}</option>
             {regions.map((entry) => (
               <option key={entry.code} value={entry.code}>
-                {entry.name}
+                {entry.nameHu?.trim() ? entry.nameHu : entry.name}
               </option>
             ))}
           </select>
