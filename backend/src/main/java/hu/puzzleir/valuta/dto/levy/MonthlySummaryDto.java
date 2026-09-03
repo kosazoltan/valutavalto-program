@@ -38,4 +38,10 @@ public class MonthlySummaryDto {
 
     /** Küszöb feletti önálló eladás HUF-forgalom. */
     private BigDecimal aboveThresholdSellHuf;
+
+    /** Combined below-threshold Buy+Sell HUF (derived; conversion excluded). */
+    private BigDecimal belowThresholdTotalHuf;
+
+    /** Combined above-threshold Buy+Sell HUF (derived; conversion excluded). */
+    private BigDecimal aboveThresholdTotalHuf;
 }
