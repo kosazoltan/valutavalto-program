@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,6 +32,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -68,6 +71,12 @@ class DailySessionServiceTest {
     @Mock
     private CashBalanceService cashBalanceService;
 
+    // FKH-048: regional vault scope post-filter for getSessionHistory. The company-wide
+    // (null) default is pinned in setupSecurityContext via a lenient stub — see PLAN GAP:
+    // Mockito's RETURNS_DEFAULTS would return an EMPTY Set ("see nothing"), not null.
+    @Mock
+    private AccessScopeService accessScopeService;
+
     @InjectMocks
     private DailySessionService service;
 
@@ -81,6 +90,12 @@ class DailySessionServiceTest {
                 new UsernamePasswordAuthenticationToken("ADMIN", null, List.of());
         auth.setDetails(new WorkerAuthenticationDetails(workerId, companyId, branchId, "CASHIER"));
         SecurityContextHolder.getContext().setAuthentication(auth);
+        // FKH-048: pin the company-wide default explicitly. Mockito's RETURNS_DEFAULTS gives
+        // an EMPTY Set for vaultRegionBranchScopeOrNull() (collection return type), which
+        // means "see nothing" and would filter out every session for the pre-existing
+        // company-wide tests. Lenient: most tests never reach getSessionHistory (strict
+        // stubs would flag the stub as unnecessary).
+        Mockito.lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
     }
 
     @AfterEach
@@ -212,6 +227,52 @@ class DailySessionServiceTest {
         // egy (legacy) vault daily_session tévesen megjelenne a pénztári zárás-állapot csempén.
         verify(dailySessionRepository).findByDateRangeExcludingVault(companyId, from, to);
         verify(dailySessionRepository, never()).findByDateRange(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("FKH-048: getSessionHistory filters foreign-region sessions for a regional vault worker")
+    void getSessionHistory_regionalVaultWorker_filtersForeignRegionSessions() {
+        LocalDate from = LocalDate.now();
+        LocalDate to = LocalDate.now();
+        UUID szegedBranchId = UUID.randomUUID();
+        UUID bekescsabaBranchId = UUID.randomUUID();
+        Branch szegedBranch = Branch.builder().id(szegedBranchId).build();
+        Branch bekescsabaBranch = Branch.builder().id(bekescsabaBranchId).build();
+        DailySession szegedSession = DailySession.builder().id(1L).sessionDate(from).branch(szegedBranch).build();
+        DailySession bekescsabaSession = DailySession.builder().id(2L).sessionDate(from).branch(bekescsabaBranch).build();
+        when(dailySessionRepository.findByDateRangeExcludingVault(companyId, from, to))
+                .thenReturn(List.of(szegedSession, bekescsabaSession));
+
+        Set<UUID> scope = Set.of(szegedBranchId);
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(scope);
+        // Stub per branch id STRING — proves the real collaborator is consulted,
+        // not a homemade region compare. isBranchVisible takes (Set<UUID>, String).
+        when(accessScopeService.isBranchVisible(eq(scope), eq(szegedBranchId.toString()))).thenReturn(true);
+        when(accessScopeService.isBranchVisible(eq(scope), eq(bekescsabaBranchId.toString()))).thenReturn(false);
+
+        List<DailySession> result = service.getSessionHistory(from, to);
+
+        assertEquals(1, result.size());
+        assertEquals(szegedSession, result.get(0));
+        verify(accessScopeService).vaultRegionBranchScopeOrNull();
+    }
+
+    @Test
+    @DisplayName("FKH-048: getSessionHistory with company-wide (null) scope returns all non-vault sessions")
+    void getSessionHistory_companyWideScope_returnsAllNonVaultSessions() {
+        LocalDate from = LocalDate.now();
+        LocalDate to = LocalDate.now();
+        DailySession sessionA = DailySession.builder().id(1L).sessionDate(from).build();
+        DailySession sessionB = DailySession.builder().id(2L).sessionDate(from).build();
+        when(dailySessionRepository.findByDateRangeExcludingVault(companyId, from, to))
+                .thenReturn(List.of(sessionA, sessionB));
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+
+        List<DailySession> result = service.getSessionHistory(from, to);
+
+        assertEquals(2, result.size());
+        // scope == null short-circuit: no per-element visibility check is performed.
+        verify(accessScopeService, never()).isBranchVisible(any(), anyString());
     }
 
     // === Codex P1 (2026-05-31, #944 review) — sztorno-plafon lockolo szamlalo ===

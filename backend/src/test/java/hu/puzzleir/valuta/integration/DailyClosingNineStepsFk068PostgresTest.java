@@ -31,6 +31,7 @@ import hu.puzzleir.valuta.service.ClosingWizardService;
 import hu.puzzleir.valuta.service.DailyClosingService;
 import hu.puzzleir.valuta.service.DailySessionService;
 import hu.puzzleir.valuta.service.SystemParameterService;
+import hu.puzzleir.valuta.service.AccessScopeService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -104,7 +105,8 @@ import static org.mockito.Mockito.when;
         DailyClosingService.class,
         DailySessionService.class,
         SystemParameterService.class,
-        ClosingToleranceService.class
+        ClosingToleranceService.class,
+        AccessScopeService.class
 })
 @SpringBootTest(
         classes = TestApplication.class,

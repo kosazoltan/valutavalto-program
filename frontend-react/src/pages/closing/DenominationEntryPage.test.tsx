@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DenominationEntryPage from './DenominationEntryPage'
+import { CLOSING_DENOMINATION_VAULT_EXIT_ROUTE } from './closingDenominationMenu'
 import { formatDecimal } from '../../utils/numberFormat'
 
 /**
@@ -434,6 +435,41 @@ describe('DenominationEntryPage — FK-078', () => {
     await user.click(await screen.findByTestId('denomination-entry-start-closing'))
 
     expect(mocks.navigate).toHaveBeenCalledWith('/closing/wizard')
+  })
+
+  // ——— FKH-047: vault fallback — a vault user WITHOUT a valid returnTo must ———
+  // ——— land on the treasury Napi zárás page (/evening-closing), NOT on the ———
+  // ——— cashier-only closing wizard (FR-1), without starting the wizard (FR-2). ———
+
+  it('FKH-047 FR-1: vault + no returnTo → start-closing navigates to /evening-closing', async () => {
+    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
+      const list = Array.isArray(roles) ? roles : [roles]
+      return list.includes('ertektar') || list.includes('foertektar')
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-start-closing'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith(CLOSING_DENOMINATION_VAULT_EXIT_ROUTE)
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/closing/wizard')
+    // Start-closing is not a save — no denomination quantities may be persisted.
+    expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
+  })
+
+  it('FKH-047 FR-4: same vault fallback on the HANDLING_FEE route', async () => {
+    categoryParam = 'HANDLING_FEE'
+    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
+      const list = Array.isArray(roles) ? roles : [roles]
+      return list.includes('ertektar') || list.includes('foertektar')
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-start-closing'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith(CLOSING_DENOMINATION_VAULT_EXIT_ROUTE)
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/closing/wizard')
   })
 
   // ——— Átvett lefedettség a törölt DenominationPage.fk072 / fk077-fk079 tesztekből ———
