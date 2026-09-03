@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -70,8 +71,9 @@ class DailySessionServiceTest {
     @Mock
     private CashBalanceService cashBalanceService;
 
-    // FKH-048: regional vault scope post-filter for getSessionHistory. No global stub —
-    // Mockito returns null (company-wide) by default, keeping FR-3 for existing tests.
+    // FKH-048: regional vault scope post-filter for getSessionHistory. The company-wide
+    // (null) default is pinned in setupSecurityContext via a lenient stub — see PLAN GAP:
+    // Mockito's RETURNS_DEFAULTS would return an EMPTY Set ("see nothing"), not null.
     @Mock
     private AccessScopeService accessScopeService;
 
@@ -88,6 +90,12 @@ class DailySessionServiceTest {
                 new UsernamePasswordAuthenticationToken("ADMIN", null, List.of());
         auth.setDetails(new WorkerAuthenticationDetails(workerId, companyId, branchId, "CASHIER"));
         SecurityContextHolder.getContext().setAuthentication(auth);
+        // FKH-048: pin the company-wide default explicitly. Mockito's RETURNS_DEFAULTS gives
+        // an EMPTY Set for vaultRegionBranchScopeOrNull() (collection return type), which
+        // means "see nothing" and would filter out every session for the pre-existing
+        // company-wide tests. Lenient: most tests never reach getSessionHistory (strict
+        // stubs would flag the stub as unnecessary).
+        Mockito.lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
     }
 
     @AfterEach

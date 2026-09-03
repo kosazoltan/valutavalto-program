@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,6 +45,8 @@ public class DailySessionService {
     // Issue #110: auto-init cash_balance rekordok napnyitaskor, hogy a tranzakcio-sync
     // ne essen el 404-gyel uj branch-eken, ahol meg nincs inicializalva semmi.
     private final CashBalanceService cashBalanceService;
+    // FKH-048: regional vault scope post-filter for the read side (getSessionHistory).
+    private final AccessScopeService accessScopeService;
 
     /**
      * Napi nyitás
@@ -410,7 +413,20 @@ public class DailySessionService {
         // (ma)" widget A-forrása; egy (legacy) vault daily_session sem jelenhet meg a pénztári
         // zárás-állapot csempén. Az értéktár pénztári napizárást eleve nem nyit (openDay/openSession
         // gate); ez a read-oldali defense-in-depth.
-        return dailySessionRepository.findByDateRangeExcludingVault(companyId, startDate, endDate);
+        List<DailySession> sessions =
+                dailySessionRepository.findByDateRangeExcludingVault(companyId, startDate, endDate);
+        // FKH-048: a regional vault worker must only see cash desks of their own region —
+        // post-filter with the same AccessScopeService mechanism CashBalanceController.getCompanyBalances
+        // uses. scope == null means company-wide (national vault / non-vault roles): return unchanged
+        // (FR-3). An EMPTY scope is a real value meaning "see nothing" — never bypass it.
+        Set<UUID> scope = accessScopeService.vaultRegionBranchScopeOrNull();
+        if (scope == null) {
+            return sessions;
+        }
+        return sessions.stream()
+                .filter(s -> accessScopeService.isBranchVisible(scope,
+                        s.getBranch() == null ? null : s.getBranch().getId().toString()))
+                .toList();
     }
 
     /**
