@@ -32,6 +32,8 @@ const translations: Record<string, string> = vi.hoisted(() => ({
   'reports.transactionLevy.monthly.belowSell': 'Küszöb alatti eladás forgalom',
   'reports.transactionLevy.monthly.aboveBuy': 'Küszöb feletti vétel forgalom',
   'reports.transactionLevy.monthly.aboveSell': 'Küszöb feletti eladás forgalom',
+  'reports.transactionLevy.monthly.belowTotal': 'Küszöb alatti forgalom összesen',
+  'reports.transactionLevy.monthly.aboveTotal': 'Küszöb feletti forgalom összesen',
   'reports.transactionLevy.table.date': 'Dátum',
   'reports.transactionLevy.table.branch': 'Pénztár',
   'reports.transactionLevy.table.buy': 'Vétel',
@@ -116,6 +118,8 @@ function emptyReport() {
       belowThresholdSellHuf: 0,
       aboveThresholdBuyHuf: 0,
       aboveThresholdSellHuf: 0,
+      belowThresholdTotalHuf: 0,
+      aboveThresholdTotalHuf: 0,
     },
   }
 }
@@ -157,6 +161,8 @@ function reportWithBranch(branchCode: string) {
       belowThresholdSellHuf: 0,
       aboveThresholdBuyHuf: 0,
       aboveThresholdSellHuf: 0,
+      belowThresholdTotalHuf: 0,
+      aboveThresholdTotalHuf: 0,
     },
   }
 }
@@ -243,6 +249,8 @@ function fixtureReport(totalsLevyTotal = 67000) {
       belowThresholdSellHuf: 1000000,
       aboveThresholdBuyHuf: 5000000,
       aboveThresholdSellHuf: 4444445,
+      belowThresholdTotalHuf: 4000000,
+      aboveThresholdTotalHuf: 9444445,
     },
   }
 }
@@ -449,8 +457,10 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
       ['Küszöb alatti eladás forgalom', `${fmtText(1000000)} Ft`],
       ['Küszöb feletti vétel forgalom', `${fmtText(5000000)} Ft`],
       ['Küszöb feletti eladás forgalom', `${fmtText(4444445)} Ft`],
+      ['Küszöb alatti forgalom összesen', `${fmtText(4000000)} Ft`],
+      ['Küszöb feletti forgalom összesen', `${fmtText(9444445)} Ft`],
     ]
-    expect(expected).toHaveLength(7)
+    expect(expected).toHaveLength(9)
     expected.forEach(([label, value]) => {
       const dt = screen.getByText(label)
       expect(dt.tagName).toBe('DT')
@@ -520,5 +530,66 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     expect(select).toBeInTheDocument()
     expect(select.querySelectorAll('option')).toHaveLength(1)
     expect(screen.getByText('Összes terület')).toBeInTheDocument()
+  })
+
+  it('F14/FK-101 FR-3: IRODA kiszűrve, nameHu címke fallbackkel; 9 opció, város választása getReport', async () => {
+    // 9 REGION entries: the IRODA pseudo-region plus 8 cities whose `name` and
+    // `nameHu` deliberately DIFFER (only a differing fixture proves the binding
+    // changed — the seed rows have identical name/nameHu). One city carries a
+    // blank nameHu to pin the fallback to `name`.
+    mockGetByCategory.mockResolvedValue([
+      { id: 'r0', category: 'REGION', code: 'IRODA', name: 'Central Office', nameHu: 'Iroda', sortOrder: 0 },
+      { id: 'r1', category: 'REGION', code: 'SZEGED', name: 'Szeged city', nameHu: 'Szeged', sortOrder: 1 },
+      { id: 'r2', category: 'REGION', code: 'BUDAPEST', name: 'Budapest city', nameHu: 'Budapest', sortOrder: 2 },
+      { id: 'r3', category: 'REGION', code: 'DEBRECEN', name: 'Debrecen city', nameHu: 'Debrecen', sortOrder: 3 },
+      { id: 'r4', category: 'REGION', code: 'GYOR', name: 'Gyor city', nameHu: 'Győr', sortOrder: 4 },
+      { id: 'r5', category: 'REGION', code: 'MISKOLC', name: 'Miskolc city', nameHu: 'Miskolc', sortOrder: 5 },
+      { id: 'r6', category: 'REGION', code: 'PECS', name: 'Pecs city', nameHu: 'Pécs', sortOrder: 6 },
+      { id: 'r7', category: 'REGION', code: 'NYIREGYHAZA', name: 'Nyiregyhaza city', nameHu: 'Nyíregyháza', sortOrder: 7 },
+      { id: 'r8', category: 'REGION', code: 'VAC', name: 'Vac city', nameHu: '', sortOrder: 8 },
+    ])
+    mockGetReport.mockResolvedValue(emptyReport())
+
+    render(<TransactionLevyReportPage />)
+
+    // Hungarian labels visible (nameHu binding), English `name` variants absent.
+    await waitFor(() => expect(screen.getByText('Szeged')).toBeInTheDocument())
+    expect(screen.getByText('Budapest')).toBeInTheDocument()
+    expect(screen.getByText('Debrecen')).toBeInTheDocument()
+    expect(screen.getByText('Győr')).toBeInTheDocument()
+    expect(screen.getByText('Miskolc')).toBeInTheDocument()
+    expect(screen.getByText('Pécs')).toBeInTheDocument()
+    expect(screen.getByText('Nyíregyháza')).toBeInTheDocument()
+    expect(screen.queryByText('Szeged city')).not.toBeInTheDocument()
+    expect(screen.queryByText('Budapest city')).not.toBeInTheDocument()
+    expect(screen.queryByText('Debrecen city')).not.toBeInTheDocument()
+    expect(screen.queryByText('Gyor city')).not.toBeInTheDocument()
+    expect(screen.queryByText('Miskolc city')).not.toBeInTheDocument()
+    expect(screen.queryByText('Pecs city')).not.toBeInTheDocument()
+    expect(screen.queryByText('Nyiregyhaza city')).not.toBeInTheDocument()
+
+    // IRODA is filtered out — neither its English nor Hungarian label renders.
+    expect(screen.queryByText('Iroda')).not.toBeInTheDocument()
+    expect(screen.queryByText('Central Office')).not.toBeInTheDocument()
+
+    // Blank nameHu falls back to `name`.
+    expect(screen.getByText('Vac city')).toBeInTheDocument()
+
+    // 9 options: 1 "Összes terület" + 8 geographic cities (IRODA excluded).
+    const select = screen.getByLabelText('Terület') as HTMLSelectElement
+    expect(select.querySelectorAll('option')).toHaveLength(9)
+    expect(screen.getByText('Összes terület')).toBeInTheDocument()
+
+    // Selecting a city still issues the report query with that region code.
+    const now = new Date()
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+    const from = `${monthStr}-01`
+    const to = `${monthStr}-${String(lastDay).padStart(2, '0')}`
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalled())
+    mockGetReport.mockClear()
+
+    fireEvent.change(select, { target: { value: 'SZEGED' } })
+    await waitFor(() => expect(mockGetReport).toHaveBeenCalledWith(from, to, 'SZEGED'))
   })
 })

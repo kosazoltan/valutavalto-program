@@ -36,6 +36,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
@@ -418,29 +419,29 @@ class TransactionLevyReportServiceTest {
     // ============================ B33–B35: D1 sorrend-szerződés (round-3) ============================
 
     @Test
-    @DisplayName("B33/D1: konverzió-nap (D1) + önálló nap (D2) → a kimenet date ASC, "
-            + "akkor is, ha a fold az önállót szúrja be előbb")
-    void b33_rowsAreDateAscendingAcrossStandaloneAndConversion() {
+    @DisplayName("B33/D1 (FK-101 FR-1): vegyes branch+date fixture → branchCode ASC az elsődleges, "
+            + "date ASC a másodlagos rendezési kulcs")
+    void b33_rowsAreBranchCodeAscendingThenDateAscending() {
         authenticate("FOERTEKTAR");
         stubRates(seedRate());
-        // A query date ASC rendezi (konverzió-sorok D1-en előbb), de a service az
-        // önálló sorokat foldolja előbb (lines 138–154), a konverzió-csoportokat
-        // utána (156–158) — rendezés nélkül a D2-es önálló sor a D1-es konverzió
-        // ELŐTT jelenne meg a DTO-ban (D1 sorrend-szerződés: date ASC, branchCode ASC).
-        stubRows(conversionParentRow(), convBuyChildRow(), convSellChildRow(),
-                buyRow(D2, "3000000", "C1"));
+        // FK-101 FR-1: the row order contract is branchCode ASC primary, date ASC
+        // secondary. Mixed standalone rows (D1,002), (D2,001), (D1,001) must come
+        // out as [("001",D1), ("001",D2), ("002",D1)]. The HEAD comparator is
+        // date-first, so this test is RED until the keys are swapped.
+        stubRows(
+                row(D1, BRANCH_ID_002, "002", "Meldek", TransactionType.BUY,
+                        "3000000", null, true, "C2", TransactionStatus.COMPLETED),
+                buyRow(D2, "3000000", "C1"),
+                buyRow(D1, "3000000", "C1"));
 
         TransactionLevyReportDto report = service.getReport(null, FROM, TO);
 
-        assertThat(report.getRows()).hasSize(2);
+        assertThat(report.getRows()).hasSize(3);
         assertThat(report.getRows())
-                .as("B33/D1: date ASC — a D1-es konverzió-nap a D2-es önálló előtt")
-                .extracting(TransactionLevyReportDto.Row::getDate)
-                .containsExactly(D1, D2);
-        assertThat(report.getRows().get(0).getConversion().getNormalBaseLevy())
-                .isEqualByComparingTo("13500");
-        assertThat(report.getRows().get(1).getBuy().getNormalBaseLevy())
-                .isEqualByComparingTo("13500");
+                .as("B33/FK-101 FR-1: branchCode ASC primary, date ASC secondary")
+                .extracting(TransactionLevyReportDto.Row::getBranchCode,
+                        TransactionLevyReportDto.Row::getDate)
+                .containsExactly(tuple("001", D1), tuple("001", D2), tuple("002", D1));
     }
 
     @Test
@@ -620,6 +621,63 @@ class TransactionLevyReportServiceTest {
         assertThat(report.getMonthlySummary().getBelowThresholdSellHuf()).isEqualByComparingTo("1000000");
         assertThat(report.getMonthlySummary().getAboveThresholdBuyHuf()).isEqualByComparingTo("0");
         assertThat(report.getMonthlySummary().getAboveThresholdSellHuf()).isEqualByComparingTo("0");
+    }
+
+    // ============================ B47: FK-101 FR-2 — combined monthly turnovers ============================
+    // NOTE: the plan labels this test "B36", but B36..B40 are already taken by
+    // FK-100 FR-3 tests in this file (b36_emptyMonthPopulatesCoveringRate etc.).
+    // Numbered B47 instead — the coverage is exactly the plan's "B36" spec.
+
+    @Test
+    @DisplayName("B47/FK-101 FR-2: B11 fixture → belowThresholdTotalHuf = buy+sell, aboveThresholdTotalHuf = 0")
+    void b47_belowThresholdTotalIsBuyPlusSell() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // B11 fixture: buy 3 000 000 (below) + sell 1 000 000 (below).
+        stubRows(buyRow(D1, "3000000", "C1"), sellRow(D1, "1000000", "C2"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getMonthlySummary().getBelowThresholdTotalHuf())
+                .isEqualByComparingTo("4000000");
+        assertThat(report.getMonthlySummary().getAboveThresholdTotalHuf())
+                .isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("B47/FK-101 FR-2: B12 fixture → aboveThresholdTotalHuf = buy+sell, belowThresholdTotalHuf = 0")
+    void b47_aboveThresholdTotalIsBuyPlusSell() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // B12 fixture: buy 5 000 000 (above) + sell 4 444 445 (above).
+        stubRows(buyRow(D1, "5000000", "C1"), sellRow(D1, "4444445", "C2"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getMonthlySummary().getAboveThresholdTotalHuf())
+                .isEqualByComparingTo("9444445");
+        assertThat(report.getMonthlySummary().getBelowThresholdTotalHuf())
+                .isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("B47/FK-101 FR-2: B13 fixture + conversion → totals unchanged (conversion excluded)")
+    void b47_conversionExcludedFromTotals() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // B13 fixture: standalone buy 3 000 000 + sell 1 000 000 plus a full
+        // conversion group — conversion contributes nothing to the monthly panel.
+        stubRows(
+                buyRow(D1, "3000000", "C1"),
+                sellRow(D1, "1000000", "C2"),
+                conversionParentRow(), convBuyChildRow(), convSellChildRow());
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getMonthlySummary().getBelowThresholdTotalHuf())
+                .isEqualByComparingTo("4000000");
+        assertThat(report.getMonthlySummary().getAboveThresholdTotalHuf())
+                .isEqualByComparingTo("0");
     }
 
     // ============================ B14–B17: RBAC + cross-tenant ============================
