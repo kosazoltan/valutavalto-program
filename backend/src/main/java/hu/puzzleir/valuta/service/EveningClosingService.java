@@ -267,8 +267,13 @@ public class EveningClosingService {
         syncLog.setIsBridged(false);
         eveningSyncLogRepository.save(syncLog);
 
+        // FKH-045 FR-5: a felhasználói üzenet NEM tartalmazhat nyers
+        // fájlrendszer-útvonalat/stacktrace-részletet — az csak a logba és a
+        // sync_log.error_message-be kerül. A UI-n érthető, üzemeltetésre utaló
+        // üzenet jelenjen meg.
         return DataSyncResult.failure(
-                "Adatcsomag küldés sikertelen " + MAX_SEND_ATTEMPTS + " próba után: " + syncLog.getErrorMessage(),
+                "Esti zárás adatcsomag küldés sikertelen " + MAX_SEND_ATTEMPTS +
+                        " próba után (szerver-oldali tárolási hiba). Forduljon az üzemeltetéshez.",
                 syncLog.getAttemptCount());
     }
 
