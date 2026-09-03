@@ -1653,15 +1653,11 @@
       "totalRow": "ÖSSZESEN",
       "monthly": {
         "title": "Havi összesítő",
-        "buyCount": "Vételek száma",
-        "sellCount": "Eladások száma",
         "customerCount": "Ügyfelek száma",
-        "belowBuy": "Küszöb alatti vétel forgalom",
-        "belowSell": "Küszöb alatti eladás forgalom",
-        "aboveBuy": "Küszöb feletti vétel forgalom",
-        "aboveSell": "Küszöb feletti eladás forgalom",
-        "belowTotal": "Küszöb alatti forgalom összesen",
-        "aboveTotal": "Küszöb feletti forgalom összesen"
+        "colTotal": "Összesen",
+        "rowCount": "Darabszám",
+        "rowBelow": "Küszöb alatti forgalom",
+        "rowAbove": "Küszöb feletti forgalom"
       },
       "table": {
         "date": "Dátum",

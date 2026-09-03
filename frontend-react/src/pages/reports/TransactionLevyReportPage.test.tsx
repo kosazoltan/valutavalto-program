@@ -25,15 +25,7 @@ const translations: Record<string, string> = vi.hoisted(() => ({
   'reports.transactionLevy.region': 'Terület',
   'reports.transactionLevy.regionAll': 'Összes terület',
   'reports.transactionLevy.monthly.title': 'Havi összesítő',
-  'reports.transactionLevy.monthly.buyCount': 'Vételek száma',
-  'reports.transactionLevy.monthly.sellCount': 'Eladások száma',
   'reports.transactionLevy.monthly.customerCount': 'Ügyfelek száma',
-  'reports.transactionLevy.monthly.belowBuy': 'Küszöb alatti vétel forgalom',
-  'reports.transactionLevy.monthly.belowSell': 'Küszöb alatti eladás forgalom',
-  'reports.transactionLevy.monthly.aboveBuy': 'Küszöb feletti vétel forgalom',
-  'reports.transactionLevy.monthly.aboveSell': 'Küszöb feletti eladás forgalom',
-  'reports.transactionLevy.monthly.belowTotal': 'Küszöb alatti forgalom összesen',
-  'reports.transactionLevy.monthly.aboveTotal': 'Küszöb feletti forgalom összesen',
   'reports.transactionLevy.monthly.colTotal': 'Összesen',
   'reports.transactionLevy.monthly.rowCount': 'Darabszám',
   'reports.transactionLevy.monthly.rowBelow': 'Küszöb alatti forgalom',
@@ -338,8 +330,8 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     // FK-102: the 9 matrix values now live in the monthly table cells.
     const monthlyTable = document.querySelectorAll('table')[1] as HTMLTableElement
     expect(monthlyTable).not.toBeUndefined()
-    const cells = Array.from(monthlyTable.querySelectorAll('tbody td')).map(
-      (td) => td.textContent?.replace(/\s+/g, ' '),
+    const cells = Array.from(monthlyTable.querySelectorAll('tbody td')).map((td) =>
+      td.textContent?.replace(/\s+/g, ' '),
     )
     expect(cells).toEqual([
       fmtText(12),
@@ -501,8 +493,8 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     })
 
     // 9 data cells, row-major. totalCount (19) = buyCount (12) + sellCount (7).
-    const cells = Array.from(monthlyTable.querySelectorAll('tbody td')).map(
-      (td) => td.textContent?.replace(/\s+/g, ' '),
+    const cells = Array.from(monthlyTable.querySelectorAll('tbody td')).map((td) =>
+      td.textContent?.replace(/\s+/g, ' '),
     )
     expect(cells).toEqual([
       fmtText(12),
