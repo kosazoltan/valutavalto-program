@@ -362,12 +362,16 @@ function MonthlyPanel({
           value={fmt.format(summary.customerCount)}
         />
       </dl>
-      {/* FR-4: own horizontal scroll container, same idiom as the main table. */}
-      <div className="overflow-x-auto">
-        <table className="border-collapse text-sm">
+      {/* FK-103 FR-1: own horizontal scroll container using the main-table
+          wrapper idiom byte-for-byte, with a content-based min-width on the
+          table (row-header column + 3 numeric columns) so the 3x3 panel
+          scrolls at narrow viewports instead of wrapping.
+          FK-104 FR-3: the corner cell is a <td>, not a headerless <th>. */}
+      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+        <table className="min-w-[640px] border-collapse text-sm">
           <thead>
             <tr>
-              <th className="border border-gray-300 px-2 py-1" />
+              <td className="border border-gray-300 px-2 py-1" />
               <th scope="col" className="border border-gray-300 px-2 py-1 text-right">
                 {t('reports.transactionLevy.table.buy')}
               </th>
