@@ -487,6 +487,28 @@ class TransactionLevyReportServiceTest {
         assertThat(report.getTotals().getSell().getNormalBaseLevy()).isEqualByComparingTo("0");
     }
 
+    @Test
+    @DisplayName("B49/D1 (FK-104 FR-2): conversion D1 + standalone BUY D2 in branch 001 "
+            + "\u2192 date ASC holds despite fold order")
+    void b49_dateAscHoldsAcrossConversionFoldOrderWithinOneBranch() {
+        authenticate("FOERTEKTAR");
+        stubRates(seedRate());
+        // FK-104 FR-2: the conversion group (parent + 2 children, D1) is stubbed
+        // BEFORE the standalone D2 row so the fold inserts the standalone row
+        // first — the same-branch date-ASC pin lost in d616a3a9 must still hold.
+        stubRows(conversionParentRow(), convBuyChildRow(), convSellChildRow(),
+                buyRow(D2, "3000000", "C1"));
+
+        TransactionLevyReportDto report = service.getReport(null, FROM, TO);
+
+        assertThat(report.getRows()).hasSize(2);
+        assertThat(report.getRows())
+                .as("B49/FK-104 FR-2: date ASC within one branch survives the conversion fold")
+                .extracting(TransactionLevyReportDto.Row::getBranchCode,
+                        TransactionLevyReportDto.Row::getDate)
+                .containsExactly(tuple("001", D1), tuple("001", D2));
+    }
+
     // ============================ B7–B8: query-szintű kizárások (mock-oldal) ============================
 
     @Test
