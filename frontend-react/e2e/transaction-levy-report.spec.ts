@@ -141,7 +141,14 @@ async function mockApis(page: Page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 'd1', category: 'REGION', code: 'SZEGED', name: 'Szeged', nameHu: 'Szeged', sortOrder: 1 },
+          {
+            id: 'd1',
+            category: 'REGION',
+            code: 'SZEGED',
+            name: 'Szeged',
+            nameHu: 'Szeged',
+            sortOrder: 1,
+          },
         ]),
       })
     }

@@ -558,7 +558,9 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     // FK-103 FR-1 (F15'): the wrapper class string matches the main-table idiom
     // byte-for-byte, and the monthly table carries a content-based min-width.
     // jsdom class check only — the layout proof is the Playwright E1/E2 spec.
-    expect(monthlyWrapper!.className).toBe('overflow-x-auto rounded border border-gray-200 bg-white')
+    expect(monthlyWrapper!.className).toBe(
+      'overflow-x-auto rounded border border-gray-200 bg-white',
+    )
     expect(monthlyTable.className).toContain('min-w-[')
   })
 
