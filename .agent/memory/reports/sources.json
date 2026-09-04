@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-03T06:11:15.104Z",
-  "source_count": 1086,
+  "generated_at": "2026-09-04T15:47:31.699Z",
+  "source_count": 1088,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12733,6 +12733,25 @@
       "sha256": "33bbe12ae661f4ae609b783866bcb35862917f9fef4e881e5a5d4552f5e946b4",
       "type": "medium-term-episodic",
       "areas": []
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-03-fkh045-fkh046.md",
+      "sha256": "e570864fc24ef7102bd481c8ffed4f52f11df8648f7ad800874e134510285c81",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "ertektar",
+        "installer",
+        "napzaras"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-04-v2.28.99-signed.md",
+      "sha256": "f697b610b89f28de5312008d2640e4817c14e1b17dbfa93840992d0654f695ca",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy"
+      ]
     },
     {
       "path": "vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md",
