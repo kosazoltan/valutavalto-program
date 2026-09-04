@@ -468,16 +468,20 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     expect(monthlyTable.querySelector('dl')).toBeNull()
 
     // Column headers reuse table.buy/table.sell — scope with within() because
-    // "Vétel"/"Eladás" also exist as main-table group headers. The corner th
-    // has no scope attribute (plan design decision 2), so filter by scope.
-    const colHeaders = (
-      Array.from(within(monthlyTable).getAllByRole('columnheader')) as HTMLTableCellElement[]
-    ).filter((th) => th.scope === 'col')
+    // "Vétel"/"Eladás" also exist as main-table group headers. FK-104 FR-3:
+    // the corner is a <td> (not a headerless <th>), so exactly 3 columnheaders
+    // remain — no scope filter needed (stronger than the old filtered form).
+    const colHeaders = Array.from(
+      within(monthlyTable).getAllByRole('columnheader'),
+    ) as HTMLTableCellElement[]
+    expect(colHeaders).toHaveLength(3)
     expect(colHeaders.map((th) => th.textContent)).toEqual(['Vétel', 'Eladás', 'Összesen'])
     colHeaders.forEach((th) => {
       expect(th.tagName).toBe('TH')
       expect(th.scope).toBe('col')
     })
+    // FK-104 FR-3: the monthly corner cell is a <td>, not an empty <th>.
+    expect(monthlyTable.querySelector('thead tr')!.firstElementChild!.tagName).toBe('TD')
 
     const rowHeaders = Array.from(
       within(monthlyTable).getAllByRole('rowheader'),
@@ -551,6 +555,11 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     const monthlyWrapper = monthlyTable.closest('.overflow-x-auto')
     expect(monthlyWrapper).not.toBeNull()
     expect(monthlyWrapper).not.toBe(mainTable.closest('.overflow-x-auto'))
+    // FK-103 FR-1 (F15'): the wrapper class string matches the main-table idiom
+    // byte-for-byte, and the monthly table carries a content-based min-width.
+    // jsdom class check only — the layout proof is the Playwright E1/E2 spec.
+    expect(monthlyWrapper!.className).toBe('overflow-x-auto rounded border border-gray-200 bg-white')
+    expect(monthlyTable.className).toContain('min-w-[')
   })
 
   // ============================ F12–F13: FK-100 FR-6 — region-legördülő ============================
