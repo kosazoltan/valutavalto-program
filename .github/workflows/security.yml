@@ -284,14 +284,26 @@ jobs:
         continue-on-error: true
         run: |
           cd frontend-react && npm ci --legacy-peer-deps
-          npm audit --audit-level=high
+          # Registry audit API flakes as HTTP 400 "Bad Request" (measured PR #1704).
+          for i in 1 2 3; do
+            npm audit --audit-level=high && exit 0
+            echo "audit attempt $i failed; retrying"
+            sleep 20
+          done
+          exit 1
 
       - name: Penztar-client npm audit
         id: penztar_audit
         continue-on-error: true
         run: |
           cd penztar-client && npm ci --legacy-peer-deps
-          npm audit --audit-level=high
+          for i in 1 2 3; do
+            npm audit --audit-level=high && exit 0
+            echo "audit attempt $i failed; retrying"
+            sleep 20
+          done
+          exit 1
+
 
       # AUDIT 2026-08-07: a kozponti-client (es az azota megszunt arfolyam-keszito-client)
       # eddig KIMARADT az auditbol, ezert bennuk eszrevetlenul allt egy brace-expansion
@@ -304,7 +316,12 @@ jobs:
         continue-on-error: true
         run: |
           cd kozponti-client && npm ci --legacy-peer-deps
-          npm audit --audit-level=high
+          for i in 1 2 3; do
+            npm audit --audit-level=high && exit 0
+            echo "audit attempt $i failed; retrying"
+            sleep 20
+          done
+          exit 1
 
       - name: Fail on high/critical npm audit findings
         if: |
