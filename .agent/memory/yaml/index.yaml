@@ -1,6 +1,6 @@
-generated_at: 2026-09-03T06:11:15.104Z
+generated_at: 2026-09-04T15:47:31.699Z
 schema_version: 1
-source_count: 1086
+source_count: 1088
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,24 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: e9c9ebd3d8ecd2e9
-    title: "v2.3.X Penztar/Ertektar UI audit (computer-use, élő Penztar.exe)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-30-v2.3.X-penztar-ertektar-audit-computer-use.md
-    status: documented-23-bugs
-    sha256: 640c245fa21c5355104d37e5e2fc98cc07a101fa9ff8ebf04df2a2df73c00f37
-    summary: "--- date: 2026-04-30 title: v2.3.X Penztar/Ertektar UI audit (computer-use, élő Penztar.exe) type: ui-audit duration: 06:50 → 07:10 CEST (~20 perc) status: documented-23-bugs related-pr: #326 (v2.4.0 foundation) --- # v2.3.X Pénztár/Értéktár UI audit — computer-use eredmények ## Összefoglaló A v2.3.X (jelenleg installálva: `Penztar-Setup-2.3.2-20260425.exe`) Electron alkalmazás teljes körű UI auditja `mcp__computer-u"
-    areas: [arfolyam, ertektar, frontend, napzaras, penztar, security]
-    keywords: [penztar, ertektar, audit, computer, use, elo, exe, date, 2026, title, type, duration]
-  - id: 6e7a64d9000f92d6
-    title: "v2.4.0 RELEASE — PR #326 admin-merge + telepítők build + Codex P1+P2 fix loop"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-30-v2.4.0-merged-installer-builds.md
-    status: COMPLETE
-    sha256: c1703f2c3c73d9f7e917e0c8725602f9d7f33d10c6c72d0b7acf42aa25a4cfdf
-    summary: "--- date: 2026-04-30 title: v2.4.0 RELEASE — PR #326 admin-merge + telepítők build + Codex P1+P2 fix loop type: release-merge duration: 06:30 → 07:42 CEST (~70 perc) status: COMPLETE related-pr: #326 (squash admin-merged main-re) main-head: cea183be --- # v2.4.0 release session — B6 multi-branch + i18next foundation ## TL;DR A v2.4.0 alapozó release sikeresen mergelve a main-re. Codex 2 inline finding (P1 tenant boun"
-    areas: [deploy, ertektar, frontend, installer, penztar, security, sync, tenant]
-    keywords: [release, 326, admin, merge, telepitok, build, codex, fix, loop, date, 2026, title]
   - id: 43377fa55daf70d0
     title: "v2.4.0 sprint kick-off — B6 multi-branch foundation + i18next setup"
     type: medium-term-episodic
@@ -1701,6 +1683,22 @@ medium_term:
     summary: "# Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene ## Done (evidence) - Working language rule (machine-to-machine ENGLISH): AGENTS.md §10 (db31113b), `.hermes.md` copy, 10 SOUL `## Working language` blocks, fact-gate `verify_artifact.py` INC-LANG-01 (mutation-proven). - Knowledge placement rule (never edit bundled skills; own skill + allowlist): root SOUL, `.hermes.md`, `hermes-local-environme"
     areas: []
     keywords: [handoff, 2026, hermes, knowledge, hygiene, valutavalto, repo, done, evidence, working, language, rule]
+  - id: d23532064b3aa0dc
+    title: "Handoff 2026-09-03 — FKH-045 (esti zárás csomagküldés) + FKH-046 (vault self-check)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-03-fkh045-fkh046.md
+    sha256: e570864fc24ef7102bd481c8ffed4f52f11df8648f7ad800874e134510285c81
+    summary: "# Handoff 2026-09-03 — FKH-045 (esti zárás csomagküldés) + FKH-046 (vault self-check) ## FKH-045 — Esti zárás adatcsomag-küldés szerver-konfigurációs hiba - **Gyökérok (élesben igazolva):** a Hetzner backend `user.home` = `/home/valuta` NEM létezett; a prod `integration.transport.root-path` default (`${user.home}/.valuta/integrations`) így írhatatlan volt → a csomagküldés 3 próba után mindig elbukott, a napzárás viss"
+    areas: [deploy, ertektar, installer, napzaras]
+    keywords: [handoff, 2026, fkh, 045, esti, zaras, csomagkuldes, 046, vault, self, check, adatcsomag]
+  - id: 1a8b6052de636664
+    title: "Handoff 2026-09-04 — v2.28.99 signed release"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-04-v2.28.99-signed.md
+    sha256: f697b610b89f28de5312008d2640e4817c14e1b17dbfa93840992d0654f695ca
+    summary: "# Handoff 2026-09-04 — v2.28.99 signed release - Main: `4c0e1218` PR #1704 MERGED (9-way bump + npm-audit timeout 30m + 3x retry). - Prod: `2.28.99` buildTime `2026-09-04T03:23:47Z` health ok. Deploy run 33832817839 success (Gate A + Scaleway). - Signed: run 33832842890 success, tag v2.28.99. Rollout 100. Both feeds present. - Downloads: `C:/zk/Downloads/valutavalto-v2.28.99` — verify-release PASS, Authenticode Valid"
+    areas: [deploy]
+    keywords: [handoff, 2026, signed, release, main, 4c0e1218, 1704, merged, way, bump, npm, audit]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

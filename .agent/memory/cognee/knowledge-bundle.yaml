@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-09-03T06:11:15.104Z
+generated_at: 2026-09-04T15:47:31.699Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7590,6 +7590,20 @@ nodes:
     summary: "# Handoff 2026-09-02 — Hermes knowledge hygiene + Valutaváltó repo hygiene ## Done (evidence) - Working language rule (machine-to-machine ENGLISH): AGENTS.md §10 (db31113b), `.hermes.md` copy, 10 SOUL `## Working language` blocks, fact-gate `verify_artifact.py` INC-LANG-01 (mutation-proven). - Knowledge placement rule (never edit bundled skills; own skill + allowlist): root SOUL, `.hermes.md`, `hermes-local-environme"
     tags: [handoff, 2026, hermes, knowledge, hygiene, valutavalto, repo, done, evidence, working]
     areas: []
+  - id: d23532064b3aa0dc
+    type: medium-term-episodic
+    title: "Handoff 2026-09-03 — FKH-045 (esti zárás csomagküldés) + FKH-046 (vault self-check)"
+    source_path: vault/sessions/handoff-2026-09-03-fkh045-fkh046.md
+    summary: "# Handoff 2026-09-03 — FKH-045 (esti zárás csomagküldés) + FKH-046 (vault self-check) ## FKH-045 — Esti zárás adatcsomag-küldés szerver-konfigurációs hiba - **Gyökérok (élesben igazolva):** a Hetzner backend `user.home` = `/home/valuta` NEM létezett; a prod `integration.transport.root-path` default (`${user.home}/.valuta/integrations`) így írhatatlan volt → a csomagküldés 3 próba után mindig elbukott, a napzárás viss"
+    tags: [handoff, 2026, fkh, 045, esti, zaras, csomagkuldes, 046, vault, self]
+    areas: [deploy, ertektar, installer, napzaras]
+  - id: 1a8b6052de636664
+    type: medium-term-episodic
+    title: "Handoff 2026-09-04 — v2.28.99 signed release"
+    source_path: vault/sessions/handoff-2026-09-04-v2.28.99-signed.md
+    summary: "# Handoff 2026-09-04 — v2.28.99 signed release - Main: `4c0e1218` PR #1704 MERGED (9-way bump + npm-audit timeout 30m + 3x retry). - Prod: `2.28.99` buildTime `2026-09-04T03:23:47Z` health ok. Deploy run 33832817839 success (Gate A + Scaleway). - Signed: run 33832842890 success, tag v2.28.99. Rollout 100. Both feeds present. - Downloads: `C:/zk/Downloads/valutavalto-v2.28.99` — verify-release PASS, Authenticode Valid"
+    tags: [handoff, 2026, signed, release, main, 4c0e1218, 1704, merged, way, bump]
+    areas: [deploy]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -23100,6 +23114,21 @@ edges:
   - from: c7525aeac40821a6
     to: area_penztar
     relation: belongs_to_area
+  - from: d23532064b3aa0dc
+    to: area_deploy
+    relation: belongs_to_area
+  - from: d23532064b3aa0dc
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: d23532064b3aa0dc
+    to: area_installer
+    relation: belongs_to_area
+  - from: d23532064b3aa0dc
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 1a8b6052de636664
+    to: area_deploy
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -23157,12 +23186,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 7889b22bccfeea4a
-    to: repo_project_state
-    relation: informs
-  - from: ae316c130e011079
-    to: repo_project_state
-    relation: informs
   - from: e270fb74d6289eaa
     to: repo_project_state
     relation: informs
@@ -23389,6 +23412,12 @@ edges:
     to: repo_project_state
     relation: informs
   - from: dfb18dc9929896bc
+    to: repo_project_state
+    relation: informs
+  - from: d23532064b3aa0dc
+    to: repo_project_state
+    relation: informs
+  - from: 1a8b6052de636664
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58
