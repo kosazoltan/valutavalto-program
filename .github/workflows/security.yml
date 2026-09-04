@@ -254,7 +254,9 @@ jobs:
   npm-audit:
     name: npm audit (frontend + penztar-client)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15m was too tight: 3 sequential npm ci+audit often hit the wall
+    # (GitHub reports job-timeout as cancelled). Measured 2026-09-04 on PR #1704.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
