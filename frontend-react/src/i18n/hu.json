@@ -4769,6 +4769,8 @@
     "nincs-nyitott-multbeli-nap": "Nincs nyitott múlt-beli nap — minden korábbi nap le van zárva.",
     "elobb-a-legregebbi-nyitott-napot-kell-lezarni": "Előbb a legrégebbi nyitott napot kell lezárni",
     "utolagos-zaras-inditasa": "Zárás indítása",
+    "utolagos-nap-megvizsgalasa": "Nap megvizsgálása",
+    "tevesen-lezart-nap-ujranyitasa": "Tévesen lezárt nap újranyitása",
     "zarolva": "Zárolva",
     "utolagos-1-lepes": "1. lépés — Címletezés rögzítése ({{date}})",
     "utolagos-rogzitse-a-nap-esti-keszletet": "Rögzítse a(z) {{date}} nap esti készletét a közös címletező oldalon.",
