@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-05T08:25:51.373Z",
-  "source_count": 1089,
+  "generated_at": "2026-09-05T20:39:39.518Z",
+  "source_count": 1091,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12764,6 +12764,24 @@
         "frontend",
         "installer",
         "napzaras"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-05-fkh051-auto-close-datummezo.md",
+      "sha256": "b6d2c8b160b9dc0c56b4cd88b3a80e82c2d69c84dce0d84cb22b232f8abb2142",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "frontend"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-05-fkh051-v2.28.102.md",
+      "sha256": "c1a00bde3d0217251aa5661755d0bbb7492637625beb24058c096471d60628c5",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy",
+        "penztar"
       ]
     },
     {

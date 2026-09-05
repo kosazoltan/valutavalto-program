@@ -1,6 +1,6 @@
-generated_at: 2026-09-05T08:25:51.373Z
+generated_at: 2026-09-05T20:39:39.518Z
 schema_version: 1
-source_count: 1089
+source_count: 1091
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,24 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 808e5d3012a2acc3
-    title: "v2.4.1 RELEASE — F8 TRB Export PSQLException production fix + telepítők"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-30-v2.4.1-trb-export-pg-fix-FINAL.md
-    status: COMPLETE-PRODUCTION-VERIFIED
-    sha256: 326250437dbc263b48b76d665111fd4cb4f439479a1ae14e10a89d68174c729f
-    summary: "--- date: 2026-04-30 title: v2.4.1 RELEASE — F8 TRB Export PSQLException production fix + telepítők type: release-fix duration: 08:23 → 11:00 CEST (~2.5 óra inkl. vault sync) status: COMPLETE-PRODUCTION-VERIFIED related-pr: #327 (squash admin-merged main-re) main-head: c1e887dd --- # v2.4.1 release session — F8 TRB Export PostgreSQL type inference fix ## TL;DR A v2.3.X / v2.4.0-ban felfedezett **F8 TRB Export funkcio"
-    areas: [deploy, ertektar, frontend, installer, penztar, security]
-    keywords: [release, trb, export, psqlexception, production, fix, telepitok, date, 2026, title, type, duration]
-  - id: 3fc2ce3076934fdc
-    title: "v2.4.10 — Értéktári vs Pénztári készlet domain szétválasztás + F-tab módfilter"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-30-v2.4.10-vault-vs-cashier-stocks-FINAL.md
-    status: MERGED-INSTALLED
-    sha256: ef5c10fa1179ef3c5bad3cbe443ff4fdbbe774d83990204b687d8ec300f01bd4
-    summary: "--- date: 2026-04-30 title: v2.4.10 — Értéktári vs Pénztári készlet domain szétválasztás + F-tab módfilter type: feature-release duration: 19:55 → 22:25 CEST (~2.5 óra) status: MERGED-INSTALLED related-prs: \"#334 (v2.4.8), #335 (v2.4.9→v2.4.10)\" main-head: cebbf99f (v2.4.10) --- # v2.4.10 sprint — domain helyreállítás ## TL;DR Két iteráció ugyanazon a problémán: 1. **v2.4.8 (PR #334)**: a user feedback alapján 3 fájl"
-    areas: [arfolyam, database, deploy, ertektar, frontend, installer, penztar]
-    keywords: [ertektari, penztari, keszlet, domain, szetvalasztas, tab, modfilter, date, 2026, title, type, feature]
   - id: 8f810149b2521a0d
     title: "v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage"
     type: medium-term-episodic
@@ -1698,6 +1680,22 @@ medium_term:
     summary: "# Handoff — 2026-09-05 FKH-049 + FKH-050 (stackelt, v2.28.101) ## Mit szállítottunk - **FKH-049**: `DenominationEntryPage` `isVaultContext = appMode === 'ertektar'` (a `hasCanonicalRole` selector kiváltva), useAppMode-ből — vault-kontextus app-mode alapon. - **FKH-050**: Utolagos (korabbi nap) napzaras — backend `RetroactiveClosingService` (listOpenPastDays / reconcile / closeRetroactively) + V387 datumnapi egyedi ku"
     areas: [database, deploy, ertektar, frontend, installer, napzaras]
     keywords: [handoff, 2026, fkh, 049, 050, stackelt, 101, mit, szallitottunk, denominationentrypage, isvaultcontext, appmode]
+  - id: f5648519952bb12f
+    title: "Handoff — FKH-051 auto-close fix + date-field retroactive close"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-05-fkh051-auto-close-datummezo.md
+    sha256: b6d2c8b160b9dc0c56b4cd88b3a80e82c2d69c84dce0d84cb22b232f8abb2142
+    summary: "# Handoff — FKH-051 auto-close fix + date-field retroactive close Status: **pipeline PASS**, not merged. User decides merge. - Job: `.hermes/pipeline/20260905-fkh051-auto-close-datummezo/` - Ticket: `.hermes/tickets/2026-09-05-fkh051-auto-close-javitas-datummezo.md` - Board: kanban.mjs #23 (in_review) - Branch: `pipeline/20260905-fkh051-auto-close-datummezo` @ `5a3c71ad` (worktree `D:/repo/wt-20260905-fkh051`) - Base"
+    areas: [deploy, frontend]
+    keywords: [handoff, fkh, 051, auto, close, fix, date, field, retroactive, status, pipeline, pass]
+  - id: b6170393d35a82f4
+    title: "Handoff — FKH-051 / v2.28.102 (2026-09-05)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-05-fkh051-v2.28.102.md
+    sha256: c1a00bde3d0217251aa5661755d0bbb7492637625beb24058c096471d60628c5
+    summary: "# Handoff — FKH-051 / v2.28.102 (2026-09-05) - PR #1711 squash-merged `6f516096` (head `7badb402`). - 10/10 required SUCCESS on PR head. Non-required: Frontend diff-coverage FAILURE (MainLayout.fk069 + TransactionLevyReportPage — files **not** in PR diff). - Merge = deploy: Hetzner run `33969442019` SUCCESS (Gate A+B). Prod `{\"version\":\"2.28.102\",\"buildTime\":\"2026-09-05T13:40:41Z\"}`. - Main CI SHA `6f516096` `MAIN_CI"
+    areas: [deploy, penztar]
+    keywords: [handoff, fkh, 051, 102, 2026, 1711, squash, merged, 6f516096, head, 7badb402, required]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic
