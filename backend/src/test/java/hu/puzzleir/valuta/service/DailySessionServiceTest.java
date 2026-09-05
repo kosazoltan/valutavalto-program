@@ -135,10 +135,13 @@ class DailySessionServiceTest {
                 .openingBalanceHuf(BigDecimal.ZERO)
                 .build();
 
-        when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(List.of());
+        // FKH-051 WU6: openDay no longer calls findOpenSessionsByBranch (force-close
+        // loop removed) nor findLatest (hard block removed) — lenient so the stubs
+        // do not become UnnecessaryStubbing errors; assertions are unchanged.
+        Mockito.lenient().when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(List.of());
         when(dailySessionRepository.findByBranchIdAndSessionDate(org.mockito.ArgumentMatchers.eq(companyId), eq(branchId), eq(LocalDate.now())))
                 .thenReturn(Optional.empty());
-        when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(Optional.empty());
+        Mockito.lenient().when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(Optional.empty());
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
@@ -177,10 +180,12 @@ class DailySessionServiceTest {
                 .openingBalanceHuf(BigDecimal.ZERO)
                 .build();
 
-        when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(List.of());
+        // FKH-051 WU6: see openDay_handlesInconsistentBalancesWithout500 — lenient
+        // stubs for the removed force-close loop and hard block; assertions unchanged.
+        Mockito.lenient().when(dailySessionRepository.findOpenSessionsByBranch(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(List.of());
         when(dailySessionRepository.findByBranchIdAndSessionDate(org.mockito.ArgumentMatchers.eq(companyId), eq(branchId), eq(LocalDate.now())))
                 .thenReturn(Optional.empty());
-        when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(Optional.empty());
+        Mockito.lenient().when(dailySessionRepository.findLatest(org.mockito.ArgumentMatchers.eq(companyId), org.mockito.ArgumentMatchers.eq(branchId))).thenReturn(Optional.empty());
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
         when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));

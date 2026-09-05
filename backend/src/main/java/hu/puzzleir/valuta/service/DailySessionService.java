@@ -70,17 +70,9 @@ public class DailySessionService {
             throw new ValidationException("Értéktári fiók nem nyithat napi pénztári munkamenetet");
         }
 
-        // Stale sessionök automatikus lezárása (korábbi napok)
-        List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(companyId, branchId).stream()
-                .filter(s -> s.getSessionDate() != null && s.getSessionDate().isBefore(today))
-                .toList();
-        for (DailySession stale : staleSessions) {
-            log.warn("Stale session automatikus lezárása: sessionDate={}, branchId={}", stale.getSessionDate(), branchId);
-            stale.setStatus(DailySessionStatus.CLOSED);
-            stale.setClosedAt(LocalDateTime.now());
-            stale.setClosingBalanceHuf(stale.getOpeningBalanceHuf() != null ? stale.getOpeningBalanceHuf() : BigDecimal.ZERO);
-            dailySessionRepository.save(stale);
-        }
+        // FKH-051: the destructive stale-session force-close loop was REMOVED.
+        // A past OPEN day now survives openDay; the retroactive closing flow
+        // (FKH-050, /closing/retroactive) is the sanctioned way to close it.
 
         // Ellenőrzés: nincs-e már MAI session
         Optional<DailySession> existingOpt = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, today);
@@ -120,12 +112,9 @@ public class DailySessionService {
                     + existing.getStatus().getDisplayName());
         }
 
-        // Ellenőrzés: előző nap le van-e zárva
-        dailySessionRepository.findLatest(companyId, branchId).ifPresent(lastSession -> {
-            if (lastSession.getStatus() == DailySessionStatus.OPEN) {
-                throw new ValidationException("Az előző nap nincs lezárva!");
-            }
-        });
+        // FKH-051 (plan D1): the previous-day hard block ("Az előző nap nincs
+        // lezárva!") was REMOVED — with the force-close loop gone it would newly
+        // block openDay. Day-open stays warning-only (validateSessionOpen).
 
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company nem található"));
