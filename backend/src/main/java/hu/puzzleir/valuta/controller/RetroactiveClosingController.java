@@ -1,6 +1,7 @@
 package hu.puzzleir.valuta.controller;
 
 import hu.puzzleir.valuta.dto.retroactiveclosing.OpenPastDayDto;
+import hu.puzzleir.valuta.dto.retroactiveclosing.RetroactiveDayInspectionDto;
 import hu.puzzleir.valuta.dto.retroactiveclosing.RetroactiveReconciliationDto;
 import hu.puzzleir.valuta.service.RetroactiveClosingService;
 import lombok.RequiredArgsConstructor;
@@ -70,5 +71,36 @@ public class RetroactiveClosingController {
                 "sessionDate", session.getSessionDate().toString(),
                 "retroactiveClosedAt", session.getRetroactiveClosedAt() == null
                         ? "" : session.getRetroactiveClosedAt().toString()));
+    }
+
+    /**
+     * FKH-051 (plan D4): inspect one typed past date — returns the kind enum
+     * (OPEN | FALSE_CLOSED | GENUINE_CLOSED | NO_SESSION | NOT_PAST); the FE
+     * branches on {@code kind}, never on the message text.
+     *
+     * GET /api/v1/retroactive-closing/{branchId}/{date}/inspect
+     */
+    @GetMapping("/{branchId}/{date}/inspect")
+    public ResponseEntity<RetroactiveDayInspectionDto> inspect(
+            @PathVariable UUID branchId,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(retroactiveClosingService.inspect(branchId, date));
+    }
+
+    /**
+     * FKH-051 (plan D5): reopen a FALSE_CLOSED day (D3 fingerprint, re-checked
+     * under the row lock) so the FKH-050 flow can run on it. Separate POST — a
+     * state change must not hide behind a GET.
+     *
+     * POST /api/v1/retroactive-closing/{branchId}/{date}/reopen
+     */
+    @PostMapping("/{branchId}/{date}/reopen")
+    public ResponseEntity<Map<String, Object>> reopen(
+            @PathVariable UUID branchId,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        var session = retroactiveClosingService.reopenFalseClosed(branchId, date);
+        return ResponseEntity.ok(Map.of(
+                "ok", true,
+                "sessionDate", session.getSessionDate().toString()));
     }
 }
