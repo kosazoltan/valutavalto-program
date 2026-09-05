@@ -449,12 +449,18 @@ export const denominationBalanceApi = {
     cashDeskId: string,
     currencyId: string,
     category?: DenominationBalanceCategory,
+    // FKH-050 (D5): optional business date for retroactive denomination entry.
+    businessDate?: string,
   ): Promise<DenominationBalanceDTO[]> => {
     // FKH-038: a kategória opcionális query-paraméter — hiányában a backend EVENING-et
     // alkalmaz (visszamenőleg kompatibilis). A becímletező oldal a route kategóriáját küldi.
+    // FKH-050: a businessDate is opcionális — hiányában a mai napra szűr a backend.
+    const params: Record<string, string> = {}
+    if (category) params.category = category
+    if (businessDate) params.businessDate = businessDate
     const response = await api.get<DenominationBalanceDTO[]>(
       `/cash-desks/${cashDeskId}/denominations/currency/${currencyId}`,
-      category ? { params: { category } } : undefined,
+      Object.keys(params).length > 0 ? { params } : undefined,
     )
     return response.data
   },
@@ -462,13 +468,18 @@ export const denominationBalanceApi = {
     cashDeskId: string,
     updates: DenominationQuantityUpdateRequest[],
     category?: DenominationBalanceCategory,
+    // FKH-050 (D5): optional business date for retroactive denomination entry.
+    businessDate?: string,
   ): Promise<DenominationBalanceDTO[]> => {
     // FK-078 (FR-2/FR-3): a kategória opcionális query-paraméter — hiányában a backend
     // a korábbi EVENING viselkedést tartja (visszamenőleg kompatibilis).
+    const params: Record<string, string> = {}
+    if (category) params.category = category
+    if (businessDate) params.businessDate = businessDate
     const response = await api.post<DenominationBalanceDTO[]>(
       `/cash-desks/${cashDeskId}/denominations/batch`,
       updates,
-      category ? { params: { category } } : undefined,
+      Object.keys(params).length > 0 ? { params } : undefined,
     )
     return response.data
   },
@@ -479,10 +490,14 @@ export const denominationBalanceApi = {
   selfCheck: async (
     cashDeskId: string,
     category: DenominationBalanceCategory,
+    // FKH-050 (D5): optional business date for retroactive denomination entry.
+    businessDate?: string,
   ): Promise<DenominationSelfCheck[]> => {
+    const params: Record<string, string> = { category }
+    if (businessDate) params.businessDate = businessDate
     const response = await api.get<DenominationSelfCheck[]>(
       `/cash-desks/${cashDeskId}/denominations/self-check`,
-      { params: { category } },
+      { params },
     )
     return response.data
   },
@@ -2195,6 +2210,38 @@ export const eveningClosingApi = {
     (await api.post(`/evening-closing/${branchId}/${date}/send`)).data,
   report: async (branchId: string, date: string) =>
     (await api.get(`/evening-closing/${branchId}/${date}/report`)).data,
+}
+
+// ================== RETROACTIVE CLOSING API (FKH-050) ==================
+
+/** FKH-050: one open past day on the retroactive closing entry point. */
+export interface RetroactiveOpenPastDay {
+  date: string
+}
+
+/** FKH-050: one currency row of the past-day reconciliation table. */
+export interface RetroactiveReconciliationRow {
+  currencyCode: string
+  expected: number
+  actual: number
+  difference: number
+  blocking: boolean
+}
+
+/** FKH-050: reconciliation of a past day (expected from that day's daily_balance). */
+export interface RetroactiveReconciliation {
+  date: string
+  rows: RetroactiveReconciliationRow[]
+  anyBlocking: boolean
+}
+
+export const retroactiveClosingApi = {
+  listOpenDays: async (branchId: string): Promise<RetroactiveOpenPastDay[]> =>
+    (await api.get(`/retroactive-closing/${branchId}/open-days`)).data,
+  reconcile: async (branchId: string, date: string): Promise<RetroactiveReconciliation> =>
+    (await api.post(`/retroactive-closing/${branchId}/${date}/reconciliation`)).data,
+  close: async (branchId: string, date: string) =>
+    (await api.post(`/retroactive-closing/${branchId}/${date}/close`)).data,
 }
 
 // ================== DAILY CHECKLIST API ==================
