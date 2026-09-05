@@ -64,7 +64,7 @@ jobs:
           echo "Pre-flight OK — no duplicate Flyway versions."
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
