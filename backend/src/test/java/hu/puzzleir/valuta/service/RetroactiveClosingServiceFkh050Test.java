@@ -145,6 +145,20 @@ class RetroactiveClosingServiceFkh050Test {
         verify(dailySessionRepository, never()).findOpenPastSessionsByBranch(any(), any(), any());
     }
 
+    @Test
+    @DisplayName("FR-1/D2: reconcile scope guard rejects a foreign branch before any data access")
+    void fr1_reconcileScopeGuardRejectsForeignBranch() {
+        UUID foreignBranch = UUID.randomUUID();
+        LocalDate pastDate = LocalDate.now().minusDays(1);
+        // Scope narrowed to a vault region that does NOT contain the foreign branch.
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(Set.of(branchId));
+
+        assertThatThrownBy(() -> service.reconcile(foreignBranch, pastDate))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(dailyBalanceService, never()).calculateAllCurrenciesForDay(any(), any());
+        verify(denominationBalanceRepository, never()).sumActualStockByCurrency(any(), any(), any());
+    }
+
     // ---------------------------------------------------------------------
     // D3 — chronological, oldest-first
     // ---------------------------------------------------------------------

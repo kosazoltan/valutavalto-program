@@ -105,6 +105,7 @@ public class RetroactiveClosingService {
      * Never touches today's {@code cash_balance}/{@code currency_stock} (NFR-1).
      */
     public RetroactiveReconciliationDto reconcile(UUID branchId, LocalDate date) {
+        requireRetroactiveScope(branchId);
         requirePastDate(date);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
 
