@@ -91,18 +91,10 @@ public class SessionOpenService {
 
         LocalDate today = LocalDate.now();
 
-        // Stale sessionök automatikus lezárása (korábbi napok) — #2 fix
-        List<DailySession> staleSessions = dailySessionRepository.findOpenSessionsByBranch(companyId, branchId).stream()
-                .filter(s -> s.getSessionDate() != null && s.getSessionDate().isBefore(today))
-                .toList();
-        for (DailySession stale : staleSessions) {
-            log.warn("Stale session automatikus lezárása (SessionOpenService): sessionDate={}, branchId={}",
-                    stale.getSessionDate(), branchId);
-            stale.setStatus(DailySessionStatus.CLOSED);
-            stale.setClosedAt(LocalDateTime.now());
-            stale.setClosingBalanceHuf(stale.getOpeningBalanceHuf() != null ? stale.getOpeningBalanceHuf() : BigDecimal.ZERO);
-            dailySessionRepository.save(stale);
-        }
+        // FKH-051: the destructive stale-session force-close loop was REMOVED.
+        // A past OPEN day now survives day-open; the caller sees the
+        // validateSessionOpen warning and closes the day via the FKH-050
+        // retroactive flow (/closing/retroactive).
 
         // Ellenőrzés: nincs-e lezáratlan MAI session
         if (dailySessionRepository.hasOpenSession(companyId, branchId)) {

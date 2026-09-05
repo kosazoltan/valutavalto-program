@@ -2214,9 +2214,28 @@ export const eveningClosingApi = {
 
 // ================== RETROACTIVE CLOSING API (FKH-050) ==================
 
+/** FKH-051 (plan D4): classification of one past date for retroactive closing. */
+export type RetroactiveDayKind =
+  | 'OPEN'
+  | 'FALSE_CLOSED'
+  | 'GENUINE_CLOSED'
+  | 'NO_SESSION'
+  | 'NOT_PAST'
+
 /** FKH-050: one open past day on the retroactive closing entry point. */
 export interface RetroactiveOpenPastDay {
   date: string
+  /** FKH-051 (plan D6): additive; a missing kind (older cached response) means OPEN. */
+  kind?: RetroactiveDayKind
+}
+
+/** FKH-051 (plan D4): result of inspecting one typed past date. */
+export interface RetroactiveDayInspection {
+  date: string
+  kind: RetroactiveDayKind
+  canStart: boolean
+  canReprocess: boolean
+  message: string
 }
 
 /** FKH-050: one currency row of the past-day reconciliation table. */
@@ -2242,6 +2261,12 @@ export const retroactiveClosingApi = {
     (await api.post(`/retroactive-closing/${branchId}/${date}/reconciliation`)).data,
   close: async (branchId: string, date: string) =>
     (await api.post(`/retroactive-closing/${branchId}/${date}/close`)).data,
+  /** FKH-051 (plan D4): inspect one typed past date (read-only kind enum). */
+  inspect: async (branchId: string, date: string): Promise<RetroactiveDayInspection> =>
+    (await api.get(`/retroactive-closing/${branchId}/${date}/inspect`)).data,
+  /** FKH-051 (plan D5): reopen a false-closed day, then the FKH-050 flow can start. */
+  reopen: async (branchId: string, date: string): Promise<{ ok: boolean; sessionDate: string }> =>
+    (await api.post(`/retroactive-closing/${branchId}/${date}/reopen`)).data,
 }
 
 // ================== DAILY CHECKLIST API ==================
