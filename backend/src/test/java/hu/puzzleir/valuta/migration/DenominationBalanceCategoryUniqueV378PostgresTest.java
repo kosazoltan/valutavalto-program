@@ -101,7 +101,10 @@ class DenominationBalanceCategoryUniqueV378PostgresTest {
     @Test
     @DisplayName("V378/FR-1: a kategoria-mentes kulcs eltunik, a kategoria-tudatos kulcs all")
     void v378LecsereliAzEgyediKulcsot() throws Exception {
-        migrateToLatest();
+        // FKH-050: a V387 szandekosan lecsereli a 3-oszlopu kulcsot a datumnapi
+        // 4-oszlopu kulcsra (D5) — ezert ez a teszt a V378 UTANI allapotot a V378-as
+        // verzora pinneve allitja (a "latest" mar a V387 utani semat mutatna).
+        migrateToVersion(version(V378_FILE_PATTERN));
 
         try (Connection connection = openConnection()) {
             assertThat(uniqueConstraintColumns(connection, OLD_CONSTRAINT))
@@ -140,7 +143,8 @@ class DenominationBalanceCategoryUniqueV378PostgresTest {
     @Test
     @DisplayName("V378/FR-3: az AZONOS kategoriaju duplikatumot az uj kulcs tovabbra is tiltja")
     void v378TovabbraIsTiltjaAzAzonosKategoriajuDuplikatumot() throws Exception {
-        migrateToLatest();
+        // FKH-050: V378-verziora pinneve (a V387 datumnapi kulcsra cserel — D5).
+        migrateToVersion(version(V378_FILE_PATTERN));
 
         try (Connection connection = openConnection()) {
             Fixture fixture = seedDenomination(connection);
@@ -190,7 +194,8 @@ class DenominationBalanceCategoryUniqueV378PostgresTest {
     @Test
     @DisplayName("V378/NFR-2: a nyers SQL ujrafuttatasa hiba nelkul lefut es nem valtoztat a semen")
     void v378Idempotens() throws Exception {
-        migrateToLatest();
+        // FKH-050: V378-verziora pinneve (a V387 datumnapi kulcsra cserel — D5).
+        migrateToVersion(version(V378_FILE_PATTERN));
 
         String sql = Files.readString(resolveMigration(V378_FILE_PATTERN),
                 java.nio.charset.StandardCharsets.UTF_8);

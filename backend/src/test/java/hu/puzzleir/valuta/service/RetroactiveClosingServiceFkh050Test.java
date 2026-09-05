@@ -286,7 +286,8 @@ class RetroactiveClosingServiceFkh050Test {
         LocalDate d3 = today.minusDays(3);
 
         // Past day book value = 100000 HUF.
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(branchId, d3, "HUF"))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(
+                companyId, branchId, d3, "HUF"))
                 .thenReturn(Optional.of(DailyBalance.builder()
                         .branchId(branchId)
                         .balanceDate(d3)
@@ -303,7 +304,7 @@ class RetroactiveClosingServiceFkh050Test {
         // Counted EVENING HUF stock with submissionDate = D-3 is 100000.
         when(denominationBalanceRepository.sumActualStockByCurrency(
                 branchId, d3, hu.puzzleir.valuta.entity.DenominationCategory.EVENING))
-                .thenReturn(List.of(new Object[]{"HUF", new BigDecimal("100000.00")}));
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("100000.00")}));
         when(closingToleranceService.getToleranceFor("HUF"))
                 .thenReturn(ClosingTolerance.fallbackOf(BigDecimal.ONE));
 
@@ -374,7 +375,10 @@ class RetroactiveClosingServiceFkh050Test {
 
         when(dailySessionRepository.findOpenPastSessionsByBranch(companyId, branchId, today))
                 .thenReturn(List.of(d3Session));
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(branchId, d3, "HUF"))
+        when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
+                branchId, d3, companyId)).thenReturn(Optional.of(d3Session));
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(
+                companyId, branchId, d3, "HUF"))
                 .thenReturn(Optional.of(DailyBalance.builder()
                         .branchId(branchId)
                         .balanceDate(d3)
@@ -383,7 +387,7 @@ class RetroactiveClosingServiceFkh050Test {
                         .build()));
         when(denominationBalanceRepository.sumActualStockByCurrency(
                 branchId, d3, hu.puzzleir.valuta.entity.DenominationCategory.EVENING))
-                .thenReturn(List.of(new Object[]{"HUF", new BigDecimal("90000.00")}));
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("90000.00")}));
         when(closingToleranceService.getToleranceFor("HUF"))
                 .thenReturn(ClosingTolerance.explicitOf(BigDecimal.ONE));
 
@@ -409,7 +413,8 @@ class RetroactiveClosingServiceFkh050Test {
 
     /** Clean reconciliation for the given date (expected == actual == 100000 HUF). */
     private void stubReconciliationClean(LocalDate date) {
-        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(branchId, date, "HUF"))
+        when(dailyBalanceRepository.findByBranchIdAndBalanceDateAndCurrencyCode(
+                companyId, branchId, date, "HUF"))
                 .thenReturn(Optional.of(DailyBalance.builder()
                         .branchId(branchId)
                         .balanceDate(date)
@@ -418,7 +423,7 @@ class RetroactiveClosingServiceFkh050Test {
                         .build()));
         when(denominationBalanceRepository.sumActualStockByCurrency(
                 branchId, date, hu.puzzleir.valuta.entity.DenominationCategory.EVENING))
-                .thenReturn(List.of(new Object[]{"HUF", new BigDecimal("100000.00")}));
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("100000.00")}));
         when(closingToleranceService.getToleranceFor("HUF"))
                 .thenReturn(ClosingTolerance.fallbackOf(BigDecimal.ONE));
     }

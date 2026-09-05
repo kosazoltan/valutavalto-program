@@ -121,7 +121,11 @@ class DenominationBalanceRetroactiveDateFkh050Test {
                         branchId, 7L, DenominationCategory.EVENING, d3))
                 .thenReturn(Optional.empty());
         when(denominationBalanceRepository.save(any(DenominationBalance.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> {
+                    DenominationBalance saved = invocation.getArgument(0);
+                    saved.setId(UUID.randomUUID());
+                    return saved;
+                });
 
         // Today's entry: 5 x 1000 HUF (businessDate=null -> today).
         service.updateQuantity(branchId, 7L, 5, DenominationCategory.EVENING, null);
@@ -144,7 +148,7 @@ class DenominationBalanceRetroactiveDateFkh050Test {
         // The past-date stock aggregation reads by the past date only.
         when(denominationBalanceRepository.sumActualStockByCurrency(
                 branchId, d3, DenominationCategory.EVENING))
-                .thenReturn(List.of(new Object[]{"HUF", new BigDecimal("3000")}));
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("3000")}));
         List<Object[]> pastStock = denominationBalanceRepository
                 .sumActualStockByCurrency(branchId, d3, DenominationCategory.EVENING);
         assertThat((BigDecimal) pastStock.get(0)[1]).isEqualByComparingTo("3000");
@@ -167,7 +171,7 @@ class DenominationBalanceRetroactiveDateFkh050Test {
         // Counts exist only for D-3.
         when(denominationBalanceRepository.sumActualStockByCurrency(
                 branchId, d3, DenominationCategory.EVENING))
-                .thenReturn(List.of(new Object[]{"HUF", new BigDecimal("3000")}));
+                .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("3000")}));
         when(denominationBalanceRepository.sumActualStockByCurrency(
                 branchId, today, DenominationCategory.EVENING))
                 .thenReturn(List.of());

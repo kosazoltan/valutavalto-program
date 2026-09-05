@@ -179,15 +179,33 @@ public class DenominationBalanceService {
      * Esti zárás (EVENING) HUF-készlete előtöltődött a Kezelési díj (HANDLING_FEE) oldalon.
      * A WRITE-út ({@link #batchUpdate}) már kategória-tudatos volt; a betöltés mostantól
      * ugyanazt a szűrést alkalmazza. Hiányzó kategória → EVENING (WRITE/selfCheck mintája).</p>
+     *
+     * <p>FKH-050 (D5): a visszamenőleg kompatibilis alak a MAI napra szűr
+     * ({@code businessDate=null} → ma) — így egy új napon a mai oldal üresen indul,
+     * nem tölti elő a tegnapi sort (elfogadott viselkedés-változás, D5 pinned test).</p>
      */
     @Transactional(readOnly = true)
     public List<DenominationBalanceDto> getCashDeskDenominationsByCurrency(
             UUID cashDeskId, Long currencyId, DenominationCategory category) {
+        return getCashDeskDenominationsByCurrency(cashDeskId, currencyId, category, null);
+    }
+
+    /**
+     * FKH-050 (D5): dátum-tudatos olvasás — csak az adott üzleti napra beküldött sorok.
+     * {@code businessDate == null} → mai nap. A dátum-szűrés miatt egy múlt-beli nap
+     * retroaktív sora nem szivárog be a mai oldalra (és viszont).
+     */
+    @Transactional(readOnly = true)
+    public List<DenominationBalanceDto> getCashDeskDenominationsByCurrency(
+            UUID cashDeskId, Long currencyId, DenominationCategory category,
+            LocalDate businessDate) {
         requireOwnCashDesk(cashDeskId);
         DenominationCategory effectiveCategory =
                 category == null ? DenominationCategory.EVENING : category;
+        LocalDate effectiveDate = businessDate != null ? businessDate : LocalDate.now();
         return denominationBalanceRepository
-                .findByCashDeskIdAndCurrencyIdAndCategory(cashDeskId, currencyId, effectiveCategory)
+                .findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                        cashDeskId, currencyId, effectiveCategory, effectiveDate)
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -213,6 +231,19 @@ public class DenominationBalanceService {
      */
     public DenominationBalanceDto updateQuantity(UUID cashDeskId, Long denominationId, int quantity,
                                                  DenominationCategory category) {
+        // FKH-050: a visszamenőleg kompatibilis alak a mai napra ír, dátum-vak
+        // upsert-lookuppal (a V387 előtti viselkedés, a mai flow változatlan — NFR-1).
+        return updateQuantity(cashDeskId, denominationId, quantity, category, null);
+    }
+
+    /**
+     * FKH-050 (D5): dátum-tudatos címlet-írás. {@code businessDate == null} → a mai nap
+     * a V387 előtti (dátum-vak) upsert-úton; explicit múlt-beli dátummal a lookup és az
+     * írás is {@code submission_date}-re szűrt, így a múlt-beli sor NEM írja felül a mai
+     * folyamatban lévő sort (pénzügyi adatvesztés elkerülése).
+     */
+    public DenominationBalanceDto updateQuantity(UUID cashDeskId, Long denominationId, int quantity,
+                                                 DenominationCategory category, LocalDate businessDate) {
         requireOwnCashDesk(cashDeskId);
         // FK-080 (FR-5): a cimlet-sor gatja — cross-tenant/nem letezo → 404, tiltott vagy
         // inaktiv sor → VV-VALID-007 (400). A sort MINDIG betoltjuk (nem csak az orElseGet
@@ -220,8 +251,14 @@ public class DenominationBalanceService {
         Denomination denomination = requireAllowedDenomination(denominationId);
         DenominationCategory effectiveCategory =
                 category == null ? DenominationCategory.EVENING : category;
+        // FKH-050 (D5 / V387): a lookup DATUM-TUDATOS — businessDate nélkül a mai napra.
+        // A datum-vak lookup a 4-oszlopu egyedi kulcs alatt tobb sort adhatna
+        // (IncorrectResultSizeDataAccessException), illetve egy mult-beli retroaktiv
+        // sort irna felul — penzugyi adatvesztes.
+        LocalDate effectiveDate = businessDate != null ? businessDate : LocalDate.now();
         DenominationBalance balance = denominationBalanceRepository
-                .findByCashDeskIdAndDenominationIdAndCategory(cashDeskId, denominationId, effectiveCategory)
+                .findByCashDeskIdAndDenominationIdAndCategoryAndSubmissionDate(
+                        cashDeskId, denominationId, effectiveCategory, effectiveDate)
                 .orElseGet(() -> DenominationBalance.builder()
                         .cashDeskId(cashDeskId)
                         .denomination(denomination)
@@ -235,11 +272,12 @@ public class DenominationBalanceService {
         balance.recalculateTotalValue();
         // FK-060: ez a karbantartó út nem kap zárási varázsló-dátumot, ezért a
         // ClosingWizardService.startWizard által is használt aktuális üzleti napot rögzíti.
-        balance.setSubmissionDate(LocalDate.now());
+        // FKH-050: explicit businessDate esetén a múlt-beli napra ír.
+        balance.setSubmissionDate(effectiveDate);
 
         DenominationBalance saved = denominationBalanceRepository.save(balance);
-        log.info("Címlet egyenleg frissítve: cashDesk={}, denomination={}, quantity={}, category={}",
-                cashDeskId, denominationId, quantity, effectiveCategory);
+        log.info("Címlet egyenleg frissítve: cashDesk={}, denomination={}, quantity={}, category={}, date={}",
+                cashDeskId, denominationId, quantity, effectiveCategory, effectiveDate);
 
         return toDto(saved);
     }
@@ -257,6 +295,19 @@ public class DenominationBalanceService {
     public List<DenominationBalanceDto> batchUpdate(UUID cashDeskId,
                                                     List<DenominationQuantityUpdateRequestDto> updates,
                                                     DenominationCategory category) {
+        // FKH-050: visszamenőleg kompatibilis alak — a mai napra ír (businessDate=null).
+        return batchUpdate(cashDeskId, updates, category, null);
+    }
+
+    /**
+     * FKH-050 (D5): batch címlet-frissítés EXPLICIT üzleti dátummal — a múlt-beli nap
+     * retroaktív becímletezése nem írhatja felül a mai folyamatban lévő sort.
+     * {@code businessDate == null} → mai nap (V387 előtti viselkedés).
+     */
+    public List<DenominationBalanceDto> batchUpdate(UUID cashDeskId,
+                                                    List<DenominationQuantityUpdateRequestDto> updates,
+                                                    DenominationCategory category,
+                                                    LocalDate businessDate) {
         requireOwnCashDesk(cashDeskId);
         DenominationCategory effectiveCategory =
                 category == null ? DenominationCategory.EVENING : category;
@@ -265,7 +316,7 @@ public class DenominationBalanceService {
         for (DenominationQuantityUpdateRequestDto update : updates) {
             Long denominationId = Long.parseLong(update.getDenominationId());
             DenominationBalanceDto result =
-                    updateQuantity(cashDeskId, denominationId, update.getQuantity(), effectiveCategory);
+                    updateQuantity(cashDeskId, denominationId, update.getQuantity(), effectiveCategory, businessDate);
             results.add(result);
         }
 
@@ -288,11 +339,23 @@ public class DenominationBalanceService {
      */
     @Transactional(readOnly = true)
     public List<DenominationSelfCheckDto> selfCheck(UUID cashDeskId, DenominationCategory category) {
+        // FKH-050: visszamenőleg kompatibilis alak — a mai napra ellenőriz (businessDate=null).
+        return selfCheck(cashDeskId, category, null);
+    }
+
+    /**
+     * FKH-050 (D5): önellenőrzés EXPLICIT üzleti dátummal — a múlt-beli nap retroaktív
+     * becímletezett állományát hasonlítja a könyv szerinti egyenleghez.
+     * {@code businessDate == null} → mai nap (V387 előtti viselkedés).
+     */
+    @Transactional(readOnly = true)
+    public List<DenominationSelfCheckDto> selfCheck(UUID cashDeskId, DenominationCategory category,
+                                                    LocalDate businessDate) {
         requireOwnCashDesk(cashDeskId);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         DenominationCategory effectiveCategory =
                 category == null ? DenominationCategory.EVENING : category;
-        LocalDate today = LocalDate.now();
+        LocalDate today = businessDate != null ? businessDate : LocalDate.now();
 
         // Becimletezett osszeg penznemenkent: [currencyCode, SUM(totalValue)]
         Map<String, BigDecimal> denominated = new HashMap<>();

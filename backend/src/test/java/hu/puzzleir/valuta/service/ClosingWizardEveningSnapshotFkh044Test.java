@@ -324,8 +324,8 @@ class ClosingWizardEveningSnapshotFkh044Test {
     void t6_resubmittedDenominationNotZeroed() {
         DenominationBalance eur50Row = eveningRow(eur50, 10);
         lenient().when(denominationBalanceRepository
-                        .findByCashDeskIdAndDenominationIdAndCategory(branchId, 101L,
-                                DenominationCategory.EVENING))
+                        .findByCashDeskIdAndDenominationIdAndCategoryAndSubmissionDate(branchId, 101L,
+                                DenominationCategory.EVENING, businessDate))
                 .thenReturn(Optional.of(eur50Row));
         lenient().when(denominationBalanceRepository
                         .findAllByBranchIdAndDateAndCategoryIncludingZero(branchId, businessDate,

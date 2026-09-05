@@ -43,6 +43,23 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
     );
 
     /**
+     * FKH-050 (D5 / V387): date-aware currency-scoped read — only rows of the
+     * given submission date. Without the date filter a past day's retroactive
+     * row would leak into today's entry page (and vice versa).
+     */
+    @Query("SELECT db FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :cashDeskId " +
+           "AND db.denomination.currency.id = :currencyId " +
+           "AND db.denominationCategory = :category " +
+           "AND db.submissionDate = :submissionDate")
+    List<DenominationBalance> findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+        @Param("cashDeskId") UUID cashDeskId,
+        @Param("currencyId") Long currencyId,
+        @Param("category") DenominationCategory category,
+        @Param("submissionDate") java.time.LocalDate submissionDate
+    );
+
+    /**
      * FK-078 (FR-3) / FKH-033: kategória-tudatos egyedi rekord — pénztár + címlet + kategória.
      *
      * <p>Ez az EGYETLEN megengedett upsert-lookup a {@code denomination_balance} táblára.
@@ -61,6 +78,25 @@ public interface DenominationBalanceRepository extends JpaRepository<Denominatio
         @Param("cashDeskId") UUID cashDeskId,
         @Param("denominationId") Long denominationId,
         @Param("category") DenominationCategory category
+    );
+
+    /**
+     * FKH-050 (D5 / V387): date-aware upsert lookup — cash desk + denomination +
+     * category + submission date. This is the ONLY allowed upsert lookup for
+     * date-keyed writes: under the V387 4-column unique key a dateless lookup can
+     * match a row of ANOTHER business day, and updating it would clobber that
+     * day's counted stock (financial data loss).
+     */
+    @Query("SELECT db FROM DenominationBalance db " +
+           "WHERE db.cashDeskId = :cashDeskId " +
+           "AND db.denomination.id = :denominationId " +
+           "AND db.denominationCategory = :category " +
+           "AND db.submissionDate = :submissionDate")
+    Optional<DenominationBalance> findByCashDeskIdAndDenominationIdAndCategoryAndSubmissionDate(
+        @Param("cashDeskId") UUID cashDeskId,
+        @Param("denominationId") Long denominationId,
+        @Param("category") DenominationCategory category,
+        @Param("submissionDate") java.time.LocalDate submissionDate
     );
 
     /**

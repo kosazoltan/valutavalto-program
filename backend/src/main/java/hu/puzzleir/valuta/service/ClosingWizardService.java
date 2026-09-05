@@ -717,9 +717,13 @@ public class ClosingWizardService {
         // probalt beszurni, amit a V75-os (cash_desk_id, denomination_id) kulcs elutasitott
         // — DataIntegrityViolationException / 500 a torvenyileg kotelezo napi zarasban.
         // A kulcsot a V378 terjeszti ki a kategoriara.
+        // FKH-050 (D5 / V387): a lookup DATUM-TUDATOS is — a 4-oszlopu egyedi kulcs alatt
+        // egy (penztar, cimlet, kategoria) haromashoz tobb datumu sor tartozhat, es a
+        // datum-vak lookup tobb sort adna (IncorrectResultSizeDataAccessException), illetve
+        // egy mult-beli retroaktiv sort irna felul. A wizard a sajat businessDate-re ir.
         DenominationBalance balance = denominationBalanceRepository
-                .findByCashDeskIdAndDenominationIdAndCategory(
-                        branchId, denomination.getId(), DenominationCategory.EVENING)
+                .findByCashDeskIdAndDenominationIdAndCategoryAndSubmissionDate(
+                        branchId, denomination.getId(), DenominationCategory.EVENING, businessDate)
                 .orElseGet(() -> DenominationBalance.builder()
                         .cashDeskId(branchId)
                         .denomination(denomination)
