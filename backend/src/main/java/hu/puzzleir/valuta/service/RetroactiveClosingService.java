@@ -4,6 +4,8 @@ import hu.puzzleir.valuta.dto.ClosingMarkType;
 import hu.puzzleir.valuta.dto.eveningclosing.DailyDataPackage;
 import hu.puzzleir.valuta.dto.eveningclosing.DataSyncResult;
 import hu.puzzleir.valuta.dto.retroactiveclosing.OpenPastDayDto;
+import hu.puzzleir.valuta.dto.retroactiveclosing.RetroactiveDayInspectionDto;
+import hu.puzzleir.valuta.dto.retroactiveclosing.RetroactiveDayKind;
 import hu.puzzleir.valuta.dto.retroactiveclosing.RetroactiveReconciliationDto;
 import hu.puzzleir.valuta.entity.DailyBalance;
 import hu.puzzleir.valuta.entity.DailySession;
@@ -28,7 +30,9 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -87,11 +91,107 @@ public class RetroactiveClosingService {
         requireRetroactiveScope(branchId);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate today = LocalDate.now();
-        return dailySessionRepository.findOpenPastSessionsByBranch(companyId, branchId, today)
-                .stream()
-                .map(session -> new OpenPastDayDto(session.getSessionDate(),
-                        hu.puzzleir.valuta.dto.retroactiveclosing.RetroactiveDayKind.OPEN))
-                .toList();
+        // FKH-051 (plan D6): union of OPEN and false-closed (D3 fingerprint) past
+        // days, oldest first — a false-closed day must be reopenable from the same
+        // entry point without any data migration.
+        List<DailySession> open =
+                dailySessionRepository.findOpenPastSessionsByBranch(companyId, branchId, today);
+        List<DailySession> falseClosed =
+                dailySessionRepository.findFalseClosedPastSessionsByBranch(companyId, branchId, today);
+        List<OpenPastDayDto> union = new ArrayList<>(open.size() + falseClosed.size());
+        open.forEach(session -> union.add(new OpenPastDayDto(
+                session.getSessionDate(), RetroactiveDayKind.OPEN)));
+        falseClosed.forEach(session -> union.add(new OpenPastDayDto(
+                session.getSessionDate(), RetroactiveDayKind.FALSE_CLOSED)));
+        union.sort(Comparator.comparing(OpenPastDayDto::date));
+        return union;
+    }
+
+    // ---------------------------------------------------------------------
+    // FKH-051 (plan D4) — inspect one typed past date
+    // ---------------------------------------------------------------------
+
+    /**
+     * FKH-051 (plan D4): classify a typed past date for retroactive closing.
+     * Read-only; the FE branches ONLY on {@code kind}, never on the message.
+     */
+    @Transactional(readOnly = true)
+    public RetroactiveDayInspectionDto inspect(UUID branchId, LocalDate date) {
+        requireRetroactiveScope(branchId);
+        if (date == null || !date.isBefore(LocalDate.now())) {
+            return new RetroactiveDayInspectionDto(date, RetroactiveDayKind.NOT_PAST, false, false,
+                    "Utólagos zárás csak múlt-beli napra indítható.");
+        }
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Optional<DailySession> sessionOpt =
+                dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, date);
+        if (sessionOpt.isEmpty()) {
+            return new RetroactiveDayInspectionDto(date, RetroactiveDayKind.NO_SESSION, false, false,
+                    "Nincs napi munkamenet erre a napra: " + date);
+        }
+        DailySession session = sessionOpt.get();
+        if (session.getStatus() != DailySessionStatus.CLOSED) {
+            return new RetroactiveDayInspectionDto(date, RetroactiveDayKind.OPEN, true, false,
+                    "A nap nyitott — az utólagos zárás elindítható: " + date);
+        }
+        if (isFalseClosed(session)) {
+            return new RetroactiveDayInspectionDto(date, RetroactiveDayKind.FALSE_CLOSED, false, true,
+                    "Ez a nap a régi napnyitási automatika miatt tévesen lett lezárva. "
+                            + "Újranyitás után az utólagos zárás elindítható: " + date);
+        }
+        return new RetroactiveDayInspectionDto(date, RetroactiveDayKind.GENUINE_CLOSED, false, false,
+                "Ez a nap szabályosan le van zárva, utólagos zárás nem indítható: " + date);
+    }
+
+    // ---------------------------------------------------------------------
+    // FKH-051 (plan D5) — reopen a false-closed day
+    // ---------------------------------------------------------------------
+
+    /**
+     * FKH-051 (plan D5): reopen a FALSE_CLOSED day (D3 fingerprint) so the
+     * existing FKH-050 flow can run on it. The fingerprint is re-checked UNDER
+     * the pessimistic row lock — a concurrent {@code closeRetroactively} may have
+     * set {@code closedByWorker} between inspect and reopen. Writes NO
+     * cash_balance row (NFR-1) and recomputes NO later day (NFR-2); audited as
+     * RETROACTIVE_FALSE_CLOSED_REOPENED.
+     */
+    public DailySession reopenFalseClosed(UUID branchId, LocalDate date) {
+        requireRetroactiveScope(branchId);
+        requirePastDate(date);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+
+        DailySession session = dailySessionRepository
+                .findByBranchIdAndSessionDateAndCompanyIdForUpdate(branchId, date, companyId)
+                .orElseThrow(() -> new ValidationException(
+                        "Nincs napi munkamenet erre a napra: " + date));
+        if (!isFalseClosed(session)) {
+            throw new ValidationException(
+                    "Csak tévesen lezárt nap nyitható újra (valódi zárás vagy már újranyitott nap): " + date);
+        }
+
+        session.setStatus(DailySessionStatus.OPEN);
+        session.setClosedAt(null);
+        session.setClosingBalanceHuf(null);
+        DailySession saved = dailySessionRepository.save(session);
+
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        auditLogService.log("RETROACTIVE_FALSE_CLOSED_REOPENED",
+                String.format("{\"branch_id\":\"%s\",\"session_date\":\"%s\",\"worker_id\":%d}",
+                        branchId, date, workerId),
+                branchId.toString());
+        log.info("False-closed day reopened: branch={}, date={}, worker={}", branchId, date, workerId);
+        return saved;
+    }
+
+    /**
+     * Plan D3 fingerprint (single definition): CLOSED + {@code closedByWorker ==
+     * null} + {@code isRetroactiveClosing} null-or-false. Callers guarantee the
+     * past date; the row lock guards concurrency at the reopen site.
+     */
+    private boolean isFalseClosed(DailySession session) {
+        return session.getStatus() == DailySessionStatus.CLOSED
+                && session.getClosedByWorker() == null
+                && !Boolean.TRUE.equals(session.getIsRetroactiveClosing());
     }
 
     // ---------------------------------------------------------------------

@@ -205,8 +205,6 @@ class RetroactiveClosingServiceFkh051Test {
         when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
                 branchId, d2, companyId)).thenReturn(Optional.of(locked));
         when(dailySessionRepository.save(any(DailySession.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(workerRepository.findById(workerId))
-                .thenReturn(Optional.of(Worker.builder().id(workerId).code("CASHIER1").build()));
 
         DailySession result = service.reopenFalseClosed(branchId, d2);
 
@@ -245,8 +243,6 @@ class RetroactiveClosingServiceFkh051Test {
         when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
                 branchId, d2, companyId)).thenReturn(Optional.of(locked));
         when(dailySessionRepository.save(any(DailySession.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(workerRepository.findById(workerId))
-                .thenReturn(Optional.of(Worker.builder().id(workerId).code("CASHIER1").build()));
 
         service.reopenFalseClosed(branchId, d2);
 
