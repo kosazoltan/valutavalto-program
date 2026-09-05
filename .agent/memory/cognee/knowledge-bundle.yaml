@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-09-05T08:25:51.373Z
+generated_at: 2026-09-05T20:39:39.518Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7611,6 +7611,20 @@ nodes:
     summary: "# Handoff — 2026-09-05 FKH-049 + FKH-050 (stackelt, v2.28.101) ## Mit szállítottunk - **FKH-049**: `DenominationEntryPage` `isVaultContext = appMode === 'ertektar'` (a `hasCanonicalRole` selector kiváltva), useAppMode-ből — vault-kontextus app-mode alapon. - **FKH-050**: Utolagos (korabbi nap) napzaras — backend `RetroactiveClosingService` (listOpenPastDays / reconcile / closeRetroactively) + V387 datumnapi egyedi ku"
     tags: [handoff, 2026, fkh, 049, 050, stackelt, 101, mit, szallitottunk, denominationentrypage]
     areas: [database, deploy, ertektar, frontend, installer, napzaras]
+  - id: f5648519952bb12f
+    type: medium-term-episodic
+    title: "Handoff — FKH-051 auto-close fix + date-field retroactive close"
+    source_path: vault/sessions/handoff-2026-09-05-fkh051-auto-close-datummezo.md
+    summary: "# Handoff — FKH-051 auto-close fix + date-field retroactive close Status: **pipeline PASS**, not merged. User decides merge. - Job: `.hermes/pipeline/20260905-fkh051-auto-close-datummezo/` - Ticket: `.hermes/tickets/2026-09-05-fkh051-auto-close-javitas-datummezo.md` - Board: kanban.mjs #23 (in_review) - Branch: `pipeline/20260905-fkh051-auto-close-datummezo` @ `5a3c71ad` (worktree `D:/repo/wt-20260905-fkh051`) - Base"
+    tags: [handoff, fkh, 051, auto, close, fix, date, field, retroactive, status]
+    areas: [deploy, frontend]
+  - id: b6170393d35a82f4
+    type: medium-term-episodic
+    title: "Handoff — FKH-051 / v2.28.102 (2026-09-05)"
+    source_path: vault/sessions/handoff-2026-09-05-fkh051-v2.28.102.md
+    summary: "# Handoff — FKH-051 / v2.28.102 (2026-09-05) - PR #1711 squash-merged `6f516096` (head `7badb402`). - 10/10 required SUCCESS on PR head. Non-required: Frontend diff-coverage FAILURE (MainLayout.fk069 + TransactionLevyReportPage — files **not** in PR diff). - Merge = deploy: Hetzner run `33969442019` SUCCESS (Gate A+B). Prod `{\"version\":\"2.28.102\",\"buildTime\":\"2026-09-05T13:40:41Z\"}`. - Main CI SHA `6f516096` `MAIN_CI"
+    tags: [handoff, fkh, 051, 102, 2026, 1711, squash, merged, 6f516096, head]
+    areas: [deploy, penztar]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -23154,6 +23168,18 @@ edges:
   - from: ae92074086e4d345
     to: area_napzaras
     relation: belongs_to_area
+  - from: f5648519952bb12f
+    to: area_deploy
+    relation: belongs_to_area
+  - from: f5648519952bb12f
+    to: area_frontend
+    relation: belongs_to_area
+  - from: b6170393d35a82f4
+    to: area_deploy
+    relation: belongs_to_area
+  - from: b6170393d35a82f4
+    to: area_penztar
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -23211,12 +23237,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 75c07d9f2ec550e1
-    to: repo_project_state
-    relation: informs
-  - from: 64427bcf7621175c
-    to: repo_project_state
-    relation: informs
   - from: fdf2389c60fd36a6
     to: repo_project_state
     relation: informs
@@ -23443,6 +23463,12 @@ edges:
     to: repo_project_state
     relation: informs
   - from: ae92074086e4d345
+    to: repo_project_state
+    relation: informs
+  - from: f5648519952bb12f
+    to: repo_project_state
+    relation: informs
+  - from: b6170393d35a82f4
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58
