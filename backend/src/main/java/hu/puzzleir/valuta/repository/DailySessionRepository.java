@@ -237,6 +237,26 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
             @Param("today") LocalDate today);
 
     /**
+     * FKH-051 (plan D3): "false-closed" past-day fingerprint — the destructive
+     * day-open auto-close wrote CLOSED with {@code closedByWorker IS NULL} and no
+     * retroactive stamp. Company-scoped (invariant #1), oldest first (matches
+     * {@code findOpenPastSessionsByBranch}). The boxed {@code isRetroactiveClosing}
+     * needs the explicit {@code IS NULL OR = FALSE} arm.
+     */
+    @Query("SELECT ds FROM DailySession ds " +
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId " +
+           "AND ds.sessionDate < :today " +
+           "AND ds.status = hu.puzzleir.valuta.entity.DailySessionStatus.CLOSED " +
+           "AND ds.closedByWorker IS NULL " +
+           "AND (ds.isRetroactiveClosing IS NULL OR ds.isRetroactiveClosing = FALSE) " +
+           "ORDER BY ds.sessionDate ASC")
+    List<DailySession> findFalseClosedPastSessionsByBranch(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("today") LocalDate today);
+
+    /**
      * Utolsó session lekérése
      */
     default Optional<DailySession> findLatest(UUID companyId, UUID branchId) {
