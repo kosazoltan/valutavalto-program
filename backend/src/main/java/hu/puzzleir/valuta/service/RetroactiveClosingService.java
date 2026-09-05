@@ -194,6 +194,26 @@ public class RetroactiveClosingService {
                 && !Boolean.TRUE.equals(session.getIsRetroactiveClosing());
     }
 
+    /** FKH-052: oldest processable past day = min(OPEN ∪ FALSE_CLOSED), null if none. */
+    private LocalDate oldestProcessablePastDate(UUID companyId, UUID branchId, LocalDate today) {
+        // Both finders are company-scoped and ORDER BY ds.sessionDate ASC, so the
+        // two heads are enough — no third union JPQL (ticket C11). This is exactly
+        // the set listOpenPastDays displays, so the table and the gate cannot drift.
+        LocalDate oldestOpen = dailySessionRepository
+                .findOpenPastSessionsByBranch(companyId, branchId, today).stream()
+                .findFirst().map(DailySession::getSessionDate).orElse(null);
+        LocalDate oldestFalseClosed = dailySessionRepository
+                .findFalseClosedPastSessionsByBranch(companyId, branchId, today).stream()
+                .findFirst().map(DailySession::getSessionDate).orElse(null);
+        if (oldestOpen == null) {
+            return oldestFalseClosed;
+        }
+        if (oldestFalseClosed == null) {
+            return oldestOpen;
+        }
+        return oldestOpen.isBefore(oldestFalseClosed) ? oldestOpen : oldestFalseClosed;
+    }
+
     // ---------------------------------------------------------------------
     // FR-5 / D6 — reconciliation against the PAST day's book value
     // ---------------------------------------------------------------------
@@ -259,13 +279,12 @@ public class RetroactiveClosingService {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate today = LocalDate.now();
 
-        // D3: chronological, oldest first — reject while an older open day exists.
-        List<DailySession> openPastDays =
-                dailySessionRepository.findOpenPastSessionsByBranch(companyId, branchId, today);
-        LocalDate oldest = openPastDays.isEmpty() ? null : openPastDays.get(0).getSessionDate();
+        // FKH-052 (D3): chronological, oldest first — the gate runs on the union
+        // of OPEN and FALSE_CLOSED past days (the same set listOpenPastDays shows).
+        LocalDate oldest = oldestProcessablePastDate(companyId, branchId, today);
         if (oldest == null || !oldest.isEqual(date)) {
             throw new ValidationException(
-                    "Utólagos zárás csak a legrégebbi nyitott napon indítható. Legrégebbi nyitott nap: "
+                    "Utólagos zárás csak a legrégebbi feldolgozható napon indítható. Legrégebbi feldolgozható nap: "
                             + (oldest == null ? "nincs" : oldest) + ", kért nap: " + date);
         }
 
