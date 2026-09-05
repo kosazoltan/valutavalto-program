@@ -200,7 +200,13 @@ class RetroactiveClosingServiceFkh051Test {
     @Test
     @DisplayName("FKH-051 T9: reopen false-closed day -> OPEN, closedAt/closingBalanceHuf null, audited")
     void reopen_falseClosed_setsOpenAndAudits() {
-        LocalDate d2 = LocalDate.now().minusDays(2);
+        LocalDate today = LocalDate.now();
+        LocalDate d2 = today.minusDays(2);
+        // FKH-052 union gate: the reopened day must be the oldest processable one.
+        when(dailySessionRepository.findOpenPastSessionsByBranch(companyId, branchId, today))
+                .thenReturn(List.of());
+        when(dailySessionRepository.findFalseClosedPastSessionsByBranch(companyId, branchId, today))
+                .thenReturn(List.of(falseClosedSession(d2)));
         DailySession locked = falseClosedSession(d2);
         when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
                 branchId, d2, companyId)).thenReturn(Optional.of(locked));
@@ -222,7 +228,15 @@ class RetroactiveClosingServiceFkh051Test {
     @Test
     @DisplayName("FKH-051 T10: reopen genuine CLOSED -> ValidationException, no save")
     void reopen_genuineClosed_throwsAndDoesNotMutate() {
-        LocalDate d2 = LocalDate.now().minusDays(2);
+        LocalDate today = LocalDate.now();
+        LocalDate d2 = today.minusDays(2);
+        // FKH-052 union gate: pass the order gate so the under-lock genuine-CLOSED
+        // check remains the exercised path (finder list row differs from the locked
+        // row — the gate only reads dates; the fingerprint check runs under lock).
+        when(dailySessionRepository.findOpenPastSessionsByBranch(companyId, branchId, today))
+                .thenReturn(List.of());
+        when(dailySessionRepository.findFalseClosedPastSessionsByBranch(companyId, branchId, today))
+                .thenReturn(List.of(falseClosedSession(d2)));
         DailySession genuine = falseClosedSession(d2);
         genuine.setClosedByWorker(Worker.builder().id(workerId).code("CASHIER1").build());
         when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
@@ -238,7 +252,13 @@ class RetroactiveClosingServiceFkh051Test {
     @Test
     @DisplayName("FKH-051 T11 (NFR-1/NFR-2): reopen touches no cash_balance and recomputes no day")
     void reopen_doesNotTouchCashBalance() {
-        LocalDate d2 = LocalDate.now().minusDays(2);
+        LocalDate today = LocalDate.now();
+        LocalDate d2 = today.minusDays(2);
+        // FKH-052 union gate: the reopened day must be the oldest processable one.
+        when(dailySessionRepository.findOpenPastSessionsByBranch(companyId, branchId, today))
+                .thenReturn(List.of());
+        when(dailySessionRepository.findFalseClosedPastSessionsByBranch(companyId, branchId, today))
+                .thenReturn(List.of(falseClosedSession(d2)));
         DailySession locked = falseClosedSession(d2);
         when(dailySessionRepository.findByBranchIdAndSessionDateAndCompanyIdForUpdate(
                 branchId, d2, companyId)).thenReturn(Optional.of(locked));
