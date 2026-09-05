@@ -209,6 +209,7 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       'Ügyfelek',
       'Átadás-átvétel visszaigazolás (aláírás)',
       'Napzárás',
+      'Utólagos napzárás',
       'Árfolyamok (nézet)',
       'Tranzakciólista',
       'Egyéb feladatok',
@@ -232,6 +233,8 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       // FKH-042 FR-6: a meglévő „Címletezés – zárások" hub az Értéktár csoportban,
       // közvetlenül a „Napi zárás" után (kontraktus-frissítés — nem gyengítés).
       'Címletezés – zárások',
+      // FKH-050: utólagos napzárás belépési pont (Értéktár, saját régió — D2).
+      'Utólagos napzárás',
       // FKH-036 FR-9: a „Napzárás” bejegyzés rejtett lett az értéktáros elől
       // (hidden: true) — ezért a látható listából kikerül; a foertektar-bypass
       // lista (lent) VÁLTOZATLANUL tartalmazza.
@@ -258,6 +261,7 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       'Átadás-átvétel visszaigazolás (aláírás)',
       'Új átadás-átvétel rögzítése',
       'Napzárás',
+      'Utólagos napzárás',
       'Árfolyamok (nézet)',
       'Tranzakciólista',
       'Egyéb feladatok',
@@ -284,6 +288,7 @@ describe('FKH-026 — NFR-1 regresszió-őr: a nem érintett menüpontok változ
       'Napi zárás',
       // FKH-042 FR-6: a foertektar bypass ugyanazt a bejegyzést látja (P12).
       'Címletezés – zárások',
+      'Utólagos napzárás',
       'Napzárás',
       'Havi zárás',
       'Ügyfelek',
@@ -399,6 +404,7 @@ describe('FKH-042 FR-6 — „Címletezés – zárások" hub az Értéktár (lo
       'Ügyfelek',
       'Átadás-átvétel visszaigazolás (aláírás)',
       'Napzárás',
+      'Utólagos napzárás',
       'Árfolyamok (nézet)',
       'Tranzakciólista',
       'Egyéb feladatok',

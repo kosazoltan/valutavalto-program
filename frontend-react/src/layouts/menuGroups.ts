@@ -165,6 +165,8 @@ export const menuGroups: MenuGroup[] = [
         hidden: true,
       },
       { path: '/closing/wizard', label: 'Napzárás', icon: FileText },
+      // FKH-050: utólagos napzárás — korábbi, nem lezárt napok egyszerűsített zárása.
+      { path: '/closing/retroactive', label: 'Utólagos napzárás', icon: FileText },
       { path: '/rates', label: 'Árfolyamok (nézet)', icon: TrendingUp },
       { path: '/transactions', label: 'Tranzakciólista', icon: FileText },
       // EXCMD b6b FR-EFM-01: konszolidált „Egyéb feladatok" menü (NAV/POS variáns a konfiguráció szerint).
@@ -246,6 +248,9 @@ export const menuGroups: MenuGroup[] = [
       // ClosingDenominationMenuPage) az Értéktár menüből is elérhető — nincs oldal-klón, és az
       // EveningClosingPage CTA-i (FKH-036) VÁLTOZATLANUL maradnak.
       { path: '/closing/denominations-menu', label: 'Címletezés – zárások', icon: FileText },
+      // FKH-050: az értéktáros a saját régiójának nyitott múlt-beli napjait zárhatja
+      // utólag (a scope-guard a region_code-ra szűkít — D2).
+      { path: '/closing/retroactive', label: 'Utólagos napzárás', icon: FileText },
       // FKH-036 FR-9: a Pénztári zárás-varázsló Értéktár-módban használhatatlan (az 1. lépés
       // pénztári napi munkamenetet követel), ezért az értéktáros elől rejtett. A route és a
       // ClosingWizardPage VÁLTOZATLAN (FR-10); a felügyeleti bypass továbbra is látja.

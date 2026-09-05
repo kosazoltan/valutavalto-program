@@ -150,6 +150,9 @@ const ClosingDenominationMenuPage = lazy(
 )
 // FK-078: kozos, kategoria-tudatos becimletezo oldal (a regi DenominationPage utodja).
 const DenominationEntryPage = lazy(() => import('./pages/closing/DenominationEntryPage'))
+// FKH-050: utólagos (retroaktív) napzárás — lista + 3 lépéses flow.
+const RetroactiveClosingListPage = lazy(() => import('./pages/closing/RetroactiveClosingListPage'))
+const RetroactiveClosingPage = lazy(() => import('./pages/closing/RetroactiveClosingPage'))
 const DocumentStoragePage = lazy(() => import('./pages/documents/DocumentStoragePage'))
 const NotificationPage = lazy(() => import('./pages/notifications/NotificationPage'))
 const OrganizationalSystemParameterPage = lazy(
@@ -924,6 +927,9 @@ export default function App() {
                   path="/closing/denomination-entry/:category"
                   element={<DenominationEntryPage />}
                 />
+                {/* FKH-050: utólagos (retroaktív) napzárás — lista + 3 lépéses flow. */}
+                <Route path="/closing/retroactive" element={<RetroactiveClosingListPage />} />
+                <Route path="/closing/retroactive/:date" element={<RetroactiveClosingPage />} />
 
                 {/* Document Storage */}
                 <Route path="/documents" element={<DocumentStoragePage />} />
