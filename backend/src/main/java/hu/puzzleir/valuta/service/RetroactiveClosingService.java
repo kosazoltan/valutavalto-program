@@ -159,6 +159,16 @@ public class RetroactiveClosingService {
         requireRetroactiveScope(branchId);
         requirePastDate(date);
         UUID companyId = SecurityUtils.getCurrentCompanyId();
+        // FKH-052 (FR-2): the same chronological gate as closeRetroactively —
+        // reopen only on the oldest processable day. A rejected reopen takes no
+        // lock and writes nothing (no save, no audit).
+        LocalDate today = LocalDate.now();
+        LocalDate oldest = oldestProcessablePastDate(companyId, branchId, today);
+        if (oldest == null || !oldest.isEqual(date)) {
+            throw new ValidationException(
+                    "Újranyitás csak a legrégebbi feldolgozható napon indítható. Legrégebbi feldolgozható nap: "
+                            + (oldest == null ? "nincs" : oldest) + ", kért nap: " + date);
+        }
 
         DailySession session = dailySessionRepository
                 .findByBranchIdAndSessionDateAndCompanyIdForUpdate(branchId, date, companyId)
