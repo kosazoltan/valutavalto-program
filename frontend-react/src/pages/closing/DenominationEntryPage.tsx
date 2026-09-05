@@ -16,6 +16,7 @@ import { toast } from '../../components/ui/toaster'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
+import { useAppMode } from '../../hooks/useAppMode'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { isAllowedFaceValue } from '../../utils/denominationRules'
 import { resolveClosingDenominationExitRoute } from './closingDenominationMenu'
@@ -88,14 +89,14 @@ export default function DenominationEntryPage() {
   const worker = useAuthStore(
     (s: { worker: { id?: string | number; branchId: string; role?: string } | null }) => s.worker,
   )
-  const hasCanonicalRole = useAuthStore(
-    (s: { hasCanonicalRole?: (roles: string | string[]) => boolean }) => s.hasCanonicalRole,
-  )
+  const { mode: appMode } = useAppMode()
   /**
-   * FKH-039: vault vs pénztár — explicit named feltétel a közös fájlban (FR-3).
-   * Szerepkör-alapú, a ShipmentNewPage / ClosingWizard mintájára.
+   * FKH-049: vault context derives from the active app-mode, NOT the role set.
+   * The legacy role map (appModeRoles.ts) resolves MANAGER/TREASURY_MANAGER to the
+   * 'ertektar' canonical role, so a penztar cashier holding a legacy MANAGER role was
+   * over-matched and misrouted to /evening-closing. App-mode is the source of truth.
    */
-  const isVaultContext = Boolean(hasCanonicalRole?.(['ertektar', 'foertektar']))
+  const isVaultContext = appMode === 'ertektar'
 
   const exitRoute = returnToRoute ?? resolveClosingDenominationExitRoute(isVaultContext)
 

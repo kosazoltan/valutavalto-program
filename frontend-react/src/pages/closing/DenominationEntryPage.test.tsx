@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DenominationEntryPage from './DenominationEntryPage'
 import { CLOSING_DENOMINATION_VAULT_EXIT_ROUTE } from './closingDenominationMenu'
 import { formatDecimal } from '../../utils/numberFormat'
+import type { AppMode } from '../../types/appMode'
 
 /**
  * FK-078 — kozos, kategoria-tudatos becimletezo oldal.
@@ -33,6 +34,14 @@ const mocks = vi.hoisted(() => ({
 }))
 
 let categoryParam = 'EVENING'
+
+// FKH-049: the page derives vault context from the active app-mode, not the role set.
+// Module-level value driven by the useAppMode mock below; beforeEach resets it to 'penztar'.
+let appModeValue: AppMode = 'penztar'
+
+vi.mock('../../hooks/useAppMode', () => ({
+  useAppMode: () => ({ mode: appModeValue, isLoading: false }),
+}))
 
 // FKH-036 FR-4: a useSearchParams mockja — a returnTo query-paraméter vezérli a Kilépés célját.
 let searchParamsValue = new URLSearchParams()
@@ -157,8 +166,15 @@ function renderPage() {
 beforeEach(() => {
   vi.clearAllMocks()
   categoryParam = 'EVENING'
+  appModeValue = 'penztar'
   searchParamsValue = new URLSearchParams()
-  mocks.hasCanonicalRole.mockReturnValue(false)
+  // FKH-049: over-matching legacy role map — MANAGER/TREASURY_MANAGER resolve to the
+  // 'ertektar' canonical role (appModeRoles.ts legacy behaviour). A page that still
+  // reads roles would be misrouted to the vault exit even in penztar app-mode.
+  mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
+    const list = Array.isArray(roles) ? roles : [roles]
+    return list.some((r) => r === 'ertektar' || r === 'foertektar')
+  })
   mocks.currencyGetActive.mockResolvedValue([{ id: 1, code: 'EUR', name: 'Euró' }])
   mocks.denominationGetByCurrencyId.mockResolvedValue(EUR_DENOMINATIONS)
   mocks.balancesGetByCurrency.mockResolvedValue([])
@@ -322,10 +338,7 @@ describe('DenominationEntryPage — FK-078', () => {
   })
 
   it('FKH-039 FR-2: vault kontextusban nincs „Mentés és visszalépés” gomb', async () => {
-    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
-      const list = Array.isArray(roles) ? roles : [roles]
-      return list.includes('ertektar') || list.includes('foertektar')
-    })
+    appModeValue = 'ertektar'
     renderPage()
 
     expect(await screen.findByTestId('denomination-entry-exit')).toBeInTheDocument()
@@ -340,10 +353,7 @@ describe('DenominationEntryPage — FK-078', () => {
   })
 
   it('FKH-039 FR-1: vault Kilépés ment, majd navigál', async () => {
-    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
-      const list = Array.isArray(roles) ? roles : [roles]
-      return list.includes('ertektar') || list.includes('foertektar')
-    })
+    appModeValue = 'ertektar'
     searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
     const user = userEvent.setup()
     renderPage()
@@ -355,10 +365,7 @@ describe('DenominationEntryPage — FK-078', () => {
   })
 
   it('FKH-039 FR-4: vault returnTo nélkül a Kilépés (mentés után) /evening-closing-re esik', async () => {
-    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
-      const list = Array.isArray(roles) ? roles : [roles]
-      return list.includes('ertektar') || list.includes('foertektar')
-    })
+    appModeValue = 'ertektar'
     const user = userEvent.setup()
     renderPage()
 
@@ -411,10 +418,7 @@ describe('DenominationEntryPage — FK-078', () => {
   })
 
   it('FKH-036 kieg. #2 FR-11: vault kontextusban a két gomb ugyanoda visz (Kilépés === Napi zárás végrehajtása)', async () => {
-    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
-      const list = Array.isArray(roles) ? roles : [roles]
-      return list.includes('ertektar') || list.includes('foertektar')
-    })
+    appModeValue = 'ertektar'
     searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
     const user = userEvent.setup()
     renderPage()
@@ -442,10 +446,7 @@ describe('DenominationEntryPage — FK-078', () => {
   // ——— cashier-only closing wizard (FR-1), without starting the wizard (FR-2). ———
 
   it('FKH-047 FR-1: vault + no returnTo → start-closing navigates to /evening-closing', async () => {
-    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
-      const list = Array.isArray(roles) ? roles : [roles]
-      return list.includes('ertektar') || list.includes('foertektar')
-    })
+    appModeValue = 'ertektar'
     const user = userEvent.setup()
     renderPage()
 
@@ -459,10 +460,7 @@ describe('DenominationEntryPage — FK-078', () => {
 
   it('FKH-047 FR-4: same vault fallback on the HANDLING_FEE route', async () => {
     categoryParam = 'HANDLING_FEE'
-    mocks.hasCanonicalRole.mockImplementation((roles: string | string[]) => {
-      const list = Array.isArray(roles) ? roles : [roles]
-      return list.includes('ertektar') || list.includes('foertektar')
-    })
+    appModeValue = 'ertektar'
     const user = userEvent.setup()
     renderPage()
 
@@ -470,6 +468,85 @@ describe('DenominationEntryPage — FK-078', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith(CLOSING_DENOMINATION_VAULT_EXIT_ROUTE)
     expect(mocks.navigate).not.toHaveBeenCalledWith('/closing/wizard')
+  })
+
+  // ——— FKH-049: vault context derives from the active app-mode, not the role set. ———
+  // hasCanonicalRole(['ertektar','foertektar']) stays TRUE in every case below (the
+  // beforeEach over-matching mock emulates a penztar cashier holding a legacy MANAGER
+  // role), so these tests pass only if the page reads the app-mode.
+
+  it('FKH-049 FR-1a: penztar app-mode + exit → /cashier, no save, despite TRUE hasCanonicalRole', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/evening-closing')
+    expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
+  })
+
+  it('FKH-049 FR-1b: penztar app-mode + start-closing → /closing/wizard, despite TRUE hasCanonicalRole', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-start-closing'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/closing/wizard')
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/evening-closing')
+  })
+
+  it('FKH-049 FR-1c: penztar app-mode → save-and-return IS present, despite TRUE hasCanonicalRole', async () => {
+    renderPage()
+
+    expect(await screen.findByTestId('denomination-entry-save-and-return')).toBeInTheDocument()
+  })
+
+  it('FKH-049 FR-2: ertektar app-mode + start-closing → vault exit route, not /closing/wizard', async () => {
+    appModeValue = 'ertektar'
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-start-closing'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith(CLOSING_DENOMINATION_VAULT_EXIT_ROUTE)
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/closing/wizard')
+  })
+
+  it('FKH-049 FR-2b: ertektar app-mode + exit → saves, then /evening-closing', async () => {
+    appModeValue = 'ertektar'
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+
+    await waitFor(() => expect(mocks.balancesSetQuantities).toHaveBeenCalledTimes(1))
+    expect(mocks.navigate).toHaveBeenCalledWith('/evening-closing')
+  })
+
+  it('FKH-049 FR-3: penztar + returnTo=/evening-closing → both buttons honor returnTo', async () => {
+    searchParamsValue = new URLSearchParams('returnTo=/evening-closing')
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-start-closing'))
+    expect(mocks.navigate).toHaveBeenNthCalledWith(1, '/evening-closing')
+
+    // Penztar exit is unchanged by FKH-049: it navigates WITHOUT saving
+    // (FKH-039 FR-3 regression guard, covered by the FKH-036 FR-4 test above).
+    await user.click(screen.getByTestId('denomination-entry-exit'))
+    expect(mocks.navigate).toHaveBeenNthCalledWith(2, '/evening-closing')
+    expect(mocks.balancesSetQuantities).not.toHaveBeenCalled()
+  })
+
+  it('FKH-049 C3: full app-mode + exit → /cashier', async () => {
+    appModeValue = 'full'
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByTestId('denomination-entry-exit'))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/cashier')
   })
 
   // ——— Átvett lefedettség a törölt DenominationPage.fk072 / fk077-fk079 tesztekből ———
