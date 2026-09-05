@@ -49,4 +49,10 @@ public class DailySessionDto {
     // Számított
     private BigDecimal dailyChange;
     private BigDecimal netTurnover;
+
+    // FKH-050: utólagos zárás audit
+    private Boolean isRetroactiveClosing;
+    private Long retroactiveClosedByWorkerId;
+    private String retroactiveClosedByWorkerName;
+    private LocalDateTime retroactiveClosedAt;
 }

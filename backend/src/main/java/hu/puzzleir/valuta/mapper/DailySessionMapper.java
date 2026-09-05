@@ -42,6 +42,13 @@ public class DailySessionMapper {
                 .totalHandlingFees(entity.getHandlingFeeTotal())
                 .dailyChange(dailyChange)
                 .netTurnover(entity.getNetTurnover())
+                // FKH-050: retroactive closing audit (V386)
+                .isRetroactiveClosing(entity.getIsRetroactiveClosing())
+                .retroactiveClosedByWorkerId(entity.getRetroactiveClosedByWorker() != null
+                        ? entity.getRetroactiveClosedByWorker().getId() : null)
+                .retroactiveClosedByWorkerName(entity.getRetroactiveClosedByWorker() != null
+                        ? entity.getRetroactiveClosedByWorker().getName() : null)
+                .retroactiveClosedAt(entity.getRetroactiveClosedAt())
                 .build();
     }
 }

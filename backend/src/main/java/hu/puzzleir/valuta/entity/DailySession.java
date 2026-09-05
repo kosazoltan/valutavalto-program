@@ -198,6 +198,30 @@ public class DailySession {
     @Builder.Default
     private Boolean navUploaded = false;
 
+    // ============ FKH-050: UTÓLAGOS ZÁRÁS AUDIT ============
+
+    /**
+     * FKH-050: a nap utólagos (retroaktív) zárással lett-e lezárva — külön a
+     * rendes napi zárástól. V386.
+     */
+    @Column(name = "is_retroactive_closing", nullable = false)
+    @Builder.Default
+    private Boolean isRetroactiveClosing = false;
+
+    /**
+     * FKH-050: ki futtatta az utólagos zárást (nem feltétlenül az eredeti záró).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "retroactive_closed_by_worker_id")
+    private Worker retroactiveClosedByWorker;
+
+    /**
+     * FKH-050: az utólagos zárás végrehajtásának időpontja — szerkezetileg
+     * különbözik a {@code sessionDate}-től (FR-7).
+     */
+    @Column(name = "retroactive_closed_at")
+    private LocalDateTime retroactiveClosedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
