@@ -247,7 +247,10 @@ class DenominationBalanceCategoryUniqueV378PostgresTest {
                     .containsExactly("cash_desk_id", "denomination_id");
         }
 
-        migrateToLatest();
+        // FKH-050: V378-verziora pinneve (a V387 a 3-oszlopu kulcsot datumnapi
+        // 4-oszlopu kulcsra csereli — D5); ez a teszt a V378 nev-agnosztikus
+        // DROP-jat bizonyitja, nem a V387 utani semat.
+        migrateToVersion(version(V378_FILE_PATTERN));
 
         try (Connection connection = openConnection()) {
             assertThat(uniqueConstraintColumns(connection, prodStyleName))

@@ -4,6 +4,7 @@ import { retroactiveClosingApi, type RetroactiveOpenPastDay } from '../../servic
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 /**
  * FKH-050 (FR-1/D3): entry point of the retroactive closing flow — lists the
@@ -40,8 +41,8 @@ export default function RetroactiveClosingListPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <h1 className="mb-4 text-2xl font-bold">Utólagos napzárás</h1>
-      {loading && <p className="text-slate-600">Betöltés…</p>}
+      <h1 className="mb-4 text-2xl font-bold">{i18n.t('literals.utolagos-napzaras')}</h1>
+      {loading && <p className="text-slate-600">{i18n.t('literals.utolagos-betoltes')}</p>}
       {errorMessage && <p className="text-red-600">{errorMessage}</p>}
 
       {!loading && !errorMessage && days.length === 0 && (
@@ -49,7 +50,7 @@ export default function RetroactiveClosingListPage() {
           data-testid="retroactive-empty-state"
           className="rounded-lg border border-slate-300 bg-white p-6 text-center text-slate-600"
         >
-          Nincs nyitott múlt-beli nap — minden korábbi nap le van zárva.
+          {i18n.t('literals.nincs-nyitott-multbeli-nap')}
         </div>
       )}
 
@@ -70,10 +71,16 @@ export default function RetroactiveClosingListPage() {
                   data-testid={`open-day-action-${day.date}`}
                   className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={!actionable}
-                  title={actionable ? undefined : 'Előbb a legrégebbi nyitott napot kell lezárni'}
+                  title={
+                    actionable
+                      ? undefined
+                      : i18n.t('literals.elobb-a-legregebbi-nyitott-napot-kell-lezarni')
+                  }
                   onClick={() => navigate(`/closing/retroactive/${day.date}`)}
                 >
-                  {actionable ? 'Zárás indítása' : 'Zárolva'}
+                  {actionable
+                    ? i18n.t('literals.utolagos-zaras-inditasa')
+                    : i18n.t('literals.zarolva')}
                 </button>
               </li>
             )

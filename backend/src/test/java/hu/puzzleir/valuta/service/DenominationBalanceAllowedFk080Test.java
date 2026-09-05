@@ -28,6 +28,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -197,8 +198,8 @@ class DenominationBalanceAllowedFk080Test {
         when(denominationRepository.findById(11L)).thenReturn(Optional.of(hufCoin));
         when(denominationAllowedRepository.findActiveAllowed(companyId, 1L, new BigDecimal("100")))
                 .thenReturn(Optional.of(allowed("100", DenominationType.COIN)));
-        when(balanceRepository.findByCashDeskIdAndDenominationIdAndCategory(
-                branchId, 11L, DenominationCategory.EVENING))
+        when(balanceRepository.findByCashDeskIdAndDenominationIdAndCategoryAndSubmissionDate(
+                branchId, 11L, DenominationCategory.EVENING, LocalDate.now()))
                 .thenReturn(Optional.empty());
         when(balanceRepository.save(any())).thenAnswer(inv -> {
             hu.puzzleir.valuta.entity.DenominationBalance saved = inv.getArgument(0);

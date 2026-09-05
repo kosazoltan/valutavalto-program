@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore'
 import RetroactiveClosingBanner from '../../components/closing/RetroactiveClosingBanner'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
+import i18n from '../../i18n'
 
 /**
  * FKH-050 (FR-3/FR-4/FR-5/FR-6): the simplified RETROACTIVE closing flow for one
@@ -69,15 +70,15 @@ export default function RetroactiveClosingPage() {
           data-testid="retroactive-step"
           className="rounded-lg border border-slate-300 bg-white p-4"
         >
-          <h3 className="font-semibold">1. lépés — Címletezés rögzítése ({date})</h3>
+          <h3 className="font-semibold">{i18n.t('literals.utolagos-1-lepes', { date })}</h3>
           <p className="mb-2 text-sm text-slate-600">
-            Rögzítse a(z) {date} nap esti készletét a közös címletező oldalon.
+            {i18n.t('literals.utolagos-rogzitse-a-nap-esti-keszletet', { date })}
           </p>
           <Link
             className="inline-block rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
             to={`/closing/denomination-entry/EVENING?businessDate=${date}&returnTo=/closing/retroactive/${date}`}
           >
-            Címletezés megnyitása
+            {i18n.t('literals.cimletezes-megnyitasa')}
           </Link>
         </li>
 
@@ -86,8 +87,10 @@ export default function RetroactiveClosingPage() {
           data-testid="retroactive-step"
           className="rounded-lg border border-slate-300 bg-white p-4"
         >
-          <h3 className="mb-2 font-semibold">2. lépés — Egyeztetés</h3>
-          {loading && <p className="text-sm text-slate-600">Betöltés…</p>}
+          <h3 className="mb-2 font-semibold">{i18n.t('literals.utolagos-2-lepes')}</h3>
+          {loading && (
+            <p className="text-sm text-slate-600">{i18n.t('literals.utolagos-betoltes')}</p>
+          )}
           {errorMessage && (
             <p className="text-sm text-red-600" data-testid="retroactive-error">
               {errorMessage}
@@ -97,10 +100,10 @@ export default function RetroactiveClosingPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="py-1">Valuta</th>
-                  <th className="py-1 text-right">Elvárt</th>
-                  <th className="py-1 text-right">Tényleges</th>
-                  <th className="py-1 text-right">Eltérés</th>
+                  <th className="py-1">{i18n.t('literals.utolagos-valuta')}</th>
+                  <th className="py-1 text-right">{i18n.t('literals.utolagos-elvart')}</th>
+                  <th className="py-1 text-right">{i18n.t('literals.utolagos-tenyleges')}</th>
+                  <th className="py-1 text-right">{i18n.t('literals.utolagos-elteres')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,7 +140,7 @@ export default function RetroactiveClosingPage() {
           data-testid="retroactive-step"
           className="rounded-lg border border-slate-300 bg-white p-4"
         >
-          <h3 className="mb-2 font-semibold">3. lépés — Küldés és zárás</h3>
+          <h3 className="mb-2 font-semibold">{i18n.t('literals.utolagos-3-lepes')}</h3>
           <button
             type="button"
             data-testid="retroactive-close-button"
@@ -145,11 +148,13 @@ export default function RetroactiveClosingPage() {
             disabled={anyBlocking || loading || closing || !reconciliation}
             onClick={() => void handleClose()}
           >
-            {closing ? 'Zárás folyamatban…' : `Nap zárása (${date})`}
+            {closing
+              ? i18n.t('literals.utolagos-zaras-folyamatban')
+              : i18n.t('literals.utolagos-nap-zarasa', { date })}
           </button>
           {anyBlocking && (
             <p className="mt-2 text-sm text-red-600">
-              Az egyeztetés eltérést talált — a zárás nem indítható.
+              {i18n.t('literals.utolagos-az-egyeztetes-elterest-talalt')}
             </p>
           )}
         </li>
