@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -42,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -374,5 +376,62 @@ class DailySessionServiceTest {
         assertThat(result).isEmpty();
         verify(dailySessionRepository).findByBranchIdAndSessionDateWithDetails(
                 companyId, branchId, LocalDate.now());
+    }
+
+    // === FKH-051 (Test plan 3): openDay must NOT auto-close past OPEN days, must NOT throw ===
+
+    @Test
+    @DisplayName("FKH-051 T3: openDay does NOT auto-close a past OPEN session and does NOT throw — today opens normally")
+    void testOpenDay_pastOpenSession_isNotAutoClosedAndDoesNotThrow() {
+        Company company = Company.builder().id(companyId).code("EBC").name("EBC").build();
+        Branch branch = Branch.builder().id(branchId).code("B01").name("Kozpont").company(company).build();
+        Worker worker = Worker.builder()
+                .id(workerId)
+                .code("ADMIN")
+                .name("Admin")
+                .passwordHash("x")
+                .role(WorkerRole.CASHIER)
+                .company(company)
+                .branch(branch)
+                .build();
+
+        LocalDate pastDate = LocalDate.now().minusDays(2);
+        DailySession pastSession = DailySession.builder()
+                .id(80L)
+                .branch(branch)
+                .company(company)
+                .sessionDate(pastDate)
+                .status(DailySessionStatus.OPEN)
+                .openingBalanceHuf(BigDecimal.ZERO)
+                .build();
+
+        // Lenient: FKH-051 WU6 deletes both the force-close loop (the only openDay
+        // caller of findOpenSessionsByBranch) and the findLatest throw — neither
+        // stub may become an UnnecessaryStubbing failure once they are gone.
+        Mockito.lenient().when(dailySessionRepository.findOpenSessionsByBranch(eq(companyId), eq(branchId)))
+                .thenReturn(List.of(pastSession));
+        Mockito.lenient().when(dailySessionRepository.findLatest(eq(companyId), eq(branchId)))
+                .thenReturn(Optional.of(pastSession));
+        when(dailySessionRepository.findByBranchIdAndSessionDate(eq(companyId), eq(branchId), eq(LocalDate.now())))
+                .thenReturn(Optional.empty());
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
+        when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId)).thenReturn(List.of());
+        when(dailySessionRepository.save(any(DailySession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DailySession result = service.openDay();
+
+        // Today opens normally; nothing thrown (the pre-FKH-051 findLatest hard block is gone).
+        assertNotNull(result);
+        assertEquals(LocalDate.now(), result.getSessionDate());
+        assertEquals(DailySessionStatus.OPEN, result.getStatus());
+        // No captured save carries the past date with CLOSED status...
+        ArgumentCaptor<DailySession> captor = ArgumentCaptor.forClass(DailySession.class);
+        verify(dailySessionRepository, atLeastOnce()).save(captor.capture());
+        assertThat(captor.getAllValues()).noneMatch(saved ->
+                pastDate.equals(saved.getSessionDate()) && saved.getStatus() == DailySessionStatus.CLOSED);
+        // ...and the past day itself survives OPEN.
+        assertEquals(DailySessionStatus.OPEN, pastSession.getStatus());
     }
 }

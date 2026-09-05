@@ -143,4 +143,27 @@ describe('DayOpenPage session open backend contract', () => {
     expect(await screen.findByTestId('session-opening-balances')).toHaveTextContent('HUF')
     expect(screen.getByText(/Nyitás után ellenőrizd a címletezést\./)).toBeInTheDocument()
   })
+
+  // === FKH-051 (Test plan 17): FR-2 link from the past-open-day warning to /closing/retroactive ===
+
+  it('FKH-051 T17: a past-open-day warning renders the retroactive link and clicking it navigates', async () => {
+    mocks.sessionValidateOpen.mockResolvedValue([
+      '⚠️ Az előző nap nincs lezárva! (Dátum: 2026-09-04)',
+    ])
+    const user = userEvent.setup()
+    render(<DayOpenPage />)
+
+    const link = await screen.findByTestId('session-open-retroactive-link')
+    await user.click(link)
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/closing/retroactive')
+  })
+
+  it('FKH-051 T17b: with an empty warning list the retroactive link is absent', async () => {
+    mocks.sessionValidateOpen.mockResolvedValue([])
+    render(<DayOpenPage />)
+
+    await screen.findByTestId('daily-reversal-count')
+    expect(screen.queryByTestId('session-open-retroactive-link')).toBeNull()
+  })
 })

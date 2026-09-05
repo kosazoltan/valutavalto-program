@@ -231,4 +231,81 @@ class SessionOpenServiceTest {
             assertThat(warnings).anyMatch(w -> w.contains("nincs lezárva") || w.contains("előző"));
         }
     }
+
+    // === FKH-051 (Test plan 1-2): day-open must NOT auto-close past OPEN days ===
+
+    @Test
+    @DisplayName("FKH-051 T1: openSession does NOT auto-close a past OPEN session — it survives as OPEN")
+    void testOpenSession_pastOpenSession_isNotAutoClosed() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            LocalDate pastDate = LocalDate.now().minusDays(2);
+            DailySession pastSession = DailySession.builder()
+                    .id(90L)
+                    .branch(createBranch())
+                    .sessionDate(pastDate)
+                    .status(DailySessionStatus.OPEN)
+                    .openingBalanceHuf(new BigDecimal("1000.00"))
+                    .build();
+
+            when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(createCompany()));
+            when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(createBranch()));
+            when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(createWorker()));
+            // Lenient: FKH-051 WU6 deletes the force-close loop, the only caller of
+            // findOpenSessionsByBranch inside openSession — the stub must not turn
+            // into an UnnecessaryStubbing failure once the loop is gone.
+            Mockito.lenient().when(dailySessionRepository.findOpenSessionsByBranch(COMPANY_ID, BRANCH_ID))
+                    .thenReturn(List.of(pastSession));
+            when(dailySessionRepository.hasOpenSession(COMPANY_ID, BRANCH_ID)).thenReturn(false);
+            when(dailySessionRepository.findByBranchIdAndSessionDate(eq(COMPANY_ID), eq(BRANCH_ID), any(LocalDate.class)))
+                    .thenReturn(Optional.empty());
+            when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Collections.emptyList());
+            when(dailySessionRepository.findLatest(COMPANY_ID, BRANCH_ID)).thenReturn(Optional.of(pastSession));
+            when(dailySessionRepository.save(any(DailySession.class))).thenAnswer(inv -> {
+                DailySession ds = inv.getArgument(0);
+                ds.setId(99L);
+                return ds;
+            });
+
+            SessionDataDto result = service.openSession(WORKER_ID, BRANCH_ID);
+
+            // FR-1: nothing was saved with the past date in CLOSED status.
+            ArgumentCaptor<DailySession> captor = ArgumentCaptor.forClass(DailySession.class);
+            verify(dailySessionRepository, atLeastOnce()).save(captor.capture());
+            assertThat(captor.getAllValues())
+                    .noneMatch(saved -> pastDate.equals(saved.getSessionDate())
+                            && saved.getStatus() == DailySessionStatus.CLOSED);
+            // The past day itself survives OPEN, and today's session is created OPEN.
+            assertThat(pastSession.getStatus()).isEqualTo(DailySessionStatus.OPEN);
+            assertThat(result.getStatus()).isEqualTo("OPEN");
+            assertThat(result.getSessionDate()).isEqualTo(LocalDate.now());
+        }
+    }
+
+    @Test
+    @DisplayName("FKH-051 T2: validateSessionOpen keeps the past-open-day WARNING (the only remaining signal)")
+    void testValidateSessionOpen_pastOpenDay_returnsWarning() {
+        try (MockedStatic<SecurityUtils> secUtils = mockStatic(SecurityUtils.class)) {
+            secUtils.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            DailySession pastOpen = DailySession.builder()
+                    .id(91L)
+                    .branch(createBranch())
+                    .sessionDate(LocalDate.now().minusDays(1))
+                    .status(DailySessionStatus.OPEN)
+                    .build();
+
+            when(dailySessionRepository.findLatest(COMPANY_ID, BRANCH_ID)).thenReturn(Optional.of(pastOpen));
+            when(dailySessionRepository.findByBranchIdAndSessionDate(eq(COMPANY_ID), eq(BRANCH_ID), any(LocalDate.class)))
+                    .thenReturn(Optional.empty());
+            when(cashBalanceRepository.findByBranchIdAndCompanyId(BRANCH_ID, COMPANY_ID)).thenReturn(Collections.emptyList());
+
+            List<String> warnings = service.validateSessionOpen(BRANCH_ID);
+
+            // Pinning test: this warning MUST survive the WU6 auto-close removal —
+            // after FKH-051 it is the only day-open signal about a past OPEN day.
+            assertThat(warnings).anyMatch(w -> w.contains("Az előző nap nincs lezárva!"));
+        }
+    }
 }
