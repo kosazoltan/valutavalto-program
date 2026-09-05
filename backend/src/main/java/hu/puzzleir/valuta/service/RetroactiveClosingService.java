@@ -89,7 +89,8 @@ public class RetroactiveClosingService {
         LocalDate today = LocalDate.now();
         return dailySessionRepository.findOpenPastSessionsByBranch(companyId, branchId, today)
                 .stream()
-                .map(session -> new OpenPastDayDto(session.getSessionDate()))
+                .map(session -> new OpenPastDayDto(session.getSessionDate(),
+                        hu.puzzleir.valuta.dto.retroactiveclosing.RetroactiveDayKind.OPEN))
                 .toList();
     }
 
