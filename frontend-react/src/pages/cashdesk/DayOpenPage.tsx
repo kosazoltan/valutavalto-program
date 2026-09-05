@@ -220,6 +220,19 @@ export default function DayOpenPage() {
                 </li>
               ))}
             </ul>
+            {/* FKH-051 (FR-2): the past-open-day warning links to the retroactive
+                closing flow. Match with includes — the warning carries a "⚠️ "
+                prefix and a " (Dátum: …)" suffix. Day-open stays unblocked. */}
+            {openWarnings.some((w) => w.includes('Az előző nap nincs lezárva')) && (
+              <button
+                type="button"
+                data-testid="session-open-retroactive-link"
+                onClick={() => navigate('/closing/retroactive')}
+                className="mt-2 rounded bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+              >
+                {i18n.t('literals.utolagos-napzaras-tartozek')}
+              </button>
+            )}
           </div>
         )}
 
