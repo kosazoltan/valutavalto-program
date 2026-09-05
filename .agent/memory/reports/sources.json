@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-04T15:47:31.699Z",
-  "source_count": 1088,
+  "generated_at": "2026-09-05T08:25:51.373Z",
+  "source_count": 1089,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12751,6 +12751,19 @@
       "type": "medium-term-episodic",
       "areas": [
         "deploy"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-05-fkh049-fkh050-retroactive-closing.md",
+      "sha256": "5dee988f615d313567418c4f3297b12a42b397faa08ac161d0eb2f1fbb3a3a02",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy",
+        "ertektar",
+        "frontend",
+        "installer",
+        "napzaras"
       ]
     },
     {

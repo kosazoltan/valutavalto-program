@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-09-04T15:47:31.699Z
+generated_at: 2026-09-05T08:25:51.373Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7604,6 +7604,13 @@ nodes:
     summary: "# Handoff 2026-09-04 — v2.28.99 signed release - Main: `4c0e1218` PR #1704 MERGED (9-way bump + npm-audit timeout 30m + 3x retry). - Prod: `2.28.99` buildTime `2026-09-04T03:23:47Z` health ok. Deploy run 33832817839 success (Gate A + Scaleway). - Signed: run 33832842890 success, tag v2.28.99. Rollout 100. Both feeds present. - Downloads: `C:/zk/Downloads/valutavalto-v2.28.99` — verify-release PASS, Authenticode Valid"
     tags: [handoff, 2026, signed, release, main, 4c0e1218, 1704, merged, way, bump]
     areas: [deploy]
+  - id: ae92074086e4d345
+    type: medium-term-episodic
+    title: "Handoff — 2026-09-05 FKH-049 + FKH-050 (stackelt, v2.28.101)"
+    source_path: vault/sessions/handoff-2026-09-05-fkh049-fkh050-retroactive-closing.md
+    summary: "# Handoff — 2026-09-05 FKH-049 + FKH-050 (stackelt, v2.28.101) ## Mit szállítottunk - **FKH-049**: `DenominationEntryPage` `isVaultContext = appMode === 'ertektar'` (a `hasCanonicalRole` selector kiváltva), useAppMode-ből — vault-kontextus app-mode alapon. - **FKH-050**: Utolagos (korabbi nap) napzaras — backend `RetroactiveClosingService` (listOpenPastDays / reconcile / closeRetroactively) + V387 datumnapi egyedi ku"
+    tags: [handoff, 2026, fkh, 049, 050, stackelt, 101, mit, szallitottunk, denominationentrypage]
+    areas: [database, deploy, ertektar, frontend, installer, napzaras]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -23129,6 +23136,24 @@ edges:
   - from: 1a8b6052de636664
     to: area_deploy
     relation: belongs_to_area
+  - from: ae92074086e4d345
+    to: area_database
+    relation: belongs_to_area
+  - from: ae92074086e4d345
+    to: area_deploy
+    relation: belongs_to_area
+  - from: ae92074086e4d345
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: ae92074086e4d345
+    to: area_frontend
+    relation: belongs_to_area
+  - from: ae92074086e4d345
+    to: area_installer
+    relation: belongs_to_area
+  - from: ae92074086e4d345
+    to: area_napzaras
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -23186,9 +23211,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: e270fb74d6289eaa
-    to: repo_project_state
-    relation: informs
   - from: 75c07d9f2ec550e1
     to: repo_project_state
     relation: informs
@@ -23418,6 +23440,9 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 1a8b6052de636664
+    to: repo_project_state
+    relation: informs
+  - from: ae92074086e4d345
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58
