@@ -7,11 +7,13 @@ import hu.puzzleir.valuta.entity.DenominationCategory;
 import hu.puzzleir.valuta.service.DenominationBalanceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,9 +56,14 @@ public class DenominationBalanceController {
     public ResponseEntity<List<DenominationBalanceDto>> getCashDeskDenominationsByCurrency(
             @PathVariable UUID cashDeskId,
             @PathVariable Long currencyId,
-            @RequestParam(required = false) DenominationCategory category) {
+            @RequestParam(required = false) DenominationCategory category,
+            // FKH-050 (D5): optional business date for retroactive denomination entry.
+            // Absent -> today (the current flow is unchanged).
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
         List<DenominationBalanceDto> result =
-                denominationBalanceService.getCashDeskDenominationsByCurrency(cashDeskId, currencyId, category);
+                denominationBalanceService.getCashDeskDenominationsByCurrency(
+                        cashDeskId, currencyId, category, businessDate);
         return ResponseEntity.ok(result);
     }
 
@@ -74,9 +81,13 @@ public class DenominationBalanceController {
             @PathVariable UUID cashDeskId,
             @PathVariable Long denominationId,
             @RequestParam int quantity,
-            @RequestParam(required = false) DenominationCategory category) {
+            @RequestParam(required = false) DenominationCategory category,
+            // FKH-050 (D5): optional business date for retroactive denomination entry.
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
         DenominationBalanceDto result =
-                denominationBalanceService.updateQuantity(cashDeskId, denominationId, quantity, category);
+                denominationBalanceService.updateQuantity(
+                        cashDeskId, denominationId, quantity, category, businessDate);
         return ResponseEntity.ok(result);
     }
 
@@ -94,9 +105,12 @@ public class DenominationBalanceController {
     public ResponseEntity<List<DenominationBalanceDto>> batchUpdate(
             @PathVariable UUID cashDeskId,
             @Valid @RequestBody List<DenominationQuantityUpdateRequestDto> updates,
-            @RequestParam(required = false) DenominationCategory category) {
+            @RequestParam(required = false) DenominationCategory category,
+            // FKH-050 (D5): optional business date for retroactive denomination entry.
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
         List<DenominationBalanceDto> result =
-                denominationBalanceService.batchUpdate(cashDeskId, updates, category);
+                denominationBalanceService.batchUpdate(cashDeskId, updates, category, businessDate);
         return ResponseEntity.ok(result);
     }
 
@@ -112,8 +126,12 @@ public class DenominationBalanceController {
     @PreAuthorize("hasAnyRole('CASHIER', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'ERTEKTAR', 'FOERTEKTAR', 'UGYVEZETO')")
     public ResponseEntity<List<DenominationSelfCheckDto>> selfCheck(
             @PathVariable UUID cashDeskId,
-            @RequestParam(required = false) DenominationCategory category) {
-        List<DenominationSelfCheckDto> result = denominationBalanceService.selfCheck(cashDeskId, category);
+            @RequestParam(required = false) DenominationCategory category,
+            // FKH-050 (D5): optional business date for retroactive denomination entry.
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate businessDate) {
+        List<DenominationSelfCheckDto> result =
+                denominationBalanceService.selfCheck(cashDeskId, category, businessDate);
         return ResponseEntity.ok(result);
     }
 

@@ -102,8 +102,9 @@ class DenominationBalanceServiceTest {
                         .active(true)
                         .build()));
         // FK-078 (FR-3): az upsert-kulcs mostantol a kategoriat is tartalmazza.
-        when(balanceRepository.findByCashDeskIdAndDenominationIdAndCategory(
-                cashDeskId, 2L, DenominationCategory.EVENING))
+        // FKH-050 (D5): a lookup datum-tudatos — a mai napra szur (null businessDate -> ma).
+        when(balanceRepository.findByCashDeskIdAndDenominationIdAndCategoryAndSubmissionDate(
+                cashDeskId, 2L, DenominationCategory.EVENING, LocalDate.now()))
                 .thenReturn(Optional.of(balance));
         when(balanceRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -208,8 +209,9 @@ class DenominationBalanceServiceTest {
                 .denominationType(DenominationType.BANKNOTE)
                 .build();
         when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
-        when(balanceRepository.findByCashDeskIdAndDenominationIdAndCategory(
-                branchId, 5L, DenominationCategory.HANDLING_FEE))
+        // FKH-050 (D5): a lookup datum-tudatos — a mai napra szur (null businessDate -> ma).
+        when(balanceRepository.findByCashDeskIdAndDenominationIdAndCategoryAndSubmissionDate(
+                branchId, 5L, DenominationCategory.HANDLING_FEE, LocalDate.now()))
                 .thenReturn(Optional.empty());
         when(denominationRepository.findById(5L)).thenReturn(Optional.of(denomination));
         // FK-080 (FR-5): a HUF 5000 a V379 katalogusban BANKNOTE — engedelyezett.
@@ -355,8 +357,9 @@ class DenominationBalanceServiceTest {
                 .denominationCategory(DenominationCategory.HANDLING_FEE)
                 .build();
         when(branchRepository.existsByIdAndCompanyId(cashDeskId, companyId)).thenReturn(true);
-        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategory(
-                cashDeskId, 1L, DenominationCategory.HANDLING_FEE))
+        // FKH-050 (D5): az olvasás dátum-tudatos — a mai napra szűr (null businessDate -> ma).
+        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                cashDeskId, 1L, DenominationCategory.HANDLING_FEE, LocalDate.now()))
                 .thenReturn(List.of(handlingFee));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -368,10 +371,10 @@ class DenominationBalanceServiceTest {
             assertThat(result.get(0).getTotalValue()).isEqualByComparingTo("30000");
         }
 
-        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategory(
-                cashDeskId, 1L, DenominationCategory.HANDLING_FEE);
-        verify(balanceRepository, never()).findByCashDeskIdAndCurrencyIdAndCategory(
-                cashDeskId, 1L, DenominationCategory.EVENING);
+        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                cashDeskId, 1L, DenominationCategory.HANDLING_FEE, LocalDate.now());
+        verify(balanceRepository, never()).findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                cashDeskId, 1L, DenominationCategory.EVENING, LocalDate.now());
     }
 
     /**
@@ -397,8 +400,9 @@ class DenominationBalanceServiceTest {
                 .denominationCategory(DenominationCategory.EVENING)
                 .build();
         when(branchRepository.existsByIdAndCompanyId(cashDeskId, companyId)).thenReturn(true);
-        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategory(
-                cashDeskId, 1L, DenominationCategory.EVENING))
+        // FKH-050 (D5): az olvasás dátum-tudatos — a mai napra szűr (null businessDate -> ma).
+        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                cashDeskId, 1L, DenominationCategory.EVENING, LocalDate.now()))
                 .thenReturn(List.of(evening));
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -409,10 +413,10 @@ class DenominationBalanceServiceTest {
             assertThat(result.get(0).getQuantity()).isEqualTo(10);
         }
 
-        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategory(
-                cashDeskId, 1L, DenominationCategory.EVENING);
-        verify(balanceRepository, never()).findByCashDeskIdAndCurrencyIdAndCategory(
-                cashDeskId, 1L, DenominationCategory.HANDLING_FEE);
+        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                cashDeskId, 1L, DenominationCategory.EVENING, LocalDate.now());
+        verify(balanceRepository, never()).findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                cashDeskId, 1L, DenominationCategory.HANDLING_FEE, LocalDate.now());
     }
 
     /**
@@ -423,8 +427,9 @@ class DenominationBalanceServiceTest {
         UUID companyId = UUID.randomUUID();
         UUID cashDeskId = UUID.randomUUID();
         when(branchRepository.existsByIdAndCompanyId(cashDeskId, companyId)).thenReturn(true);
-        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategory(
-                cashDeskId, 1L, DenominationCategory.EVENING))
+        // FKH-050 (D5): az olvasás dátum-tudatos — a mai napra szűr (null businessDate -> ma).
+        when(balanceRepository.findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                cashDeskId, 1L, DenominationCategory.EVENING, LocalDate.now()))
                 .thenReturn(List.of());
 
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
@@ -432,8 +437,8 @@ class DenominationBalanceServiceTest {
             assertThat(service().getCashDeskDenominationsByCurrency(cashDeskId, 1L, null)).isEmpty();
         }
 
-        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategory(
-                cashDeskId, 1L, DenominationCategory.EVENING);
+        verify(balanceRepository).findByCashDeskIdAndCurrencyIdAndCategoryAndSubmissionDate(
+                cashDeskId, 1L, DenominationCategory.EVENING, LocalDate.now());
     }
 
     /**

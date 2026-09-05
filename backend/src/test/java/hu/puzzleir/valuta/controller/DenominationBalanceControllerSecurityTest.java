@@ -99,11 +99,13 @@ class DenominationBalanceControllerSecurityTest {
     @Test
     @WithMockUser(roles = "ERTEKTAR")
     void read_allowsErtektar() {
-        when(service.getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null)).thenReturn(List.of());
+        // FKH-050: businessDate param (null -> today) added to the read path.
+        when(service.getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null, null))
+                .thenReturn(List.of());
 
-        controller.getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null);
+        controller.getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null, null);
 
-        verify(service).getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null);
+        verify(service).getCashDeskDenominationsByCurrency(CASH_DESK_ID, 1L, null, null);
     }
 
     @Test
@@ -119,11 +121,11 @@ class DenominationBalanceControllerSecurityTest {
     @Test
     @WithMockUser(roles = "ERTEKTAR")
     void write_allowsErtektarOnBatch() {
-        when(service.batchUpdate(any(), any(), any())).thenReturn(List.of());
+        when(service.batchUpdate(any(), any(), any(), any())).thenReturn(List.of());
 
-        controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING);
+        controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING, null);
 
-        verify(service).batchUpdate(any(), any(), any());
+        verify(service).batchUpdate(any(), any(), any(), any());
     }
 
     @Test
@@ -131,29 +133,29 @@ class DenominationBalanceControllerSecurityTest {
     void write_deniesUgyvezetoOnUpdateQuantity() {
         assertThrows(
                 AccessDeniedException.class,
-                () -> controller.updateQuantity(CASH_DESK_ID, 1L, 5, DenominationCategory.EVENING));
+                () -> controller.updateQuantity(CASH_DESK_ID, 1L, 5, DenominationCategory.EVENING, null));
 
-        verify(service, never()).updateQuantity(any(), anyLong(), anyInt(), any());
+        verify(service, never()).updateQuantity(any(), anyLong(), anyInt(), any(), any());
     }
 
     @Test
     @WithMockUser(roles = "UGYVEZETO")
     void write_deniesUgyvezetoOnBatch() {
         assertThrows(AccessDeniedException.class,
-                () -> controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING));
+                () -> controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING, null));
 
-        verify(service, never()).batchUpdate(any(), any(), any());
+        verify(service, never()).batchUpdate(any(), any(), any(), any());
     }
 
     /** FK-077 FR-4 regresszio: a ma is mukodo CASHIER szerepkor valtozatlanul ir. */
     @Test
     @WithMockUser(roles = "CASHIER")
     void write_stillAllowsCashier() {
-        when(service.batchUpdate(any(), any(), any())).thenReturn(List.of());
+        when(service.batchUpdate(any(), any(), any(), any())).thenReturn(List.of());
 
-        controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING);
+        controller.batchUpdate(CASH_DESK_ID, List.of(), DenominationCategory.EVENING, null);
 
-        verify(service).batchUpdate(any(), any(), any());
+        verify(service).batchUpdate(any(), any(), any(), any());
     }
 
     private static Method handler(String name) {

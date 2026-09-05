@@ -220,6 +220,23 @@ public interface DailySessionRepository extends JpaRepository<DailySession, Long
     }
 
     /**
+     * FKH-050 (FR-1): the caller's OPEN past-day sessions for one branch, oldest first.
+     * Company-scoped (invariant #1) — {@code sessionDate < today} excludes today;
+     * {@code status <> CLOSED} matches the ticket wording (PENDING_CLOSE is never
+     * written — verified in the plan's context).
+     */
+    @Query("SELECT ds FROM DailySession ds " +
+           "WHERE ds.company.id = :companyId " +
+           "AND ds.branch.id = :branchId " +
+           "AND ds.sessionDate < :today " +
+           "AND ds.status <> hu.puzzleir.valuta.entity.DailySessionStatus.CLOSED " +
+           "ORDER BY ds.sessionDate ASC")
+    List<DailySession> findOpenPastSessionsByBranch(
+            @Param("companyId") UUID companyId,
+            @Param("branchId") UUID branchId,
+            @Param("today") LocalDate today);
+
+    /**
      * Utolsó session lekérése
      */
     default Optional<DailySession> findLatest(UUID companyId, UUID branchId) {

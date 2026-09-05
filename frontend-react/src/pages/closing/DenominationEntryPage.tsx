@@ -16,9 +16,11 @@ import { toast } from '../../components/ui/toaster'
 import { formatInteger, formatDecimal } from '../../utils/numberFormat'
 import { logger } from '../../utils/logger'
 import { useAuthStore } from '../../stores/authStore'
+import { useAppMode } from '../../hooks/useAppMode'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { isAllowedFaceValue } from '../../utils/denominationRules'
 import { resolveClosingDenominationExitRoute } from './closingDenominationMenu'
+import RetroactiveClosingBanner from '../../components/closing/RetroactiveClosingBanner'
 import i18n from '../../i18n'
 
 /**
@@ -73,17 +75,28 @@ export default function DenominationEntryPage() {
     return null
   }, [searchParams])
 
+  /**
+   * FKH-050 (D5/D9): az utólagos napzárás ÜZLETI DÁTUMA — a közös címletező oldal
+   * ezzel ír/olvas múlt-beli sorokat. Csak szigorú ISO-dátum fogadható el;
+   * hiányában null (a mai flow változatlan — NFR-1).
+   */
+  const businessDate = useMemo(() => {
+    const raw = searchParams.get('businessDate')
+    if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+    return null
+  }, [searchParams])
+
   const worker = useAuthStore(
     (s: { worker: { id?: string | number; branchId: string; role?: string } | null }) => s.worker,
   )
-  const hasCanonicalRole = useAuthStore(
-    (s: { hasCanonicalRole?: (roles: string | string[]) => boolean }) => s.hasCanonicalRole,
-  )
+  const { mode: appMode } = useAppMode()
   /**
-   * FKH-039: vault vs pénztár — explicit named feltétel a közös fájlban (FR-3).
-   * Szerepkör-alapú, a ShipmentNewPage / ClosingWizard mintájára.
+   * FKH-049: vault context derives from the active app-mode, NOT the role set.
+   * The legacy role map (appModeRoles.ts) resolves MANAGER/TREASURY_MANAGER to the
+   * 'ertektar' canonical role, so a penztar cashier holding a legacy MANAGER role was
+   * over-matched and misrouted to /evening-closing. App-mode is the source of truth.
    */
-  const isVaultContext = Boolean(hasCanonicalRole?.(['ertektar', 'foertektar']))
+  const isVaultContext = appMode === 'ertektar'
 
   const exitRoute = returnToRoute ?? resolveClosingDenominationExitRoute(isVaultContext)
 
@@ -160,11 +173,20 @@ export default function DenominationEntryPage() {
     // FK-077 (FR-3) minta: allSettled — egy elutasitott hivas ne uritse ki csendben az oldalt.
     const results = await Promise.allSettled([
       denominationApi.getByCurrencyId(selectedCurrencyId),
-      denominationBalanceApi.getCashDeskDenominationsByCurrency(
-        selectedCashDeskId,
-        String(selectedCurrencyId),
-        category,
-      ),
+      // FKH-050 (D5): businessDate csak akkor kerül a hívásba, ha van — a mai flow
+      // hívásalírása (3 arg) változatlan (NFR-1).
+      businessDate
+        ? denominationBalanceApi.getCashDeskDenominationsByCurrency(
+            selectedCashDeskId,
+            String(selectedCurrencyId),
+            category,
+            businessDate,
+          )
+        : denominationBalanceApi.getCashDeskDenominationsByCurrency(
+            selectedCashDeskId,
+            String(selectedCurrencyId),
+            category,
+          ),
     ])
 
     const denoms = results[0].status === 'fulfilled' ? (results[0].value as Denomination[]) : []
@@ -194,7 +216,7 @@ export default function DenominationEntryPage() {
       )
     }
     setLoading(false)
-  }, [selectedCashDeskId, selectedCurrencyId, category])
+  }, [selectedCashDeskId, selectedCurrencyId, category, businessDate])
 
   /**
    * FKH-042 FR-1: az elvárt készlet a MEGLÉVŐ self-check DTO-ból, mountkor — Mentés nélkül.
@@ -203,13 +225,17 @@ export default function DenominationEntryPage() {
   const loadSelfCheck = useCallback(async () => {
     if (!selfCheckEnabled || !selectedCashDeskId) return
     try {
-      setSelfCheck(await denominationBalanceApi.selfCheck(selectedCashDeskId, category))
+      setSelfCheck(
+        businessDate
+          ? await denominationBalanceApi.selfCheck(selectedCashDeskId, category, businessDate)
+          : await denominationBalanceApi.selfCheck(selectedCashDeskId, category),
+      )
     } catch (error) {
       // FKH-042 FR-1 nem blokkoló: a fejléc üres marad, a táblázat (loadAll) érintetlen.
       logger.warn('DenominationEntryPage', 'Elvárt készlet (önellenőrzés) nem elérhető:', error)
       setSelfCheck(null)
     }
-  }, [selfCheckEnabled, selectedCashDeskId, category])
+  }, [selfCheckEnabled, selectedCashDeskId, category, businessDate])
 
   useEffect(() => {
     void loadCurrencies()
@@ -248,12 +274,20 @@ export default function DenominationEntryPage() {
         .filter(([id]) => allowedIds.has(Number(id)))
         .map(([denominationId, quantity]) => ({ denominationId, quantity }))
 
-      await denominationBalanceApi.setDenominationQuantities(selectedCashDeskId, updates, category)
+      await denominationBalanceApi.setDenominationQuantities(
+        selectedCashDeskId,
+        updates,
+        category,
+        // FKH-050 (D5): a múlt-beli napra ír (retroaktív címletezés).
+        businessDate ?? undefined,
+      )
       toast.success('Címletezés sikeresen mentve!')
 
       if (selfCheckEnabled) {
         try {
-          const result = await denominationBalanceApi.selfCheck(selectedCashDeskId, category)
+          const result = businessDate
+            ? await denominationBalanceApi.selfCheck(selectedCashDeskId, category, businessDate)
+            : await denominationBalanceApi.selfCheck(selectedCashDeskId, category)
           setSelfCheck(result)
         } catch (error) {
           // FR-4 nem blokkolo: az onellenorzes hibaja a sikeres mentest nem ronthatja el.
@@ -331,6 +365,8 @@ export default function DenominationEntryPage() {
 
   return (
     <div className="space-y-4">
+      {/* FKH-050 (FR-4): utólagos napzárás üzleti dátuma — csak akkor látszik, ha van. */}
+      {businessDate && <RetroactiveClosingBanner date={businessDate} />}
       <div className="flex items-center gap-2">
         <Coins className="text-blue-600" size={20} />
         <div>

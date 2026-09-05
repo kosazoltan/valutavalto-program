@@ -4762,6 +4762,25 @@
     "osszes-munkaallomas": "Összes munkaállomás",
     "aktiv-munkaallomas": "Aktív munkaállomás",
     "online-jelzes": "Online jelzés",
-    "pos": "POS"
+    "pos": "POS",
+    "utolagos-zaras": "UTÓLAGOS ZÁRÁS - {{date}}",
+    "utolagos-napzaras": "Utólagos napzárás",
+    "utolagos-betoltes": "Betöltés…",
+    "nincs-nyitott-multbeli-nap": "Nincs nyitott múlt-beli nap — minden korábbi nap le van zárva.",
+    "elobb-a-legregebbi-nyitott-napot-kell-lezarni": "Előbb a legrégebbi nyitott napot kell lezárni",
+    "utolagos-zaras-inditasa": "Zárás indítása",
+    "zarolva": "Zárolva",
+    "utolagos-1-lepes": "1. lépés — Címletezés rögzítése ({{date}})",
+    "utolagos-rogzitse-a-nap-esti-keszletet": "Rögzítse a(z) {{date}} nap esti készletét a közös címletező oldalon.",
+    "cimletezes-megnyitasa": "Címletezés megnyitása",
+    "utolagos-2-lepes": "2. lépés — Egyeztetés",
+    "utolagos-valuta": "Valuta",
+    "utolagos-elvart": "Elvárt",
+    "utolagos-tenyleges": "Tényleges",
+    "utolagos-elteres": "Eltérés",
+    "utolagos-3-lepes": "3. lépés — Küldés és zárás",
+    "utolagos-zaras-folyamatban": "Zárás folyamatban…",
+    "utolagos-nap-zarasa": "Nap zárása ({{date}})",
+    "utolagos-az-egyeztetes-elterest-talalt": "Az egyeztetés eltérést talált — a zárás nem indítható."
   }
 }

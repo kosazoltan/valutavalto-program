@@ -23,8 +23,8 @@ import java.util.UUID;
     // elso HANDLING_FEE mentes utkozott a mar meglevo EVENING sorral, es a napi zaras
     // varazsloja 500-zal osszeomlott.
     @UniqueConstraint(
-        name = "uk_denom_balance_desk_denom_category",
-        columnNames = {"cash_desk_id", "denomination_id", "denomination_category"})
+        name = "uk_denom_balance_desk_denom_category_date",
+        columnNames = {"cash_desk_id", "denomination_id", "denomination_category", "submission_date"})
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
