@@ -8,10 +8,10 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- Supply-chain upgrade: 3.5.11 -> 4.1.0
+        <!-- Supply-chain upgrade: 3.5.11 -> 4.1.1
              - CVE-2026-22731 (Spring Boot Actuator auth bypass) fixed in 3.5.12
-             - CVE-2026-29145 (Tomcat 10.1.52 CLIENT_CERT) fixed by bundled Tomcat 10.1.53 in 4.1.0 -->
-        <version>4.1.0</version>
+             - CVE-2026-29145 (Tomcat 10.1.52 CLIENT_CERT) fixed by bundled Tomcat 10.1.53 in 4.1.1 -->
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
     
@@ -35,7 +35,7 @@
         <!-- CVE-2026-34478/34480/34481 fix: log4j explicit override 2.24.3 -> 2.25.4 -->
         <log4j2.version>2.25.4</log4j2.version>
         <!-- CVE-2026-33186 fix: force patched grpc-api over Google client transitive -->
-        <grpc.version>1.83.1</grpc.version>
+        <grpc.version>1.84.0</grpc.version>
         <!-- AI review fix Codex P1 #263 (2026-04-29): a `<tomcat.version>10.1.54</tomcat.version>`
              override SB 3.5-re volt szükséges (CVE-2026-34483/34486/34487 fix), de SB 4.0.6
              Servlet 6.1 stack-et céloz, ami Tomcat 11.x. A 10.1.x override Servlet 6.0
@@ -47,9 +47,9 @@
         <!-- CVE-2026-42198 + CVE-2026-54291 fix: PostgreSQL JDBC -> 42.7.13 -->
         <postgresql.version>42.7.13</postgresql.version>
         <testcontainers.version>1.21.4</testcontainers.version>
-        <archunit.version>1.4.2</archunit.version>
+        <archunit.version>1.5.0</archunit.version>
         <jacoco.version>0.8.15</jacoco.version>
-        <pitest.version>1.25.8</pitest.version>
+        <pitest.version>1.30.0</pitest.version>
         <pitest.junit5.version>1.2.3</pitest.junit5.version>
         <cyclonedx.version>2.9.3</cyclonedx.version>
         <!-- CVE-2026-41293/43512/43515/41284/43513/42498/43514 + CVE-2026-53404/53434/
@@ -119,14 +119,14 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>13.1.0</version>
+            <version>13.5.0</version>
         </dependency>
         
         <!-- Jsoup HTML Parser (Raiffeisen scraping) -->
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
-            <version>1.23.1</version>
+            <version>1.23.2</version>
         </dependency>
 
         <!-- Lombok -->
@@ -215,7 +215,7 @@
         <dependency>
             <groupId>com.google.api-client</groupId>
             <artifactId>google-api-client</artifactId>
-            <version>2.9.0</version>
+            <version>2.9.1</version>
         </dependency>
         <dependency>
             <groupId>com.google.apis</groupId>
@@ -225,7 +225,7 @@
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.50.0</version>
+            <version>1.51.0</version>
         </dependency>
 
         <dependency>
@@ -449,14 +449,14 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
+                <version>3.16.0</version>
                 <configuration>
                     <release>${maven.compiler.release}</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>1.18.46</version>
+                            <version>1.18.48</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
