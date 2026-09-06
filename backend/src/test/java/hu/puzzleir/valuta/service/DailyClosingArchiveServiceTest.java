@@ -95,7 +95,7 @@ class DailyClosingArchiveServiceTest {
                 .denominationCategory(DenominationCategory.WESTERN_UNION)
                 .build();
 
-        when(denominationBalanceRepo.findByCashDeskId(BRANCH_ID)).thenReturn(List.of(bal1, bal2));
+        when(denominationBalanceRepo.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of(bal1, bal2));
 
         int count = service.snapshotDenominations(BRANCH_ID, DATE);
 
@@ -139,12 +139,45 @@ class DailyClosingArchiveServiceTest {
                 .denominationCategory(DenominationCategory.EVENING)
                 .build();
 
-        when(denominationBalanceRepo.findByCashDeskId(BRANCH_ID)).thenReturn(List.of(bal));
+        when(denominationBalanceRepo.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of(bal));
 
         int count = service.snapshotDenominations(BRANCH_ID, DATE);
 
         assertThat(count).isEqualTo(0);
         verify(denominationSnapshotRepo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FKH-054: same HUF COIN 100 on another submission_date is not snapshotted")
+    void snapshotDenominations_ignoresOtherSubmissionDates() {
+        when(denominationSnapshotRepo.existsByBranchIdAndSnapshotDate(BRANCH_ID, DATE)).thenReturn(false);
+
+        Denomination coin100 = new Denomination();
+        coin100.setCurrency(hufCurrency);
+        coin100.setDenominationType(DenominationType.COIN);
+        coin100.setFaceValue(BigDecimal.valueOf(100));
+
+        DenominationBalance today = DenominationBalance.builder()
+                .cashDeskId(BRANCH_ID)
+                .denomination(coin100)
+                .quantity(1)
+                .totalValue(BigDecimal.valueOf(100))
+                .denominationCategory(DenominationCategory.EVENING)
+                .submissionDate(DATE)
+                .build();
+
+        when(denominationBalanceRepo.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of(today));
+
+        int count = service.snapshotDenominations(BRANCH_ID, DATE);
+
+        assertThat(count).isEqualTo(1);
+        verify(denominationBalanceRepo).findByBranchIdAndDate(BRANCH_ID, DATE);
+        verify(denominationBalanceRepo, never()).findByCashDeskId(any());
+        ArgumentCaptor<DailyDenominationSnapshot> captor = ArgumentCaptor.forClass(DailyDenominationSnapshot.class);
+        verify(denominationSnapshotRepo).save(captor.capture());
+        assertThat(captor.getValue().getFaceValue()).isEqualByComparingTo("100");
+        assertThat(captor.getValue().getSnapshotDate()).isEqualTo(DATE);
+        assertThat(captor.getValue().getQuantity()).isEqualTo(1);
     }
 
     // --- snapshotSubledger ---
@@ -285,7 +318,7 @@ class DailyClosingArchiveServiceTest {
     void executeFullDailyArchive_orchestrates() {
         // All duplication checks return false (first run)
         when(denominationSnapshotRepo.existsByBranchIdAndSnapshotDate(BRANCH_ID, DATE)).thenReturn(false);
-        when(denominationBalanceRepo.findByCashDeskId(BRANCH_ID)).thenReturn(List.of());
+        when(denominationBalanceRepo.findByBranchIdAndDate(BRANCH_ID, DATE)).thenReturn(List.of());
         when(subledgerSnapshotRepo.existsByBranchIdAndSnapshotDateAndSubledgerType(
                 eq(BRANCH_ID), eq(DATE), anyString())).thenReturn(false);
         when(subledgerSnapshotRepo.findByBranchIdAndSnapshotDateAndSubledgerTypeAndCurrencyCode(
