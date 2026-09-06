@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -60,6 +61,13 @@ public class DailyBalanceService {
     private final CashBalanceRepository cashBalanceRepository;
     private final BranchRepository branchRepository;
     private final DenominationBalanceRepository denominationBalanceRepository;
+
+    /**
+     * FKH-053: date comparison for the past-date opening guard. Field initializer
+     * keeps this OUT of {@code @RequiredArgsConstructor} so Mockito fixtures stay
+     * unchanged. Tests override via {@code ReflectionTestUtils}.
+     */
+    private Clock clock = Clock.system(AmlEddService.BUSINESS_ZONE);
 
     /**
      * Napi mérleg számítása egy iroda + dátum + valuta kombinációhoz.
@@ -119,6 +127,12 @@ public class DailyBalanceService {
             .subtract(sales)
             .subtract(transfersOut);
 
+        if (closingBalance.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidationException(String.format(
+                "A(z) %s napi záró egyenleg negatív (%s, %s): %s — a bemenet inkonzisztens, a zárás nem indítható.",
+                date, currencyCode, branchId, closingBalance));
+        }
+
         // DailyBalance entity
         DailyBalance balance = existing != null ? existing : DailyBalance.builder()
             .branchId(branchId)
@@ -163,6 +177,8 @@ public class DailyBalanceService {
             try {
                 DailyBalance balance = calculateDailyBalance(branchId, date, currency.getCode());
                 results.add(balance);
+            } catch (ValidationException e) {
+                throw e;
             } catch (Exception e) {
                 log.error("Napi mérleg számítási hiba: branchId={}, date={}, currency={} — {}",
                     branchId, date, currency.getCode(), e.getMessage(), e);
@@ -189,8 +205,12 @@ public class DailyBalanceService {
      *
      * 1. Előző napi záró egyenleg (DailyBalance tábla)
      * 2. Előző havi lezárt összesítő (MonthlyClosingSummary — currency breakdown JSON-ből)
-     * 3. Aktuális kassza-egyenleg (cash_balance.current_balance)
-     * 4. Nulla (első nap az irodában)
+     * 3. Aktuális kassza-egyenleg (cash_balance.current_balance) — csak {@code date == today}
+     * 4. Nulla (első nap az irodában) — csak {@code date == today}
+     *
+     * <p>FKH-053: a 3. és 4. szint NEM fut, ha {@code date} a múltban van. Ilyenkor
+     * a hiányzó 1–2. szint {@code ValidationException}. A mai nap viselkedése
+     * FKH-029 FR-5 szerint marad.</p>
      *
      * <p>FKH-029 FR-5: a 3. szint korábban a {@code CurrencyStock.quantity}-ből olvasott
      * ({@code entityType='CASHIER'}). Az élő audit (2026-08-04) szerint az a réteg HOLT:
@@ -228,6 +248,13 @@ public class DailyBalanceService {
                     prevYearMonth, currencyCode, monthlyClosingBalance);
                 return monthlyClosingBalance;
             }
+        }
+
+        // FKH-053: a past date must not fall back to live cash_balance (or silent 0).
+        if (date.isBefore(LocalDate.now(clock))) {
+            throw new ValidationException(String.format(
+                "A(z) %s napi nyitó egyenleg nem rekonstruálható (%s): nincs előző napi záró és nincs havi összesítő.",
+                date, currencyCode));
         }
 
         // Szint 3: cash_balance.current_balance (a fiók élő kassza-egyenlege).
