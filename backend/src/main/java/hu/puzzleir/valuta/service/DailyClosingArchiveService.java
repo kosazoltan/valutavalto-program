@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -53,6 +54,7 @@ public class DailyClosingArchiveService {
      *
      * @return archiválási összesítő szöveg
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String executeFullDailyArchive(UUID branchId, LocalDate closingDate) {
         log.info("S1-02 napi archiválás indítása: branchId={}, date={}", branchId, closingDate);
         StringBuilder summary = new StringBuilder();
@@ -85,8 +87,12 @@ public class DailyClosingArchiveService {
     /**
      * Címletezés snapshot (Delphi: CimtCopy).
      *
-     * A DenominationBalance aktuális állapotát snapshot-olja.
-     * Duplikáció-védelem: ha az adott napra már van snapshot, kihagyja.
+     * Snapshots DenominationBalance rows of {@code closingDate} only.
+     * Duplicate-day skip: if a snapshot already exists for the date, no-op.
+     *
+     * <p>FKH-054: never {@code findByCashDeskId} — V387 date-keyed rows from earlier
+     * submission dates collide on {@code uq_denom_snap} (branch, date, currency, type, face)
+     * and mark the outer closing transaction rollback-only.</p>
      */
     public int snapshotDenominations(UUID branchId, LocalDate closingDate) {
         if (denominationSnapshotRepo.existsByBranchIdAndSnapshotDate(branchId, closingDate)) {
@@ -94,8 +100,7 @@ public class DailyClosingArchiveService {
             return 0;
         }
 
-        // Az aktuális DenominationBalance-okat olvassuk
-        List<DenominationBalance> balances = denominationBalanceRepo.findByCashDeskId(branchId);
+        List<DenominationBalance> balances = denominationBalanceRepo.findByBranchIdAndDate(branchId, closingDate);
 
         int count = 0;
         for (DenominationBalance bal : balances) {
