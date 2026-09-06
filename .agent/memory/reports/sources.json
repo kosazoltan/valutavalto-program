@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-05T20:39:39.518Z",
-  "source_count": 1091,
+  "generated_at": "2026-09-06T17:16:07.761Z",
+  "source_count": 1092,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12783,6 +12783,12 @@
         "deploy",
         "penztar"
       ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-05-fkh052-sorrend-vedelem.md",
+      "sha256": "0e78704193acf9900eb9c2fc78195729aa9f8e3e66864036a79244080ed33b6a",
+      "type": "medium-term-episodic",
+      "areas": []
     },
     {
       "path": "vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md",
