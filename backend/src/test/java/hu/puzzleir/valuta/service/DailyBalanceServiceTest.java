@@ -153,9 +153,9 @@ class DailyBalanceServiceTest {
                 eq(TEST_BRANCH_ID), eq("EUR"), eq(TEST_COMPANY_ID)))
             .thenReturn(Optional.of(cashBalance));
 
-        BigDecimal result = dailyBalanceService.getOpeningBalance(TEST_BRANCH_ID, TEST_DATE, "EUR");
-
-        assertThat(result).isEqualByComparingTo("750.00");
+        // FKH-053: TEST_DATE is a past calendar day — live cash_balance must not be used.
+        assertThatThrownBy(() -> dailyBalanceService.getOpeningBalance(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+            .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class);
         verifyNoInteractions(currencyStockRepository);
     }
 
