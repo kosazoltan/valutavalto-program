@@ -12,8 +12,11 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -88,6 +91,10 @@ class DailyBalanceServiceTest {
         auth.setDetails(details);
         SecurityContextHolder.getContext().setAuthentication(auth);
 
+        // Pin "today" to TEST_DATE so existing today-flow fixtures stay valid (NFR-3).
+        ReflectionTestUtils.setField(dailyBalanceService, "clock",
+            Clock.fixed(Instant.parse("2026-03-16T12:00:00Z"), AmlEddService.BUSINESS_ZONE));
+
         Company mockCompany = new Company();
         mockCompany.setId(TEST_COMPANY_ID);
         when(companyRepository.findById(TEST_COMPANY_ID)).thenReturn(Optional.of(mockCompany));
@@ -153,9 +160,11 @@ class DailyBalanceServiceTest {
                 eq(TEST_BRANCH_ID), eq("EUR"), eq(TEST_COMPANY_ID)))
             .thenReturn(Optional.of(cashBalance));
 
-        BigDecimal result = dailyBalanceService.getOpeningBalance(TEST_BRANCH_ID, TEST_DATE, "EUR");
-
-        assertThat(result).isEqualByComparingTo("750.00");
+        // FKH-053: TEST_DATE is a past calendar day relative to this clock.
+        ReflectionTestUtils.setField(dailyBalanceService, "clock",
+            Clock.fixed(Instant.parse("2026-09-06T12:00:00Z"), AmlEddService.BUSINESS_ZONE));
+        assertThatThrownBy(() -> dailyBalanceService.getOpeningBalance(TEST_BRANCH_ID, TEST_DATE, "EUR"))
+            .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class);
         verifyNoInteractions(currencyStockRepository);
     }
 

@@ -309,6 +309,17 @@ public class RetroactiveClosingService {
             throw new ValidationException("Ez a nap már le van zárva: " + date);
         }
 
+        // FKH-053 FR-1: counted EVENING stock is required; empty physical data
+        // must not close as a silent "no difference".
+        if (!denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
+                branchId, date, DenominationCategory.EVENING)) {
+            auditLogService.log("RETROACTIVE_CLOSING_BLOCKED_NO_EVENING",
+                    String.format("{\"branch_id\":\"%s\",\"session_date\":\"%s\"}", branchId, date),
+                    branchId.toString());
+            throw new ValidationException(
+                    "Nincs rögzített esti címletezés erre a napra, a zárás nem indítható fizikai adat nélkül");
+        }
+
         // D7 gate: the SAME tolerance predicate as the displayed reconciliation.
         RetroactiveReconciliationDto reconciliation = reconcile(branchId, date);
         if (reconciliation.anyBlocking()) {
