@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-05T20:39:39.518Z
+generated: 2026-09-06T17:16:07.761Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-04-fkh029-vault-cash-balance-scope.md`
-  - summary: # Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés **Dátum:** 2026-08-04 · **Branch:** `fkh029-vault-cash-balance-scope` (main `9a48f0dd`-ből) ## Miért Az FKH-028 V369 csak BR020-at pótolta (FR-5 tudatos scope-kivétel). Az élő prod audit (read-only, Hetzner) szerint **7 további aktív Értéktárnak 0 `cash_balance` sora** volt, és **BR075 Békéscsaba 10 PENDING átadása 2026-05-26 óta b
 
 - **Aktív repo-memória (read-gate + area-taxonómia + stale-check)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md`
@@ -243,6 +239,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — FKH-051 / v2.28.102 (2026-09-05)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-05-fkh051-v2.28.102.md`
   - summary: # Handoff — FKH-051 / v2.28.102 (2026-09-05) - PR #1711 squash-merged `6f516096` (head `7badb402`). - 10/10 required SUCCESS on PR head. Non-required: Frontend diff-coverage FAILURE (MainLayout.fk069 + TransactionLevyReportPage — files **not** in PR diff). - Merge = deploy: Hetzner run `33969442019` SUCCESS (Gate A+B). Prod `{"version":"2.28.102","buildTime":"2026-09-05T13:40:41Z"}`. - Main CI SHA `6f516096` `MAIN_CI
+
+- **Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-05-fkh052-sorrend-vedelem.md`
+  - summary: # Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103) Status: **LIVE**. Prod `2.28.103`, main `68a001ab` = PR #1714. Deploy run 33990481634 SUCCESS. No installer (backend-only). ## Shipped - `RetroactiveClosingService.oldestProcessablePastDate` = min of OPEN ∪ FALSE_CLOSED finder heads. - `closeRetroactively` + `reopenFalseClosed` reject unless date == oldest. Reopen gate is **before** the row lock. - Close o
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
