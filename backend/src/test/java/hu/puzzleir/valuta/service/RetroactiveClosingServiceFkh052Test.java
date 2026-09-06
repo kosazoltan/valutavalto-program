@@ -31,6 +31,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -90,6 +91,9 @@ class RetroactiveClosingServiceFkh052Test {
         // Company-wide default scope (null). Mockito's RETURNS_DEFAULTS gives an
         // EMPTY Set ("see nothing"), so pin null explicitly (Fkh050Test pattern).
         Mockito.lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+        Mockito.lenient().when(denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
+                any(), any(), eq(hu.puzzleir.valuta.entity.DenominationCategory.EVENING)))
+                .thenReturn(true);
     }
 
     @AfterEach

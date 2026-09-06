@@ -96,6 +96,9 @@ class RetroactiveClosingServiceFkh051Test {
         // Company-wide default scope (null). Mockito's RETURNS_DEFAULTS gives an
         // EMPTY Set ("see nothing"), so pin null explicitly (Fkh050Test pattern).
         Mockito.lenient().when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(null);
+        Mockito.lenient().when(denominationBalanceRepository.existsByBranchIdAndDateAndCategory(
+                any(), any(), eq(hu.puzzleir.valuta.entity.DenominationCategory.EVENING)))
+                .thenReturn(true);
     }
 
     @AfterEach
