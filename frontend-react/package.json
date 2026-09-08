@@ -1,7 +1,7 @@
 {
   "name": "valutavalto-frontend",
   "private": true,
-  "version": "2.28.106",
+  "version": "2.28.107",
   "type": "module",
   "scripts": {
     "dev": "vite",
