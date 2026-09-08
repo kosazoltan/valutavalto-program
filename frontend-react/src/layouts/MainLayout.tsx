@@ -60,11 +60,10 @@ export function shouldRequireDailySession(
 }
 
 /**
- * FKH-057: a visszamenőleges zárás útvonalai mentesülnek a napnyitás-kapu
- * `redirect-day-open` átirányítása alól — különben a mai napot nem nyitott
- * pénztáros sosem érné el a listát. EXACT match (D2): csak
- * `/closing/retroactive` és `/closing/retroactive/<date>`; prefix találat
- * (pl. `/closing/retroactive-extra`) és trailing slash NEM mentesít.
+ * FKH-057: retroactive-closing paths skip the day-open `redirect-day-open`
+ * Navigate; otherwise a cashier with today not open can never reach the list.
+ * Exact match (D2): only `/closing/retroactive` and `/closing/retroactive/<date>`.
+ * Prefix hits (e.g. `/closing/retroactive-extra`) and a trailing slash do not exempt.
  */
 export function isRetroactiveClosingPath(pathname: string): boolean {
   return pathname === '/closing/retroactive' || /^\/closing\/retroactive\/[^/]+$/.test(pathname)
@@ -308,7 +307,7 @@ export default function MainLayout() {
   return (
     <div className="app-layout-root h-screen overflow-hidden bg-form-bg flex flex-col md:flex-row">
       {/* Napnyitás hiba dialógus — csak ha az automatikus nyitás nem sikerült */}
-      {/* FKH-057: a visszamenőleges zárás útvonalai mentesek az átirányítás alól (D3) */}
+      {/* FKH-057: retroactive-closing paths skip this redirect (D3) */}
       {showSessionDialog &&
         !sessionReady &&
         sessionError === 'redirect-day-open' &&
