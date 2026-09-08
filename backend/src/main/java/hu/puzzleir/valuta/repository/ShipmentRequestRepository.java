@@ -137,6 +137,19 @@ public interface ShipmentRequestRepository extends JpaRepository<ShipmentRequest
             @Param("toBranchId") UUID toBranchId,
             @Param("statuses") Collection<ShipmentRequestStatus> statuses);
 
+    @Query("SELECT sr FROM ShipmentRequest sr "
+           + "WHERE sr.toBranchId = :toBranchId "
+           + "AND sr.status IN :statuses "
+           + "AND sr.requestDate = :date "
+           + "AND sr.fromBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) "
+           + "AND sr.toBranchId IN (SELECT b.id FROM Branch b WHERE b.company.id = :companyId) "
+           + "ORDER BY sr.createdAt DESC")
+    List<ShipmentRequest> findPendingForToBranchAndDate(
+            @Param("companyId") UUID companyId,
+            @Param("toBranchId") UUID toBranchId,
+            @Param("statuses") Collection<ShipmentRequestStatus> statuses,
+            @Param("date") LocalDate date);
+
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(sr.requestNumber, LENGTH(:prefix) + 1) AS integer)), 0) " +
            "FROM ShipmentRequest sr WHERE sr.requestNumber LIKE CONCAT(:prefix, '%')")
     int findMaxRequestNumber(@Param("prefix") String prefix);

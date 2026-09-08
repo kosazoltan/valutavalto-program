@@ -55,6 +55,7 @@ export default function ReceivedDataOverviewPage() {
   const [result, setResult] = useState<TransferReconciliationResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [reconciliationError, setReconciliationError] = useState(false)
+  const [forbiddenError, setForbiddenError] = useState(false)
   const [hasRun, setHasRun] = useState(false)
 
   // FK-003: az ellenőrzés NEM fut automatikusan — Kasza Helga manuálisan indítja.
@@ -62,13 +63,19 @@ export default function ReceivedDataOverviewPage() {
   const runCheck = async () => {
     setLoading(true)
     setReconciliationError(false)
+    setForbiddenError(false)
     try {
       const value = await transferReconciliationApi.run(startDate, endDate)
       setResult(value)
     } catch (reason) {
       logger.error('ReceivedDataOverviewPage', 'Egyeztetés futtatási hiba:', reason)
       setResult(null)
-      setReconciliationError(true)
+      const status = (reason as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
+        setForbiddenError(true)
+      } else {
+        setReconciliationError(true)
+      }
     }
     setHasRun(true)
     setLoading(false)
@@ -177,12 +184,16 @@ export default function ReceivedDataOverviewPage() {
           <Metric label="Értesített értéktár" value={result?.notifiedBranches ?? 0} tone="amber" />
         </div>
 
-        {reconciliationError && (
+        {(reconciliationError || forbiddenError) && (
           <div
             data-testid="received-data-recon-error"
             className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           >
-            {t('centralReceivedData.reconciliationError')}
+            {t(
+              forbiddenError
+                ? 'centralReceivedData.forbiddenError'
+                : 'centralReceivedData.reconciliationError',
+            )}
           </div>
         )}
 

@@ -22,7 +22,6 @@ public class ClosingControlDto {
     private Boolean eveningClosingDone;
     private Boolean navClosingDone;
     private LocalDateTime lastTransactionAt;
-    private String alertLevel;
     private String notes;
     private Integer completedCount;
     private Integer requiredCount;

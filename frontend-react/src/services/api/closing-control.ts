@@ -1,7 +1,5 @@
 import { api } from './client'
 
-export type ClosingAlertLevel = 'NONE' | 'WARNING' | 'CRITICAL' | string
-
 export interface ClosingControlStatus {
   id?: string | null
   branchId: string
@@ -13,7 +11,6 @@ export interface ClosingControlStatus {
   eveningClosingDone: boolean
   navClosingDone: boolean
   lastTransactionAt?: string | null
-  alertLevel: ClosingAlertLevel
   notes?: string | null
   completedCount?: number
   requiredCount?: number

@@ -55,7 +55,8 @@ class ClosingWizardMandatoryCurrenciesFkh036Test {
     private static final LocalDate CLOSING_DATE = LocalDate.of(2026, 8, 17);
     private static final String VAULT_ENTITY_ID = "77";
 
-    @InjectMocks private ClosingWizardService service;
+        @Mock private UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
+@InjectMocks private ClosingWizardService service;
 
     @Mock private ClosingWizardRepository closingWizardRepository;
     @Mock private WorkerRepository workerRepository;

@@ -350,6 +350,7 @@
   },
   "centralReceivedData": {
     "reconciliationError": "A pénztárközi egyeztetés adatainak betöltése sikertelen.",
+    "forbiddenError": "Nincs jogosultsága a pénztárközi egyeztetés futtatásához.",
     "statusError": "A beérkezett adatok betöltése sikertelen.",
     "statusOnDate": "Állapot ezen a napon: {{date}}",
     "statusMatch": "EGYEZIK",

@@ -45,9 +45,6 @@ public class ClosingControl {
     @Column(name = "last_transaction_at")
     private LocalDateTime lastTransactionAt;
 
-    @Column(name = "alert_level", nullable = false, length = 20)
-    private String alertLevel; // NONE / WARNING / CRITICAL
-
     @Column(columnDefinition = "TEXT")
     private String notes;
 

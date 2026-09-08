@@ -164,6 +164,24 @@ public class ShipmentService {
     }
 
     @Transactional(readOnly = true)
+    public void ensureNoUnconfirmedIncomingShipments(UUID branchId, LocalDate date) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Set<ShipmentRequestStatus> pendingStatuses = Set.of(
+                ShipmentRequestStatus.SUBMITTED,
+                ShipmentRequestStatus.APPROVED,
+                ShipmentRequestStatus.IN_TRANSIT);
+        List<ShipmentRequest> pending = shipmentRequestRepository.findPendingForToBranchAndDate(
+                companyId, branchId, pendingStatuses, date);
+        if (pending.isEmpty()) {
+            return;
+        }
+        String numbers = pending.stream()
+                .map(ShipmentRequest::getRequestNumber)
+                .collect(java.util.stream.Collectors.joining(", "));
+        throw new ValidationException("Nyugtázatlan bejövő szállítás: " + numbers);
+    }
+
+    @Transactional(readOnly = true)
     public ShipmentRequest findById(UUID id) {
         UUID currentCompanyId = SecurityUtils.getCurrentCompanyId();
         ShipmentRequest sr = shipmentRequestRepository.findByIdAndCompanyId(id, currentCompanyId)

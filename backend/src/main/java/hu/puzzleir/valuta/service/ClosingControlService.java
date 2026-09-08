@@ -86,13 +86,11 @@ public class ClosingControlService {
                             .dailyClosingDone(false)
                             .eveningClosingDone(false)
                             .navClosingDone(false)
-                            .alertLevel("WARNING")
                             .notes(message)
                             .build();
                     return closingControlRepository.save(newControl);
                 });
 
-        control.setAlertLevel("WARNING");
         control.setNotes(message);
         closingControlRepository.save(control);
 
@@ -120,7 +118,6 @@ public class ClosingControlService {
                         .dailyClosingDone(false)
                         .eveningClosingDone(false)
                         .navClosingDone(false)
-                        .alertLevel("WARNING")
                         .build()));
 
         if (type == ClosingMarkType.DAILY) {
@@ -130,7 +127,6 @@ public class ClosingControlService {
         } else {
             throw new ValidationException("Ismeretlen zárás típus: " + type);
         }
-        control.setAlertLevel(resolveAlertLevel(control, branch, date));
         ClosingControl saved = closingControlRepository.save(control);
 
         String action = type == ClosingMarkType.DAILY ? "CLOSING_RECEIVED_DAILY" : "CLOSING_RECEIVED_EVENING";
@@ -170,7 +166,6 @@ public class ClosingControlService {
                 .eveningClosingDone(eveningDone)
                 .navClosingDone(navDone)
                 .lastTransactionAt(entity != null ? entity.getLastTransactionAt() : null)
-                .alertLevel(resolveAlertLevel(entity, branch, date))
                 .notes(entity != null ? entity.getNotes() : null)
                 .completedCount(completed)
                 .requiredCount(required)
@@ -213,21 +208,6 @@ public class ClosingControlService {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private String resolveAlertLevel(ClosingControl entity, Branch branch, LocalDate date) {
-        boolean dailyDone = entity != null && Boolean.TRUE.equals(entity.getDailyClosingDone());
-        boolean eveningDone = entity != null && Boolean.TRUE.equals(entity.getEveningClosingDone());
-        if (isRequiredClosingDone(branch, dailyDone, eveningDone)) {
-            return "NONE";
-        }
-        if (entity != null && entity.getAlertLevel() != null && !"NONE".equalsIgnoreCase(entity.getAlertLevel())) {
-            return entity.getAlertLevel();
-        }
-        if (date.isBefore(LocalDate.now())) {
-            return "CRITICAL";
-        }
-        return "WARNING";
     }
 
     private boolean isRequiredClosingDone(Branch branch, boolean dailyDone, boolean eveningDone) {

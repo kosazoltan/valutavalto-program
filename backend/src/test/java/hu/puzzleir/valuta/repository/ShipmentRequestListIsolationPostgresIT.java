@@ -83,6 +83,9 @@ class ShipmentRequestListIsolationPostgresIT {
         assertThat(shipmentRequestRepository.findPendingForToBranch(
                 seed.companyAId(), seed.foreignToBranchId(), Set.of(ShipmentRequestStatus.SUBMITTED)))
                 .isEmpty();
+        assertThat(shipmentRequestRepository.findPendingForToBranchAndDate(
+                seed.companyAId(), seed.foreignToBranchId(), Set.of(ShipmentRequestStatus.SUBMITTED), LocalDate.now()))
+                .isEmpty();
     }
 
     private void assertContainsOnlyValid(List<ShipmentRequest> rows, UUID validShipmentId) {

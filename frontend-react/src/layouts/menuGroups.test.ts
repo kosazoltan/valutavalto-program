@@ -361,6 +361,12 @@ describe('FK-086 — Napi ellenőrző lista a Központ csoportban', () => {
     ).toBe(false)
   })
 
+  it('FK-107: /central/received-data item canonicalRoles is foertektar + belso_ellenor', () => {
+    const kozpont = menuGroups.find((g) => g.label === 'Központ')!
+    const item = kozpont.items.find((i) => i.path === '/central/received-data')!
+    expect([...(item.canonicalRoles ?? [])].sort()).toEqual(['belso_ellenor', 'foertektar'])
+  })
+
   it('FR-6: a Központ csoport a /central/received-data UTÁN közvetlenül tartalmazza', () => {
     const kozpont = menuGroups.find((g) => g.label === 'Központ')!
     const paths = kozpont.items.map((i) => i.path)

@@ -599,7 +599,14 @@ export default function App() {
                 <Route path="/" element={<Navigate to={defaultProtectedRoute} replace />} />
                 <Route path="/central-workstation" element={<CentralWorkstationPage />} />
                 <Route path="/central/closing-control" element={<ClosingControlPage />} />
-                <Route path="/central/received-data" element={<ReceivedDataOverviewPage />} />
+                <Route
+                  path="/central/received-data"
+                  element={
+                    <MenuRoleGate path="/central/received-data">
+                      <ReceivedDataOverviewPage />
+                    </MenuRoleGate>
+                  }
+                />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route
                   path="/mobile"

@@ -51,6 +51,8 @@ class ShipmentRequestS0b4ContractTest {
                 Arguments.of("findScopedByCompanyId", new Class<?>[]{
                         Collection.class, UUID.class, ShipmentRequestStatus.class, UUID.class, Pageable.class}),
                 Arguments.of("findPendingForToBranch", new Class<?>[]{
-                        UUID.class, UUID.class, Collection.class}));
+                        UUID.class, UUID.class, Collection.class}),
+                Arguments.of("findPendingForToBranchAndDate", new Class<?>[]{
+                        UUID.class, UUID.class, Collection.class, java.time.LocalDate.class}));
     }
 }

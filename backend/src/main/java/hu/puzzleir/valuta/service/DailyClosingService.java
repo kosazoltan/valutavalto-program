@@ -79,6 +79,7 @@ public class DailyClosingService {
     private final BranchRepository branchRepository;
     /** FK-066: pénznemenkénti zárás-tolerancia közös forrása (FR-6) — a kemény kapu ebből olvas. */
     private final ClosingToleranceService closingToleranceService;
+    private final UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
 
     @Value("${nav.bridge.simulated-success-enabled:false}")
     private boolean navBridgeSimulatedSuccessEnabled;
@@ -97,6 +98,8 @@ public class DailyClosingService {
         if (!dailySessionService.hasOpenSession()) {
             throw new ValidationException("Nincs nyitott napi munkamenet!");
         }
+
+        unconfirmedIncomingClosingGate.ensureNoUnconfirmedIncoming(branchId, closingDate);
 
         log.info("Napzaras inditasa: datum={}, iroda={}", closingDate, branchId);
 

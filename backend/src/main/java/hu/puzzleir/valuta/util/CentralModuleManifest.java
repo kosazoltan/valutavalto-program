@@ -35,7 +35,7 @@ public final class CentralModuleManifest {
             new ModuleRule("daily-checklist", List.of(
                     "foertektar", "ugyvezeto", "belso_ellenor")),
             new ModuleRule("received-data", List.of(
-                    "foertektar", "ugyvezeto", "belso_ellenor", "teruleti_vezeto")),
+                    "foertektar", "belso_ellenor")),
             new ModuleRule("daily-turnover", List.of(
                     "foertektar", "ugyvezeto", "belso_ellenor", "penzugyi_vezeto")),
             new ModuleRule("mnb-reports", List.of(
