@@ -20408,8 +20408,7 @@ export interface components {
       navClosingDone?: boolean
       /** Format: date-time */
       lastTransactionAt?: string
-      alertLevel?: string
-      notes?: string
+            notes?: string
       /** Format: int32 */
       completedCount?: number
       /** Format: int32 */

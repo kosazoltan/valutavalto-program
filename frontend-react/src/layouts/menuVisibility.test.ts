@@ -343,12 +343,21 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
       '/seal-tracking',
       '/admin/branches',
       '/mnb-settlement-rates',
+      '/central/received-data',
     ]
     for (const path of gatedPaths) {
       const roles = effectiveCanonicalRolesForPath(menuGroups, path)
       expect(roles, `hiányzó menü-szerepkör: ${path}`).toBeDefined()
       expect((roles ?? []).length, `üres szerepkör-lista: ${path}`).toBeGreaterThan(0)
     }
+  })
+
+  // FK-107 FR-2: /central/received-data gated path roles
+  it('/central/received-data → item-szintű [belso_ellenor, foertektar], not irodavezeto', () => {
+    const roles = effectiveCanonicalRolesForPath(menuGroups, '/central/received-data')
+    expect(roles).toBeDefined()
+    expect([...(roles ?? [])].sort()).toEqual(['belso_ellenor', 'foertektar'])
+    expect(roles).not.toContain('irodavezeto')
   })
 })
 
