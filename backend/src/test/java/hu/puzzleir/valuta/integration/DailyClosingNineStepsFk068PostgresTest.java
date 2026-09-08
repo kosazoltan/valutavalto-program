@@ -164,6 +164,9 @@ class DailyClosingNineStepsFk068PostgresTest {
     @MockitoBean private hu.puzzleir.valuta.service.ReceiptSequenceService receiptSequenceService;
     @MockitoBean private hu.puzzleir.valuta.service.NotificationService notificationService;
     @MockitoBean private hu.puzzleir.valuta.service.CashBalanceService cashBalanceService;
+    // FK-105: UnconfirmedIncomingClosingGate is a new DailyClosingService constructor dep.
+    // FR-3/FR-4 do not cover the incoming-movement gate; default mock is a no-op.
+    @MockitoBean private hu.puzzleir.valuta.service.UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
 
     /** A becímletezett HUF összeg — a seedelt cash_balance-szal pontosan egyezik (0 eltérés). */
     private static final Map<String, Map<Integer, Integer>> HUF_DENOMS =
