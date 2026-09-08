@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { authApi, dailySessionApi } from '../services/api/index'
 import {
@@ -57,6 +57,26 @@ export function shouldRequireDailySession(
   // atirt refaktor ezt hallgatoalagban megvaltoztatna (ismeretlen szerep => kapu nelkul).
   if (!canonical) return true // ismeretlen/meg restore-elotti szerep -> kapu marad (nincs regresszio)
   return canonical === 'penztar' // csak a penztari operatort gateli
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+const RETROACTIVE_DETAIL = /^\/closing\/retroactive\/(\d{4}-\d{2}-\d{2})$/
+
+/**
+ * FKH-057: skip the day-open `redirect-day-open` Navigate so a cashier with
+ * today not open can reach retroactive closing and its EVENING denomination
+ * step. Exact routes only: `/closing/retroactive`, `/closing/retroactive/YYYY-MM-DD`,
+ * and `/closing/denomination-entry/EVENING` when `businessDate` is ISO and
+ * `returnTo` is a retroactive list/detail path. Prefix hits do not exempt.
+ */
+export function isRetroactiveClosingPath(pathname: string, search = ''): boolean {
+  if (pathname === '/closing/retroactive') return true
+  if (RETROACTIVE_DETAIL.test(pathname)) return true
+  if (pathname !== '/closing/denomination-entry/EVENING') return false
+  const query = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  const businessDate = query.get('businessDate') ?? ''
+  const returnTo = query.get('returnTo') ?? ''
+  return ISO_DATE.test(businessDate) && (returnTo === '/closing/retroactive' || RETROACTIVE_DETAIL.test(returnTo))
 }
 
 export async function performBackendAwareLogout(
@@ -139,6 +159,7 @@ export default function MainLayout() {
   }, [])
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const navigate = useNavigate()
+  const location = useLocation()
   const isBrowserFallback = !isElectronRuntime() && appMode === 'full'
 
   // RBAC-audit (2026-06-05): a menü-láthatóság tiszta logikája a menuVisibility modulban
@@ -296,9 +317,13 @@ export default function MainLayout() {
   return (
     <div className="app-layout-root h-screen overflow-hidden bg-form-bg flex flex-col md:flex-row">
       {/* Napnyitás hiba dialógus — csak ha az automatikus nyitás nem sikerült */}
-      {showSessionDialog && !sessionReady && sessionError === 'redirect-day-open' && (
-        <Navigate to="/cashdesk/day-open" replace />
-      )}
+      {/* FKH-057: retroactive-closing paths skip this redirect (D3) */}
+      {showSessionDialog &&
+        !sessionReady &&
+        sessionError === 'redirect-day-open' &&
+        !isRetroactiveClosingPath(location.pathname, location.search) && (
+          <Navigate to="/cashdesk/day-open" replace />
+        )}
 
       {showSessionDialog &&
         !sessionReady &&

@@ -2,10 +2,63 @@ import { describe, expect, it, vi } from 'vitest'
 import type { AppMode } from '../types/appMode'
 import { CASHIER_APP_MODE } from '../types/appMode'
 import {
+  isRetroactiveClosingPath,
   performBackendAwareLogout,
   shouldRequireDailySession,
   shouldShowDayOpenIndicator,
 } from './MainLayout'
+
+describe('isRetroactiveClosingPath — FKH-057 path exemption', () => {
+  it('matches the retroactive closing list route exactly', () => {
+    expect(isRetroactiveClosingPath('/closing/retroactive')).toBe(true)
+  })
+
+  it('matches the retroactive closing detail route with a date segment', () => {
+    expect(isRetroactiveClosingPath('/closing/retroactive/2026-08-01')).toBe(true)
+  })
+
+  it('rejects lookalike prefix routes', () => {
+    expect(isRetroactiveClosingPath('/closing/retroactive-extra')).toBe(false)
+  })
+
+  it('rejects the day-open route', () => {
+    expect(isRetroactiveClosingPath('/cashdesk/day-open')).toBe(false)
+  })
+
+  it('rejects the cashdesk route', () => {
+    expect(isRetroactiveClosingPath('/cashdesk')).toBe(false)
+  })
+
+  it('rejects a trailing slash on the list route (exact match, D2)', () => {
+    expect(isRetroactiveClosingPath('/closing/retroactive/')).toBe(false)
+  })
+
+  it('rejects a nested sub-path beyond the date segment', () => {
+    expect(isRetroactiveClosingPath('/closing/retroactive/2026-08-01/edit')).toBe(false)
+  })
+
+  it('rejects a non-date detail segment', () => {
+    expect(isRetroactiveClosingPath('/closing/retroactive/help')).toBe(false)
+  })
+
+  it('matches EVENING denomination-entry with past businessDate and retroactive returnTo', () => {
+    expect(
+      isRetroactiveClosingPath(
+        '/closing/denomination-entry/EVENING',
+        '?businessDate=2026-08-01&returnTo=/closing/retroactive/2026-08-01',
+      ),
+    ).toBe(true)
+  })
+
+  it('rejects EVENING denomination-entry without retroactive returnTo', () => {
+    expect(
+      isRetroactiveClosingPath(
+        '/closing/denomination-entry/EVENING',
+        '?businessDate=2026-08-01',
+      ),
+    ).toBe(false)
+  })
+})
 
 describe('MainLayout daily session gate', () => {
   it('requires day-open session only in cashier app mode', () => {

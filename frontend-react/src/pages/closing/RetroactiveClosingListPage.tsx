@@ -36,6 +36,9 @@ export default function RetroactiveClosingListPage() {
   const [dateError, setDateError] = useState<string | null>(null)
   const [inspecting, setInspecting] = useState(false)
   const [reprocessing, setReprocessing] = useState(false)
+  // FKH-056 (D9): local confirm-dialog state — the date pending a simplified close.
+  const [confirmDate, setConfirmDate] = useState<string | null>(null)
+  const [simplifying, setSimplifying] = useState(false)
 
   const loadDays = useCallback(async () => {
     if (!branchId) return
@@ -69,6 +72,24 @@ export default function RetroactiveClosingListPage() {
       setDateError(getErrorMessage(error))
     } finally {
       setReprocessing(false)
+    }
+  }
+
+  // FKH-056: the confirm dialog's submit — close the FALSE_CLOSED day the
+  // simplified way, then reload so the re-stamped row leaves the list.
+  const confirmSimplifiedClose = async () => {
+    const date = confirmDate
+    if (!date) return
+    setSimplifying(true)
+    try {
+      await retroactiveClosingApi.simplifiedClose(branchId, date)
+      setConfirmDate(null)
+      await loadDays()
+    } catch (error) {
+      logger.error('RetroactiveClosingListPage', 'simplified close failed:', error)
+      setDateError(getErrorMessage(error))
+    } finally {
+      setSimplifying(false)
     }
   }
 
@@ -178,20 +199,38 @@ export default function RetroactiveClosingListPage() {
               >
                 <span className="font-medium">{day.date}</span>
                 {kind === 'FALSE_CLOSED' ? (
-                  <button
-                    type="button"
-                    data-testid={`open-day-reprocess-${day.date}`}
-                    className="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!actionable || reprocessing}
-                    title={
-                      actionable
-                        ? undefined
-                        : i18n.t('literals.elobb-a-legregebbi-nyitott-napot-kell-lezarni')
-                    }
-                    onClick={() => void reprocess(day.date)}
-                  >
-                    {i18n.t('literals.tevesen-lezart-nap-ujranyitasa')}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      data-testid={`open-day-reprocess-${day.date}`}
+                      className="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!actionable || reprocessing || simplifying}
+                      title={
+                        actionable
+                          ? undefined
+                          : i18n.t('literals.elobb-a-legregebbi-nyitott-napot-kell-lezarni')
+                      }
+                      onClick={() => void reprocess(day.date)}
+                    >
+                      {i18n.t('literals.tevesen-lezart-nap-ujranyitasa')}
+                    </button>
+                    {/* FKH-056: simplified close — only on the oldest FALSE_CLOSED row
+                        (disabled, never hidden, on newer rows). */}
+                    <button
+                      type="button"
+                      data-testid={`open-day-simplified-${day.date}`}
+                      className="rounded bg-slate-700 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!actionable || simplifying || reprocessing}
+                      title={
+                        actionable
+                          ? undefined
+                          : i18n.t('literals.elobb-a-legregebbi-nyitott-napot-kell-lezarni')
+                      }
+                      onClick={() => setConfirmDate(day.date)}
+                    >
+                      {i18n.t('literals.egyszerusitett-zaras')}
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
@@ -214,6 +253,46 @@ export default function RetroactiveClosingListPage() {
             )
           })}
         </ul>
+      )}
+
+      {/* FKH-056 (D9): simplified-close confirm dialog — local state, all copy via i18n. */}
+      {confirmDate && (
+        <div
+          data-testid="simplified-confirm-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="simplified-confirm-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        >
+          <div className="w-full max-w-md mx-4 rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 id="simplified-confirm-title" className="mb-2 text-lg font-bold">
+              {i18n.t('literals.egyszerusitett-zaras-megerosites')}
+            </h2>
+            <p className="mb-4 text-sm text-slate-600">
+              {i18n.t('literals.egyszerusitett-zaras-magyarazat', { date: confirmDate })}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                data-testid="simplified-confirm-cancel"
+                disabled={simplifying}
+                onClick={() => setConfirmDate(null)}
+                className="rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {i18n.t('literals.megse')}
+              </button>
+              <button
+                type="button"
+                data-testid="simplified-confirm-submit"
+                disabled={simplifying}
+                onClick={() => void confirmSimplifiedClose()}
+                className="rounded bg-slate-700 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {i18n.t('literals.igen-zarom')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

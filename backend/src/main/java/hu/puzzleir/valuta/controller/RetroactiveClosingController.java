@@ -103,4 +103,24 @@ public class RetroactiveClosingController {
                 "ok", true,
                 "sessionDate", session.getSessionDate().toString()));
     }
+
+    /**
+     * FKH-056: simplified close of a FALSE_CLOSED day — re-stamps the retroactive
+     * audit fields so the day leaves the false-closed fingerprint, WITHOUT the
+     * EVENING stock check, tolerance gate, HQ send or closing-control mark.
+     * Separate POST (a state change must not hide behind a GET); the class-level
+     * {@code @PreAuthorize} covers it and the service applies
+     * {@code requireRetroactiveScope} (invariant #1).
+     *
+     * POST /api/v1/retroactive-closing/{branchId}/{date}/simplified-close
+     */
+    @PostMapping("/{branchId}/{date}/simplified-close")
+    public ResponseEntity<Map<String, Object>> simplifiedClose(
+            @PathVariable UUID branchId,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        var session = retroactiveClosingService.closeRetroactivelySimplified(branchId, date);
+        return ResponseEntity.ok(Map.of(
+                "ok", true,
+                "sessionDate", session.getSessionDate().toString()));
+    }
 }
