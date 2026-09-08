@@ -165,11 +165,12 @@ class RetroactiveClosingServiceFkh056Test {
     @Test
     @DisplayName("FKH-056 T3: out-of-scope branch → AccessDenied, no save")
     void t3_outOfScopeBranch_accessDenied() {
-        UUID otherBranch = UUID.randomUUID();
-        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(Set.of(otherBranch));
+        UUID foreignBranch = UUID.randomUUID();
+        // Scope narrowed to the caller's own branch only; the foreign branch is out.
+        when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(Set.of(branchId));
         LocalDate pastDate = LocalDate.now().minusDays(3);
 
-        assertThatThrownBy(() -> service.closeRetroactivelySimplified(branchId, pastDate))
+        assertThatThrownBy(() -> service.closeRetroactivelySimplified(foreignBranch, pastDate))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(dailySessionRepository, never()).save(any());
@@ -248,8 +249,11 @@ class RetroactiveClosingServiceFkh056Test {
     void t7_emptyVaultScope_accessDenied() {
         when(accessScopeService.vaultRegionBranchScopeOrNull()).thenReturn(Set.of());
         LocalDate pastDate = LocalDate.now().minusDays(3);
+        // EMPTY scope = see nothing, even the caller's own-branch id is not
+        // short-circuited when a foreign branch is requested.
+        UUID foreignBranch = UUID.randomUUID();
 
-        assertThatThrownBy(() -> service.closeRetroactivelySimplified(branchId, pastDate))
+        assertThatThrownBy(() -> service.closeRetroactivelySimplified(foreignBranch, pastDate))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(dailySessionRepository, never()).save(any());

@@ -376,6 +376,84 @@ public class RetroactiveClosingService {
         return session;
     }
 
+    /**
+     * FKH-056: simplified close of a FALSE_CLOSED day (D3 fingerprint: CLOSED +
+     * closedByWorker == null + isRetroactiveClosing not TRUE) so it leaves
+     * findFalseClosedPastSessionsByBranch. Same scope, past-date and FKH-052
+     * oldest-first gates as {@link #closeRetroactively}; the fingerprint is
+     * re-checked UNDER the row lock (D5). Re-stamps the audit fields (D6):
+     * closedByWorker, isRetroactiveClosing, retroactiveClosedByWorker,
+     * retroactiveClosedAt, closedAt; status stays CLOSED; closingBalanceHuf from
+     * that day's HUF daily_balance row after calculateAllCurrenciesForDay.
+     * Deliberately SKIPPED (D7): EVENING exists-check, blocking tolerance, HQ
+     * send, unconfirmed-incoming gate, closing-control mark. Audited as
+     * RETROACTIVE_CLOSE_SIMPLIFIED.
+     */
+    public DailySession closeRetroactivelySimplified(UUID branchId, LocalDate date) {
+        requireRetroactiveScope(branchId);
+        requirePastDate(date);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        LocalDate today = LocalDate.now();
+
+        // FKH-052 oldest-first gate BEFORE the row lock: a rejected call takes no
+        // lock, saves nothing and writes no audit (T2).
+        LocalDate oldest = oldestProcessablePastDate(companyId, branchId, today);
+        if (oldest == null || !oldest.isEqual(date)) {
+            throw new ValidationException(
+                    "Egyszerűsített zárás csak a legrégebbi feldolgozható napon indítható. Legrégebbi feldolgozható nap: "
+                            + (oldest == null ? "nincs" : oldest) + ", kért nap: " + date);
+        }
+
+        DailySession session = dailySessionRepository
+                .findByBranchIdAndSessionDateAndCompanyIdForUpdate(branchId, date, companyId)
+                .orElseThrow(() -> new ValidationException(
+                        "Nincs napi munkamenet erre a napra: " + date));
+        // D5: re-check the fingerprint under the lock — a concurrent
+        // closeRetroactively/reopen may have changed the row since the gate.
+        if (!isFalseClosed(session)) {
+            throw new ValidationException(
+                    "Egyszerűsített zárás csak tévesen lezárt napon indítható (nyitott vagy valódi zárású nap): "
+                            + date);
+        }
+
+        // D6: the HUF book value of THAT day; idempotent, writes only
+        // balance_date = date rows (NFR-1). reconcile() is deliberately not used.
+        dailyBalanceService.calculateAllCurrenciesForDay(branchId, date);
+        BigDecimal hufClosingBalance = dailyBalanceRepository
+                .findByBranchIdAndBalanceDateAndCurrencyCode(companyId, branchId, date, "HUF")
+                .map(DailyBalance::getClosingBalance)
+                .orElse(null);
+        if (hufClosingBalance == null) {
+            log.warn("Simplified retroactive close: no HUF daily_balance row for branch={}, date={}"
+                    + " -> closing_balance_huf stays null", branchId, date);
+        }
+
+        Long workerId = SecurityUtils.getCurrentWorkerId();
+        Worker worker = workerRepository.findById(workerId).orElse(null);
+        if (worker == null) {
+            // D6: null worker -> throw, no half stamp.
+            throw new ValidationException(
+                    "Az egyszerűsített zárás nem hajtható végre: a záró dolgozó nem azonosítható");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        session.setClosedAt(now);
+        session.setClosedByWorker(worker);
+        session.setClosingBalanceHuf(hufClosingBalance);
+        session.setIsRetroactiveClosing(true);
+        session.setRetroactiveClosedByWorker(worker);
+        session.setRetroactiveClosedAt(now);
+        dailySessionRepository.save(session);
+
+        auditLogService.log("RETROACTIVE_CLOSE_SIMPLIFIED",
+                String.format("{\"branch_id\":\"%s\",\"session_date\":\"%s\",\"worker_id\":%d}",
+                        branchId, date, workerId),
+                branchId.toString());
+        log.info("Simplified retroactive close executed: branch={}, date={}, worker={}",
+                branchId, date, workerId);
+        return session;
+    }
+
     // ---------------------------------------------------------------------
     // guards
     // ---------------------------------------------------------------------
