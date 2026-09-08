@@ -59,14 +59,24 @@ export function shouldRequireDailySession(
   return canonical === 'penztar' // csak a penztari operatort gateli
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+const RETROACTIVE_DETAIL = /^\/closing\/retroactive\/(\d{4}-\d{2}-\d{2})$/
+
 /**
- * FKH-057: retroactive-closing paths skip the day-open `redirect-day-open`
- * Navigate; otherwise a cashier with today not open can never reach the list.
- * Exact match (D2): only `/closing/retroactive` and `/closing/retroactive/<date>`.
- * Prefix hits (e.g. `/closing/retroactive-extra`) and a trailing slash do not exempt.
+ * FKH-057: skip the day-open `redirect-day-open` Navigate so a cashier with
+ * today not open can reach retroactive closing and its EVENING denomination
+ * step. Exact routes only: `/closing/retroactive`, `/closing/retroactive/YYYY-MM-DD`,
+ * and `/closing/denomination-entry/EVENING` when `businessDate` is ISO and
+ * `returnTo` is a retroactive list/detail path. Prefix hits do not exempt.
  */
-export function isRetroactiveClosingPath(pathname: string): boolean {
-  return pathname === '/closing/retroactive' || /^\/closing\/retroactive\/[^/]+$/.test(pathname)
+export function isRetroactiveClosingPath(pathname: string, search = ''): boolean {
+  if (pathname === '/closing/retroactive') return true
+  if (RETROACTIVE_DETAIL.test(pathname)) return true
+  if (pathname !== '/closing/denomination-entry/EVENING') return false
+  const query = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  const businessDate = query.get('businessDate') ?? ''
+  const returnTo = query.get('returnTo') ?? ''
+  return ISO_DATE.test(businessDate) && (returnTo === '/closing/retroactive' || RETROACTIVE_DETAIL.test(returnTo))
 }
 
 export async function performBackendAwareLogout(
@@ -311,7 +321,7 @@ export default function MainLayout() {
       {showSessionDialog &&
         !sessionReady &&
         sessionError === 'redirect-day-open' &&
-        !isRetroactiveClosingPath(location.pathname) && (
+        !isRetroactiveClosingPath(location.pathname, location.search) && (
           <Navigate to="/cashdesk/day-open" replace />
         )}
 

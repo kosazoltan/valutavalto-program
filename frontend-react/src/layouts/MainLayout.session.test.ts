@@ -36,6 +36,28 @@ describe('isRetroactiveClosingPath — FKH-057 path exemption', () => {
   it('rejects a nested sub-path beyond the date segment', () => {
     expect(isRetroactiveClosingPath('/closing/retroactive/2026-08-01/edit')).toBe(false)
   })
+
+  it('rejects a non-date detail segment', () => {
+    expect(isRetroactiveClosingPath('/closing/retroactive/help')).toBe(false)
+  })
+
+  it('matches EVENING denomination-entry with past businessDate and retroactive returnTo', () => {
+    expect(
+      isRetroactiveClosingPath(
+        '/closing/denomination-entry/EVENING',
+        '?businessDate=2026-08-01&returnTo=/closing/retroactive/2026-08-01',
+      ),
+    ).toBe(true)
+  })
+
+  it('rejects EVENING denomination-entry without retroactive returnTo', () => {
+    expect(
+      isRetroactiveClosingPath(
+        '/closing/denomination-entry/EVENING',
+        '?businessDate=2026-08-01',
+      ),
+    ).toBe(false)
+  })
 })
 
 describe('MainLayout daily session gate', () => {

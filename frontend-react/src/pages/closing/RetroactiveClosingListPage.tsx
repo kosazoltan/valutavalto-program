@@ -204,7 +204,7 @@ export default function RetroactiveClosingListPage() {
                       type="button"
                       data-testid={`open-day-reprocess-${day.date}`}
                       className="rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!actionable || reprocessing}
+                      disabled={!actionable || reprocessing || simplifying}
                       title={
                         actionable
                           ? undefined
@@ -220,7 +220,7 @@ export default function RetroactiveClosingListPage() {
                       type="button"
                       data-testid={`open-day-simplified-${day.date}`}
                       className="rounded bg-slate-700 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!actionable || simplifying}
+                      disabled={!actionable || simplifying || reprocessing}
                       title={
                         actionable
                           ? undefined
@@ -259,10 +259,13 @@ export default function RetroactiveClosingListPage() {
       {confirmDate && (
         <div
           data-testid="simplified-confirm-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="simplified-confirm-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         >
           <div className="w-full max-w-md mx-4 rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold">
+            <h2 id="simplified-confirm-title" className="mb-2 text-lg font-bold">
               {i18n.t('literals.egyszerusitett-zaras-megerosites')}
             </h2>
             <p className="mb-4 text-sm text-slate-600">
