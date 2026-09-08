@@ -17,17 +17,17 @@ import java.time.LocalDate;
 /**
  * FK-003: Pénztárak közötti pénzmozgások egyeztetése (Beérkezett adatok menü).
  *
- * <p>KIZÁRÓLAG a főértéktári szerepkör (FOERTEKTAR) — illetve a rendszergazda (ADMIN) —
- * érheti el. Értéktári és pénztári felhasználók NEM látják ezt a nézetet (FK-003 §6).</p>
+ * FK-107: foertektar, belso_ellenor and ADMIN (class-level PreAuthorize).
+ * ADMIN is not listed in the frontend canonicalRoles; it uses existing fallbacks.
  *
- * <p>Az ellenőrzést a felhasználó manuálisan indítja (POST), nem fut automatikusan.
- * A művelet mellékhatása: eltérés esetén idempotens értesítés az érintett értéktárnak.</p>
+ * <p>The check is started by the user (POST), not automatically.
+ * Side effect: on discrepancy, an idempotent notification to the affected vault.</p>
  */
 @RestController
 @RequestMapping("/api/v1/central/transfer-reconciliation")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasAnyRole('FOERTEKTAR', 'ADMIN')")
+@PreAuthorize("hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
 public class TransferReconciliationController {
 
     private final TransferReconciliationService transferReconciliationService;

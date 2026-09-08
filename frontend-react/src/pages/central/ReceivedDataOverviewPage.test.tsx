@@ -182,6 +182,19 @@ describe('ReceivedDataOverviewPage (FK-003 / FK-090 / FK-089)', () => {
     expect(screen.queryByTestId('received-data-global-error')).not.toBeInTheDocument()
   })
 
+  it('FK-107: 403 shows authorization copy, not load-failure copy', async () => {
+    mockRun.mockRejectedValue({ response: { status: 403 } })
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Ellenőrzés/i }))
+
+    await waitFor(() => expect(screen.getByTestId('received-data-recon-error')).toBeInTheDocument())
+    expect(screen.getByText(hu.centralReceivedData.forbiddenError)).toBeInTheDocument()
+    expect(
+      screen.queryByText('A pénztárközi egyeztetés adatainak betöltése sikertelen.'),
+    ).not.toBeInTheDocument()
+  })
+
   // A-6 (pótlás d5753273): üres endDate mellett nincs undefined-es felirat.
   // FK-089: a status-caption a törölt alsó panelhez tartozott — hiányzik (null),
   // ezért undefined sem jelenhet meg.

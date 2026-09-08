@@ -108,6 +108,20 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     long countPendingByBranch(@Param("companyId") UUID companyId,
                               @Param("branchId") UUID branchId);
 
+    @Query("SELECT t FROM Transfer t WHERE t.toBranch.company.id = :companyId "
+           + "AND t.toBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT') "
+           + "AND t.direction IN ('F', 'UF') AND t.transferDate = :date")
+    List<Transfer> findIncomingByBranchAndDate(@Param("companyId") UUID companyId,
+                                               @Param("branchId") UUID branchId,
+                                               @Param("date") LocalDate date);
+
+    @Query("SELECT COUNT(t) FROM Transfer t WHERE t.toBranch.company.id = :companyId "
+           + "AND t.toBranch.id = :branchId AND t.status IN ('PENDING', 'IN_TRANSIT') "
+           + "AND t.direction IN ('F', 'UF') AND t.transferDate = :date")
+    long countPendingByBranchAndDate(@Param("companyId") UUID companyId,
+                                     @Param("branchId") UUID branchId,
+                                     @Param("date") LocalDate date);
+
     /**
      * FK-003: Pénztárak/értéktárak közötti pénzmozgások egyeztetéshez — cég-szűrt, intervallumra.
      * A CANCELLED/REJECTED tételek nem valós pénzmozgások, ezért kizárva. A {@code lines}

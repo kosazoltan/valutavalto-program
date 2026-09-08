@@ -99,8 +99,8 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
         route: '/central/received-data',
         status: 'ready',
         icon: FileText,
-        // FK-003 §6: az egyeztetési modul KIZÁRÓLAG a főértéktári szerepkörnek érhető el.
-        roles: ['foertektar'],
+        // FK-107: foertektar + belso_ellenor. ADMIN via canSeeModule hasRole('ADMIN').
+        roles: ['foertektar', 'belso_ellenor'],
       },
       {
         id: 'daily-turnover',

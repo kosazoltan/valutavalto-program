@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.entity.*;
 import hu.puzzleir.valuta.repository.*;
 import hu.puzzleir.valuta.service.ClosingWizardService;
 import hu.puzzleir.valuta.service.DailyClosingService;
+import hu.puzzleir.valuta.service.UnconfirmedIncomingClosingGate;
 import hu.puzzleir.valuta.dto.closingwizard.ClosingWizardDto;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import org.junit.jupiter.api.AfterEach;
@@ -54,6 +55,7 @@ class ClosingFlowTest {
     // FKH-036 WU-5: az új konstruktor-függőségek mockjai (pitfall 1).
     @Mock private ShipmentRequestRepository shipmentRequestRepository;
     @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    @Mock private UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
     @InjectMocks
     private ClosingWizardService closingWizardService;
 

@@ -23,7 +23,6 @@ function row(branchCode: string, branchName: string) {
     dailyClosingDone: false,
     eveningClosingDone: false,
     navClosingDone: false,
-    alertLevel: 'NONE',
   }
 }
 

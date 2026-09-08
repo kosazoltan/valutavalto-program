@@ -78,4 +78,21 @@ class CentralModuleManifestTest {
                     .contains("daily-checklist");
         }
     }
+
+    @Test
+    void receivedDataIsFoertektarAndBelsoEllenorOnly() {
+        assertThat(CentralModuleManifest.allowedModules(
+                List.of("foertektar"), "foertektar", null))
+                .contains("received-data");
+        assertThat(CentralModuleManifest.allowedModules(
+                List.of("belso_ellenor"), "belso_ellenor", null))
+                .contains("received-data");
+        for (String role : List.of("ugyvezeto", "teruleti_vezeto", "irodavezeto")) {
+            assertThat(CentralModuleManifest.allowedModules(List.of(role), role, null))
+                    .as("received-data absent for %s", role)
+                    .doesNotContain("received-data");
+        }
+        assertThat(CentralModuleManifest.allowedModules(List.of("admin"), "admin", null))
+                .contains("received-data");
+    }
 }

@@ -42,7 +42,8 @@ class ClosingWizardServiceTest {
     @Mock private ShipmentRequestRepository shipmentRequestRepository;
     @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     @Mock private VatSupplyStockRepository vatSupplyStockRepository;
-    @InjectMocks private ClosingWizardService service;
+        @Mock private UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
+@InjectMocks private ClosingWizardService service;
 
     private static final UUID BRANCH_ID = UUID.randomUUID();
     private static final UUID COMPANY_ID = UUID.randomUUID();

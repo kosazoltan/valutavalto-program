@@ -15,7 +15,6 @@ function row(partial: Partial<ClosingControlStatus>): ClosingControlStatus {
     dailyClosingDone: false,
     eveningClosingDone: false,
     navClosingDone: false,
-    alertLevel: 'NONE',
     ...partial,
   } as ClosingControlStatus
 }

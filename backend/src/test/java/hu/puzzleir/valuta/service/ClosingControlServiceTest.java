@@ -95,7 +95,6 @@ class ClosingControlServiceTest {
         assertEquals(0, row.getCompletedCount());
         assertEquals(1, row.getRequiredCount());
         assertTrue(row.getMissingRecord());
-        assertEquals("CRITICAL", row.getAlertLevel());
     }
 
     @Test
@@ -112,7 +111,6 @@ class ClosingControlServiceTest {
                 .dailyClosingDone(true)
                 .eveningClosingDone(true)
                 .navClosingDone(true)
-                .alertLevel("NONE")
                 .build();
 
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
@@ -125,7 +123,6 @@ class ClosingControlServiceTest {
         assertEquals("PEC1", result.getBranchCode());
         assertEquals("Pécs Diana", result.getBranchName());
         assertEquals(1, result.getCompletedCount());
-        assertEquals("NONE", result.getAlertLevel());
         assertFalse(result.getMissingRecord());
     }
 
@@ -143,7 +140,6 @@ class ClosingControlServiceTest {
                 .dailyClosingDone(false)
                 .eveningClosingDone(false)
                 .navClosingDone(false)
-                .alertLevel("WARNING")
                 .build();
 
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
@@ -162,7 +158,6 @@ class ClosingControlServiceTest {
 
         assertTrue(result.getDailyClosingDone());
         assertFalse(result.getEveningClosingDone());
-        assertEquals("NONE", result.getAlertLevel());
         assertEquals(1, result.getCompletedCount());
         verify(auditLogService).log(org.mockito.ArgumentMatchers.eq("CLOSING_RECEIVED_DAILY"),
                 org.mockito.ArgumentMatchers.eq("ClosingControl"),
@@ -191,7 +186,6 @@ class ClosingControlServiceTest {
                 .dailyClosingDone(true)
                 .eveningClosingDone(false)
                 .navClosingDone(true)
-                .alertLevel("NONE")
                 .build();
 
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
@@ -200,7 +194,6 @@ class ClosingControlServiceTest {
 
         ClosingControlDto result = service.getBranchStatus(branchId, date);
 
-        assertEquals("NONE", result.getAlertLevel());
         assertEquals(1, result.getCompletedCount());
         assertEquals(1, result.getRequiredCount());
         assertFalse(result.getMissingRecord());
@@ -221,7 +214,6 @@ class ClosingControlServiceTest {
                 .dailyClosingDone(false)
                 .eveningClosingDone(true)
                 .navClosingDone(false)
-                .alertLevel("WARNING")
                 .build();
 
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
@@ -230,7 +222,6 @@ class ClosingControlServiceTest {
 
         ClosingControlDto result = service.getBranchStatus(branchId, date);
 
-        assertEquals("WARNING", result.getAlertLevel());
         assertEquals(0, result.getCompletedCount());
         assertEquals(1, result.getRequiredCount());
     }
@@ -249,7 +240,6 @@ class ClosingControlServiceTest {
                 .dailyClosingDone(false)
                 .eveningClosingDone(true)
                 .navClosingDone(false)
-                .alertLevel("WARNING")
                 .build();
 
         when(branchRepository.findById(branchId)).thenReturn(Optional.of(branch));
@@ -258,12 +248,11 @@ class ClosingControlServiceTest {
 
         ClosingControlDto result = service.getBranchStatus(branchId, date);
 
-        assertEquals("WARNING", result.getAlertLevel());
         assertEquals(0, result.getCompletedCount());
     }
 
     @Test
-    @DisplayName("FK-062: markClosingDone DAILY on vault branch resolves alertLevel to NONE")
+    @DisplayName("FK-062: markClosingDone DAILY on vault branch yields completedCount=1")
     void markClosingDone_vaultDailyResolvesAlert() {
         LocalDate date = LocalDate.now();
         UUID branchId = UUID.randomUUID();
@@ -286,7 +275,6 @@ class ClosingControlServiceTest {
 
         assertTrue(result.getDailyClosingDone());
         assertFalse(result.getEveningClosingDone());
-        assertEquals("NONE", result.getAlertLevel());
         assertEquals(1, result.getCompletedCount());
     }
 

@@ -75,6 +75,7 @@ public class ClosingWizardService {
     private final ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     // FKH-040 FR-11: ÁFA HUF-címletezés vs. vat_supply_stock exactMatch.
     private final VatSupplyStockRepository vatSupplyStockRepository;
+    private final UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
 
     /** G3: a zárás-eltérés magyarázat-kötelezettség feature-flag SystemParameter kulcsa. */
     static final String CLOSING_DISCREPANCY_PARAM = "CLOSING_DISCREPANCY_EXPLANATION_REQUIRED";
@@ -906,6 +907,10 @@ public class ClosingWizardService {
         LocalDate closingDate = wizard.getClosingDate() != null ? wizard.getClosingDate() : LocalDate.now();
         Branch branch = wizard.getBranch();
 
+        if (branch != null) {
+            unconfirmedIncomingClosingGate.ensureNoUnconfirmedIncoming(branch.getId(), closingDate);
+        }
+
         if (branch != null && isVaultContext(branch)) {
             ClosingWizardStatusDto status = getClosingStatus(branch.getId(), closingDate);
             if (!status.isExactMatch()) {
@@ -1275,6 +1280,7 @@ public class ClosingWizardService {
 
     public void ensureClosingCanBeSent(UUID branchId, LocalDate date) {
         Branch branch = findBranchInCurrentCompany(branchId);
+        unconfirmedIncomingClosingGate.ensureNoUnconfirmedIncoming(branchId, date);
         if (!isVaultContext(branch)) {
             return;
         }

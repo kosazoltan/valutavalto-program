@@ -83,7 +83,6 @@ async function mockApis(page: Page) {
             dailyClosingDone: false,
             eveningClosingDone: false,
             navClosingDone: false,
-            alertLevel: 'NONE',
           },
         ]),
       })
@@ -103,7 +102,6 @@ async function mockApis(page: Page) {
           eveningClosingDone: false,
           navClosingDone: true,
           lastTransactionAt: '2026-06-19T18:40:00',
-          alertLevel: 'WARNING',
           notes: 'Backend detail megjegyzés',
         }),
       })

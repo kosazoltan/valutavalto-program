@@ -66,7 +66,8 @@ class ClosingWizardVaultGateFk073Test {
     @Mock private ShipmentRequestRepository shipmentRequestRepository;
     @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     @Mock private VatSupplyStockRepository vatSupplyStockRepository;
-    @InjectMocks private ClosingWizardService service;
+        @Mock private UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
+@InjectMocks private ClosingWizardService service;
 
     @Mock private ClosingWizardRepository closingWizardRepository;
     @Mock private WorkerRepository workerRepository;

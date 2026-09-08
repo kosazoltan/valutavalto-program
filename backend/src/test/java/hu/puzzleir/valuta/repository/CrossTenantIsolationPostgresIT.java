@@ -84,6 +84,8 @@ class CrossTenantIsolationPostgresIT {
             assertThat(transferRepository.findOutgoingByBranch(companyA, branchB)).isEmpty();
             assertThat(transferRepository.findIncomingByBranch(companyA, branchB)).isEmpty();
             assertThat(transferRepository.countPendingByBranch(companyA, branchB)).isZero();
+            assertThat(transferRepository.findIncomingByBranchAndDate(companyA, branchB, today)).isEmpty();
+            assertThat(transferRepository.countPendingByBranchAndDate(companyA, branchB, today)).isZero();
             assertThat(transferRepository.sumTransfersInByPeriod(companyA, branchB, from, to)).isEmpty();
             assertThat(transferRepository.sumTransfersOutByPeriod(companyA, branchB, from, to)).isEmpty();
             assertThat(transferRepository.findByFromBranchIdOrderByCreatedAtDesc(companyA, branchB)).isEmpty();

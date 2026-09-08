@@ -85,7 +85,12 @@ export const menuGroups: MenuGroup[] = [
       { path: '/central-workstation', label: 'Irányítóközpont', icon: MonitorCheck },
       { path: '/mobile', label: 'Mobil felügyelet', icon: Smartphone },
       { path: '/central/closing-control', label: 'Zárás beérkezés', icon: ClipboardCheck },
-      { path: '/central/received-data', label: 'Beérkezett adatok', icon: FileText },
+      {
+        path: '/central/received-data',
+        label: 'Beérkezett adatok',
+        icon: FileText,
+        canonicalRoles: ['foertektar', 'belso_ellenor'],
+      },
       // FK-086 FR-5/FR-6: a napi ellenőrző lista a Riportok csoportból a Központba került;
       // item-szintű canonicalRoles felülírja a csoport SZERVER_ROLES-át (teruleti_vezeto kizárva).
       {

@@ -77,6 +77,7 @@ public class RetroactiveClosingService {
     private final ClosingControlService closingControlService;
     private final DailySessionService dailySessionService;
     private final AuditLogService auditLogService;
+    private final UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
 
     // ---------------------------------------------------------------------
     // FR-1 — list the caller's open past days (own company + scope)
@@ -326,6 +327,8 @@ public class RetroactiveClosingService {
             throw new ValidationException(
                     "Az utólagos zárás eltérést talált a(z) " + date + " napon — a zárás nem indítható.");
         }
+
+        unconfirmedIncomingClosingGate.ensureNoUnconfirmedIncoming(branchId, date);
 
         // FR-6: prepare + send the evening package of THAT date. Failure -> throw
         // BEFORE any status write; the day stays OPEN.

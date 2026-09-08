@@ -44,7 +44,8 @@ import static org.mockito.Mockito.*;
 @org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class DailyClosingServiceExtendedTest {
 
-    @InjectMocks
+        @Mock private UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
+@InjectMocks
     private DailyClosingService dailyClosingService;
 
     // Meglévő függőségek

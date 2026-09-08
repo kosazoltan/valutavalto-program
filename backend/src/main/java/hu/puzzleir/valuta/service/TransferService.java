@@ -872,6 +872,19 @@ public class TransferService {
         return transferRepository.countPendingByBranch(companyId, branchId);
     }
 
+    @Transactional(readOnly = true)
+    public void ensureNoUnconfirmedIncomingTransfers(UUID branchId, LocalDate date) {
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        List<Transfer> pending = transferRepository.findIncomingByBranchAndDate(companyId, branchId, date);
+        if (pending.isEmpty()) {
+            return;
+        }
+        String numbers = pending.stream()
+                .map(Transfer::getTransferNumber)
+                .collect(Collectors.joining(", "));
+        throw new ValidationException("Nyugtázatlan bejövő átadólap: " + numbers);
+    }
+
     // --- Counter-transaction logic ---
 
     /**

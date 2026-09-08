@@ -194,7 +194,8 @@ class ClosingWizardDailyStepCountFk068Test {
         @Mock private ShipmentRequestRepository shipmentRequestRepository;
         @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
     @Mock private VatSupplyStockRepository vatSupplyStockRepository;
-        @InjectMocks private ClosingWizardService service;
+            @Mock private UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
+@InjectMocks private ClosingWizardService service;
 
         private final UUID branchId = UUID.randomUUID();
         private final UUID companyId = UUID.randomUUID();

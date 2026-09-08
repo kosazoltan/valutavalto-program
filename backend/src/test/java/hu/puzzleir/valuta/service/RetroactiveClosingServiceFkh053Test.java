@@ -71,7 +71,8 @@ class RetroactiveClosingServiceFkh053Test {
     @Mock
     private AuditLogService auditLogService;
 
-    @InjectMocks
+        @Mock private UnconfirmedIncomingClosingGate unconfirmedIncomingClosingGate;
+@InjectMocks
     private RetroactiveClosingService service;
 
     private final UUID companyId = UUID.randomUUID();
