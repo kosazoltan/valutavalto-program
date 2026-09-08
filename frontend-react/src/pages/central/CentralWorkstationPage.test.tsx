@@ -22,7 +22,7 @@ vi.mock('../../stores/authStore', () => ({
       centralModules: string[] | null
       hasCanonicalRole: typeof mockHasCanonicalRole
       hasRole: typeof mockHasRole
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       centralModules: null,

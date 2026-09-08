@@ -47607,11 +47607,8 @@
           "lastTransactionAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "alertLevel": {
-            "type": "string"
-          },
-          "notes": {
+                      },
+                      "notes": {
             "type": "string"
           },
           "completedCount": {
