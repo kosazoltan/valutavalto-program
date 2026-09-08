@@ -2267,6 +2267,15 @@ export const retroactiveClosingApi = {
   /** FKH-051 (plan D5): reopen a false-closed day, then the FKH-050 flow can start. */
   reopen: async (branchId: string, date: string): Promise<{ ok: boolean; sessionDate: string }> =>
     (await api.post(`/retroactive-closing/${branchId}/${date}/reopen`)).data,
+  /**
+   * FKH-056: simplified close of a FALSE_CLOSED day — re-stamps the retroactive
+   * audit fields with no EVENING check, tolerance gate or HQ send.
+   */
+  simplifiedClose: async (
+    branchId: string,
+    date: string,
+  ): Promise<{ ok: boolean; sessionDate: string }> =>
+    (await api.post(`/retroactive-closing/${branchId}/${date}/simplified-close`)).data,
 }
 
 // ================== DAILY CHECKLIST API ==================
