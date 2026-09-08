@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { authApi, dailySessionApi } from '../services/api/index'
 import {
@@ -57,6 +57,17 @@ export function shouldRequireDailySession(
   // atirt refaktor ezt hallgatoalagban megvaltoztatna (ismeretlen szerep => kapu nelkul).
   if (!canonical) return true // ismeretlen/meg restore-elotti szerep -> kapu marad (nincs regresszio)
   return canonical === 'penztar' // csak a penztari operatort gateli
+}
+
+/**
+ * FKH-057: a visszamenőleges zárás útvonalai mentesülnek a napnyitás-kapu
+ * `redirect-day-open` átirányítása alól — különben a mai napot nem nyitott
+ * pénztáros sosem érné el a listát. EXACT match (D2): csak
+ * `/closing/retroactive` és `/closing/retroactive/<date>`; prefix találat
+ * (pl. `/closing/retroactive-extra`) és trailing slash NEM mentesít.
+ */
+export function isRetroactiveClosingPath(pathname: string): boolean {
+  return pathname === '/closing/retroactive' || /^\/closing\/retroactive\/[^/]+$/.test(pathname)
 }
 
 export async function performBackendAwareLogout(
@@ -139,6 +150,7 @@ export default function MainLayout() {
   }, [])
   const { mode: appMode, isLoading: appModeLoading } = useAppMode()
   const navigate = useNavigate()
+  const location = useLocation()
   const isBrowserFallback = !isElectronRuntime() && appMode === 'full'
 
   // RBAC-audit (2026-06-05): a menü-láthatóság tiszta logikája a menuVisibility modulban
@@ -296,9 +308,13 @@ export default function MainLayout() {
   return (
     <div className="app-layout-root h-screen overflow-hidden bg-form-bg flex flex-col md:flex-row">
       {/* Napnyitás hiba dialógus — csak ha az automatikus nyitás nem sikerült */}
-      {showSessionDialog && !sessionReady && sessionError === 'redirect-day-open' && (
-        <Navigate to="/cashdesk/day-open" replace />
-      )}
+      {/* FKH-057: a visszamenőleges zárás útvonalai mentesek az átirányítás alól (D3) */}
+      {showSessionDialog &&
+        !sessionReady &&
+        sessionError === 'redirect-day-open' &&
+        !isRetroactiveClosingPath(location.pathname) && (
+          <Navigate to="/cashdesk/day-open" replace />
+        )}
 
       {showSessionDialog &&
         !sessionReady &&
