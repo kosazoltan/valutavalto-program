@@ -342,17 +342,26 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
       '/police-requests',
       '/seal-tracking',
       '/admin/branches',
-      '/mnb-settlement-rates',
-    ]
+            '/mnb-settlement-rates',
+            '/central/received-data',
+          ]
     for (const path of gatedPaths) {
       const roles = effectiveCanonicalRolesForPath(menuGroups, path)
       expect(roles, `hiányzó menü-szerepkör: ${path}`).toBeDefined()
       expect((roles ?? []).length, `üres szerepkör-lista: ${path}`).toBeGreaterThan(0)
     }
   })
-})
 
-describe('FS11-MENU-ROLE-MISMATCH — menü ⊆ backend compliance role-halmaz (pin)', () => {
+    // FK-107 FR-2: /central/received-data gated path roles
+    it('/central/received-data → item-szintű [belso_ellenor, foertektar], not irodavezeto', () => {
+      const roles = effectiveCanonicalRolesForPath(menuGroups, '/central/received-data')
+      expect(roles).toBeDefined()
+      expect([...(roles ?? [])].sort()).toEqual(['belso_ellenor', 'foertektar'])
+      expect(roles).not.toContain('irodavezeto')
+    })
+  })
+
+  describe('FS11-MENU-ROLE-MISMATCH — menü ⊆ backend compliance role-halmaz (pin)', () => {
   it('az AML/Compliance csoport canonicalRoles-a pontosan a backend-engedett canonical trió', () => {
     // Backend-oldali pár: Compliance*Controller + SuspiciousCustomerController
     // hasAnyRole(...,'BELSO_ELLENOR','BIZTONSAGI_VEZETO','UGYVEZETO').
