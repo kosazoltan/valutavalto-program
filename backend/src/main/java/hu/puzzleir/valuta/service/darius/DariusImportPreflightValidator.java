@@ -173,9 +173,10 @@ public class DariusImportPreflightValidator {
         if (branch.erteknap() < -200 || branch.erteknap() > 200) {
             errors.add(error(scope, "az ERTEKNAP értéke csak -200 és 200 között lehet"));
         }
-        if (branch.stockRows() == null || branch.stockRows().isEmpty()) {
-            errors.add(error(scope, "nincs címlet-snapshot (closingType=1)"));
-        } else {
+        // FK-109 FR-7: a snapshot-nélküli iroda kihagyását a service dönti el (partial
+        // export) — a validator üres stockRows esetén NEM hibáztat; a többi ellenőrzés
+        // (IDOPONT, stock-sorok) csak nem-üres listán fut.
+        if (branch.stockRows() != null && !branch.stockRows().isEmpty()) {
             if (branch.idopont() == null) {
                 errors.add(error(scope, "a címlet-snapshot IDOPONT értéke hiányzik"));
             }

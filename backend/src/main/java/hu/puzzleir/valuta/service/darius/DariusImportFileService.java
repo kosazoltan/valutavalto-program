@@ -83,12 +83,19 @@ public class DariusImportFileService {
                 .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
         String pvCode = properties.getDarius().getPvCodes().get(company.getCode());
         List<BranchBlock> branchBlocks = new ArrayList<>();
+        List<String> skippedBranches = new ArrayList<>();
 
         List<Branch> branches =
                 branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(companyId);
         for (Branch branch : branches) {
             List<DailyDenominationSnapshot> snapshots = snapshotRepository
                     .findByBranchIdAndSnapshotDateAndClosingType(branch.getId(), date, 1);
+            if (snapshots.isEmpty()) {
+                // FK-109 FR-7: esti címlet-snapshot nélküli iroda kihagyása — a köteg
+                // nem bukik el, ha van legalább egy jelenthető iroda.
+                skippedBranches.add(String.valueOf(branch.getBankCode()));
+                continue;
+            }
             List<Object[]> turnover = transactionRepository
                     .groupByCurrencyTypeAndPaymentMethodForBranch(branch.getId(), date, date);
             branchBlocks.add(toBranchBlock(branch, erteknap, snapshots, turnover));
@@ -97,7 +104,7 @@ public class DariusImportFileService {
         DariusImportFileModel model = new DariusImportFileModel(date, pvCode, List.of(), branchBlocks);
         List<String> errors = validator.validate(model);
         if (!errors.isEmpty()) {
-            throw new ValidationException(String.join("; ", errors));
+            throw new ValidationException(String.join("; ", errors) + skippedSuffix(skippedBranches));
         }
 
         byte[] content = serializer.serialize(model);
@@ -107,12 +114,20 @@ public class DariusImportFileService {
                 "DARIUS_IMPORT_FILE_EXPORTED",
                 "Raiffeisen importfájl exportálva: date=" + date
                         + ", fileName=" + fileName
-                        + ", sha256=" + hash,
+                        + ", sha256=" + hash
+                        + ", skippedBranches=" + String.join(",", skippedBranches),
                 fileName,
                 companyId);
-        log.info("Raiffeisen importfájl elkészült: companyId={}, date={}, fileName={}, sha256={}",
-                companyId, date, fileName, hash);
-        return new DariusImportFile(fileName, content);
+        log.info("Raiffeisen importfájl elkészült: companyId={}, date={}, fileName={}, sha256={}, skippedBranches={}",
+                companyId, date, fileName, hash, skippedBranches);
+        return new DariusImportFile(fileName, content, List.copyOf(skippedBranches));
+    }
+
+    private static String skippedSuffix(List<String> skippedBranches) {
+        return skippedBranches.isEmpty()
+                ? ""
+                : " | kihagyott irodák (nincs esti címlet-snapshot): "
+                        + String.join(", ", skippedBranches);
     }
 
     @Transactional(readOnly = true)

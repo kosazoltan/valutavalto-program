@@ -120,6 +120,7 @@ public class DariusReportController {
         DariusImportFile file = dariusImportFileService.generateImportFile(date, erteknap);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .header("X-Darius-Skipped-Branches", String.join(",", file.skippedBranches()))
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(file.content());
     }

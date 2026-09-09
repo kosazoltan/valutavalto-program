@@ -856,7 +856,8 @@
     "ackRef": "ACK ref:",
     "bekuldte": "Beküldte:",
     "tx": "tx ·",
-    "nincsJelentesAzIdoszakban": "Nincs jelentés az időszakban"
+    "nincsJelentesAzIdoszakban": "Nincs jelentés az időszakban",
+    "kihagyottIrodak": "Kihagyott irodák (nincs esti címlet-snapshot):"
   },
   "decade": {
     "3Dekad21hoVege": "3. dekád (21–hó vége)",

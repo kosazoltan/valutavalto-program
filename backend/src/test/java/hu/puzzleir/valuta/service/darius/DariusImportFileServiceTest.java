@@ -181,7 +181,11 @@ class DariusImportFileServiceTest {
     }
 
     @Test
-    void rejectsTurnoverWithoutSnapshotAndDoesNotAudit() {
+    void skipsSnapshotlessBranchWithTurnoverAndFailsOnlyWhenNothingRemains() {
+        // FK-109 FR-7: formerly "rejectsTurnoverWithoutSnapshotAndDoesNotAudit" —
+        // the mandated behaviour change skips the snapshot-less branch instead of
+        // rejecting it; with a single branch the export still fails (global error)
+        // and still writes NO export audit.
         when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(BRANCH_ID, DATE, 1))
                 .thenReturn(List.of());
         when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(BRANCH_ID, DATE, DATE))
@@ -189,8 +193,8 @@ class DariusImportFileServiceTest {
 
         assertThatThrownBy(this::generate)
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("[276]")
-                .hasMessageContaining("nincs címlet-snapshot");
+                .hasMessageContaining("nincs jelenthető adat")
+                .hasMessageContaining("276");
         verify(auditLogService, never()).logForCompany(
                 eq("DARIUS_IMPORT_FILE_EXPORTED"), contains(""), anyString(), eq(COMPANY_ID));
     }
@@ -223,7 +227,8 @@ class DariusImportFileServiceTest {
     }
 
     @Test
-    void rejectsWhenActiveBranchHasNoSnapshotEvenWithoutTurnover() {
+    void skipsSnapshotlessBranchWithoutTurnoverAndFailsOnlyWhenNothingRemains() {
+        // FK-109 FR-7: formerly "rejectsWhenActiveBranchHasNoSnapshotEvenWithoutTurnover".
         when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(BRANCH_ID, DATE, 1))
                 .thenReturn(List.of());
         when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(BRANCH_ID, DATE, DATE))
@@ -231,14 +236,16 @@ class DariusImportFileServiceTest {
 
         assertThatThrownBy(this::generate)
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("[276]")
-                .hasMessageContaining("nincs címlet-snapshot");
+                .hasMessageContaining("nincs jelenthető adat")
+                .hasMessageContaining("276");
         verify(auditLogService, never()).logForCompany(
                 eq("DARIUS_IMPORT_FILE_EXPORTED"), contains(""), anyString(), eq(COMPANY_ID));
     }
 
     @Test
-    void rejectsWholeExportWhenAnyActiveBranchIsIncompleteAndListsEveryError() {
+    void partialExportSkipsIncompleteBranchAndStillExportsTheRest() {
+        // FK-109 FR-7: formerly "rejectsWholeExportWhenAnyActiveBranchIsIncomplete..." —
+        // the snapshot-less branch is now skipped instead of failing the batch.
         Branch second = Branch.builder()
                 .id(UUID.fromString("30000000-0000-0000-0000-000000000003"))
                 .bankCode("312")
@@ -255,12 +262,10 @@ class DariusImportFileServiceTest {
         when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(second.getId(), DATE, DATE))
                 .thenReturn(List.of());
 
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("[312]")
-                .hasMessageContaining("nincs címlet-snapshot");
-        verify(auditLogService, never()).logForCompany(
-                eq("DARIUS_IMPORT_FILE_EXPORTED"), contains(""), anyString(), eq(COMPANY_ID));
+        DariusImportFile result = generate();
+
+        assertThat(content(result)).contains("276").doesNotContain("312");
+        assertThat(result.skippedBranches()).containsExactly("312");
     }
 
     @Test
