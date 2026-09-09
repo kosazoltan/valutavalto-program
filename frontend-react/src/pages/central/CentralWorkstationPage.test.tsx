@@ -79,3 +79,12 @@ describe('CentralWorkstationPage — FK-107 tile RBAC (FR-1)', () => {
     expect(screen.queryByText(TITLE)).not.toBeInTheDocument()
   })
 })
+
+describe('CentralWorkstationPage — FK-109 FR-4 booking-export tile szöveg', () => {
+  it('a booking-export tile leírása a könyvelési CSV export, Raiffeisen/NAV említés nélkül', () => {
+    renderPage('foertektar')
+    const description = screen.getByText('Napi, havi és leltár könyvelési CSV export')
+    expect(description).toBeInTheDocument()
+    expect(screen.queryByText('Raiffeisen, Darius, NAV export')).toBeNull()
+  })
+})

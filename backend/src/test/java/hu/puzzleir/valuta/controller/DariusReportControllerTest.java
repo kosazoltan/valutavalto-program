@@ -34,7 +34,8 @@ class DariusReportControllerTest {
         int erteknap = -1;
         byte[] content = "import-content".getBytes();
         when(dariusImportFileService.generateImportFile(date, erteknap))
-                .thenReturn(new DariusImportFile("raiffeisen_import_BEST_2026-07-01.imp", content));
+                .thenReturn(new DariusImportFile(
+                        "raiffeisen_import_BEST_2026-07-01.imp", content, List.of()));
 
         ResponseEntity<byte[]> response = controller.downloadImportFile(date, erteknap);
 
@@ -42,8 +43,25 @@ class DariusReportControllerTest {
         assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_OCTET_STREAM);
         assertThat(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION))
                 .isEqualTo("attachment; filename=\"raiffeisen_import_BEST_2026-07-01.imp\"");
+        assertThat(response.getHeaders().get("X-Darius-Skipped-Branches")).isNotNull();
+        assertThat(response.getHeaders().getFirst("X-Darius-Skipped-Branches")).isEmpty();
         assertThat(response.getBody()).isEqualTo(content);
         verify(dariusImportFileService).generateImportFile(date, erteknap);
+    }
+
+    @Test
+    void downloadImportFileEmitsSkippedBranchesHeaderAndKeepsOctetStreamBody() {
+        LocalDate date = LocalDate.of(2026, 7, 1);
+        byte[] content = "import-content".getBytes();
+        when(dariusImportFileService.generateImportFile(date, 0))
+                .thenReturn(new DariusImportFile(
+                        "raiffeisen_import_BEST_2026-07-01.imp", content, List.of("277")));
+
+        ResponseEntity<byte[]> response = controller.downloadImportFile(date, 0);
+
+        assertThat(response.getHeaders().getFirst("X-Darius-Skipped-Branches")).isEqualTo("277");
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_OCTET_STREAM);
+        assertThat(response.getBody()).isEqualTo(content);
     }
 
     @Test

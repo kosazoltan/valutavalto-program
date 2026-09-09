@@ -24,7 +24,9 @@ import java.util.UUID;
  * Darius/Raiffeisen napi jelentés REST controller.
  *
  * Jogosultság: FOERTEKTAR, ADMIN; compliance-olvasásra BELSO_ELLENOR.
- * A bare permission és a nem seedelt authority-nevek előre-kompatibilitás miatt megmaradnak.
+ * FK-109 FR-5/FR-6: a nem seedelt, holt authority-nevek (DARIUS_REPORT_RUN,
+ * MAIN_TREASURY, SYSTEM_ADMIN) eltávolítva — authority-only principal elutasítandó;
+ * a COMPLIANCE_OFFICER authority az olvasó endpointokon megmarad.
  * A pénztárosok és értéktárosok NEM látják a Darius jelentéseket.
  */
 @RestController
@@ -42,7 +44,7 @@ public class DariusReportController {
      * Összesíti az adott nap tranzakcióit valutánként és irodánként.
      */
     @PostMapping("/generate")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FOERTEKTAR', 'ADMIN')")
     public ResponseEntity<DariusDailyReportDto> generate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(dariusReportService.generateDailyReport(date));
@@ -51,7 +53,7 @@ public class DariusReportController {
     // === Jóváhagyás (4-eyes) ===
 
     @PostMapping("/{reportId}/approve")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY') or hasAnyRole('FOERTEKTAR')")
+    @PreAuthorize("hasAnyRole('FOERTEKTAR')")
     public ResponseEntity<DariusDailyReportDto> approve(@PathVariable UUID reportId) {
         return ResponseEntity.ok(dariusReportService.approveReport(reportId));
     }
@@ -59,7 +61,7 @@ public class DariusReportController {
     // === Beküldés ===
 
     @PostMapping("/{reportId}/submit")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FOERTEKTAR', 'ADMIN')")
     public ResponseEntity<DariusDailyReportDto> submit(@PathVariable UUID reportId) {
         DariusDailyReportDto report = dariusReportService.submitReport(reportId);
         return ResponseEntity.status(statusForReport(report)).body(report);
@@ -68,7 +70,7 @@ public class DariusReportController {
     // === Acknowledgment ===
 
     @PostMapping("/{reportId}/acknowledge")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'SYSTEM_ADMIN') or hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<DariusDailyReportDto> acknowledge(
             @PathVariable UUID reportId,
             @RequestParam String ackReference) {
@@ -78,7 +80,7 @@ public class DariusReportController {
     // === Retry ===
 
     @PostMapping("/retry-failed")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'SYSTEM_ADMIN') or hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<List<DariusDailyReportDto>> retryFailed() {
         List<DariusDailyReportDto> reports = dariusReportService.retryFailedReports();
         boolean anyFailed = reports.stream().anyMatch(this::isFailedReport);
@@ -88,20 +90,20 @@ public class DariusReportController {
     // === Lekérdezések ===
 
     @GetMapping("/{reportId}")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'COMPLIANCE_OFFICER', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
+    @PreAuthorize("hasAnyAuthority('COMPLIANCE_OFFICER') or hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
     public ResponseEntity<DariusDailyReportDto> getById(@PathVariable UUID reportId) {
         return ResponseEntity.ok(dariusReportService.getReport(reportId));
     }
 
     @GetMapping("/by-date")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'COMPLIANCE_OFFICER', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
+    @PreAuthorize("hasAnyAuthority('COMPLIANCE_OFFICER') or hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
     public ResponseEntity<DariusDailyReportDto> getByDate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(dariusReportService.getReportByDate(date));
     }
 
     @GetMapping("/range")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'COMPLIANCE_OFFICER', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
+    @PreAuthorize("hasAnyAuthority('COMPLIANCE_OFFICER') or hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
     public ResponseEntity<List<DariusDailyReportDto>> getByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
@@ -111,20 +113,21 @@ public class DariusReportController {
     // === FS-15: Raiffeisen importfájl-letöltés ===
 
     @GetMapping("/import-file")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FOERTEKTAR', 'ADMIN')")
     public ResponseEntity<byte[]> downloadImportFile(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "0") int erteknap) {
         DariusImportFile file = dariusImportFileService.generateImportFile(date, erteknap);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.fileName() + "\"")
+                .header("X-Darius-Skipped-Branches", String.join(",", file.skippedBranches()))
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(file.content());
     }
 
     /** FS-15: importfájl-készenlét ellenőrzése exportkísérlet nélkül. */
     @GetMapping("/import-readiness")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FOERTEKTAR', 'ADMIN')")
     public ResponseEntity<DariusImportReadinessDto> importReadiness() {
         return ResponseEntity.ok(dariusImportFileService.importReadiness());
     }
@@ -132,7 +135,7 @@ public class DariusReportController {
     // === Havi összesítő ===
 
     @GetMapping("/monthly")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'COMPLIANCE_OFFICER', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
+    @PreAuthorize("hasAnyAuthority('COMPLIANCE_OFFICER') or hasAnyRole('FOERTEKTAR', 'BELSO_ELLENOR', 'ADMIN')")
     public ResponseEntity<DariusMonthlyDto> getMonthly(
             @RequestParam int year,
             @RequestParam int month) {
@@ -142,7 +145,7 @@ public class DariusReportController {
     // === Hiányzó napok ===
 
     @GetMapping("/missing-dates")
-    @PreAuthorize("hasAnyAuthority('DARIUS_REPORT_RUN', 'MAIN_TREASURY', 'SYSTEM_ADMIN') or hasAnyRole('FOERTEKTAR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FOERTEKTAR', 'ADMIN')")
     public ResponseEntity<List<LocalDate>> getMissingDates(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {

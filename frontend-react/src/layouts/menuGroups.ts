@@ -369,6 +369,15 @@ export const menuGroups: MenuGroup[] = [
       { path: '/profit', label: 'Nyereség (haszon)', icon: TrendingUp },
       { path: '/stock-snapshot', label: 'Készlet pillanatképek', icon: FileText },
       { path: '/booking-export', label: 'Könyvelés export', icon: Download },
+      // FK-109 FR-1: role-gated Darius import-file entry. Item-level roles hide it
+      // from ugyvezeto/irodavezeto/teruleti_vezeto/penzugyi_vezeto while the group
+      // stays visible for them (menuVisibility group-if-any-item rule).
+      {
+        path: '/darius',
+        label: 'Import file-ok készítése bank részére',
+        icon: FileText,
+        canonicalRoles: ['foertektar', 'belso_ellenor', 'admin'],
+      },
     ],
   },
   {

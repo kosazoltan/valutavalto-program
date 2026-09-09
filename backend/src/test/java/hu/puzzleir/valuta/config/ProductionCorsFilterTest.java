@@ -57,7 +57,7 @@ class ProductionCorsFilterTest {
     }
 
     @Test
-    @DisplayName("engedélyezett origin számára olvashatóvá teszi a Content-Disposition headert")
+    @DisplayName("engedélyezett origin számára olvashatóvá teszi a Content-Disposition és az X-Darius-Skipped-Branches headert")
     void exposesContentDispositionForAllowedOrigin() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/darius/import-file");
         request.addHeader(HttpHeaders.ORIGIN, "https://excvaluta.com");
@@ -66,6 +66,7 @@ class ProductionCorsFilterTest {
         filter.doFilter(request, response, new MockFilterChain());
 
         assertThat(response.getHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS))
-                .isEqualTo(HttpHeaders.CONTENT_DISPOSITION);
+                .contains(HttpHeaders.CONTENT_DISPOSITION)
+                .contains("X-Darius-Skipped-Branches");
     }
 }

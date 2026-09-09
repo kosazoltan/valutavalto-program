@@ -125,10 +125,7 @@ class DariusImportFileServiceTest {
                 fileSerializer,
                 fileAuditLogService,
                 properties,
-                fixingRequestRepository,
-                fixingLineRepository,
-                bankBranchRepository,
-                CLOCK);
+                bankBranchRepository);
     }
 
     @Test
@@ -184,7 +181,11 @@ class DariusImportFileServiceTest {
     }
 
     @Test
-    void rejectsTurnoverWithoutSnapshotAndDoesNotAudit() {
+    void skipsSnapshotlessBranchWithTurnoverAndFailsOnlyWhenNothingRemains() {
+        // FK-109 FR-7: formerly "rejectsTurnoverWithoutSnapshotAndDoesNotAudit" —
+        // the mandated behaviour change skips the snapshot-less branch instead of
+        // rejecting it; with a single branch the export still fails (global error)
+        // and still writes NO export audit.
         when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(BRANCH_ID, DATE, 1))
                 .thenReturn(List.of());
         when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(BRANCH_ID, DATE, DATE))
@@ -192,8 +193,8 @@ class DariusImportFileServiceTest {
 
         assertThatThrownBy(this::generate)
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("[276]")
-                .hasMessageContaining("nincs címlet-snapshot");
+                .hasMessageContaining("nincs jelenthető adat")
+                .hasMessageContaining("276");
         verify(auditLogService, never()).logForCompany(
                 eq("DARIUS_IMPORT_FILE_EXPORTED"), contains(""), anyString(), eq(COMPANY_ID));
     }
@@ -226,7 +227,8 @@ class DariusImportFileServiceTest {
     }
 
     @Test
-    void rejectsWhenActiveBranchHasNoSnapshotEvenWithoutTurnover() {
+    void skipsSnapshotlessBranchWithoutTurnoverAndFailsOnlyWhenNothingRemains() {
+        // FK-109 FR-7: formerly "rejectsWhenActiveBranchHasNoSnapshotEvenWithoutTurnover".
         when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(BRANCH_ID, DATE, 1))
                 .thenReturn(List.of());
         when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(BRANCH_ID, DATE, DATE))
@@ -234,14 +236,16 @@ class DariusImportFileServiceTest {
 
         assertThatThrownBy(this::generate)
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("[276]")
-                .hasMessageContaining("nincs címlet-snapshot");
+                .hasMessageContaining("nincs jelenthető adat")
+                .hasMessageContaining("276");
         verify(auditLogService, never()).logForCompany(
                 eq("DARIUS_IMPORT_FILE_EXPORTED"), contains(""), anyString(), eq(COMPANY_ID));
     }
 
     @Test
-    void rejectsWholeExportWhenAnyActiveBranchIsIncompleteAndListsEveryError() {
+    void partialExportSkipsIncompleteBranchAndStillExportsTheRest() {
+        // FK-109 FR-7: formerly "rejectsWholeExportWhenAnyActiveBranchIsIncomplete..." —
+        // the snapshot-less branch is now skipped instead of failing the batch.
         Branch second = Branch.builder()
                 .id(UUID.fromString("30000000-0000-0000-0000-000000000003"))
                 .bankCode("312")
@@ -258,12 +262,10 @@ class DariusImportFileServiceTest {
         when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(second.getId(), DATE, DATE))
                 .thenReturn(List.of());
 
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("[312]")
-                .hasMessageContaining("nincs címlet-snapshot");
-        verify(auditLogService, never()).logForCompany(
-                eq("DARIUS_IMPORT_FILE_EXPORTED"), contains(""), anyString(), eq(COMPANY_ID));
+        DariusImportFile result = generate();
+
+        assertThat(content(result)).contains("276").doesNotContain("312");
+        assertThat(result.skippedBranches()).containsExactly("312");
     }
 
     @Test
@@ -341,132 +343,6 @@ class DariusImportFileServiceTest {
     }
 
     @Test
-    void includesApprovedFixingRequestAndMarksItIncluded() {
-        givenSnapshot();
-        DariusFixingRequest request = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.APPROVED);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(BANK_BRANCH_ID, "7001", true)));
-        when(fixingLineRepository.findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(
-                COMPANY_ID, FIXING_REQUEST_ID)).thenReturn(List.of(
-                        fixingLine(FIXING_REQUEST_ID, "USD", "0", "20000"),
-                        fixingLine(FIXING_REQUEST_ID, "EUR", "50000", "0")));
-
-        DariusImportFile result = generate();
-        String content = content(result);
-        String hash = sha256(result.content());
-
-        assertThat(content).contains("JELENTES UZLETKOTES")
-                .contains("BANKFIOK_AZONOSITO\t7001")
-                .contains("EUR\t50000\t0")
-                .contains("USD\t0\t20000");
-        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.INCLUDED);
-        assertThat(request.getIncludedAt()).isEqualTo(LocalDateTime.of(2025, 4, 22, 14, 0));
-        assertThat(request.getIncludedFileSha256()).isEqualTo(hash);
-        verify(fixingRequestRepository).save(request);
-        verify(fixingLineRepository)
-                .findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(COMPANY_ID, FIXING_REQUEST_ID);
-        verifyNoMoreInteractions(fixingLineRepository);
-        verify(auditLogService).logForCompany(
-                eq("DARIUS_FIXING_REQUEST_INCLUDED"),
-                contains("sha256=" + hash),
-                eq(FIXING_REQUEST_ID.toString()),
-                eq(COMPANY_ID));
-    }
-
-    @Test
-    void keepsIncludedRequestsInFileOnRepeatedGeneration() {
-        givenSnapshot();
-        DariusFixingRequest request = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.INCLUDED);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(BANK_BRANCH_ID, "7001", true)));
-        when(fixingLineRepository.findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(
-                COMPANY_ID, FIXING_REQUEST_ID)).thenReturn(List.of(
-                        fixingLine(FIXING_REQUEST_ID, "EUR", "50000", "0")));
-
-        DariusImportFile first = generate();
-        DariusImportFile second = generate();
-
-        assertThat(first.content()).containsExactly(second.content());
-        assertThat(content(first)).contains("JELENTES UZLETKOTES");
-        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.INCLUDED);
-        verify(fixingRequestRepository, never()).save(any());
-        verify(auditLogService, never()).logForCompany(
-                eq("DARIUS_FIXING_REQUEST_INCLUDED"), contains(""), anyString(), eq(COMPANY_ID));
-    }
-
-    @Test
-    void failsClosedWhenDraftFixingRequestExistsForDate() {
-        givenSnapshot();
-        DariusFixingRequest request = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.DRAFT);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(BANK_BRANCH_ID, "7001", true)));
-
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("jóváhagyatlan")
-                .hasMessageContaining("7001");
-        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.DRAFT);
-        verify(fixingRequestRepository, never()).save(any());
-        verifyNoInteractions(fixingLineRepository);
-        verifyNoInteractions(auditLogService);
-    }
-
-    @Test
-    void failsClosedWhenApprovedRequestBankBranchIsInactiveOrCodeBlank() {
-        givenSnapshot();
-        DariusFixingRequest request = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.APPROVED);
-        DariusBankBranch bankBranch = bankBranch(BANK_BRANCH_ID, "7001", false);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch));
-
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("inaktív");
-
-        bankBranch.setIsActive(true);
-        bankBranch.setBankBranchCode(" ");
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("kód nélküli");
-        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.APPROVED);
-        verify(fixingRequestRepository, never()).save(any());
-        verifyNoInteractions(fixingLineRepository);
-        verifyNoInteractions(auditLogService);
-    }
-
-    @Test
-    void exportQueryExcludesCancelledRequests() {
-        givenSnapshot();
-
-        DariusImportFile result = generate();
-
-        assertThat(content(result)).doesNotContain("JELENTES UZLETKOTES");
-        verify(fixingRequestRepository)
-                .findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                        COMPANY_ID,
-                        DATE,
-                        List.of(
-                                DariusFixingRequestStatus.DRAFT,
-                                DariusFixingRequestStatus.APPROVED,
-                                DariusFixingRequestStatus.INCLUDED));
-        verifyNoInteractions(bankBranchRepository);
-        verifyNoInteractions(fixingLineRepository);
-        verify(fixingRequestRepository, never()).save(any());
-    }
-
-    @Test
     void serializerFailureLeavesApprovedRequestUntouchedAndUnaudited() {
         givenSnapshot();
         DariusFixingRequest request = fixingRequest(
@@ -483,41 +359,6 @@ class DariusImportFileServiceTest {
         assertThat(request.getIncludedFileSha256()).isNull();
         verify(fixingRequestRepository, never()).save(any());
         verifyNoInteractions(auditLogService);
-    }
-
-    @Test
-    void auditFailureLeavesAllApprovedRequestsUntouchedWithoutPartialIncludedState() {
-        givenSnapshot();
-        UUID secondRequestId = UUID.fromString("50000000-0000-0000-0000-000000000005");
-        UUID secondBankBranchId = UUID.fromString("60000000-0000-0000-0000-000000000006");
-        DariusFixingRequest first = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.APPROVED);
-        DariusFixingRequest second = fixingRequest(
-                secondRequestId, secondBankBranchId, DariusFixingRequestStatus.APPROVED);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(first, second));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(BANK_BRANCH_ID, "7001", true)));
-        when(bankBranchRepository.findByIdAndCompanyId(secondBankBranchId, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(secondBankBranchId, "7002", true)));
-        when(fixingLineRepository.findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(
-                eq(COMPANY_ID), any())).thenAnswer(invocation -> List.of(
-                        fixingLine(invocation.getArgument(1), "EUR", "1", "0")));
-        doThrow(new IllegalStateException("audit failed"))
-                .when(auditLogService).logForCompany(
-                        eq("DARIUS_FIXING_REQUEST_INCLUDED"),
-                        contains(secondRequestId.toString()),
-                        eq(secondRequestId.toString()),
-                        eq(COMPANY_ID));
-
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("audit failed");
-        assertThat(first.getStatus()).isEqualTo(DariusFixingRequestStatus.APPROVED);
-        assertThat(second.getStatus()).isEqualTo(DariusFixingRequestStatus.APPROVED);
-        assertThat(first.getIncludedFileSha256()).isNull();
-        assertThat(second.getIncludedFileSha256()).isNull();
-        verify(fixingRequestRepository, never()).save(any());
     }
 
     @Test
@@ -608,6 +449,93 @@ class DariusImportFileServiceTest {
 
     private static Stream<Object> additionalNonFiniteProjectionAmounts() {
         return Stream.of(Float.POSITIVE_INFINITY, Float.NaN, Double.NaN);
+    }
+
+    @Test
+    void doesNotTouchApprovedFixingRequestsOnExport() {
+        givenSnapshot();
+        when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(BRANCH_ID, DATE, DATE))
+                .thenReturn(List.of());
+        DariusFixingRequest request = fixingRequest(
+                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.APPROVED);
+        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
+                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
+
+        DariusImportFile result = generate();
+
+        assertThat(content(result)).doesNotContain("JELENTES UZLETKOTES");
+        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.APPROVED);
+        verify(fixingRequestRepository, never()).save(any());
+        verify(auditLogService, never()).logForCompany(
+                eq("DARIUS_FIXING_REQUEST_INCLUDED"), contains(""), anyString(), eq(COMPANY_ID));
+    }
+
+    @Test
+    void skipsBranchWithoutEveningSnapshot() {
+        UUID secondBranchId = UUID.fromString("70000000-0000-0000-0000-000000000007");
+        Branch second = Branch.builder()
+                .id(secondBranchId)
+                .bankCode("277")
+                .hasPos(false)
+                .isActive(true)
+                .build();
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(List.of(branch, second));
+        givenSnapshot();
+        when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(secondBranchId, DATE, 1))
+                .thenReturn(List.of());
+        when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(BRANCH_ID, DATE, DATE))
+                .thenReturn(List.of());
+
+        DariusImportFile result = generate();
+
+        assertThat(content(result)).contains("276").doesNotContain("277");
+        assertThat(result.skippedBranches()).containsExactly("277");
+        verify(auditLogService).logForCompany(
+                eq("DARIUS_IMPORT_FILE_EXPORTED"),
+                contains("277"),
+                anyString(),
+                eq(COMPANY_ID));
+    }
+
+    @Test
+    void throwsWhenAllBranchesLackSnapshot() {
+        when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(BRANCH_ID, DATE, 1))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(this::generate)
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("nincs jelenthető adat")
+                .hasMessageContaining("276");
+    }
+
+    @Test
+    void stillFailsOnDuplicateBankCode() {
+        UUID secondBranchId = UUID.fromString("80000000-0000-0000-0000-000000000008");
+        Branch second = Branch.builder()
+                .id(secondBranchId)
+                .bankCode("276")
+                .hasPos(false)
+                .isActive(true)
+                .build();
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(List.of(branch, second));
+        givenSnapshot();
+        when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(secondBranchId, DATE, 1))
+                .thenReturn(List.of(DailyDenominationSnapshot.builder()
+                        .branchId(secondBranchId)
+                        .snapshotDate(DATE)
+                        .currencyCode("EUR")
+                        .denominationType("BANKNOTE")
+                        .faceValue(new BigDecimal("100"))
+                        .quantity(1)
+                        .closingType(1)
+                        .createdAt(LocalDateTime.of(2025, 4, 22, 10, 58))
+                        .build()));
+
+        assertThatThrownBy(this::generate)
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("duplikált uzlethelyisegAzonosito");
     }
 
     private DariusImportFile generate() {
