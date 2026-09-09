@@ -610,6 +610,93 @@ class DariusImportFileServiceTest {
         return Stream.of(Float.POSITIVE_INFINITY, Float.NaN, Double.NaN);
     }
 
+    @Test
+    void doesNotTouchApprovedFixingRequestsOnExport() {
+        givenSnapshot();
+        when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(BRANCH_ID, DATE, DATE))
+                .thenReturn(List.of());
+        DariusFixingRequest request = fixingRequest(
+                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.APPROVED);
+        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
+                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
+
+        DariusImportFile result = generate();
+
+        assertThat(content(result)).doesNotContain("JELENTES UZLETKOTES");
+        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.APPROVED);
+        verify(fixingRequestRepository, never()).save(any());
+        verify(auditLogService, never()).logForCompany(
+                eq("DARIUS_FIXING_REQUEST_INCLUDED"), contains(""), anyString(), eq(COMPANY_ID));
+    }
+
+    @Test
+    void skipsBranchWithoutEveningSnapshot() {
+        UUID secondBranchId = UUID.fromString("70000000-0000-0000-0000-000000000007");
+        Branch second = Branch.builder()
+                .id(secondBranchId)
+                .bankCode("277")
+                .hasPos(false)
+                .isActive(true)
+                .build();
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(List.of(branch, second));
+        givenSnapshot();
+        when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(secondBranchId, DATE, 1))
+                .thenReturn(List.of());
+        when(transactionRepository.groupByCurrencyTypeAndPaymentMethodForBranch(BRANCH_ID, DATE, DATE))
+                .thenReturn(List.of());
+
+        DariusImportFile result = generate();
+
+        assertThat(content(result)).contains("276").doesNotContain("277");
+        assertThat(result.skippedBranches()).containsExactly("277");
+        verify(auditLogService).logForCompany(
+                eq("DARIUS_IMPORT_FILE_EXPORTED"),
+                contains("277"),
+                anyString(),
+                eq(COMPANY_ID));
+    }
+
+    @Test
+    void throwsWhenAllBranchesLackSnapshot() {
+        when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(BRANCH_ID, DATE, 1))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(this::generate)
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("nincs jelenthető adat")
+                .hasMessageContaining("276");
+    }
+
+    @Test
+    void stillFailsOnDuplicateBankCode() {
+        UUID secondBranchId = UUID.fromString("80000000-0000-0000-0000-000000000008");
+        Branch second = Branch.builder()
+                .id(secondBranchId)
+                .bankCode("276")
+                .hasPos(false)
+                .isActive(true)
+                .build();
+        when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                .thenReturn(List.of(branch, second));
+        givenSnapshot();
+        when(snapshotRepository.findByBranchIdAndSnapshotDateAndClosingType(secondBranchId, DATE, 1))
+                .thenReturn(List.of(DailyDenominationSnapshot.builder()
+                        .branchId(secondBranchId)
+                        .snapshotDate(DATE)
+                        .currencyCode("EUR")
+                        .denominationType("BANKNOTE")
+                        .faceValue(new BigDecimal("100"))
+                        .quantity(1)
+                        .closingType(1)
+                        .createdAt(LocalDateTime.of(2025, 4, 22, 10, 58))
+                        .build()));
+
+        assertThatThrownBy(this::generate)
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("duplikált uzlethelyisegAzonosito");
+    }
+
     private DariusImportFile generate() {
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);

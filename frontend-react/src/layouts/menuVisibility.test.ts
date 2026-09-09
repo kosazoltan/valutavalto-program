@@ -344,6 +344,7 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
       '/admin/branches',
       '/mnb-settlement-rates',
       '/central/received-data',
+      '/darius',
     ]
     for (const path of gatedPaths) {
       const roles = effectiveCanonicalRolesForPath(menuGroups, path)
@@ -358,6 +359,38 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
     expect(roles).toBeDefined()
     expect([...(roles ?? [])].sort()).toEqual(['belso_ellenor', 'foertektar'])
     expect(roles).not.toContain('irodavezeto')
+  })
+
+  // FK-109 FR-1: /darius item-level roles pin
+  it('/darius → item-szintű [admin, belso_ellenor, foertektar], defined and non-empty', () => {
+    const roles = effectiveCanonicalRolesForPath(menuGroups, '/darius')
+    expect(roles, 'hiányzó menü-szerepkör: /darius').toBeDefined()
+    expect((roles ?? []).length).toBeGreaterThan(0)
+    expect([...(roles ?? [])].sort()).toEqual(['admin', 'belso_ellenor', 'foertektar'])
+  })
+
+  it.each(['foertektar', 'belso_ellenor', 'admin'])(
+    'FK-109 FR-1: %s látja a /darius menüpontot',
+    (role) => {
+      const group = groupByLabel('Riportok')
+      expect(isMenuItemVisible(itemByPath(group, '/darius'), group, ctxFor([role], 'full'))).toBe(
+        true,
+      )
+    },
+  )
+
+  it.each(['ugyvezeto', 'irodavezeto', 'teruleti_vezeto', 'penzugyi_vezeto'])(
+    'FK-109 FR-1: %s NEM látja a /darius menüpontot',
+    (role) => {
+      const group = groupByLabel('Riportok')
+      expect(isMenuItemVisible(itemByPath(group, '/darius'), group, ctxFor([role], 'full'))).toBe(
+        false,
+      )
+    },
+  )
+
+  it('FK-109 FR-1: ugyvezeto továbbra is látja a Riportok CSOPORTOT (csak a /darius item rejtett)', () => {
+    expect(isMenuGroupVisible(groupByLabel('Riportok'), ctxFor(['ugyvezeto'], 'full'))).toBe(true)
   })
 })
 

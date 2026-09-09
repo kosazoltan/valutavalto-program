@@ -86,10 +86,11 @@ describe('DariusReportPage backend contract', () => {
     })
   })
 
-  it('megjeleníti a Fixing igények fület', async () => {
+  it('FK-109 FR-3: a Fixing igények fület NEM jeleníti meg', async () => {
     render(<DariusReportPage />)
 
-    expect(await screen.findByRole('button', { name: 'Fixing igények' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Napi lekérdezés/i })).toBeInTheDocument()
+    expect(screen.queryByText('Fixing igények')).toBeNull()
   })
 
   it('napi lekérdezéskor a backend by-date reprezentációját jeleníti meg', async () => {
@@ -228,5 +229,42 @@ describe('DariusReportPage backend contract', () => {
 
     expect(await screen.findByText('Hiányzik a PV azonosító.')).toBeInTheDocument()
     expect(mocks.downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('FK-109 FR-7: kihagyott iroda esetén figyelmeztetést jelenít meg a bankkóddal', async () => {
+    const user = userEvent.setup()
+    mocks.downloadImportFile.mockResolvedValue({
+      data: new Blob(['import-adat']),
+      headers: {
+        'content-disposition': 'attachment; filename="raiffeisen_import_BEST_2026-07-01.imp"',
+        'x-darius-skipped-branches': '277',
+      },
+    })
+    render(<DariusReportPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' }))
+
+    const notice = await screen.findByTestId('darius-skipped-branches-notice')
+    expect(notice.textContent).toContain('277')
+    expect(mocks.downloadBlob).toHaveBeenCalled()
+  })
+
+  it('FK-109 FR-7: üres skipped-header esetén NEM jelenít meg figyelmeztetést', async () => {
+    const user = userEvent.setup()
+    mocks.downloadImportFile.mockResolvedValue({
+      data: new Blob(['import-adat']),
+      headers: {
+        'content-disposition': 'attachment; filename="raiffeisen_import_BEST_2026-07-01.imp"',
+        'x-darius-skipped-branches': '',
+      },
+    })
+    render(<DariusReportPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' }))
+
+    await waitFor(() => {
+      expect(mocks.downloadBlob).toHaveBeenCalled()
+    })
+    expect(screen.queryByTestId('darius-skipped-branches-notice')).toBeNull()
   })
 })

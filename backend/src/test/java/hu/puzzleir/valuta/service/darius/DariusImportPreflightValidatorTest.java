@@ -205,7 +205,7 @@ class DariusImportPreflightValidatorTest {
     }
 
     @Test
-    void requiresSnapshotAndAtLeastOneReportableBranch() {
+    void stocklessBranchIsNotRejectedByValidatorAndEmptyBranchListIsGlobalError() {
         BranchBlock noSnapshot = new BranchBlock(
                 "276",
                 false,
@@ -214,7 +214,8 @@ class DariusImportPreflightValidatorTest {
                 List.of(),
                 List.of(turnover("EUR", "1", "0", "0", "0", "0", "0", "0")));
 
-        assertError(model("108114", BUSINESS_DAY, noSnapshot), "276", "nincs címlet-snapshot");
+        assertThat(validator.validate(model("108114", BUSINESS_DAY, noSnapshot)))
+                .noneMatch(error -> error.contains("nincs címlet-snapshot"));
         assertError(new DariusImportFileModel(BUSINESS_DAY, "108114", List.of(), List.of()),
                 "GLOBAL", "nincs jelenthető adat");
     }

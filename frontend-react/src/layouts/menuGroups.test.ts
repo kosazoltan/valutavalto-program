@@ -428,3 +428,18 @@ describe('FKH-042 FR-6 — „Címletezés – zárások" hub az Értéktár (lo
     ).toHaveLength(2)
   })
 })
+
+describe('FK-109 FR-1 — /darius a Riportok csoportban', () => {
+  it('a Riportok csoport tartalmazza a /darius bejegyzést a spec címkével és item-szintű szerepkörökkel', () => {
+    const reports = menuGroups.find((g) => g.label === 'Riportok')
+    expect(reports).toBeDefined()
+    const item = reports!.items.find((i) => i.path === '/darius')
+    expect(item).toBeDefined()
+    expect(item!.label).toBe('Import file-ok készítése bank részére')
+    expect([...(item!.canonicalRoles ?? [])].sort()).toEqual([
+      'admin',
+      'belso_ellenor',
+      'foertektar',
+    ])
+  })
+})

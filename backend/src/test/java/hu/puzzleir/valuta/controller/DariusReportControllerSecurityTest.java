@@ -46,10 +46,10 @@ class DariusReportControllerSecurityTest {
 
     @Test
     @WithMockUser(authorities = "DARIUS_REPORT_RUN")
-    void dariusReportRunAuthorityRemainsCompatible() {
-        assertAuthorized(() -> controller.generate(DATE));
-        assertAuthorized(() -> controller.acknowledge(REPORT_ID, "ACK-1"));
-        assertAuthorized(() -> controller.getMonthly(2026, 7));
+    void dariusReportRunAuthorityIsDenied() {
+        assertThrows(AccessDeniedException.class, () -> controller.generate(DATE));
+        assertThrows(AccessDeniedException.class, () -> controller.acknowledge(REPORT_ID, "ACK-1"));
+        assertThrows(AccessDeniedException.class, () -> controller.getMonthly(2026, 7));
     }
 
     @Test
@@ -64,9 +64,18 @@ class DariusReportControllerSecurityTest {
 
     @Test
     @WithMockUser(authorities = "SYSTEM_ADMIN")
-    void systemAdminAuthorityRemainsCompatibleExceptApproval() {
-        assertAuthorized(() -> controller.generate(DATE));
+    void systemAdminAuthorityIsDenied() {
+        assertThrows(AccessDeniedException.class, () -> controller.generate(DATE));
         assertThrows(AccessDeniedException.class, () -> controller.approve(REPORT_ID));
+    }
+
+    @Test
+    @WithMockUser(roles = "UGYVEZETO")
+    void ugyvezetoIsDeniedOnDariusOperations() {
+        assertThrows(AccessDeniedException.class, () -> controller.generate(DATE));
+        assertThrows(AccessDeniedException.class, () -> controller.downloadImportFile(DATE, 0));
+        assertThrows(AccessDeniedException.class, () -> controller.approve(REPORT_ID));
+        assertThrows(AccessDeniedException.class, () -> controller.submit(REPORT_ID));
     }
 
     @Test
