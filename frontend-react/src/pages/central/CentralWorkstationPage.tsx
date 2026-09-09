@@ -146,7 +146,7 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
       {
         id: 'booking-export',
         title: 'Könyvelés export',
-        description: 'Raiffeisen, Darius, NAV export',
+        description: 'Napi, havi és leltár könyvelési CSV export',
         route: '/booking-export',
         status: 'ready',
         icon: FileArchive,
