@@ -125,10 +125,7 @@ class DariusImportFileServiceTest {
                 fileSerializer,
                 fileAuditLogService,
                 properties,
-                fixingRequestRepository,
-                fixingLineRepository,
-                bankBranchRepository,
-                CLOCK);
+                bankBranchRepository);
     }
 
     @Test
@@ -341,132 +338,6 @@ class DariusImportFileServiceTest {
     }
 
     @Test
-    void includesApprovedFixingRequestAndMarksItIncluded() {
-        givenSnapshot();
-        DariusFixingRequest request = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.APPROVED);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(BANK_BRANCH_ID, "7001", true)));
-        when(fixingLineRepository.findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(
-                COMPANY_ID, FIXING_REQUEST_ID)).thenReturn(List.of(
-                        fixingLine(FIXING_REQUEST_ID, "USD", "0", "20000"),
-                        fixingLine(FIXING_REQUEST_ID, "EUR", "50000", "0")));
-
-        DariusImportFile result = generate();
-        String content = content(result);
-        String hash = sha256(result.content());
-
-        assertThat(content).contains("JELENTES UZLETKOTES")
-                .contains("BANKFIOK_AZONOSITO\t7001")
-                .contains("EUR\t50000\t0")
-                .contains("USD\t0\t20000");
-        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.INCLUDED);
-        assertThat(request.getIncludedAt()).isEqualTo(LocalDateTime.of(2025, 4, 22, 14, 0));
-        assertThat(request.getIncludedFileSha256()).isEqualTo(hash);
-        verify(fixingRequestRepository).save(request);
-        verify(fixingLineRepository)
-                .findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(COMPANY_ID, FIXING_REQUEST_ID);
-        verifyNoMoreInteractions(fixingLineRepository);
-        verify(auditLogService).logForCompany(
-                eq("DARIUS_FIXING_REQUEST_INCLUDED"),
-                contains("sha256=" + hash),
-                eq(FIXING_REQUEST_ID.toString()),
-                eq(COMPANY_ID));
-    }
-
-    @Test
-    void keepsIncludedRequestsInFileOnRepeatedGeneration() {
-        givenSnapshot();
-        DariusFixingRequest request = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.INCLUDED);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(BANK_BRANCH_ID, "7001", true)));
-        when(fixingLineRepository.findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(
-                COMPANY_ID, FIXING_REQUEST_ID)).thenReturn(List.of(
-                        fixingLine(FIXING_REQUEST_ID, "EUR", "50000", "0")));
-
-        DariusImportFile first = generate();
-        DariusImportFile second = generate();
-
-        assertThat(first.content()).containsExactly(second.content());
-        assertThat(content(first)).contains("JELENTES UZLETKOTES");
-        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.INCLUDED);
-        verify(fixingRequestRepository, never()).save(any());
-        verify(auditLogService, never()).logForCompany(
-                eq("DARIUS_FIXING_REQUEST_INCLUDED"), contains(""), anyString(), eq(COMPANY_ID));
-    }
-
-    @Test
-    void failsClosedWhenDraftFixingRequestExistsForDate() {
-        givenSnapshot();
-        DariusFixingRequest request = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.DRAFT);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(BANK_BRANCH_ID, "7001", true)));
-
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("jóváhagyatlan")
-                .hasMessageContaining("7001");
-        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.DRAFT);
-        verify(fixingRequestRepository, never()).save(any());
-        verifyNoInteractions(fixingLineRepository);
-        verifyNoInteractions(auditLogService);
-    }
-
-    @Test
-    void failsClosedWhenApprovedRequestBankBranchIsInactiveOrCodeBlank() {
-        givenSnapshot();
-        DariusFixingRequest request = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.APPROVED);
-        DariusBankBranch bankBranch = bankBranch(BANK_BRANCH_ID, "7001", false);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(request));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch));
-
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("inaktív");
-
-        bankBranch.setIsActive(true);
-        bankBranch.setBankBranchCode(" ");
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("kód nélküli");
-        assertThat(request.getStatus()).isEqualTo(DariusFixingRequestStatus.APPROVED);
-        verify(fixingRequestRepository, never()).save(any());
-        verifyNoInteractions(fixingLineRepository);
-        verifyNoInteractions(auditLogService);
-    }
-
-    @Test
-    void exportQueryExcludesCancelledRequests() {
-        givenSnapshot();
-
-        DariusImportFile result = generate();
-
-        assertThat(content(result)).doesNotContain("JELENTES UZLETKOTES");
-        verify(fixingRequestRepository)
-                .findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                        COMPANY_ID,
-                        DATE,
-                        List.of(
-                                DariusFixingRequestStatus.DRAFT,
-                                DariusFixingRequestStatus.APPROVED,
-                                DariusFixingRequestStatus.INCLUDED));
-        verifyNoInteractions(bankBranchRepository);
-        verifyNoInteractions(fixingLineRepository);
-        verify(fixingRequestRepository, never()).save(any());
-    }
-
-    @Test
     void serializerFailureLeavesApprovedRequestUntouchedAndUnaudited() {
         givenSnapshot();
         DariusFixingRequest request = fixingRequest(
@@ -483,41 +354,6 @@ class DariusImportFileServiceTest {
         assertThat(request.getIncludedFileSha256()).isNull();
         verify(fixingRequestRepository, never()).save(any());
         verifyNoInteractions(auditLogService);
-    }
-
-    @Test
-    void auditFailureLeavesAllApprovedRequestsUntouchedWithoutPartialIncludedState() {
-        givenSnapshot();
-        UUID secondRequestId = UUID.fromString("50000000-0000-0000-0000-000000000005");
-        UUID secondBankBranchId = UUID.fromString("60000000-0000-0000-0000-000000000006");
-        DariusFixingRequest first = fixingRequest(
-                FIXING_REQUEST_ID, BANK_BRANCH_ID, DariusFixingRequestStatus.APPROVED);
-        DariusFixingRequest second = fixingRequest(
-                secondRequestId, secondBankBranchId, DariusFixingRequestStatus.APPROVED);
-        when(fixingRequestRepository.findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                eq(COMPANY_ID), eq(DATE), any())).thenReturn(List.of(first, second));
-        when(bankBranchRepository.findByIdAndCompanyId(BANK_BRANCH_ID, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(BANK_BRANCH_ID, "7001", true)));
-        when(bankBranchRepository.findByIdAndCompanyId(secondBankBranchId, COMPANY_ID))
-                .thenReturn(Optional.of(bankBranch(secondBankBranchId, "7002", true)));
-        when(fixingLineRepository.findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(
-                eq(COMPANY_ID), any())).thenAnswer(invocation -> List.of(
-                        fixingLine(invocation.getArgument(1), "EUR", "1", "0")));
-        doThrow(new IllegalStateException("audit failed"))
-                .when(auditLogService).logForCompany(
-                        eq("DARIUS_FIXING_REQUEST_INCLUDED"),
-                        contains(secondRequestId.toString()),
-                        eq(secondRequestId.toString()),
-                        eq(COMPANY_ID));
-
-        assertThatThrownBy(this::generate)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("audit failed");
-        assertThat(first.getStatus()).isEqualTo(DariusFixingRequestStatus.APPROVED);
-        assertThat(second.getStatus()).isEqualTo(DariusFixingRequestStatus.APPROVED);
-        assertThat(first.getIncludedFileSha256()).isNull();
-        assertThat(second.getIncludedFileSha256()).isNull();
-        verify(fixingRequestRepository, never()).save(any());
     }
 
     @Test

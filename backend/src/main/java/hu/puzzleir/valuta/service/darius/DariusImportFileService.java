@@ -5,17 +5,11 @@ import hu.puzzleir.valuta.dto.darius.DariusImportFile;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel;
 import hu.puzzleir.valuta.dto.darius.DariusImportReadinessDto;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.BranchBlock;
-import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingBlock;
-import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.FixingRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.StockRow;
 import hu.puzzleir.valuta.dto.darius.DariusImportFileModel.TurnoverRow;
 import hu.puzzleir.valuta.entity.Branch;
 import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.DailyDenominationSnapshot;
-import hu.puzzleir.valuta.entity.DariusBankBranch;
-import hu.puzzleir.valuta.entity.DariusFixingRequest;
-import hu.puzzleir.valuta.entity.DariusFixingRequestLine;
-import hu.puzzleir.valuta.entity.DariusFixingRequestStatus;
 import hu.puzzleir.valuta.entity.PaymentMethod;
 import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
@@ -24,8 +18,6 @@ import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
 import hu.puzzleir.valuta.repository.DailyDenominationSnapshotRepository;
 import hu.puzzleir.valuta.repository.DariusBankBranchRepository;
-import hu.puzzleir.valuta.repository.DariusFixingRequestLineRepository;
-import hu.puzzleir.valuta.repository.DariusFixingRequestRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.AuditLogService;
@@ -38,9 +30,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Clock;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -62,10 +52,7 @@ public class DariusImportFileService {
     private final DariusImportFileSerializer serializer;
     private final AuditLogService auditLogService;
     private final IntegrationTransportProperties properties;
-    private final DariusFixingRequestRepository fixingRequestRepository;
-    private final DariusFixingRequestLineRepository fixingLineRepository;
     private final DariusBankBranchRepository bankBranchRepository;
-    private final Clock clock;
 
     @Autowired
     public DariusImportFileService(
@@ -77,37 +64,7 @@ public class DariusImportFileService {
             DariusImportFileSerializer serializer,
             AuditLogService auditLogService,
             IntegrationTransportProperties properties,
-            DariusFixingRequestRepository fixingRequestRepository,
-            DariusFixingRequestLineRepository fixingLineRepository,
             DariusBankBranchRepository bankBranchRepository) {
-        this(
-                branchRepository,
-                snapshotRepository,
-                transactionRepository,
-                companyRepository,
-                validator,
-                serializer,
-                auditLogService,
-                properties,
-                fixingRequestRepository,
-                fixingLineRepository,
-                bankBranchRepository,
-                Clock.system(DariusImportPreflightValidator.BUSINESS_ZONE));
-    }
-
-    DariusImportFileService(
-            BranchRepository branchRepository,
-            DailyDenominationSnapshotRepository snapshotRepository,
-            TransactionRepository transactionRepository,
-            CompanyRepository companyRepository,
-            DariusImportPreflightValidator validator,
-            DariusImportFileSerializer serializer,
-            AuditLogService auditLogService,
-            IntegrationTransportProperties properties,
-            DariusFixingRequestRepository fixingRequestRepository,
-            DariusFixingRequestLineRepository fixingLineRepository,
-            DariusBankBranchRepository bankBranchRepository,
-            Clock clock) {
         this.branchRepository = branchRepository;
         this.snapshotRepository = snapshotRepository;
         this.transactionRepository = transactionRepository;
@@ -116,10 +73,7 @@ public class DariusImportFileService {
         this.serializer = serializer;
         this.auditLogService = auditLogService;
         this.properties = properties;
-        this.fixingRequestRepository = fixingRequestRepository;
-        this.fixingLineRepository = fixingLineRepository;
         this.bankBranchRepository = bankBranchRepository;
-        this.clock = clock;
     }
 
     @Transactional
@@ -128,49 +82,6 @@ public class DariusImportFileService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cég nem található: " + companyId));
         String pvCode = properties.getDarius().getPvCodes().get(company.getCode());
-        List<String> preErrors = new ArrayList<>();
-        List<FixingBlock> fixingBlocks = new ArrayList<>();
-        List<DariusFixingRequest> toInclude = new ArrayList<>();
-        List<DariusFixingRequest> liveRequests = fixingRequestRepository
-                .findForUpdateByCompanyIdAndRequestDateAndStatusInOrderByCreatedAtAscIdAsc(
-                        companyId,
-                        date,
-                        List.of(
-                                DariusFixingRequestStatus.DRAFT,
-                                DariusFixingRequestStatus.APPROVED,
-                                DariusFixingRequestStatus.INCLUDED));
-        for (DariusFixingRequest request : liveRequests) {
-            DariusBankBranch bankBranch = bankBranchRepository
-                    .findByIdAndCompanyId(request.getBankBranchId(), companyId)
-                    .orElse(null);
-            String code = bankBranch == null ? null : bankBranch.getBankBranchCode();
-            if (request.getStatus() == DariusFixingRequestStatus.DRAFT) {
-                preErrors.add("[FIXING:" + (code == null ? request.getId() : code)
-                        + "] jóváhagyatlan (DRAFT) fixing-igény a napra — hagyd jóvá vagy vond vissza");
-                continue;
-            }
-            if (bankBranch == null
-                    || !Boolean.TRUE.equals(bankBranch.getIsActive())
-                    || code == null
-                    || code.isBlank()) {
-                preErrors.add("[FIXING:" + request.getId()
-                        + "] a fixing-igény bankfiókja hiányzik/inaktív/kód nélküli — export tiltva");
-                continue;
-            }
-            List<DariusFixingRequestLine> lines = fixingLineRepository
-                    .findByCompanyIdAndRequestIdOrderByCurrencyCodeAsc(companyId, request.getId());
-            fixingBlocks.add(new FixingBlock(
-                    code,
-                    lines.stream()
-                            .map(line -> new FixingRow(
-                                    line.getCurrencyCode(),
-                                    line.getDeliveredAmount(),
-                                    line.getCollectedAmount()))
-                            .toList()));
-            if (request.getStatus() == DariusFixingRequestStatus.APPROVED) {
-                toInclude.add(request);
-            }
-        }
         List<BranchBlock> branchBlocks = new ArrayList<>();
 
         List<Branch> branches =
@@ -183,9 +94,8 @@ public class DariusImportFileService {
             branchBlocks.add(toBranchBlock(branch, erteknap, snapshots, turnover));
         }
 
-        DariusImportFileModel model = new DariusImportFileModel(date, pvCode, fixingBlocks, branchBlocks);
+        DariusImportFileModel model = new DariusImportFileModel(date, pvCode, List.of(), branchBlocks);
         List<String> errors = validator.validate(model);
-        errors.addAll(0, preErrors);
         if (!errors.isEmpty()) {
             throw new ValidationException(String.join("; ", errors));
         }
@@ -200,22 +110,6 @@ public class DariusImportFileService {
                         + ", sha256=" + hash,
                 fileName,
                 companyId);
-        for (DariusFixingRequest request : toInclude) {
-            auditLogService.logForCompany(
-                    "DARIUS_FIXING_REQUEST_INCLUDED",
-                    "Fixing-igény exportálva: requestId=" + request.getId()
-                            + ", date=" + date
-                            + ", sha256=" + hash,
-                    request.getId().toString(),
-                    companyId);
-        }
-        LocalDateTime includedAt = LocalDateTime.now(clock);
-        for (DariusFixingRequest request : toInclude) {
-            request.setStatus(DariusFixingRequestStatus.INCLUDED);
-            request.setIncludedAt(includedAt);
-            request.setIncludedFileSha256(hash);
-            fixingRequestRepository.save(request);
-        }
         log.info("Raiffeisen importfájl elkészült: companyId={}, date={}, fileName={}, sha256={}",
                 companyId, date, fileName, hash);
         return new DariusImportFile(fileName, content);
