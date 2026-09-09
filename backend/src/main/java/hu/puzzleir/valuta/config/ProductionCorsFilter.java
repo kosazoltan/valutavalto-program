@@ -34,6 +34,13 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
             "Idempotency-Key",
             "X-Idempotency-Key"
     );
+    // FK-109 FR-7: fixed whitelist of response headers readable by browser JS.
+    // Never reflect request headers; Content-Disposition for downloads,
+    // X-Darius-Skipped-Branches for the skipped-offices notice.
+    private static final List<String> DEFAULT_EXPOSED_HEADERS = List.of(
+            HttpHeaders.CONTENT_DISPOSITION,
+            "X-Darius-Skipped-Branches"
+    );
 
     private final List<String> allowedOrigins;
     private final List<String> allowedOriginPatterns;
@@ -88,7 +95,7 @@ public class ProductionCorsFilter extends OncePerRequestFilter {
 
         // Always use fixed whitelist — never reflect request headers
         response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, String.join(", ", DEFAULT_ALLOWED_HEADERS));
-        response.setHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION);
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, String.join(", ", DEFAULT_EXPOSED_HEADERS));
         response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
 
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
