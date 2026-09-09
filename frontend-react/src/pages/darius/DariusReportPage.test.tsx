@@ -267,4 +267,32 @@ describe('DariusReportPage backend contract', () => {
     })
     expect(screen.queryByTestId('darius-skipped-branches-notice')).toBeNull()
   })
+
+  it('clears the skipped-branches notice when a subsequent download fails', async () => {
+    const user = userEvent.setup()
+    mocks.downloadImportFile
+      .mockResolvedValueOnce({
+        data: new Blob(['import-adat']),
+        headers: {
+          'content-disposition': 'attachment; filename="raiffeisen_import_BEST_2026-07-01.imp"',
+          'x-darius-skipped-branches': '277',
+        },
+      })
+      .mockRejectedValueOnce({
+        response: {
+          data: {
+            text: async () => JSON.stringify({ message: 'Hiányzik a PV azonosító.' }),
+          },
+        },
+      })
+    render(<DariusReportPage />)
+
+    const downloadButton = screen.getByRole('button', { name: 'Import fájl letöltése (.imp)' })
+    await user.click(downloadButton)
+    expect(await screen.findByTestId('darius-skipped-branches-notice')).toBeInTheDocument()
+
+    await user.click(downloadButton)
+    expect(await screen.findByText('Hiányzik a PV azonosító.')).toBeInTheDocument()
+    expect(screen.queryByTestId('darius-skipped-branches-notice')).toBeNull()
+  })
 })

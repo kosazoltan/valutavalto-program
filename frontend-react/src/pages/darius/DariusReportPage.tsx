@@ -166,6 +166,9 @@ export default function DariusReportPage() {
       downloadBlob(res.data, serverName ?? `raiffeisen_import_${generateDate}.imp`)
     } catch (err) {
       setError(await getBlobErrorMessage(err))
+      // Stale-notice fix: a failed download produced no file, so the skipped
+      // offices of the previous successful download must not stay visible.
+      setSkippedBranches([])
     } finally {
       setImportDownloading(false)
     }
