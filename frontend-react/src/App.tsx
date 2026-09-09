@@ -1070,7 +1070,14 @@ export default function App() {
                     </CameraGuard>
                   }
                 />
-                <Route path="/darius" element={<DariusReportPage />} />
+                <Route
+                  path="/darius"
+                  element={
+                    <MenuRoleGate path="/darius">
+                      <DariusReportPage />
+                    </MenuRoleGate>
+                  }
+                />
                 <Route path="/decade" element={<DecadeReportPage />} />
                 <Route path="/daybook" element={<DaybookPage />} />
                 <Route path="/reports/cash-flow" element={<CashFlowReportPage />} />
