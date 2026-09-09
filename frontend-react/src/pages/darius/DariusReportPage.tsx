@@ -17,16 +17,14 @@ import { safeArray } from '../../utils/safeArray'
 import { localIsoDate } from '../../utils/dateFormat'
 import { filenameFromContentDisposition } from '../../utils/contentDisposition'
 import { useTranslation } from 'react-i18next'
-import DariusFixingPanel from './DariusFixingPanel'
 import i18n from '../../i18n'
 
-type Tab = 'daily' | 'monthly' | 'missing' | 'fixing'
+type Tab = 'daily' | 'monthly' | 'missing'
 
 const TAB_LABELS: Record<Tab, string> = {
   daily: 'Napi',
   monthly: 'Havi összesítő',
   missing: 'Hiányzó napok',
-  fixing: 'Fixing igények',
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -631,8 +629,6 @@ export default function DariusReportPage() {
           )}
         </div>
       )}
-
-      {tab === 'fixing' && <DariusFixingPanel date={generateDate} />}
     </div>
   )
 }
