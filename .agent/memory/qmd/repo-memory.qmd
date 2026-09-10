@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-05T20:39:39.518Z
+generated: 2026-09-10T00:37:20.677Z
 format: gfm
 ---
 
@@ -112,30 +112,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 ## Kozep Tavu Memoria
 
-- **Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-04-fkh029-vault-cash-balance-scope.md`
-  - summary: # Handoff — FKH-029: Értéktári cash_balance hatókör + CASHIER currency_stock kivezetés **Dátum:** 2026-08-04 · **Branch:** `fkh029-vault-cash-balance-scope` (main `9a48f0dd`-ből) ## Miért Az FKH-028 V369 csak BR020-at pótolta (FR-5 tudatos scope-kivétel). Az élő prod audit (read-only, Hetzner) szerint **7 további aktív Értéktárnak 0 `cash_balance` sora** volt, és **BR075 Békéscsaba 10 PENDING átadása 2026-05-26 óta b
-
-- **Aktív repo-memória (read-gate + area-taxonómia + stale-check)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-09-aktiv-repo-memoria.md`
-  - summary: --- date: 2026-08-09 title: Aktív repo-memória (read-gate + area-taxonómia + stale-check) type: session status: complete tags: [memory, agent-rules, tooling, pre-push-gate] --- # Handoff — aktív repo-memória ## Kiindulás (audit) - `.agent/memory` (qMD/YAML/Cognee/vector/Obsidian) létezett, de **write-only**: nem volt query-parancs, egyetlen agent-szabály sem hivatkozott rá. - Commitolt bundle 2026-05-13-ról (224 sour
-
-- **FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-09-fkh031-nfr1-manual-intervention.md`
-  - summary: --- date: 2026-08-09 title: FKH-031 NFR-1 — lejárt retry-ablak láthatóvá tétele type: session status: complete tags: [fkh031, sync, ertektar, penztar, retry, ui, tdd] --- # Handoff — FKH-031 NFR-1 ## Kiindulás A branch (`feature/ertektar-fkh031-sync-retry-lathatosag`) FR-1…FR-6 szinten készen volt (commit `6ff0fc2a`, `711c4adf`). Kötelező memória-lookup után (AGENTS.md 2.1) kódfeltárással **egy valós hiányt** találta
-
-- **Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-09-legacy-memoria-indexeles.md`
-  - summary: --- date: 2026-08-09 title: Legacy tudásbázis beindexelése + elveszett felmérési KB helyreállítása type: session status: complete tags: [memory, legacy, excmd, felmeres-kb, agent-rules, recovery] --- # Handoff — a memória legacy-vakfoltjának megszüntetése ## A probléma (audit) A bundle 382 forrást indexelt, és a fejlesztéshez ténylegesen szükséges tudás szinte teljes egészében kimaradt. Git-trackelt fájlokhoz mért le
-
-- **Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-09-v2.28.73-release-es-prod-javitasok.md`
-  - summary: # Handoff — 2026-08-09 — v2.28.73 release + két prod üzemeltetési javítás ## Release: v2.28.73 (FKH-031 / V377) — KIADVA, élesben igazolva - main `a54e4890`; main CI 6/6 zöld; prod `/api/v1/version` → 2.28.73, health `ok:true`. - **Gate B 7/7 PASS** (`scripts/verify-fkh031-gate-b.sh`): V377 lefutott ÉS ÍRT (`[FKH-031 V377]` marker 2 soron), AA035100003→COMPLETED, AA035100004→CANCELLED, `cash_balance` BR035/BR020 USD
-
-- **Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-10-fkh036-telepito-d1-es-duplikacio-felmeres.md`
-  - summary: # Handoff — 2026-08-10 — FKH-036 telepítő D1 javítás + duplikáció-felmérés ## Mi történt User kérdése az „architekturális duplikáció / 17 szolgáltatás" fordítására indult, majd a 17-es szám felülvizsgálatára, végül a kliens-összevonás + pénztár-eltávolító végrehajtására (kétszeresen ellenőrzött terv alapján). ## Mért eredmények (nem becslés) - **Duplikáció: nem 17, hanem 19 klaszter.** 10 001 indexelt függvénytörzsbő
-
 - **Platform-refaktor 2. kör — zárójelentés (a telepítőig)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md`
   - summary: # Platform-refaktor 2. kör — zárójelentés (a telepítőig) **Dátum:** 2026-08-10 | **Repo:** `D:\repo\valutavalto-program` **Megbízás:** a platform-refaktor befejezése, szeletenként **kétszer ellenőrzött terv**, majd autonóm verifikált futás **a telepítőig**. --- ## 1. Eredmény egy táblázatban | Metrika | 1. kör előtt | 1. kör után | MOST | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 96 | **90** | | **Cross-
@@ -243,6 +219,30 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — FKH-051 / v2.28.102 (2026-09-05)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-05-fkh051-v2.28.102.md`
   - summary: # Handoff — FKH-051 / v2.28.102 (2026-09-05) - PR #1711 squash-merged `6f516096` (head `7badb402`). - 10/10 required SUCCESS on PR head. Non-required: Frontend diff-coverage FAILURE (MainLayout.fk069 + TransactionLevyReportPage — files **not** in PR diff). - Merge = deploy: Hetzner run `33969442019` SUCCESS (Gate A+B). Prod `{"version":"2.28.102","buildTime":"2026-09-05T13:40:41Z"}`. - Main CI SHA `6f516096` `MAIN_CI
+
+- **Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-05-fkh052-sorrend-vedelem.md`
+  - summary: # Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103) Status: **LIVE**. Prod `2.28.103`, main `68a001ab` = PR #1714. Deploy run 33990481634 SUCCESS. No installer (backend-only). ## Shipped - `RetroactiveClosingService.oldestProcessablePastDate` = min of OPEN ∪ FALSE_CLOSED finder heads. - `closeRetroactively` + `reopenFalseClosed` reject unless date == oldest. Reopen gate is **before** the row lock. - Close o
+
+- **Handoff — 2026-09-06 FKH-053 (v2.28.104)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-06-fkh053-cimletezes-vedelem-elvart.md`
+  - summary: # Handoff — 2026-09-06 FKH-053 (v2.28.104) Status: **KIADVA**. Prod `2.28.104` buildTime `2026-09-06T17:01:21Z`. Tag `v2.28.104` = `19e1631e` (#1716). ## Mit szállítottunk - FR-1: `closeRetroactively` EVENING sor nélkül elutasít (HU szöveg, audit `RETROACTIVE_CLOSING_BLOCKED_NO_EVENING`). - FR-2: múltbeli nyitó nem esik élő `cash_balance`-ra; L1/L2 hiányában `ValidationException`. - FR-3: negatív `closingBalance` blo
+
+- **FK-109 Darius RBAC + fixing-leválasztás + részleges export — pipeline PASS (2026-09-09)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-09-fk109-darius-pipeline-pass.md`
+  - summary: # FK-109 Darius RBAC + fixing-leválasztás + részleges export — pipeline PASS (2026-09-09) - Job: `.hermes/pipeline/20260909-fk109-darius-rbac-fixing-partial-export/` (round-1, status=pass) - Ág: `pipeline/20260909-fk109-darius-rbac-fixing-partial-export` @ `6493bad1`, base `3ab81080` (v2.28.108) - 8 WU commit `e47f22d0`..`6493bad1`, 17 fájl, +324/−326. Worktree: `D:/repo/wt-20260909-fk109-...` - Verdiktek: e1 (DeepSe
+
+- **FK-109 Darius RBAC + fixing-leválasztás + részleges export → v2.28.109 (2026-09-09)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-09-fk109-v2.28.109-signed-release.md`
+  - summary: # FK-109 Darius RBAC + fixing-leválasztás + részleges export → v2.28.109 (2026-09-09) ## Kiadás (mérve) - main `8e4ae6c2` = PR #1734 squash-merge, verzió **2.28.109** (9-utas bump `a0398328`). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.109 / buildTime `2026-09-09T15:01:00Z`; health `ok:true`. Deploy to Hetzner VPS **SUCCESS**; Security Pipeline **SUCCESS**. - Aláírt release: run `34368103577` **SUCCESS** (
+
+- **Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-09-fkh059-fkh058-purge.md`
+  - summary: # Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge ## What happened FKH-059 asked for DB-level proof of FKH-058's status. Verdict: **FKH-058 had never been executed** (0 commits, 0 repo hits, no migration, no audit_log trace). The earlier "done" referred to V368 / FK-070, a different Tisza Sarok correction. FR-3 closed too: the backend uses `jdbc:postgresql://localhost:6432/valuta` (pgbouncer → local postgres
+
+- **v2.28.108 signed release (2026-09-09)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-09-v2.28.108-signed-release.md`
+  - summary: # v2.28.108 signed release (2026-09-09) - Main SHA `3ab81080` = tag `v2.28.108` (#1733 9-way bump). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.108 / 2026-09-09T05:11:03Z; health ok. - Deploy: 34313639119 SUCCESS. Signed release: 34313653462 SUCCESS. Security Pipeline: 34313639133 SUCCESS. - Contents: FKH-056 FALSE_CLOSED simplified close; FKH-057 retroactive list + EVENING denomination without today-open b
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`

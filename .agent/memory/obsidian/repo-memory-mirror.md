@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-09-05T20:39:39.518Z
+generated: 2026-09-10T00:37:20.677Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-09-05T20:39:39.518Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1091
-- generated: 2026-09-05T20:39:39.518Z
+- sources: 1097
+- generated: 2026-09-10T00:37:20.677Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1101,5 +1101,11 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Handoff — 2026-09-05 FKH-049 + FKH-050 (stackelt, v2.28.101)]] — `vault/sessions/handoff-2026-09-05-fkh049-fkh050-retroactive-closing.md` (medium-term-episodic)
 - [[Handoff — FKH-051 auto-close fix + date-field retroactive close]] — `vault/sessions/handoff-2026-09-05-fkh051-auto-close-datummezo.md` (medium-term-episodic)
 - [[Handoff — FKH-051 / v2.28.102 (2026-09-05)]] — `vault/sessions/handoff-2026-09-05-fkh051-v2.28.102.md` (medium-term-episodic)
+- [[Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103)]] — `vault/sessions/handoff-2026-09-05-fkh052-sorrend-vedelem.md` (medium-term-episodic)
+- [[Handoff — 2026-09-06 FKH-053 (v2.28.104)]] — `vault/sessions/handoff-2026-09-06-fkh053-cimletezes-vedelem-elvart.md` (medium-term-episodic)
+- [[FK-109 Darius RBAC + fixing-leválasztás + részleges export — pipeline PASS (2026-09-09)]] — `vault/sessions/handoff-2026-09-09-fk109-darius-pipeline-pass.md` (medium-term-episodic)
+- [[FK-109 Darius RBAC + fixing-leválasztás + részleges export → v2.28.109 (2026-09-09)]] — `vault/sessions/handoff-2026-09-09-fk109-v2.28.109-signed-release.md` (medium-term-episodic)
+- [[Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge]] — `vault/sessions/handoff-2026-09-09-fkh059-fkh058-purge.md` (medium-term-episodic)
+- [[v2.28.108 signed release (2026-09-09)]] — `vault/sessions/handoff-2026-09-09-v2.28.108-signed-release.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)
