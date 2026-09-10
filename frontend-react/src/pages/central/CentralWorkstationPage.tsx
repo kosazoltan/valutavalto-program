@@ -152,6 +152,15 @@ const CENTRAL_MODULE_GROUPS: CentralModuleGroup[] = [
         icon: FileArchive,
         roles: ['ugyvezeto', 'penzugyi_vezeto', 'foertektar'],
       },
+      {
+        id: 'darius-report',
+        title: 'Darius riport',
+        description: 'Banki import file készítése a napi forgalomból',
+        route: '/darius',
+        status: 'ready',
+        icon: FileText,
+        roles: ['foertektar', 'belso_ellenor'],
+      },
     ],
   },
   {

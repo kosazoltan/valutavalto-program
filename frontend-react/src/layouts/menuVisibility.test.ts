@@ -372,7 +372,7 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
   it.each(['foertektar', 'belso_ellenor', 'admin'])(
     'FK-109 FR-1: %s látja a /darius menüpontot',
     (role) => {
-      const group = groupByLabel('Riportok')
+      const group = groupByLabel('Központ')
       expect(isMenuItemVisible(itemByPath(group, '/darius'), group, ctxFor([role], 'full'))).toBe(
         true,
       )
@@ -382,7 +382,7 @@ describe('effectiveCanonicalRolesForPath — single source of truth a RoleGate-h
   it.each(['ugyvezeto', 'irodavezeto', 'teruleti_vezeto', 'penzugyi_vezeto'])(
     'FK-109 FR-1: %s NEM látja a /darius menüpontot',
     (role) => {
-      const group = groupByLabel('Riportok')
+      const group = groupByLabel('Központ')
       expect(isMenuItemVisible(itemByPath(group, '/darius'), group, ctxFor([role], 'full'))).toBe(
         false,
       )
