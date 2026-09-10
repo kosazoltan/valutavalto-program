@@ -559,7 +559,7 @@ public class DailyClosingService {
                             "branch_id", branchId,
                             "step", "balance_calc"));
             throw new ValidationException(
-                    "Napi mérleg számítás sikertelen, a napzárás nem hajtható végre: " + e.getMessage());
+                    "Napi mérleg számítás sikertelen, a napzárás nem hajtható végre: " + e.getMessage(), e);
         }
 
         // 3.b FK-046: pénztári SZÁMZÁR (fizikailag leszámolt záró készlet) + Többlet/Hiány (TH
@@ -582,7 +582,7 @@ public class DailyClosingService {
                             "branch_id", branchId,
                             "step", "szamzar_th_adjustment"));
             throw new ValidationException(
-                    "SZÁMZÁR/TH igazítás sikertelen, a napzárás nem hajtható végre: " + e.getMessage());
+                    "SZÁMZÁR/TH igazítás sikertelen, a napzárás nem hajtható végre: " + e.getMessage(), e);
         }
 
         // 3.c FK-052: a banki (technikai RB) BANK+/BANK− bekötés csak a teljes napzárás

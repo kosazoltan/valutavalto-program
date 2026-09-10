@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
@@ -35,9 +37,10 @@ import static org.mockito.Mockito.when;
  * <p>RED on BASE 1588b5b2: the finder returns {@code Optional} there, so this test does not even
  * compile against the base revision — the signature change is the fix.</p>
  *
- * <p>Note: {@code logout} deliberately writes no audit entry, because adding an
- * {@code AuditLogService} constructor dependency to {@code WorkerService} would break every
- * existing test that constructs the service. The verified count is therefore not asserted here.</p>
+ * <p>Note: the bulk close writes an audit entry
+ * ({@code WORKER_SESSION_BULK_CLOSED}, {@code WorkerService.java:566-568}) via the 3-arg
+ * {@code AuditLogService.log} overload; {@code AuditLogService} is the 13th constructor
+ * dependency, so no constructor change was needed.</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -75,12 +78,17 @@ class WorkerLogoutSessionsFkh061Test {
     @Test
     @DisplayName("FKH-061 A5: logout closes ALL open sessions of the worker without throwing")
     void logoutClosesEveryOpenSession() {
-        when(jwtTokenProvider.getWorkerIdFromToken("tok")).thenReturn(WORKER_ID);
         when(sessionRepository.findByWorkerIdAndLogoutAtIsNull(WORKER_ID))
                 .thenReturn(List.of(openSession(1L), openSession(2L), openSession(3L)));
 
-        // On BASE this path threw IncorrectResultSizeDataAccessException for >1 open row.
-        assertThatCode(() -> workerService.logout("tok")).doesNotThrowAnyException();
+        // SecurityUtils is consulted FIRST (WorkerService.java:545); pin it so the worker id is
+        // deterministic instead of leaking from ambient test state.
+        try (MockedStatic<hu.puzzleir.valuta.security.SecurityUtils> sec =
+                     mockStatic(hu.puzzleir.valuta.security.SecurityUtils.class)) {
+            sec.when(hu.puzzleir.valuta.security.SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            // On BASE this path threw IncorrectResultSizeDataAccessException for >1 open row.
+            assertThatCode(() -> workerService.logout("tok")).doesNotThrowAnyException();
+        }
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<WorkerSession>> captor = ArgumentCaptor.forClass(List.class);
@@ -89,17 +97,26 @@ class WorkerLogoutSessionsFkh061Test {
         List<WorkerSession> saved = captor.getValue();
         assertThat(saved).hasSize(3);
         assertThat(saved).allSatisfy(s -> assertThat(s.getLogoutAt()).isNotNull());
+
+        // Pin the audit contract: the bulk close must leave a trace (reviewer NIT 1).
+        verify(auditLogService).log(
+                org.mockito.ArgumentMatchers.eq("WORKER_SESSION_BULK_CLOSED"),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
     @DisplayName("FKH-061 A5: logout with no open session is a no-op (idempotent on repeat)")
     void logoutWithoutOpenSessionIsNoOp() {
-        when(jwtTokenProvider.getWorkerIdFromToken("tok")).thenReturn(WORKER_ID);
         when(sessionRepository.findByWorkerIdAndLogoutAtIsNull(anyLong()))
                 .thenReturn(List.of());
 
-        assertThatCode(() -> workerService.logout("tok")).doesNotThrowAnyException();
-        assertThatCode(() -> workerService.logout("tok")).doesNotThrowAnyException();
+        try (MockedStatic<hu.puzzleir.valuta.security.SecurityUtils> sec =
+                     mockStatic(hu.puzzleir.valuta.security.SecurityUtils.class)) {
+            sec.when(hu.puzzleir.valuta.security.SecurityUtils::getCurrentWorkerId).thenReturn(WORKER_ID);
+            assertThatCode(() -> workerService.logout("tok")).doesNotThrowAnyException();
+            assertThatCode(() -> workerService.logout("tok")).doesNotThrowAnyException();
+        }
 
         verify(sessionRepository, never()).saveAll(org.mockito.ArgumentMatchers.anyList());
     }
