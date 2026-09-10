@@ -358,19 +358,26 @@ class DailyClosingServiceExtendedTest {
     }
 
     @Test
-    @DisplayName("Mérleg-számítás hiba: zárás lezárul ÉS warning kerül a válaszba")
-    void executeClosing_balanceCalcFails_closingCompletesWithWarning() {
+    @DisplayName("Mérleg-számítás hiba: a zárás HANGOSAN bukik (FKH-061 lánc-módosítás)")
+    void executeClosing_balanceCalcFails_closingFailsLoudly() {
+        // FKH-061 LÁNC-MÓDOSÍTÁS: ez a teszt korábban azt rögzítette, hogy a mérleg-számítás
+        // hibáját elnyeljük és a zárás warninggal lezárul. Az a viselkedés VALÓJÁBAN NEM
+        // létezett: a DailyBalanceService ugyanebben a tranzakcióban futott, így a kivétel
+        // rollback-only-ra jelölte azt, és a commit UnexpectedRollbackException-nel bukott
+        // (élesben HTTP 500, beazonosíthatatlan okkal) — vagyis a zárás a "warning" ellenére
+        // is elhalt, csak érthetetlen hibával. A teszt tehát egy hamis ígéretet rögzített.
+        // Az új, szándékolt viselkedés: a daily_balance pénz-aggregációt író lépés ATOMI a
+        // zárással, ezért a hiba lépés-nevű ValidationException-ként (HTTP 400) jelenik meg.
         LocalDate closingDate = LocalDate.of(2026, 3, 15);
         doThrow(new RuntimeException("mérleg hiba"))
             .when(dailyBalanceService).calculateAllCurrenciesForDay(any(), any());
 
-        var result = dailyClosingService.startDailyClosing(closingDate);
+        assertThatThrownBy(() -> dailyClosingService.startDailyClosing(closingDate))
+            .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+            .hasMessageContaining("Napi mérleg számítás sikertelen");
 
-        assertThat(result.isAllPassed()).isTrue();
-        assertThat(result.getWarnings())
-            .extracting(DailyClosingService.ClosingWarning::getStep)
-            .contains("balance_calc");
-        verify(closingControlService).markClosingDone(any(), any(), eq(closingDate), any());
+        // A zárás NEM kerül "kész" állapotba, ha a mérleg-sorok nem íródtak meg.
+        verify(closingControlService, never()).markClosingDone(any(), any(), any(), any());
     }
 
     @Test
