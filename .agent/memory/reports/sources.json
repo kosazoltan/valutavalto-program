@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-05T20:39:39.518Z",
-  "source_count": 1091,
+  "generated_at": "2026-09-10T00:37:20.677Z",
+  "source_count": 1097,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12782,6 +12782,59 @@
       "areas": [
         "deploy",
         "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-05-fkh052-sorrend-vedelem.md",
+      "sha256": "0e78704193acf9900eb9c2fc78195729aa9f8e3e66864036a79244080ed33b6a",
+      "type": "medium-term-episodic",
+      "areas": []
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-06-fkh053-cimletezes-vedelem-elvart.md",
+      "sha256": "1e8314e0a799f690be8e24cf1ca5f15b6df3688388fa7e59399401644d4137f2",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "installer"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-09-fk109-darius-pipeline-pass.md",
+      "sha256": "bddc1477e95be2a4a722a09542871438fb88bcbf4cfdb8235a39acc2aefefe3a",
+      "type": "medium-term-episodic",
+      "areas": [
+        "frontend"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-09-fk109-v2.28.109-signed-release.md",
+      "sha256": "69da6566892076c36d5318d3acd88308463ac5a9fb4bc9f27001f52dc36ce5ee",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "frontend",
+        "installer",
+        "security"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-09-fkh059-fkh058-purge.md",
+      "sha256": "c6d584fa95c6de646247388ac8f308f4f1941a1b2fb5fc75fa421cfec0481ed0",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy",
+        "frontend"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-09-v2.28.108-signed-release.md",
+      "sha256": "5e5522531a43addae8b93cebfcad164638156031a69e05592d2651ca01124e35",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy"
       ]
     },
     {

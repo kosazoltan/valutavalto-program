@@ -1,6 +1,6 @@
-generated_at: 2026-09-05T20:39:39.518Z
+generated_at: 2026-09-10T00:37:20.677Z
 schema_version: 1
-source_count: 1091
+source_count: 1097
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,58 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 8f810149b2521a0d
-    title: "v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-30-v2.4.2-2.4.6-autonomous-batch-execution.md
-    status: ALL-MERGED-PRODUCTION-VERIFIED
-    sha256: e18799d860522364cac0ab758a59807683b4b15a345cb8ec854f064f46cd60d5
-    summary: "--- date: 2026-04-30 title: v2.4.2 → v2.4.6 autonóm batch execution — 5 PR merge, 0 production outage type: multi-pr-batch duration: 14:42 → 15:50 CEST (~1 óra 8 perc) status: ALL-MERGED-PRODUCTION-VERIFIED related-prs: \"#328, #329, #330, #331, #332\" main-head: 17407006 --- # v2.4.2 → v2.4.6 autonóm batch execution — sprint kickoff teljes hiánylista ## TL;DR User direktíva: *\"menj végig szépen sorban a teljes hiányli"
-    areas: [database, deploy, frontend, installer, penztar, security]
-    keywords: [autonom, batch, execution, merge, production, outage, date, 2026, title, type, multi, duration]
-  - id: 69cc735f55c1f87c
-    title: "v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul"
-    type: medium-term-episodic
-    path: vault/sessions/2026-04-30-v2.4.7-install-and-v2.4.8-treasury-ui.md
-    status: "IN-PROGRESS (CI pending, installer build pending)"
-    sha256: 31299965e8c4dd33f06350af14c78af00ab1735f402884ac770f9bd3ec7e04c9
-    summary: "--- date: 2026-04-30 title: v2.4.7 eles telepites + v2.4.8 Foertektar UI overhaul type: install-deploy + ui-refactor duration: 19:00 -> 20:00 CEST status: IN-PROGRESS (CI pending, installer build pending) related-prs: \"#334\" main-head: \"64352b16 (v2.4.7)\" --- # v2.4.7 telepites + v2.4.8 UI sprint ## TL;DR User uj session-t inditott a token-takarekossag miatt. Ket lepcso: 1. **v2.4.7 telepitve a fejlesztoi gepre** - u"
-    areas: [arfolyam, deploy, ertektar, frontend, installer, napzaras, penztar]
-    keywords: [eles, telepites, foertektar, overhaul, date, 2026, title, type, install, deploy, refactor, duration]
-  - id: 14d65c37589c6f03
-    title: "v2.5.0 Hetzner production outage + atomic rollback (PR #336 → #337)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-01-v2.5.0-outage-rollback-FINAL.md
-    status: "PRODUCTION-RESTORED + v2.5.0-ATOMIC-PLAN-RECORDED"
-    sha256: d74026ef40fb46a5eb3bd238026f87a973205bfef6032225941115f9cb19cdfb
-    summary: "--- date: 2026-05-01 title: v2.5.0 Hetzner production outage + atomic rollback (PR #336 → #337) type: incident-postmortem + recovery duration: 02:00 → 08:37 CEST (~6.5 óra) status: PRODUCTION-RESTORED + v2.5.0-ATOMIC-PLAN-RECORDED related-prs: \"#336 (v2.5.0 sprint, MERGED → outage), #337 (rollback, MERGED)\" main-head: d7f9d59b (hotfix workflow) --- # v2.5.0 Production outage — incident postmortem ## TL;DR A v2.5.0 sp"
-    areas: [database, deploy, penztar]
-    keywords: [hetzner, production, outage, atomic, rollback, 336, 337, date, 2026, title, type, incident]
-  - id: 1f03d97504505c48
-    title: "Vault evolution — 2026 SOTA memory architecture adoption"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-02-memory-architecture-sota-evolution.md
-    sha256: 4b53d4038ca9b574e8a2c01f9f2834ae8474ecad02e4f18fa0bf993c7e8e7010
-    summary: "--- date: 2026-05-02 title: Vault evolution — 2026 SOTA memory architecture adoption type: meta-improvement (vault szerkezet) trigger: user-direktíva \"olvasd el az alábbi szöveget [3 SOTA trend], készíts memóriát, ellenőrizd a jelenlegi memória korszerűségét\" duration: ~30 perc related-prs: nincs (vault-only, nem érinti a repo-t) --- # Vault evolution — 2026-05-02 ## TL;DR User megosztott egy 2026-os state-of-the-art"
-    areas: [deploy]
-    keywords: [vault, evolution, 2026, sota, memory, architecture, adoption, date, title, type, meta, improvement]
-  - id: 329a00a48a8bd8d8
-    title: "9-task sprint — PR #379-385 (P1.3, P1.4, P1.7, P1.8 + i18n + inventory)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-03-9-task-sprint-pr-379-385.md
-    status: in-progress
-    sha256: 171e8f89ca94bc901c10d64b58a08db2b5a9e4ebce6071a96e2d0150064ec038
-    summary: "--- date: 2026-05-03 title: 9-task sprint — PR #379-385 (P1.3, P1.4, P1.7, P1.8 + i18n + inventory) status: in-progress --- # 2026-05-03 — 9-task sprint (Audit fix-loop) ## User direktíva > \"Mindet szépen sorban hajtsd végre, javítsd ki a tartozásokat, ne maradjanak hibák, > később csak halmozódni fog. Végezd el az összes feladatot egy hosszabb sprintben. > Hazugság mellébeszélés, lustaság, halasztás nélkül kizárólag"
-    areas: [database, deploy, sync]
-    keywords: [task, sprint, 379, 385, i18n, inventory, date, 2026, title, status, progress, audit]
-  - id: d88d5a148563dfb6
-    title: "2026-05-05 — Error-reporting pipeline E2E + valuta-error-monitor routine + v2.5.18 installer"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-05-error-reporting-pipeline-complete-v2-5-18-installer.md
-    sha256: f36ba7c6a5942b6b034ab6b2a92ee1d1ac7573475b135ad234c53241fdc7208d
-    summary: "# 2026-05-05 — Error-reporting pipeline E2E + valuta-error-monitor routine + v2.5.18 installer ## Mit zárult le ### Backend reporter PR sorozat (mind merge-elve) - **#407** `feat(diagnostics): auto kliens-oldali hibajelentes (Sentry-style HTTP endpoint + PostgreSQL)` — V182 + DiagnosticsController + ErrorReportDto + ClientErrorLog entity - **#410** `feat(diagnostics): kritikus kliens hiba -> AUTO GitHub Issue auto-cr"
-    areas: [database, deploy, frontend, installer, penztar, riport]
-    keywords: [2026, error, reporting, pipeline, e2e, valuta, monitor, routine, installer, mit, zarult, backend]
   - id: 54b57983c29909b3
     title: "2026-05-06 hallucináció-korrekció — saját session-output felülvizsgálat"
     type: medium-term-episodic
@@ -1696,6 +1644,54 @@ medium_term:
     summary: "# Handoff — FKH-051 / v2.28.102 (2026-09-05) - PR #1711 squash-merged `6f516096` (head `7badb402`). - 10/10 required SUCCESS on PR head. Non-required: Frontend diff-coverage FAILURE (MainLayout.fk069 + TransactionLevyReportPage — files **not** in PR diff). - Merge = deploy: Hetzner run `33969442019` SUCCESS (Gate A+B). Prod `{\"version\":\"2.28.102\",\"buildTime\":\"2026-09-05T13:40:41Z\"}`. - Main CI SHA `6f516096` `MAIN_CI"
     areas: [deploy, penztar]
     keywords: [handoff, fkh, 051, 102, 2026, 1711, squash, merged, 6f516096, head, 7badb402, required]
+  - id: 13c44515683f216b
+    title: "Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-05-fkh052-sorrend-vedelem.md
+    sha256: 0e78704193acf9900eb9c2fc78195729aa9f8e3e66864036a79244080ed33b6a
+    summary: "# Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103) Status: **LIVE**. Prod `2.28.103`, main `68a001ab` = PR #1714. Deploy run 33990481634 SUCCESS. No installer (backend-only). ## Shipped - `RetroactiveClosingService.oldestProcessablePastDate` = min of OPEN ∪ FALSE_CLOSED finder heads. - `closeRetroactively` + `reopenFalseClosed` reject unless date == oldest. Reopen gate is **before** the row lock. - Close o"
+    areas: []
+    keywords: [handoff, 2026, fkh, 052, chronological, gate, 103, status, live, prod, main, 68a001ab]
+  - id: bfe6c0d760b87ae3
+    title: "Handoff — 2026-09-06 FKH-053 (v2.28.104)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-06-fkh053-cimletezes-vedelem-elvart.md
+    sha256: 1e8314e0a799f690be8e24cf1ca5f15b6df3688388fa7e59399401644d4137f2
+    summary: "# Handoff — 2026-09-06 FKH-053 (v2.28.104) Status: **KIADVA**. Prod `2.28.104` buildTime `2026-09-06T17:01:21Z`. Tag `v2.28.104` = `19e1631e` (#1716). ## Mit szállítottunk - FR-1: `closeRetroactively` EVENING sor nélkül elutasít (HU szöveg, audit `RETROACTIVE_CLOSING_BLOCKED_NO_EVENING`). - FR-2: múltbeli nyitó nem esik élő `cash_balance`-ra; L1/L2 hiányában `ValidationException`. - FR-3: negatív `closingBalance` blo"
+    areas: [cimletezes, installer]
+    keywords: [handoff, 2026, fkh, 053, 104, status, kiadva, prod, buildtime, 06t17, 21z, tag]
+  - id: fa73082f9009d08c
+    title: "FK-109 Darius RBAC + fixing-leválasztás + részleges export — pipeline PASS (2026-09-09)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-09-fk109-darius-pipeline-pass.md
+    sha256: bddc1477e95be2a4a722a09542871438fb88bcbf4cfdb8235a39acc2aefefe3a
+    summary: "# FK-109 Darius RBAC + fixing-leválasztás + részleges export — pipeline PASS (2026-09-09) - Job: `.hermes/pipeline/20260909-fk109-darius-rbac-fixing-partial-export/` (round-1, status=pass) - Ág: `pipeline/20260909-fk109-darius-rbac-fixing-partial-export` @ `6493bad1`, base `3ab81080` (v2.28.108) - 8 WU commit `e47f22d0`..`6493bad1`, 17 fájl, +324/−326. Worktree: `D:/repo/wt-20260909-fk109-...` - Verdiktek: e1 (DeepSe"
+    areas: [frontend]
+    keywords: [109, darius, rbac, fixing, levalasztas, reszleges, export, pipeline, pass, 2026, job, hermes]
+  - id: 7a10e8e2aa7e9d23
+    title: "FK-109 Darius RBAC + fixing-leválasztás + részleges export → v2.28.109 (2026-09-09)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-09-fk109-v2.28.109-signed-release.md
+    sha256: 69da6566892076c36d5318d3acd88308463ac5a9fb4bc9f27001f52dc36ce5ee
+    summary: "# FK-109 Darius RBAC + fixing-leválasztás + részleges export → v2.28.109 (2026-09-09) ## Kiadás (mérve) - main `8e4ae6c2` = PR #1734 squash-merge, verzió **2.28.109** (9-utas bump `a0398328`). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.109 / buildTime `2026-09-09T15:01:00Z`; health `ok:true`. Deploy to Hetzner VPS **SUCCESS**; Security Pipeline **SUCCESS**. - Aláírt release: run `34368103577` **SUCCESS** ("
+    areas: [cimletezes, deploy, frontend, installer, security]
+    keywords: [109, darius, rbac, fixing, levalasztas, reszleges, export, 2026, kiadas, merve, main, 8e4ae6c2]
+  - id: 5980169d7d4c4e78
+    title: "Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-09-fkh059-fkh058-purge.md
+    sha256: c6d584fa95c6de646247388ac8f308f4f1941a1b2fb5fc75fa421cfec0481ed0
+    summary: "# Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge ## What happened FKH-059 asked for DB-level proof of FKH-058's status. Verdict: **FKH-058 had never been executed** (0 commits, 0 repo hits, no migration, no audit_log trace). The earlier \"done\" referred to V368 / FK-070, a different Tisza Sarok correction. FR-3 closed too: the backend uses `jdbc:postgresql://localhost:6432/valuta` (pgbouncer → local postgres"
+    areas: [database, deploy, frontend]
+    keywords: [handoff, 2026, fkh, 059, 058, test, data, purge, what, happened, asked, level]
+  - id: 7cc88d6b95fe54a3
+    title: "v2.28.108 signed release (2026-09-09)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-09-v2.28.108-signed-release.md
+    sha256: 5e5522531a43addae8b93cebfcad164638156031a69e05592d2651ca01124e35
+    summary: "# v2.28.108 signed release (2026-09-09) - Main SHA `3ab81080` = tag `v2.28.108` (#1733 9-way bump). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.108 / 2026-09-09T05:11:03Z; health ok. - Deploy: 34313639119 SUCCESS. Signed release: 34313653462 SUCCESS. Security Pipeline: 34313639133 SUCCESS. - Contents: FKH-056 FALSE_CLOSED simplified close; FKH-057 retroactive list + EVENING denomination without today-open b"
+    areas: [deploy]
+    keywords: [108, signed, release, 2026, main, sha, 3ab81080, tag, 1733, way, bump, prod]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

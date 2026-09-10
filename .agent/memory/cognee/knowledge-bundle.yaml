@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-09-05T20:39:39.518Z
+generated_at: 2026-09-10T00:37:20.677Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7625,6 +7625,48 @@ nodes:
     summary: "# Handoff — FKH-051 / v2.28.102 (2026-09-05) - PR #1711 squash-merged `6f516096` (head `7badb402`). - 10/10 required SUCCESS on PR head. Non-required: Frontend diff-coverage FAILURE (MainLayout.fk069 + TransactionLevyReportPage — files **not** in PR diff). - Merge = deploy: Hetzner run `33969442019` SUCCESS (Gate A+B). Prod `{\"version\":\"2.28.102\",\"buildTime\":\"2026-09-05T13:40:41Z\"}`. - Main CI SHA `6f516096` `MAIN_CI"
     tags: [handoff, fkh, 051, 102, 2026, 1711, squash, merged, 6f516096, head]
     areas: [deploy, penztar]
+  - id: 13c44515683f216b
+    type: medium-term-episodic
+    title: "Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103)"
+    source_path: vault/sessions/handoff-2026-09-05-fkh052-sorrend-vedelem.md
+    summary: "# Handoff — 2026-09-05 FKH-052 chronological gate (v2.28.103) Status: **LIVE**. Prod `2.28.103`, main `68a001ab` = PR #1714. Deploy run 33990481634 SUCCESS. No installer (backend-only). ## Shipped - `RetroactiveClosingService.oldestProcessablePastDate` = min of OPEN ∪ FALSE_CLOSED finder heads. - `closeRetroactively` + `reopenFalseClosed` reject unless date == oldest. Reopen gate is **before** the row lock. - Close o"
+    tags: [handoff, 2026, fkh, 052, chronological, gate, 103, status, live, prod]
+    areas: []
+  - id: bfe6c0d760b87ae3
+    type: medium-term-episodic
+    title: "Handoff — 2026-09-06 FKH-053 (v2.28.104)"
+    source_path: vault/sessions/handoff-2026-09-06-fkh053-cimletezes-vedelem-elvart.md
+    summary: "# Handoff — 2026-09-06 FKH-053 (v2.28.104) Status: **KIADVA**. Prod `2.28.104` buildTime `2026-09-06T17:01:21Z`. Tag `v2.28.104` = `19e1631e` (#1716). ## Mit szállítottunk - FR-1: `closeRetroactively` EVENING sor nélkül elutasít (HU szöveg, audit `RETROACTIVE_CLOSING_BLOCKED_NO_EVENING`). - FR-2: múltbeli nyitó nem esik élő `cash_balance`-ra; L1/L2 hiányában `ValidationException`. - FR-3: negatív `closingBalance` blo"
+    tags: [handoff, 2026, fkh, 053, 104, status, kiadva, prod, buildtime, 06t17]
+    areas: [cimletezes, installer]
+  - id: fa73082f9009d08c
+    type: medium-term-episodic
+    title: "FK-109 Darius RBAC + fixing-leválasztás + részleges export — pipeline PASS (2026-09-09)"
+    source_path: vault/sessions/handoff-2026-09-09-fk109-darius-pipeline-pass.md
+    summary: "# FK-109 Darius RBAC + fixing-leválasztás + részleges export — pipeline PASS (2026-09-09) - Job: `.hermes/pipeline/20260909-fk109-darius-rbac-fixing-partial-export/` (round-1, status=pass) - Ág: `pipeline/20260909-fk109-darius-rbac-fixing-partial-export` @ `6493bad1`, base `3ab81080` (v2.28.108) - 8 WU commit `e47f22d0`..`6493bad1`, 17 fájl, +324/−326. Worktree: `D:/repo/wt-20260909-fk109-...` - Verdiktek: e1 (DeepSe"
+    tags: [109, darius, rbac, fixing, levalasztas, reszleges, export, pipeline, pass, 2026]
+    areas: [frontend]
+  - id: 7a10e8e2aa7e9d23
+    type: medium-term-episodic
+    title: "FK-109 Darius RBAC + fixing-leválasztás + részleges export → v2.28.109 (2026-09-09)"
+    source_path: vault/sessions/handoff-2026-09-09-fk109-v2.28.109-signed-release.md
+    summary: "# FK-109 Darius RBAC + fixing-leválasztás + részleges export → v2.28.109 (2026-09-09) ## Kiadás (mérve) - main `8e4ae6c2` = PR #1734 squash-merge, verzió **2.28.109** (9-utas bump `a0398328`). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.109 / buildTime `2026-09-09T15:01:00Z`; health `ok:true`. Deploy to Hetzner VPS **SUCCESS**; Security Pipeline **SUCCESS**. - Aláírt release: run `34368103577` **SUCCESS** ("
+    tags: [109, darius, rbac, fixing, levalasztas, reszleges, export, 2026, kiadas, merve]
+    areas: [cimletezes, deploy, frontend, installer, security]
+  - id: 5980169d7d4c4e78
+    type: medium-term-episodic
+    title: "Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge"
+    source_path: vault/sessions/handoff-2026-09-09-fkh059-fkh058-purge.md
+    summary: "# Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge ## What happened FKH-059 asked for DB-level proof of FKH-058's status. Verdict: **FKH-058 had never been executed** (0 commits, 0 repo hits, no migration, no audit_log trace). The earlier \"done\" referred to V368 / FK-070, a different Tisza Sarok correction. FR-3 closed too: the backend uses `jdbc:postgresql://localhost:6432/valuta` (pgbouncer → local postgres"
+    tags: [handoff, 2026, fkh, 059, 058, test, data, purge, what, happened]
+    areas: [database, deploy, frontend]
+  - id: 7cc88d6b95fe54a3
+    type: medium-term-episodic
+    title: "v2.28.108 signed release (2026-09-09)"
+    source_path: vault/sessions/handoff-2026-09-09-v2.28.108-signed-release.md
+    summary: "# v2.28.108 signed release (2026-09-09) - Main SHA `3ab81080` = tag `v2.28.108` (#1733 9-way bump). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.108 / 2026-09-09T05:11:03Z; health ok. - Deploy: 34313639119 SUCCESS. Signed release: 34313653462 SUCCESS. Security Pipeline: 34313639133 SUCCESS. - Contents: FKH-056 FALSE_CLOSED simplified close; FKH-057 retroactive list + EVENING denomination without today-open b"
+    tags: [108, signed, release, 2026, main, sha, 3ab81080, tag, 1733, way]
+    areas: [deploy]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -23180,6 +23222,42 @@ edges:
   - from: b6170393d35a82f4
     to: area_penztar
     relation: belongs_to_area
+  - from: bfe6c0d760b87ae3
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: bfe6c0d760b87ae3
+    to: area_installer
+    relation: belongs_to_area
+  - from: fa73082f9009d08c
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 7a10e8e2aa7e9d23
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 7a10e8e2aa7e9d23
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 7a10e8e2aa7e9d23
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 7a10e8e2aa7e9d23
+    to: area_installer
+    relation: belongs_to_area
+  - from: 7a10e8e2aa7e9d23
+    to: area_security
+    relation: belongs_to_area
+  - from: 5980169d7d4c4e78
+    to: area_database
+    relation: belongs_to_area
+  - from: 5980169d7d4c4e78
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 5980169d7d4c4e78
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 7cc88d6b95fe54a3
+    to: area_deploy
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -23237,24 +23315,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: fdf2389c60fd36a6
-    to: repo_project_state
-    relation: informs
-  - from: 4aced58ec4e8f936
-    to: repo_project_state
-    relation: informs
-  - from: 99e7123fdf419c53
-    to: repo_project_state
-    relation: informs
-  - from: ce0fc35545d9aa5e
-    to: repo_project_state
-    relation: informs
-  - from: 7b8f9f4d7781f946
-    to: repo_project_state
-    relation: informs
-  - from: bba7e203666fa37b
-    to: repo_project_state
-    relation: informs
   - from: 02427f75bf1529bb
     to: repo_project_state
     relation: informs
@@ -23469,6 +23529,24 @@ edges:
     to: repo_project_state
     relation: informs
   - from: b6170393d35a82f4
+    to: repo_project_state
+    relation: informs
+  - from: 13c44515683f216b
+    to: repo_project_state
+    relation: informs
+  - from: bfe6c0d760b87ae3
+    to: repo_project_state
+    relation: informs
+  - from: fa73082f9009d08c
+    to: repo_project_state
+    relation: informs
+  - from: 7a10e8e2aa7e9d23
+    to: repo_project_state
+    relation: informs
+  - from: 5980169d7d4c4e78
+    to: repo_project_state
+    relation: informs
+  - from: 7cc88d6b95fe54a3
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58
