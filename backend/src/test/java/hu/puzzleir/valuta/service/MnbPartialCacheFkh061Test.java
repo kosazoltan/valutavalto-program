@@ -155,4 +155,29 @@ class MnbPartialCacheFkh061Test {
         assertThat(holder[0]).containsKeys("AUD", "CAD", "DKK", "NOK", "SEK", "TRY");
         assertThat(holder[0]).doesNotContainKey("EUR");
     }
+
+    @Test
+    @DisplayName("FKH-061 A6: HUF is active but never MNB-quoted — must NOT keep the date incomplete forever")
+    void settlementCurrencyDoesNotBlockCompleteness() throws Exception {
+        // Production shape (VERIFIED): currency has 23 active rows INCLUDING HUF, while
+        // mnb_exchange_rate_cache holds 0 HUF rows on any date — MNB does not quote HUF against
+        // itself, and nothing ever will. If completeness required HUF, no date could ever be
+        // complete, so getRatesForDate would fire one SOAP attempt per date every TTL window
+        // forever (a standing outbound load with no terminal state).
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc())
+            .thenReturn(List.of(
+                currency("HUF"),
+                currency("AUD"), currency("CAD"), currency("DKK"),
+                currency("NOK"), currency("SEK"), currency("TRY")));
+        // Every non-HUF active currency IS cached => the date must count as COMPLETE.
+        when(cacheRepository.findByRateDate(DATE)).thenReturn(List.of(
+            cached("AUD"), cached("CAD"), cached("DKK"),
+            cached("NOK"), cached("SEK"), cached("TRY")));
+
+        Map<String, MnbExchangeRateCache> result = service.getRatesForDate(DATE);
+
+        assertThat(result).hasSize(6);
+        // RED before the fix: HUF counted as missing, so a SOAP attempt was made.
+        verify(service, never()).fetchAndCacheRates(any(LocalDate.class));
+    }
 }

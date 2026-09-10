@@ -54,6 +54,12 @@ public class MnbExchangeRateService {
     // ráta-integritás). A HTTPS endpoint verifikálva (200 a ?wsdl-en). 2026-05-26.
     private static final String MNB_SOAP_URL = "https://www.mnb.hu/arfolyamok.asmx";
     private static final String SOAP_NAMESPACE = "http://www.mnb.hu/webservices/";
+
+    /**
+     * FKH-061 (WU-6): az elszámoló valuta kódja. Az MNB nem jegyzi önmaga ellen, ezért a
+     * cache-teljesség vizsgálatából ki kell hagyni.
+     */
+    private static final String SETTLEMENT_CURRENCY = "HUF";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(15);
 
     /**
@@ -334,6 +340,13 @@ public class MnbExchangeRateService {
             cachedCodes.add(rate.getCurrencyCode());
         }
         for (Currency currency : activeCurrencies) {
+            // FKH-061: a HUF az elszámoló valuta — az MNB SOSEM jegyzi önmaga ellen (élesben 0
+            // HUF sor a cache-ben, bármely dátumon). Ha a teljességi feltétel a HUF-ot is
+            // megkövetelné, egyetlen nap sem lehetne TELJES, és a TTL-es SOAP-próbálkozás
+            // 30 percenként ÖRÖKKÉ újraindulna minden lekérdezett dátumra.
+            if (SETTLEMENT_CURRENCY.equals(currency.getCode())) {
+                continue;
+            }
             if (!cachedCodes.contains(currency.getCode())) {
                 return false;
             }
