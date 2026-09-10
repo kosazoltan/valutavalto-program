@@ -232,13 +232,16 @@ class DailyBalanceServiceTest {
         when(dailyBalanceRepository.save(any(DailyBalance.class)))
             .thenAnswer(inv -> inv.getArgument(0));
 
-        List<DailyBalance> results = dailyBalanceService.calculateAllCurrenciesForDay(TEST_BRANCH_ID, TEST_DATE);
+        // FKH-061 LANC-MODOSITAS: a reszleges eredmeny tobbe NEM fogadhato el csendben.
+        // Korabban a metodus visszaadta a reszleges listat, ezert a napzaras hianyzo
+        // daily_balance sorokkal ment tovabb (a WU-4 atomicitasi szerzodes megkerulheto volt,
+        // es perzisztencia-hiba eseten a tranzakcio rollback-only-ként erte el a commitot).
+        // Uj viselkedes: a hibás valutakat megnevezo ValidationException.
+        assertThatThrownBy(() -> dailyBalanceService.calculateAllCurrenciesForDay(TEST_BRANCH_ID, TEST_DATE))
+            .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+            .hasMessageContaining("USD");
 
-        // Csak EUR sikerült
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getCurrencyCode()).isEqualTo("EUR");
-
-        // Audit log rögzítve a részleges hibáról
+        // Audit log rögzítve a részleges hibáról (a kivetel ELOTT irodik)
         verify(auditLogService).log(
             eq("DAILY_BALANCE_PARTIAL_FAILURE"),
             contains("USD"),

@@ -56,10 +56,19 @@ public class MnbExchangeRateService {
     private static final String SOAP_NAMESPACE = "http://www.mnb.hu/webservices/";
 
     /**
-     * FKH-061 (WU-6): az elszámoló valuta kódja. Az MNB nem jegyzi önmaga ellen, ezért a
-     * cache-teljesség vizsgálatából ki kell hagyni.
+     * FKH-061 (WU-6): the settlement currency code. MNB does not quote it against itself, so it
+     * must be excluded from the cache-completeness check.
      */
     private static final String SETTLEMENT_CURRENCY = "HUF";
+
+    /**
+     * FKH-061 (PR review): the cache table is shared with other rate sources — production holds
+     * 698 RAIFFEISEN rows against 17 MNB rows, and the uniqueness key is
+     * (currency_code, rate_date, source). Every read on the MNB path must be source-filtered,
+     * otherwise a RAIFFEISEN row could make the MNB cache look complete or be returned as an MNB
+     * rate, valuing decade-report stock from the wrong source.
+     */
+    private static final String MNB_SOURCE = "MNB";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(15);
 
     /**
@@ -97,7 +106,7 @@ public class MnbExchangeRateService {
         // legfeljebb egy letöltés), és az eredményt a cache FÖLÉ mergeljük. Sikertelen vagy
         // TTL-en belüli (elfojtott) próbálkozás esetén a cache-elt részleges map megy vissza —
         // sosem ürítjük ki.
-        List<MnbExchangeRateCache> cached = cacheRepository.findByRateDate(date);
+        List<MnbExchangeRateCache> cached = cacheRepository.findByRateDateAndSource(date, MNB_SOURCE);
         if (!cached.isEmpty()) {
             Map<String, MnbExchangeRateCache> cachedMap = toMap(cached);
             if (isCacheComplete(cached)) {
@@ -123,17 +132,27 @@ public class MnbExchangeRateService {
         }
 
         // 2. SOAP letöltés
-        try {
-            Map<String, MnbExchangeRateCache> fetched = fetchAndCacheRates(date);
-            if (!fetched.isEmpty()) {
-                return fetched;
+        // FKH-061 (PR review): the TTL bound applies to an EMPTY cache too. It previously
+        // covered only partially cached dates, so a fully empty date (a weekend, or a date MNB
+        // does not quote) would fire a fresh SOAP request on every call inside the decade
+        // report's 7-day walk-back — exactly a breach of the one-attempt-per-date rule.
+        if (shouldAttemptDownload(date)) {
+            try {
+                Map<String, MnbExchangeRateCache> fetched = fetchAndCacheRates(date);
+                if (!fetched.isEmpty()) {
+                    return fetched;
+                }
+            } catch (Exception e) {
+                log.warn("MNB SOAP hívás sikertelen (date={}): {}", date, e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("MNB SOAP hívás sikertelen (date={}): {}", date, e.getMessage());
+        } else {
+            log.debug("MNB üres cache (date={}) — a letöltési próbálkozás a TTL-en belül elfojtva", date);
         }
 
         // 3. Fallback: legutolsó elérhető cache-elt árfolyam
-        List<MnbExchangeRateCache> fallback = cacheRepository.findLatestRates(date);
+        // FKH-061 (PR review): source-filtered so the fallback cannot return a RAIFFEISEN rate
+        // as an MNB rate (the decade report would value stock from the wrong source).
+        List<MnbExchangeRateCache> fallback = cacheRepository.findLatestRatesBySource(date, MNB_SOURCE);
         if (!fallback.isEmpty()) {
             log.info("MNB fallback: a legutolsó cache-elt árfolyamok (date={}, fallbackDate={})",
                     date, fallback.get(0).getRateDate());
@@ -198,7 +217,14 @@ public class MnbExchangeRateService {
 
         // Cache-be mentés
         for (MnbExchangeRateCache rate : rates.values()) {
-            cacheRepository.findByCurrencyCodeAndRateDate(rate.getCurrencyCode(), rate.getRateDate())
+            // FKH-061 (PR review): source-filtered lookup. findByCurrencyCodeAndRateDate does
+            // NOT filter on source even though the uniqueness key is
+            // (currency_code, rate_date, source) — if a date holds both an MNB and a RAIFFEISEN
+            // row for the same currency, the Optional-returning finder throws
+            // IncorrectResultSizeDataAccessException, which in the caller's transaction leads to
+            // the very rollback-only poisoning this PR fixes.
+            cacheRepository.findByCurrencyCodeAndRateDateAndSource(
+                            rate.getCurrencyCode(), rate.getRateDate(), MNB_SOURCE)
                     .ifPresentOrElse(
                             existing -> {
                                 existing.setOfficialRate(rate.getOfficialRate());
@@ -340,10 +366,10 @@ public class MnbExchangeRateService {
             cachedCodes.add(rate.getCurrencyCode());
         }
         for (Currency currency : activeCurrencies) {
-            // FKH-061: a HUF az elszámoló valuta — az MNB SOSEM jegyzi önmaga ellen (élesben 0
-            // HUF sor a cache-ben, bármely dátumon). Ha a teljességi feltétel a HUF-ot is
-            // megkövetelné, egyetlen nap sem lehetne TELJES, és a TTL-es SOAP-próbálkozás
-            // 30 percenként ÖRÖKKÉ újraindulna minden lekérdezett dátumra.
+            // FKH-061: HUF is the settlement currency — MNB NEVER quotes it against itself
+            // (production holds 0 HUF cache rows on any date). If completeness required HUF, no
+            // date could ever be COMPLETE and the TTL-bounded SOAP attempt would restart every
+            // 30 minutes FOREVER for every queried date.
             if (SETTLEMENT_CURRENCY.equals(currency.getCode())) {
                 continue;
             }

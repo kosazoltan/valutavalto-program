@@ -143,7 +143,7 @@ class MnbExchangeRateServiceTest {
                 .unit(1)
                 .build();
 
-        when(cacheRepository.findByRateDate(date)).thenReturn(List.of(cachedEur));
+        when(cacheRepository.findByRateDateAndSource(date, "MNB")).thenReturn(List.of(cachedEur));
 
         Map<String, MnbExchangeRateCache> result = mnbExchangeRateService.getRatesForDate(date);
 
@@ -160,7 +160,7 @@ class MnbExchangeRateServiceTest {
         LocalDate date = LocalDate.of(2026, 3, 10);
 
         // Nincs pontos nap
-        when(cacheRepository.findByRateDate(date)).thenReturn(Collections.emptyList());
+        when(cacheRepository.findByRateDateAndSource(date, "MNB")).thenReturn(Collections.emptyList());
 
         // Fallback
         MnbExchangeRateCache fallbackEur = MnbExchangeRateCache.builder()
@@ -170,7 +170,7 @@ class MnbExchangeRateServiceTest {
                 .unit(1)
                 .build();
 
-        when(cacheRepository.findLatestRates(date)).thenReturn(List.of(fallbackEur));
+        when(cacheRepository.findLatestRatesBySource(date, "MNB")).thenReturn(List.of(fallbackEur));
 
         Map<String, MnbExchangeRateCache> result = mnbExchangeRateService.getRatesForDate(date);
 

@@ -563,9 +563,28 @@ public class WorkerService {
                 LocalDateTime logoutAt = LocalDateTime.now();
                 openSessions.forEach(session -> session.setLogoutAt(logoutAt));
                 sessionRepository.saveAll(openSessions);
-                auditLogService.log("WORKER_SESSION_BULK_CLOSED",
-                    openSessions.size() + " nyitott worker session zarva a kilepeskor (bulk)",
-                    wId.toString());
+                // FKH-061 (PR review): derive the tenant scope from the SESSION row, not from
+                // the SecurityContext. Logout can run with an empty SecurityContext (blacklisted
+                // token -> the JWT fallback branch above); in that case resolveCompanyId() inside
+                // the 3-arg log() overload returns null and the audit row would be written
+                // WITHOUT tenant scope, weakening multi-tenant isolation (invariant #1).
+                // worker_session.company_id is NOT NULL, so the row always resolves it.
+                UUID auditCompanyId = openSessions.stream()
+                        .map(WorkerSession::getCompany)
+                        .filter(java.util.Objects::nonNull)
+                        .map(Company::getId)
+                        .filter(java.util.Objects::nonNull)
+                        .findFirst()
+                        .orElse(null);
+                String auditMessage = openSessions.size()
+                        + " nyitott worker session zarva a kilepeskor (bulk)";
+                if (auditCompanyId != null) {
+                    auditLogService.logForCompany("WORKER_SESSION_BULK_CLOSED",
+                        auditMessage, wId.toString(), auditCompanyId);
+                } else {
+                    auditLogService.log("WORKER_SESSION_BULK_CLOSED",
+                        auditMessage, wId.toString());
+                }
             }
         }
 

@@ -195,6 +195,15 @@ public class DailyBalanceService {
                 String.format("Részleges napi mérleg hiba (%s): hibás valuták: %s", date, failedList),
                 branchId.toString()
             );
+            // FKH-061 (PR review): a partial result must NOT be accepted silently. The method
+            // used to only log the failing currencies and return the partial list, so the day
+            // closing continued with missing daily_balance rows — the WU-4 atomicity contract
+            // (the money-aggregating step is atomic with the closing) was bypassable, and when
+            // the swallowed failure was a persistence error the transaction reached commit
+            // already marked rollback-only: exactly the UnexpectedRollbackException this PR
+            // fixes. The caller (day closing) now receives a step-named ValidationException.
+            throw new ValidationException(
+                "Napi mérleg nem számolható ki minden valutára (" + date + "): " + failedList);
         }
 
         return results;

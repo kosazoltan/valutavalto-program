@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
  *
  * <p>Production shape: the cache for a date may hold only the currencies someone asked for
  * earlier (AUD,CAD,DKK,NOK,SEK,TRY) while the active currency list also contains EUR/USD/GBP.
- * On BASE 1588b5b2 a non-empty {@code findByRateDate} result short-circuited, the missing codes
+ * On BASE 1588b5b2 a non-empty {@code findByRateDateAndSource} result short-circuited, the missing codes
  * were never fetched, and the decade report later threw "Hiányzó MNB árfolyam".</p>
  *
  * <p>Target behaviour (WU-6): completeness = the cached day holds every ACTIVE currency code.
@@ -91,7 +91,7 @@ class MnbPartialCacheFkh061Test {
     }
 
     private void stubPartialCache() {
-        when(cacheRepository.findByRateDate(DATE)).thenReturn(List.of(
+        when(cacheRepository.findByRateDateAndSource(DATE, "MNB")).thenReturn(List.of(
             cached("AUD"), cached("CAD"), cached("DKK"),
             cached("NOK"), cached("SEK"), cached("TRY")));
     }
@@ -133,7 +133,7 @@ class MnbPartialCacheFkh061Test {
     @Test
     @DisplayName("FKH-061 A6: complete cached date never fetches")
     void completeCacheNeverFetches() throws Exception {
-        when(cacheRepository.findByRateDate(DATE)).thenReturn(List.of(
+        when(cacheRepository.findByRateDateAndSource(DATE, "MNB")).thenReturn(List.of(
             cached("AUD"), cached("CAD"), cached("DKK"), cached("NOK"),
             cached("SEK"), cached("TRY"), cached("EUR"), cached("USD"), cached("GBP")));
 
@@ -170,7 +170,7 @@ class MnbPartialCacheFkh061Test {
                 currency("AUD"), currency("CAD"), currency("DKK"),
                 currency("NOK"), currency("SEK"), currency("TRY")));
         // Every non-HUF active currency IS cached => the date must count as COMPLETE.
-        when(cacheRepository.findByRateDate(DATE)).thenReturn(List.of(
+        when(cacheRepository.findByRateDateAndSource(DATE, "MNB")).thenReturn(List.of(
             cached("AUD"), cached("CAD"), cached("DKK"),
             cached("NOK"), cached("SEK"), cached("TRY")));
 

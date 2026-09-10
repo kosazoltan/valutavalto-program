@@ -6,11 +6,11 @@ public class ValidationException extends RuntimeException {
     }
 
     /**
-     * FKH-061: ok-lánc megőrző konstruktor. A napzárás kemény lépései (napi mérleg számítás,
-     * SZÁMZÁR/TH igazítás) a technikai hibát lépés-nevű ValidationException-be csomagolják —
-     * cause nélkül a stacktrace és az elnyomott kivételek elveszne, ami a post-mortem
-     * diagnózist nehezíti (reviewer WARNING). A GlobalExceptionHandler továbbra is a
-     * getMessage()-t adja vissza HTTP 400-ként, tehát a kliens-viselkedés nem változik.
+     * FKH-061: cause-preserving constructor. The hard day-closing steps (daily balance
+     * calculation, SZAMZAR/TH adjustment) wrap a technical failure into a step-named
+     * ValidationException; without a cause the stack trace and suppressed exceptions would be
+     * lost, which makes post-mortem diagnosis harder. GlobalExceptionHandler still returns
+     * getMessage() as HTTP 400, so client behaviour is unchanged.
      */
     public ValidationException(String message, Throwable cause) {
         super(message, cause);

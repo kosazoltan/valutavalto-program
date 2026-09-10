@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -135,26 +136,62 @@ class ClosingWizardExpiredStatusV389PostgresTest {
 
     // ============ helpers ============
 
-    /** Minimal FK-valid chain: company → branch → worker → closing_wizard. */
+    /**
+     * Minimal FK-valid chain: company -> branch -> worker -> closing_wizard.
+     *
+     * <p>All values are bound as JDBC parameters rather than concatenated into the SQL text.
+     * CodeQL flags string-concatenated queries even in tests (alerts 331-334 on this file), and
+     * binding is both the fix and the practice this repository expects for query construction.
+     */
     private static void seedWizard(Connection connection) throws SQLException {
         UUID companyId = UUID.randomUUID();
         UUID branchId = UUID.randomUUID();
-        try (Statement st = connection.createStatement()) {
-            st.execute("INSERT INTO company (id, code, name) VALUES ('" + companyId + "', 'FKH061C', 'FKH-061 test company')");
-            st.execute("INSERT INTO branch (id, code, company_id, name) VALUES ('"
-                    + branchId + "', 'FKH061B', '" + companyId + "', 'FKH-061 test branch')");
-            st.execute("INSERT INTO worker (id, company_id, code, name, password_hash, role, branch_id) "
-                    + "VALUES (990001, '" + companyId + "', 'FKH061', 'FKH-061 test worker', 'x', 'CASHIER', '"
-                    + branchId + "')");
-            st.execute("INSERT INTO closing_wizard (branch_id, closing_date, closing_type, "
-                    + "started_by_worker_id, started_at) VALUES ('" + branchId
-                    + "', '2026-09-01', 'DAILY', 990001, CURRENT_TIMESTAMP)");
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO company (id, code, name) VALUES (?, ?, ?)")) {
+            ps.setObject(1, companyId);
+            ps.setString(2, "FKH061C");
+            ps.setString(3, "FKH-061 test company");
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO branch (id, code, company_id, name) VALUES (?, ?, ?, ?)")) {
+            ps.setObject(1, branchId);
+            ps.setString(2, "FKH061B");
+            ps.setObject(3, companyId);
+            ps.setString(4, "FKH-061 test branch");
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO worker (id, company_id, code, name, password_hash, role, branch_id) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?)")) {
+            ps.setLong(1, 990001L);
+            ps.setObject(2, companyId);
+            ps.setString(3, "FKH061");
+            ps.setString(4, "FKH-061 test worker");
+            ps.setString(5, "x");
+            ps.setString(6, "CASHIER");
+            ps.setObject(7, branchId);
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO closing_wizard (branch_id, closing_date, closing_type, "
+                        + "started_by_worker_id, started_at) "
+                        + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)")) {
+            ps.setObject(1, branchId);
+            ps.setObject(2, java.time.LocalDate.parse("2026-09-01"));
+            ps.setString(3, "DAILY");
+            ps.setLong(4, 990001L);
+            ps.executeUpdate();
         }
     }
 
     private static void updateStatus(Connection connection, String status) throws SQLException {
-        try (Statement st = connection.createStatement()) {
-            st.executeUpdate("UPDATE closing_wizard SET wizard_status = '" + status + "'");
+        // Bound parameter: the status strings under test include deliberately invalid values
+        // (e.g. BOGUS), which must reach the CHECK constraint as data, never as SQL text.
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE closing_wizard SET wizard_status = ?")) {
+            ps.setString(1, status);
+            ps.executeUpdate();
         }
     }
 
