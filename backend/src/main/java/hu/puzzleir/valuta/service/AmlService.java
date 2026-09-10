@@ -18,6 +18,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -1406,6 +1407,7 @@ public class AmlService {
      * Az AmlService jelenleg nem tart in-memory cache-t (minden lekérdezés DB-ből fut);
      * ha a jövőben ConcurrentHashMap alapú napi cache kerül be, itt kell üríteni.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void resetDailyCache() {
         log.info("AML napi cache reset: napi ügyfél gyűjtők nullázva (napzárás)");
         // Nincs in-memory cache jelenleg — DB alapú lekérdezések, a reset implicit

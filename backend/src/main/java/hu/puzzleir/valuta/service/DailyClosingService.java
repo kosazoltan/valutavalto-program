@@ -537,36 +537,52 @@ public class DailyClosingService {
         dailySessionService.closeSession(closingDate);
 
         // 3. Napi mérleg számítása (MODERN KIEGÉSZÍTÉS — Delphi napi forgalom számítás)
+        // FKH-061 (WU-4): ez a lépés a daily_balance sorokat írja (pénz-aggregáció, 2. invariáns),
+        // és minden későbbi artefaktum (dekádjelentés, findClosedDates) ezeket tekinti a zárás
+        // kimenetének — mérleg-sorok nélkül a zárás nem zárás. Ezért NEM nyeljük el a hibát:
+        // a lépés atomi a zárással. Korábban a catch elnyelte, de a callee ugyanebben a
+        // tranzakcióban futott, így a commit UnexpectedRollbackException-nel bukott (HTTP 500,
+        // nem beazonosítható okkal) — az eredmény ugyanaz volt, csak értelmezhetetlen hibával.
+        // Most a hiba a lépést megnevező ValidationException → HTTP 400, érthető üzenettel.
         try {
             dailyBalanceService.calculateAllCurrenciesForDay(branchId, closingDate);
             log.info("Napi mérleg számítás sikeres: datum={}, iroda={}", closingDate, branchId);
+        } catch (ValidationException e) {
+            VV_LOG.error("VV-BIZ-006", "daily_closing.balance_calc_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "balance_calc"));
+            throw e;
         } catch (Exception e) {
             VV_LOG.error("VV-BIZ-006", "daily_closing.balance_calc_failed", e,
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "step", "balance_calc"));
-            warnings.add(ClosingWarning.builder()
-                    .step("balance_calc")
-                    .message("Napi mérleg számítás hiba: " + e.getMessage())
-                    .build());
-            // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
+            throw new ValidationException(
+                    "Napi mérleg számítás sikertelen, a napzárás nem hajtható végre: " + e.getMessage());
         }
 
         // 3.b FK-046: pénztári SZÁMZÁR (fizikailag leszámolt záró készlet) + Többlet/Hiány (TH
         //     elszámolási pénztár) bekötése a napi mérlegbe. A napi mérleg-sorok (3. lépés) már
         //     léteznek; ez a lépés tölti az actualStock/surplus/shortage mezőket pénztári irodákra.
+        // FKH-061 (WU-4): ez a lépés az actualStock/surplus/shortage (SZÁMZÁR + TH) pénz-mezőket
+        // írja ugyanazokra a mérleg-sorokra, ezért szintén atomi a zárással — egy félig írt TH
+        // igazítás néma elfogadása pénzügyi defektus lenne. A hibát nem nyeljük el.
         try {
             dailyBalanceService.recordClosingAdjustments(branchId, closingDate);
+        } catch (ValidationException e) {
+            VV_LOG.error("VV-BIZ-006", "daily_closing.szamzar_th_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "szamzar_th_adjustment"));
+            throw e;
         } catch (Exception e) {
             VV_LOG.error("VV-BIZ-006", "daily_closing.szamzar_th_failed", e,
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "step", "szamzar_th_adjustment"));
-            warnings.add(ClosingWarning.builder()
-                    .step("szamzar_th_adjustment")
-                    .message("SZÁMZÁR TH igazítás hiba: " + e.getMessage())
-                    .build());
-            // NEM dobunk kivételt — ne akadjon meg a zárás (FR-7/FR-9 szellemében)
+            throw new ValidationException(
+                    "SZÁMZÁR/TH igazítás sikertelen, a napzárás nem hajtható végre: " + e.getMessage());
         }
 
         // 3.c FK-052: a banki (technikai RB) BANK+/BANK− bekötés csak a teljes napzárás
@@ -611,7 +627,8 @@ public class DailyClosingService {
                     .step("daily_archive")
                     .message("Napi archiválás hiba: " + e.getMessage())
                     .build());
-            // NEM dobunk kivételt — ne akadjon meg a zárás
+            // FKH-061: a callee REQUIRES_NEW-ban fut, ezért a hibája nem jelöli rollback-only-ra
+            // a zárás tranzakcióját — a nyelés itt IGAZ, a zárás valóban folytatódik.
         }
 
         // 6b. S1-02: Teljes napi archiválás (Delphi: HaviGyujtokbeMasolas — CimtCopy, EdatCopy, KdatCopy, WuniCopy, WzarCopy)
