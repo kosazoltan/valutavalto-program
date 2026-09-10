@@ -26,3 +26,4 @@ Rules for anything added here:
 |---|---|---|
 | `2026-09-09-fkh058-tisza-sarok-test-data-purge.sql` | FKH-058, executed under FKH-059 FR-2 | Pre-2026-09-01 test data purge for BR035 Szeged Tisza Sarok, BR027 Szeged Tesco and the inactive TISZA duplicate |
 | `2026-09-09-fkh059-audit-chain-annex.sql` | FKH-059 review follow-up | Appends the H11 chain-annex row covering the three direct-SQL purge audit entries |
+| `2026-09-10-fkh060-closed-by-worker-backfill.sql` | FKH-060 FR-5 | Backfill `daily_session.closed_by_worker_id` from COMPLETED `closing_wizard.completed_by_worker_id` |

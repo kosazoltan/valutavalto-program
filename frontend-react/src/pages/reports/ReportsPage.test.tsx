@@ -114,12 +114,9 @@ describe('ReportsPage', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/closing/monthly')
   })
 
-  it('darius riport kártyára kattintás navigál', async () => {
+  it('darius riport kártya nincs a Riportok oldalon (FK-110 FR-2)', () => {
     render(<ReportsPage />)
-    const user = userEvent.setup()
-    const button = screen.getByTestId('report-link-darius')
-    await user.click(button)
-    expect(mocks.navigate).toHaveBeenCalledWith('/darius')
+    expect(screen.queryByTestId('report-link-darius')).not.toBeInTheDocument()
   })
 
   it('névtelen bejelentés kártyára kattintás navigál', async () => {
@@ -130,9 +127,9 @@ describe('ReportsPage', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/anonymous-reports')
   })
 
-  it('14 riport kártya szerepel összesen (G9 + G17 + G23)', () => {
+  it('13 riport kártya szerepel összesen (Darius áthelyezve a Központba, FK-110)', () => {
     render(<ReportsPage />)
     const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBe(14)
+    expect(buttons.length).toBe(13)
   })
 })

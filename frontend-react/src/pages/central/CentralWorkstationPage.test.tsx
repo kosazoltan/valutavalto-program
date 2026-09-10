@@ -80,6 +80,25 @@ describe('CentralWorkstationPage — FK-107 tile RBAC (FR-1)', () => {
   })
 })
 
+describe('CentralWorkstationPage — FK-110 Darius tile', () => {
+  const DARIUS = 'Darius riport'
+
+  it('foertektar → Darius riport tile látszik', () => {
+    renderPage('foertektar')
+    expect(screen.getByText(DARIUS)).toBeInTheDocument()
+  })
+
+  it('belso_ellenor → Darius riport tile látszik', () => {
+    renderPage('belso_ellenor')
+    expect(screen.getByText(DARIUS)).toBeInTheDocument()
+  })
+
+  it('irodavezeto → Darius riport tile NEM látszik', () => {
+    renderPage('irodavezeto')
+    expect(screen.queryByText(DARIUS)).not.toBeInTheDocument()
+  })
+})
+
 describe('CentralWorkstationPage — FK-109 FR-4 booking-export tile szöveg', () => {
   it('a booking-export tile leírása a könyvelési CSV export, Raiffeisen/NAV említés nélkül', () => {
     renderPage('foertektar')

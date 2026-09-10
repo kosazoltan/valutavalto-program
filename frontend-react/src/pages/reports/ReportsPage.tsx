@@ -80,13 +80,6 @@ const reportLinks: ReportLink[] = [
     path: '/reports/mnb',
   },
   {
-    id: 'darius',
-    name: 'Darius riport',
-    icon: BarChart3,
-    description: 'Darius rendszer riportok',
-    path: '/darius',
-  },
-  {
     id: 'evening',
     name: 'Esti zárás',
     icon: Moon,

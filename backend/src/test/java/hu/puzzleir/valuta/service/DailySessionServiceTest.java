@@ -439,4 +439,59 @@ class DailySessionServiceTest {
         // ...and the past day itself survives OPEN.
         assertEquals(DailySessionStatus.OPEN, pastSession.getStatus());
     }
+
+    @Test
+    @DisplayName("FKH-060 FR-1: closeSession stamps closedByWorker from the security context")
+    void closeSession_setsClosedByWorker() {
+        LocalDate date = LocalDate.of(2026, 9, 9);
+        Company company = Company.builder().id(companyId).code("EBC").name("EBC").build();
+        Branch branch = Branch.builder().id(branchId).code("B01").name("Kozpont").company(company).build();
+        Worker worker = Worker.builder()
+                .id(workerId).code("ADMIN").name("Admin").passwordHash("x")
+                .role(WorkerRole.CASHIER).company(company).branch(branch).build();
+        DailySession session = DailySession.builder()
+                .id(7L).sessionDate(date).status(DailySessionStatus.OPEN)
+                .company(company).branch(branch).build();
+        when(dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, date))
+                .thenReturn(Optional.of(session));
+        when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId)).thenReturn(List.of());
+        when(dailySessionRepository.save(any(DailySession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.closeSession(date);
+
+        assertThat(session.getClosedByWorker()).isEqualTo(worker);
+        assertThat(session.getStatus()).isEqualTo(DailySessionStatus.CLOSED);
+        assertThat(session.getClosedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("FKH-060 FR-4: closeSession still sets CLOSED + closedAt + closingBalanceHuf")
+    void closeSession_doesNotAffectOtherFields() {
+        LocalDate date = LocalDate.of(2026, 9, 9);
+        Company company = Company.builder().id(companyId).code("EBC").name("EBC").build();
+        Branch branch = Branch.builder().id(branchId).code("B01").name("Kozpont").company(company).build();
+        Worker worker = Worker.builder()
+                .id(workerId).code("ADMIN").name("Admin").passwordHash("x")
+                .role(WorkerRole.CASHIER).company(company).branch(branch).build();
+        Currency huf = Currency.builder().id(1L).code("HUF").name("Forint").build();
+        CashBalance hufBalance = CashBalance.builder()
+                .currentBalance(new BigDecimal("12345")).currency(huf).build();
+        DailySession session = DailySession.builder()
+                .id(8L).sessionDate(date).status(DailySessionStatus.OPEN)
+                .company(company).branch(branch).build();
+        when(dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, date))
+                .thenReturn(Optional.of(session));
+        when(workerRepository.findById(workerId)).thenReturn(Optional.of(worker));
+        when(cashBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId))
+                .thenReturn(List.of(hufBalance));
+        when(dailySessionRepository.save(any(DailySession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.closeSession(date);
+
+        assertThat(session.getStatus()).isEqualTo(DailySessionStatus.CLOSED);
+        assertThat(session.getClosedAt()).isNotNull();
+        assertThat(session.getClosingBalanceHuf()).isEqualByComparingTo("12345");
+        assertThat(session.getClosedByWorker()).isEqualTo(worker);
+    }
 }

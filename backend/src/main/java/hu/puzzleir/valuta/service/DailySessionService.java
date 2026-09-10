@@ -305,16 +305,21 @@ public class DailySessionService {
     public void closeSession(LocalDate closingDate) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
+        Long workerId = SecurityUtils.getCurrentWorkerId();
 
         DailySession session = dailySessionRepository.findByBranchIdAndSessionDate(companyId, branchId, closingDate)
                 .orElseThrow(() -> new ValidationException("Nincs munkamenet erre a napra: " + closingDate));
 
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pénztáros nem található"));
+
         session.setStatus(DailySessionStatus.CLOSED);
+        session.setClosedByWorker(worker);
         session.setClosedAt(LocalDateTime.now());
         session.setClosingBalanceHuf(calculateClosingBalance(companyId, branchId));
 
         dailySessionRepository.save(session);
-        log.info("Napi munkamenet lezarva: datum={}, iroda={}", closingDate, branchId);
+        log.info("Napi munkamenet lezarva: datum={}, iroda={}, worker={}", closingDate, branchId, workerId);
     }
 
     /**

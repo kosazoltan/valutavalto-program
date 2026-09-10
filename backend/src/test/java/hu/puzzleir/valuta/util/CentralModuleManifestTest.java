@@ -95,4 +95,21 @@ class CentralModuleManifestTest {
         assertThat(CentralModuleManifest.allowedModules(List.of("admin"), "admin", null))
                 .contains("received-data");
     }
+
+    @Test
+    void dariusReportIsFoertektarAndBelsoEllenorOnly() {
+        assertThat(CentralModuleManifest.allowedModules(
+                List.of("foertektar"), "foertektar", null))
+                .contains("darius-report");
+        assertThat(CentralModuleManifest.allowedModules(
+                List.of("belso_ellenor"), "belso_ellenor", null))
+                .contains("darius-report");
+        for (String role : List.of("ugyvezeto", "teruleti_vezeto", "irodavezeto")) {
+            assertThat(CentralModuleManifest.allowedModules(List.of(role), role, null))
+                    .as("darius-report absent for %s", role)
+                    .doesNotContain("darius-report");
+        }
+        assertThat(CentralModuleManifest.allowedModules(List.of("admin"), "admin", null))
+                .contains("darius-report");
+    }
 }
