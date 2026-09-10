@@ -59,6 +59,16 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * TransactionAfterCommit callback runs a REQUIRES_NEW reader that SEES the committed row — the
  * premise that makes moving the decade report into afterCommit safe for
  * validateDailyClosingCompleteness (it reads step 3's rows).</p>
+ *
+ * <p>EXECUTION CAVEAT (verified): no {@code *PostgresIT} class is picked up by the default
+ * {@code mvn test} run in this repo — Surefire's default includes cover {@code *Test} /
+ * {@code Test*} / {@code *Tests} / {@code *TestCase} only, and there is no Failsafe execution
+ * configured in {@code backend/pom.xml}. This class is therefore NOT part of the routine suite
+ * and must be invoked explicitly:
+ * {@code cd backend && ./mvnw -o test -Dtest=DailyClosingDecadeAfterCommitFkh061PostgresIT}
+ * (measured: 2 tests green, ~25 s, Docker required). This is a pre-existing repo-wide condition
+ * affecting every {@code *PostgresIT}, not a property of this test — stated here so nobody
+ * believes a green {@code mvn test} covered it.</p>
  */
 @Testcontainers
 @EnableJpaAuditing
