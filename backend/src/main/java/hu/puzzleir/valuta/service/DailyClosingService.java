@@ -615,21 +615,28 @@ public class DailyClosingService {
         executeEveningSync(branchId, closingDate);
 
         // 6. Napi tranzakciók archiválása (legacy BfCopy + BtCopy)
-        try {
-            int archivedCount = monthlyArchiveService.archiveDailyTransactions(branchId, closingDate);
-            log.info("Napi archiválás kész: datum={}, iroda={}, archivált={}", closingDate, branchId, archivedCount);
-        } catch (Exception e) {
-            VV_LOG.error("VV-BIZ-010", "daily_closing.archive_failed", e,
-                    java.util.Map.of("closing_date", closingDate,
-                            "branch_id", branchId,
-                            "phase", "daily_archive"));
-            warnings.add(ClosingWarning.builder()
-                    .step("daily_archive")
-                    .message("Napi archiválás hiba: " + e.getMessage())
-                    .build());
-            // FKH-061: a callee REQUIRES_NEW-ban fut, ezért a hibája nem jelöli rollback-only-ra
-            // a zárás tranzakcióját — a nyelés itt IGAZ, a zárás valóban folytatódik.
-        }
+        // FKH-061 (reviewer WARNING): a hívás a fő zárás COMMITJA UTÁN fut. A REQUIRES_NEW
+        // önmagában megvédi a zárás tranzakcióját a mérgezéstől, DE azonnal commitálná az
+        // archív másolatot — ha utána a zárás bármely lépése (3.b, vagy a wizard
+        // saveWizardWithConflictCheck) elhasal, egy meg nem történt naphoz tartozó archívum
+        // maradna a DB-ben. afterCommit-ben az archiválás csak akkor indul, ha a zárás
+        // tényleg commitált. Az idempotencia (receipt/originalId) az újrafuttatást is védi.
+        TransactionAfterCommit.run(() -> {
+            try {
+                int archivedCount = monthlyArchiveService.archiveDailyTransactions(branchId, closingDate);
+                log.info("Napi archiválás kész: datum={}, iroda={}, archivált={}", closingDate, branchId, archivedCount);
+            } catch (Exception e) {
+                VV_LOG.error("VV-BIZ-010", "daily_closing.archive_failed", e,
+                        java.util.Map.of("closing_date", closingDate,
+                                "branch_id", branchId,
+                                "phase", "daily_archive"));
+                warnings.add(ClosingWarning.builder()
+                        .step("daily_archive")
+                        .message("Napi archiválás hiba: " + e.getMessage())
+                        .build());
+                // A fő zárás ekkor már commitált; az archiválás saját tranzakcióban bukott.
+            }
+        }, "FKH-061 daily archive branch=" + branchId + ", date=" + closingDate);
 
         // 6b. S1-02: Teljes napi archiválás (Delphi: HaviGyujtokbeMasolas — CimtCopy, EdatCopy, KdatCopy, WuniCopy, WzarCopy)
         try {

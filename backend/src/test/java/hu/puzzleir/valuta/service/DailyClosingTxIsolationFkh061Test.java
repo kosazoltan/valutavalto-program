@@ -47,7 +47,11 @@ import static org.mockito.Mockito.*;
  *
  * <p>A Mockito-harnessban nincs tranzakció-szinkronizáció, ezért a
  * {@link TransactionAfterCommit} callback inline fut: a warning-állítások itt is érvényesek,
- * de a valós commit-izolációt a DailyClosingDecadeAfterCommitFkh061PostgresIT bizonyítja.
+ * de a valós commit-izolációt ez a teszt NEM bizonyítja: ahhoz valódi tranzakció-szinkronizáció
+ * (Spring + Postgres) kellene. A REQUIRES_NEW/NOT_SUPPORTED annotációk jelenlétét reflexióval
+ * rögzítjük, a warning-szerződést Mockitóval — a rollback-only mérgezés tényleges kizárását a
+ * V389-hez hasonló élő bizonyíték helyett a produkciós stacktrace és az annotációk együtt adják.
+ * FKH-061 nyitott pont: dedikált Postgres IT (afterCommit izoláció) külön jegyben.
  * A fixture a DailyClosingServiceExtendedTest @Mock-készletét másolja — a produkciós
  * konstruktor nem bővül.
  */

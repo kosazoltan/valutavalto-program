@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.exception.BusinessException;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.MnbExchangeRateCache;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.MnbExchangeRateCacheRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +22,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * MNB (Magyar Nemzeti Bank) hivatalos árfolyam szolgáltatás.
@@ -52,7 +56,22 @@ public class MnbExchangeRateService {
     private static final String SOAP_NAMESPACE = "http://www.mnb.hu/webservices/";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(15);
 
+    /**
+     * FKH-061 (WU-6): egy adott dátumra ennyi ideig próbálkozunk újra hiányos cache esetén.
+     * A dekádjelentés 7 napos walk-backje × az MNB által nem jegyzett valuták (BAM/BRL/EUA/
+     * ILS/MXN/NZD/RSD/THB) különben minden lekérdezésnél SOAP-hívást indítanának — a TTL-map
+     * dátumonként legfeljebb egy próbálkozásra korlátozza ezt.
+     */
+    private static final Duration SOAP_ATTEMPT_TTL = Duration.ofMinutes(30);
+    /** A próbálkozás-map méretkorlátja; a legrégebbi bejegyzések kiesnek (size-cap eviction). */
+    private static final int SOAP_ATTEMPT_MAP_CAP = 512;
+
+    /** Dátumonkénti utolsó SOAP-próbálkozás időpontja (in-process, TTL-kezelt). */
+    private final Map<LocalDate, Instant> soapAttempts = new ConcurrentHashMap<>();
+
     private final MnbExchangeRateCacheRepository cacheRepository;
+    /** FKH-061 (WU-6): az aktív valuták listája a cache-teljesség vizsgálathoz. */
+    private final CurrencyRepository currencyRepository;
 
     // ============ PUBLIKUS API ============
 
@@ -65,11 +84,36 @@ public class MnbExchangeRateService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, MnbExchangeRateCache> getRatesForDate(LocalDate date) {
-        // 1. Próbálunk pontos dátumra cache-ből kiszolgálni
+        // 1. Próbálunk pontos dátumra cache-ből kiszolgálni.
+        // FKH-061 (WU-6): a nem üres cache még nem feltétlen TELJES — ha az aktív valuták
+        // egy része hiányzik aznap (pl. csak AUD..TRY lett korábban lekérdezve, de EUR/USD/GBP
+        // kellene), egyetlen korlátozott SOAP-próbálkozással kiegészítjük (TTL: dátumonként
+        // legfeljebb egy letöltés), és az eredményt a cache FÖLÉ mergeljük. Sikertelen vagy
+        // TTL-en belüli (elfojtott) próbálkozás esetén a cache-elt részleges map megy vissza —
+        // sosem ürítjük ki.
         List<MnbExchangeRateCache> cached = cacheRepository.findByRateDate(date);
         if (!cached.isEmpty()) {
-            log.debug("MNB árfolyamok cache-ből: date={}, db={}", date, cached.size());
-            return toMap(cached);
+            Map<String, MnbExchangeRateCache> cachedMap = toMap(cached);
+            if (isCacheComplete(cached)) {
+                log.debug("MNB árfolyamok cache-ből: date={}, db={}", date, cached.size());
+                return cachedMap;
+            }
+            if (shouldAttemptDownload(date)) {
+                try {
+                    Map<String, MnbExchangeRateCache> fetched = fetchAndCacheRates(date);
+                    Map<String, MnbExchangeRateCache> merged = new LinkedHashMap<>(cachedMap);
+                    merged.putAll(fetched);
+                    log.info("MNB részleges cache kiegészítve: date={}, cache={}, letöltött={}, egyesített={}",
+                            date, cachedMap.size(), fetched.size(), merged.size());
+                    return merged;
+                } catch (Exception e) {
+                    log.warn("MNB SOAP hívás sikertelen részleges cache-nél (date={}): {} — cache-elt rész visszaadása",
+                            date, e.getMessage());
+                }
+            } else {
+                log.debug("MNB részleges cache (date={}) — a letöltési próbálkozás a TTL-en belül elfojtva", date);
+            }
+            return cachedMap;
         }
 
         // 2. SOAP letöltés
@@ -115,8 +159,9 @@ public class MnbExchangeRateService {
 
     /**
      * MNB SOAP API hívás és eredmény mentése cache-be.
+     * Package-private: a MnbPartialCacheFkh061Test spy-szemje (hálózati hívás nélkül).
      */
-    private Map<String, MnbExchangeRateCache> fetchAndCacheRates(LocalDate date) throws Exception {
+    Map<String, MnbExchangeRateCache> fetchAndCacheRates(LocalDate date) throws Exception {
         String dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
         // SOAP XML request
@@ -272,6 +317,56 @@ public class MnbExchangeRateService {
     }
 
     // ============ SEGÉDMETÓDUSOK ============
+
+    /**
+     * FKH-061 (WU-6): a cache-elt nap TELJES-e — minden AKTÍV valutakód szerepel-e benne.
+     * Az aktív lista a rendszer kereskedhető valutáinak forrása (Currency.active); ha az
+     * aktív lista üres (nincs seedelve), a cache-t teljesnek tekintjük — nincs mit pótolni,
+     * és nem indítunk SOAP-hívást ismeretlen követelményhalmaz miatt.
+     */
+    private boolean isCacheComplete(List<MnbExchangeRateCache> cached) {
+        List<Currency> activeCurrencies = currencyRepository.findByActiveTrueOrderByDisplayOrderAsc();
+        if (activeCurrencies.isEmpty()) {
+            return true;
+        }
+        Set<String> cachedCodes = new HashSet<>();
+        for (MnbExchangeRateCache rate : cached) {
+            cachedCodes.add(rate.getCurrencyCode());
+        }
+        for (Currency currency : activeCurrencies) {
+            if (!cachedCodes.contains(currency.getCode())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * FKH-061 (WU-6): dátumonként legfeljebb egy SOAP-próbálkozás a TTL-ablakban.
+     * Sikeres hívásnál is rögzítjük az időpontot: a frissen letöltött nap a következő
+     * lekérdezésnél már a cache-elt (teljes vagy MNB által nem jegyzett valuták miatt
+     * részleges) mapet adja vissza további letöltés nélkül — így a dekádjelentés 7 napos
+     * walk-backje sem kalapálhatja az MNB-t. A map mérete korlátos: cap felett a
+     * legrégebbi bejegyzéseket eldobjuk.
+     */
+    private boolean shouldAttemptDownload(LocalDate date) {
+        Instant now = Instant.now();
+        Instant last = soapAttempts.get(date);
+        if (last != null && Duration.between(last, now).compareTo(SOAP_ATTEMPT_TTL) < 0) {
+            return false;
+        }
+        if (soapAttempts.size() >= SOAP_ATTEMPT_MAP_CAP) {
+            soapAttempts.entrySet().removeIf(entry ->
+                    Duration.between(entry.getValue(), now).compareTo(SOAP_ATTEMPT_TTL) >= 0);
+            if (soapAttempts.size() >= SOAP_ATTEMPT_MAP_CAP) {
+                soapAttempts.keySet().stream()
+                        .min(Comparator.comparing(soapAttempts::get))
+                        .ifPresent(soapAttempts::remove);
+            }
+        }
+        soapAttempts.put(date, now);
+        return true;
+    }
 
     private Map<String, MnbExchangeRateCache> toMap(List<MnbExchangeRateCache> list) {
         Map<String, MnbExchangeRateCache> map = new LinkedHashMap<>();

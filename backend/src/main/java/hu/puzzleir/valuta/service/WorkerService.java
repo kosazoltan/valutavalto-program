@@ -59,6 +59,8 @@ public class WorkerService {
     private final SessionBranchResolver sessionBranchResolver;
     // v2.4.5 (B6): branchId override engedélyezésének ellenőrzéséhez.
     private final WorkerBranchAccessService workerBranchAccessService;
+    /** FKH-061 (WU-8): a kilépéskori tömeges session-lezárás auditálásához. */
+    private final AuditLogService auditLogService;
 
     // HIGH FIX #16: Brute force védelem — max 5 sikertelen próba, utána 15 perc lock
     private static final int MAX_FAILED_ATTEMPTS = 5;
@@ -552,9 +554,8 @@ public class WorkerService {
         // korábbi Optional visszatérése IncorrectResultSizeDataAccessException-t dobott, ha a
         // workerhez több nyitott sor tartozott (élesben 1771 ilyen sor volt) — ettől a kilépés
         // HTTP 500-zal bukott, a session nyitva maradt, és a következő belépés újabb nyitott
-        // sort hozott létre. Üres lista esetén no-op: a művelet idempotens.
-        // Szándékosan NEM hívunk auditLogService-t: az új konstruktor-függőség az összes
-        // meglévő WorkerService tesztet elrontaná.
+        // sort hozott létre. Üres lista esetén no-op (nincs audit, nincs írás): a művelet
+        // idempotens. A tömeges zárás darabszáma audit-ponton rögzített (WORKER_SESSION_BULK_CLOSED).
         if (workerId != null) {
             final Long wId = workerId;
             List<WorkerSession> openSessions = sessionRepository.findByWorkerIdAndLogoutAtIsNull(wId);
@@ -562,6 +563,9 @@ public class WorkerService {
                 LocalDateTime logoutAt = LocalDateTime.now();
                 openSessions.forEach(session -> session.setLogoutAt(logoutAt));
                 sessionRepository.saveAll(openSessions);
+                auditLogService.log("WORKER_SESSION_BULK_CLOSED",
+                    openSessions.size() + " nyitott worker session zarva a kilepeskor (bulk)",
+                    wId.toString());
             }
         }
 
