@@ -23,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -53,8 +54,14 @@ public class DecadeReportService {
 
     /**
      * Dekádjelentés generálása. Összesíti az adott 10 napos időszak tranzakcióit.
+     *
+     * FKH-061: REQUIRES_NEW — a dekádjelentés best-effort riport-artefaktum, nem része a
+     * napzárás atomi money-láncának. Ha ez a hívás a napzárás tranzakcióján belül futna
+     * (REQUIRED), egy kivétel rollback-only-ra jelölné a külső tranzakciót, és a commit
+     * UnexpectedRollbackException-nel buknna — a napzárás "sikertelen" lenne a sikeres
+     * pénz-lépések ellenére. Saját tranzakcióban a hiba izolált marad.
      */
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public DecadeReportDto generateDecadeReport(UUID branchId, int year, int decade) {
         if (decade < 1 || decade > 36) {
             throw new ValidationException("Érvénytelen dekád: " + decade + " (1-36 között kell legyen)");

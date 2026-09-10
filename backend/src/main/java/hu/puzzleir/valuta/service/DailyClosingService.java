@@ -572,6 +572,10 @@ public class DailyClosingService {
         // 3.c FK-052: a banki (technikai RB) BANK+/BANK− bekötés csak a teljes napzárás
         //     sikeres commitja UTÁN indul. A callback szinkron fut a commit közben, ezért a
         //     mutable warnings lista kiegészítése még látszik a visszaadott eredményben.
+        //     FKH-061 (R3): a ClosingWizardService.finalizeClosing warning-logja
+        //     (ClosingWizardService.java:968-974) a MÉG NYITOTT tranzakcióban fut, ezért az
+        //     afterCommit callbackek által utólag hozzáadott warningokat NEM látja — csak a
+        //     API-válaszba épülő mutable lista tartalmazza őket.
         TransactionAfterCommit.run(() -> {
             try {
                 dailyBalanceService.recordVaultBankAdjustments(branchId, closingDate);
@@ -791,21 +795,31 @@ public class DailyClosingService {
             }
             log.info("Dekad zaras: nap={}, idoszak={}, globalDekad={}", dayOfMonth, decadePeriod, globalDecade);
 
-            // Dekádjelentés generálása (legacy DekzarCtrl)
-            try {
-                decadeReportService.generateDecadeReport(branchId, date.getYear(), globalDecade);
-                log.info("Dekadjelentes generálva: branchId={}, ev={}, dekad={}", branchId, date.getYear(), globalDecade);
-            } catch (Exception e) {
-                VV_LOG.error("VV-BIZ-009", "daily_closing.decade_report_failed", e,
-                        java.util.Map.of("branch_id", branchId,
-                                "year", date.getYear(),
-                                "decade", globalDecade));
-                warnings.add(ClosingWarning.builder()
-                        .step("decade_report")
-                        .message("Dekád jelentés hiba: " + e.getMessage())
-                        .build());
-                // NEM dobunk kivételt — ne akadjon meg a zárás
-            }
+            // FKH-061: A dekádjelentés a fő zárás COMMITJA UTÁN fut, saját (REQUIRES_NEW)
+            // tranzakcióban. Két ok: (1) ha a zárás tranzakcióján belül buknna, a külső
+            // tranzakció rollback-only lenne → UnexpectedRollbackException a commitnál,
+            // hiába nyeltük el itt a kivételt; (2) a jelentés validateDailyClosingCompleteness
+            // ellenőrzése a 3. lépés daily_balance sorait olvassa — az afterCommit futásakor
+            // azok már commitáltak és láthatók. A callback szinkron, a hívó szálon fut, ezért a
+            // SecurityContext (IDOR-check) még érvényes; hiba esetén csak ClosingWarning keletkezik,
+            // a fő zárás ekkor már commitált — a mutable warnings lista a válaszban látható marad.
+            TransactionAfterCommit.run(() -> {
+                try {
+                    decadeReportService.generateDecadeReport(branchId, date.getYear(), globalDecade);
+                    log.info("Dekadjelentes generálva: branchId={}, ev={}, dekad={}", branchId, date.getYear(), globalDecade);
+                } catch (Exception e) {
+                    VV_LOG.error("VV-BIZ-009", "daily_closing.decade_report_failed", e,
+                            java.util.Map.of("branch_id", branchId,
+                                    "year", date.getYear(),
+                                    "decade", globalDecade));
+                    warnings.add(ClosingWarning.builder()
+                            .step("decade_report")
+                            .message("Dekád jelentés hiba: " + e.getMessage())
+                            .build());
+                    // A fő zárás ekkor már commitált; a dekádriport saját tranzakcióban bukott —
+                    // ezért a nyelés itt IGAZ: a hiba nem mérgezheti a zárás tranzakcióját.
+                }
+            }, "FKH-061 decade report branch=" + branchId + ", date=" + date);
 
             // Audit log
             auditLogService.log(
