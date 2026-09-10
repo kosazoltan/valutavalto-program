@@ -434,7 +434,11 @@ class DailyClosingServiceExtendedTest {
 
             List<TransactionSynchronization> synchronizations =
                     TransactionSynchronizationManager.getSynchronizations();
-            assertThat(synchronizations).hasSize(1);
+            // FKH-061 LÁNC: a zárás most 2 afterCommit callbacket regisztrál — a FK-052 banki
+            // igazítást ÉS a napi archiválást (utóbbi azért került ide, hogy egy meg nem
+            // történt naphoz ne commitáljon archívumot). A nem-dekád napon (03-15) a
+            // dekádriport callback nem regisztrálódik.
+            assertThat(synchronizations).hasSize(2);
             synchronizations.forEach(TransactionSynchronization::afterCommit);
 
             verify(dailyBalanceService, times(1))
