@@ -18,9 +18,21 @@ import java.util.UUID;
 public interface WorkerSessionRepository extends JpaRepository<WorkerSession, Long> {
 
     /**
-     * Aktív session egy workerhez (logoutAt = null)
+     * Nyitott (logoutAt = null) sessionök egy workerhez.
+     *
+     * FKH-061 (Defect C): korábban {@code Optional} volt, de a nyitott sorok száma workerenként
+     * NEM garantáltan legfeljebb egy — élesben 1771 sor volt nyitva (egy workerhez 456 is), mert
+     * minden sikertelen kilépés újabb nyitott sort hagyott hátra. Az {@code Optional} ilyenkor
+     * {@code IncorrectResultSizeDataAccessException}-t dobott, amitől a kilépés HTTP 500 lett,
+     * ami önerősítő hibakört alkotott (a session sosem zárult le). Listát adunk vissza, a hívó
+     * pedig az ÖSSZES nyitott sort lezárja.
+     *
+     * Multi-tenant megjegyzés: a szűrőkulcs a {@code workerId}, ami önmagában bérlő-meghatározó
+     * ({@code worker.company_id NOT NULL}, {@code unique(company_id, code)}). A kilépés üres
+     * SecurityContext mellett is futhat (blacklistelt token), ezért a companyId nem mindig
+     * feloldható — emiatt nem szűrünk rá külön.
      */
-    Optional<WorkerSession> findByWorkerIdAndLogoutAtIsNull(Long workerId);
+    List<WorkerSession> findByWorkerIdAndLogoutAtIsNull(Long workerId);
 
     /**
      * Összes session egy workerhez

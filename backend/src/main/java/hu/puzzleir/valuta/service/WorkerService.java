@@ -547,14 +547,22 @@ public class WorkerService {
             workerId = jwtToken != null ? jwtTokenProvider.getWorkerIdFromToken(jwtToken) : null;
         }
 
-        // Aktív session bezárás
+        // Aktív sessionök bezárása
+        // FKH-061 (Defect C): MINDEN nyitott sort lezárunk, nem csak egyet. A repository
+        // korábbi Optional visszatérése IncorrectResultSizeDataAccessException-t dobott, ha a
+        // workerhez több nyitott sor tartozott (élesben 1771 ilyen sor volt) — ettől a kilépés
+        // HTTP 500-zal bukott, a session nyitva maradt, és a következő belépés újabb nyitott
+        // sort hozott létre. Üres lista esetén no-op: a művelet idempotens.
+        // Szándékosan NEM hívunk auditLogService-t: az új konstruktor-függőség az összes
+        // meglévő WorkerService tesztet elrontaná.
         if (workerId != null) {
             final Long wId = workerId;
-            sessionRepository.findByWorkerIdAndLogoutAtIsNull(wId)
-                    .ifPresent(session -> {
-                        session.setLogoutAt(LocalDateTime.now());
-                        sessionRepository.save(session);
-                    });
+            List<WorkerSession> openSessions = sessionRepository.findByWorkerIdAndLogoutAtIsNull(wId);
+            if (!openSessions.isEmpty()) {
+                LocalDateTime logoutAt = LocalDateTime.now();
+                openSessions.forEach(session -> session.setLogoutAt(logoutAt));
+                sessionRepository.saveAll(openSessions);
+            }
         }
 
         // 🔴 Token blacklisting — a JWT tokenId-t visszavonjuk
