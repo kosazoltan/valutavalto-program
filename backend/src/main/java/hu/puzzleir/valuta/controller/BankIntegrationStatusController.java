@@ -51,18 +51,18 @@ public class BankIntegrationStatusController {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         LocalDate today = LocalDate.now();
 
-        // MNB cache friss-ség: a legutóbbi cache-elt rateDate alapján (Codex P1 #567)
-        // FKH-064: a mnb_exchange_rate_cache tábla MEGOSZTOTT a források között (unique kulcs:
-        // currency_code, rate_date, source). Szűrés nélküli findAll()/count() a RAIFFEISEN
-        // sorokat is beszámolta — élesben 705 RAIFFEISEN sor (2026-09-11-ig) vs 17 MNB sor
-        // (2026-03-16-on megállva), így a kijelző "friss" MNB cache-t mutatott, holott az MNB
-        // oldal március óta nem frissült. Minden MNB-olvasás source-szűrt (vö.
-        // MnbExchangeRateService.MNB_SOURCE).
+        // MNB cache freshness from the newest cached rateDate (Codex P1 #567)
+        // FKH-064: the mnb_exchange_rate_cache table is SHARED between rate sources (unique key:
+        // currency_code, rate_date, source). The unfiltered findAll()/count() also counted the
+        // RAIFFEISEN rows and — worse — inverted the freshness signal: production holds 705
+        // RAIFFEISEN rows up to 2026-09-11 against 17 MNB rows frozen at 2026-03-16, yet the
+        // dashboard reported a fresh MNB cache. Every read on the MNB path is source-filtered
+        // (cf. MnbExchangeRateService.MNB_SOURCE).
         LocalDate mnbLatestRateDate = mnbCacheRepository
                 .findMaxRateDateBySource(MNB_SOURCE)
                 .orElse(null);
         long mnbCacheCount = mnbCacheRepository.countBySource(MNB_SOURCE);
-        // Sikeres ha van cache ÉS a legutolsó rateDate >= today-3 (üzleti nap puffer)
+        // Success if a cache exists AND the newest rateDate >= today-3 (business-day buffer)
         boolean mnbFresh = mnbLatestRateDate != null
                 && !mnbLatestRateDate.isBefore(today.minusDays(3));
 
