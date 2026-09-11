@@ -123,6 +123,10 @@ class DecadeReportManualRateFkh063Test {
 
         when(decadeReportRepository.save(any(DecadeReport.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
+        // FKH-063 (PR review): by default the currency under test is NOT quoted by MNB, which is
+        // the real situation for BAM/BRL/EUA/ILS/MXN/NZD/RSD/THB. Tests about a quoted currency
+        // override this explicitly.
+        when(mnbExchangeRateService.isQuotedByMnb(anyString())).thenReturn(false);
     }
 
     private DecadeReportLine lineOf(List<DecadeReportLine> lines, String currency) {
@@ -211,6 +215,7 @@ class DecadeReportManualRateFkh063Test {
                 .thenReturn(Map.of("EUR", rate("EUR", "400.00")));
         when(mnbExchangeRateService.getRatesForDate(PERIOD_END))
                 .thenReturn(Map.of("EUR", rate("EUR", "400.00")));
+        when(mnbExchangeRateService.isQuotedByMnb("EUR")).thenReturn(true);
         // A different manual value exists — it must never be consulted for an MNB-quoted currency.
         when(mnbSettlementRateService.findSettlementRateAsOf(eq(COMPANY_ID), eq("EUR"), any()))
                 .thenReturn(Optional.of(new BigDecimal("999.0000")));
@@ -291,5 +296,74 @@ class DecadeReportManualRateFkh063Test {
         assertThat(bam.getOpeningRateSource()).isEqualTo("MNB");
         assertThat(bam.getClosingRateSource()).isEqualTo("MNB");
         verify(mnbSettlementRateService, never()).findSettlementRateAsOf(any(), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("FKH-063: an MNB-quoted currency with a temporary cache gap FAILS CLOSED, it does not fall back to the manual rate")
+    void mnbQuotedCurrencyWithCacheGapFailsClosedInsteadOfUsingManualRate() {
+        stubCommon(
+                List.of(balance(PERIOD_START, "EUR", "1000.0000", "1000.0000")),
+                List.of(balance(PERIOD_END, "EUR", "1500.0000", "1500.0000")));
+        // EUR IS quoted by MNB, but the cache has no row for this period (failed import).
+        when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
+        when(mnbExchangeRateService.isQuotedByMnb("EUR")).thenReturn(true);
+        // A manual EUR snapshot exists — using it would silently swap the statutory rate source.
+        when(mnbSettlementRateService.findSettlementRateAsOf(eq(COMPANY_ID), eq("EUR"), any()))
+                .thenReturn(Optional.of(new BigDecimal("400.0000")));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            assertThatThrownBy(() -> service.generateDecadeReport(BRANCH_ID, 2026, DECADE))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("EUR");
+        }
+
+        verify(decadeReportRepository, never()).save(any());
+        verify(mnbSettlementRateService, never()).findSettlementRateAsOf(any(), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("FKH-063: a manual rate wider than the report column fails closed instead of overflowing on flush")
+    void manualRateWiderThanTheReportColumnFailsClosed() {
+        stubCommon(
+                List.of(balance(PERIOD_START, "BAM", "1000.0000", "1000.0000")),
+                List.of(balance(PERIOD_END, "BAM", "1500.0000", "1500.0000")));
+        when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
+        // FK-028 accepts 11 integer digits; decade_report_line rate columns are NUMERIC(12,4).
+        when(mnbSettlementRateService.findSettlementRateAsOf(eq(COMPANY_ID), eq("BAM"), any()))
+                .thenReturn(Optional.of(new BigDecimal("123456789.0000")));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+
+            assertThatThrownBy(() -> service.generateDecadeReport(BRANCH_ID, 2026, DECADE))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("BAM")
+                    .hasMessageContaining("túl nagy");
+        }
+
+        verify(decadeReportRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("FKH-063: a rate at the column limit (8 integer digits) is still accepted")
+    void manualRateAtTheColumnLimitIsAccepted() {
+        stubCommon(
+                List.of(balance(PERIOD_START, "BAM", "1.0000", "1.0000")),
+                List.of(balance(PERIOD_END, "BAM", "1.0000", "1.0000")));
+        when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
+        when(mnbSettlementRateService.findSettlementRateAsOf(eq(COMPANY_ID), eq("BAM"), any()))
+                .thenReturn(Optional.of(new BigDecimal("12345678.0000")));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentCompanyId).thenReturn(COMPANY_ID);
+            service.generateDecadeReport(BRANCH_ID, 2026, DECADE);
+        }
+
+        ArgumentCaptor<DecadeReport> saved = ArgumentCaptor.forClass(DecadeReport.class);
+        verify(decadeReportRepository).save(saved.capture());
+        assertThat(lineOf(saved.getValue().getLines(), "BAM").getClosingMnbRate())
+                .isEqualByComparingTo("12345678.0000");
     }
 }

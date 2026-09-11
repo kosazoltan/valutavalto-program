@@ -8,11 +8,13 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,7 +41,7 @@ class V391DecadeLineRateSourceMigrationTest {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
     @Test
-    @DisplayName("V391 adds nullable provenance columns, keeps legacy rows NULL, enforces the marker CHECK and is idempotent")
+    @DisplayName("V391 adds nullable provenance columns, keeps legacy rows NULL, enforces the marker CHECK and its SQL is re-runnable")
     void addsProvenanceColumnsWithCheckAndKeepsLegacyRowsNull() throws Exception {
         migrateToVersion("390");
 
@@ -103,8 +105,15 @@ class V391DecadeLineRateSourceMigrationTest {
                     .hasMessageContaining("ck_decade_report_line_closing_rate_source");
         }
 
-        // 5. Re-running the whole chain is a no-op (the DO-block guard, not ADD CONSTRAINT).
-        migrateToLatest();
+        // 5. Idempotency: re-running migrateToLatest() would NOT re-execute an already recorded
+        //    versioned migration, so it proves nothing. Execute the V391 SQL DIRECTLY against the
+        //    migrated schema — this is what actually exercises the pg_constraint DO-block guard
+        //    (PostgreSQL has no ADD CONSTRAINT IF NOT EXISTS, so an unguarded script would throw
+        //    "constraint already exists" here).
+        try (Connection connection = openConnection()) {
+            rerunV391SqlDirectly(connection);
+            rerunV391SqlDirectly(connection);
+        }
 
         try (Connection connection = openConnection()) {
             assertThat(queryForInteger(connection, """
@@ -115,6 +124,17 @@ class V391DecadeLineRateSourceMigrationTest {
             assertThat(queryForString(connection,
                     "SELECT opening_rate_source FROM decade_report_line WHERE id = ?", LEGACY_LINE_ID))
                     .isNull();
+        }
+    }
+
+    private static void rerunV391SqlDirectly(Connection connection) throws Exception {
+        try (var stream = V391DecadeLineRateSourceMigrationTest.class.getClassLoader()
+                .getResourceAsStream("db/migration/V391__fkh063_decade_line_rate_source.sql")) {
+            assertThat(stream).as("V391 migration SQL is on the classpath").isNotNull();
+            String sql = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute(sql);
+            }
         }
     }
 

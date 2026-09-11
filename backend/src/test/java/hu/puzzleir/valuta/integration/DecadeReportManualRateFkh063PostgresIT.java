@@ -257,12 +257,14 @@ class DecadeReportManualRateFkh063PostgresIT {
         assertThat(bamLine(dto).getClosingRateSource()).isEqualTo("MANUAL_SETTLEMENT");
         assertThat(bamLine(dto).getClosingMnbRate()).isEqualByComparingTo(MANUAL_RATE);
 
-        // NOTE: re-generating the same report in one JVM run is NOT asserted here. The in-place
-        // regeneration path (DecadeReportService.java:235 `report.getLines().clear()` followed by
-        // fresh line inserts) violates uk_decade_line_report_currency (V82) because Hibernate
-        // orders the inserts before the orphan deletes. Verified pre-existing on BASE b2c27b6d
-        // (the clear() and the constraint both predate FKH-063; this change touches neither), so
-        // it is tracked as a separate defect rather than silently fixed inside a money change.
+        // Regeneration is deterministic: the same snapshot wins again and the value is identical.
+        // (This also covers board #42: in-place regeneration used to violate
+        // uk_decade_line_report_currency because Hibernate ordered the inserts before the orphan
+        // deletes; the service now flushes the removal first.)
+        DecadeReportDto again = decadeReportService.generateDecadeReport(f.branchId(), 2026, DECADE);
+        assertThat(bamLine(again).getClosingValueHuf())
+                .isEqualByComparingTo(bamLine(dto).getClosingValueHuf());
+        assertThat(bamLine(again).getClosingRateSource()).isEqualTo("MANUAL_SETTLEMENT");
     }
 
     @Test
@@ -283,13 +285,16 @@ class DecadeReportManualRateFkh063PostgresIT {
     }
 
     @Test
-    @DisplayName("FKH-063 IT: exactly one persisted BAM line carries the manual provenance")
+    @DisplayName("FKH-063 IT (board #42): regenerating an existing DRAFT report leaves exactly one line per currency")
     void exactlyOneLineIsPersistedWithManualProvenance() {
         Fixture f = seed();
         recordSettlementRate(f.companyId(), MANUAL_RATE, PERIOD_START.plusDays(1));
         recordSettlementRate(f.companyId(), MANUAL_RATE, PERIOD_END.plusDays(1));
         installAuth(f.companyId());
 
+        decadeReportService.generateDecadeReport(f.branchId(), 2026, DECADE);
+        // Second pass: RED before the board #42 fix with
+        // "duplicate key value violates unique constraint uk_decade_line_report_currency".
         decadeReportService.generateDecadeReport(f.branchId(), 2026, DECADE);
 
         assertThat(decadeReportRepository.findByBranchIdAndYearAndDecade(f.branchId(), 2026, DECADE))
