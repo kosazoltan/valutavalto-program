@@ -90,7 +90,8 @@ public class ReceivedDenominationsService {
             return all;
         }
         if (!all.contains(branchId)) {
-            log.warn("FK-111: a kert iroda nincs a ceg hatokoreben, ures valasz. branchId={}", branchId);
+            log.warn("FK-111: requested branch is outside the company scope, returning empty result. branchId={}",
+                    branchId);
             return List.of();
         }
         return List.of(branchId);
@@ -192,6 +193,12 @@ public class ReceivedDenominationsService {
         private final String denominationType;
         private long quantity;
         private BigDecimal totalValue = BigDecimal.ZERO;
+        /**
+         * Sticky flag from the INDIVIDUAL source rows. Aggregation must never let two opposite
+         * per-row errors cancel out (e.g. 100x2 stored as 199 plus 100x1 stored as 101 sums to a
+         * perfect 100x3=300): a malformed snapshot row is always surfaced.
+         */
+        private boolean sourceRowMismatch;
 
         private CellAccumulator(BigDecimal faceValue, String denominationType) {
             this.faceValue = faceValue;
@@ -199,14 +206,20 @@ public class ReceivedDenominationsService {
         }
 
         private void add(DailyDenominationSnapshot snapshot) {
-            quantity += snapshot.getQuantity() == null ? 0L : snapshot.getQuantity().longValue();
-            totalValue = totalValue.add(
-                    snapshot.getTotalValue() == null ? BigDecimal.ZERO : snapshot.getTotalValue());
+            long rowQuantity = snapshot.getQuantity() == null ? 0L : snapshot.getQuantity().longValue();
+            BigDecimal rowValue =
+                    snapshot.getTotalValue() == null ? BigDecimal.ZERO : snapshot.getTotalValue();
+            if (faceValue.signum() > 0
+                    && faceValue.multiply(BigDecimal.valueOf(rowQuantity)).compareTo(rowValue) != 0) {
+                sourceRowMismatch = true;
+            }
+            quantity += rowQuantity;
+            totalValue = totalValue.add(rowValue);
         }
 
         /**
          * Cell-level data quality. Order matters: a fractional face value is the legacy-known
-         * defect (Delphi stored integer face values), so it wins over the derived value check.
+         * defect (Delphi stored integer face values), so it wins over the value check.
          */
         private String flag() {
             if (faceValue.signum() <= 0) {
@@ -216,7 +229,7 @@ public class ReceivedDenominationsService {
                 return FLAG_FRACTIONAL_FACE_VALUE;
             }
             BigDecimal expected = faceValue.multiply(BigDecimal.valueOf(quantity));
-            if (expected.compareTo(totalValue) != 0) {
+            if (sourceRowMismatch || expected.compareTo(totalValue) != 0) {
                 return FLAG_VALUE_MISMATCH;
             }
             return FLAG_OK;

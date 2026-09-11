@@ -374,7 +374,7 @@
     "denominationsHufValue": "Forint érték",
     "denominationsCurrencyCount": "Valutanemek száma",
     "denominationsIssueCount": "Jelölt (ellenőrzendő) cellák",
-    "denominationsIssueHint": "A pirossal jelölt cellák adatminőségi hibát jeleznek (törtrészes névérték vagy a darabszámmal nem egyező összeg).",
+    "denominationsIssueHint": "A pirossal jelölt cellák adatminőségi hibát jeleznek: törtrészes névérték, nem pozitív névérték, vagy a darabszámmal nem egyező összeg.",
     "denominationsNoConversionNote": "A záráskori snapshot nem tartalmaz árfolyamot, ezért a valuta-készlet nincs forintra átszámítva."
   },
   "closing": {

@@ -164,6 +164,50 @@ class ReceivedDenominationsServiceTest {
     }
 
     @Test
+    @DisplayName("FR-1: ket iroda egymast kiolto hibas sora NEM valik OK cellava az osszesitesben")
+    void aggregationMustNotCancelOutRowLevelMismatches() {
+        withCompany(() -> {
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                    .thenReturn(List.of(branch(BRANCH_A, "BR001", "Deak ter"), branch(BRANCH_B, "BR002", "Szeged")));
+            // 100 x 2 = 200, but stored as 199 (bad); 100 x 1 = 100, but stored as 101 (bad).
+            // Aggregated they look like 100 x 3 = 300, which would wrongly read as OK.
+            when(snapshotRepository.findByBranchIdInAndSnapshotDateAndClosingType(anyList(), any(), any()))
+                    .thenReturn(List.of(
+                            snapshot(BRANCH_A, "EUR", "100", 2, "199"),
+                            snapshot(BRANCH_B, "EUR", "100", 1, "101")));
+
+            ReceivedDenominationsDto dto = service.load(DATE, null);
+
+            assertThat(dto.getRows()).hasSize(1);
+            assertThat(dto.getRows().get(0).getCells()).hasSize(1);
+            assertThat(dto.getRows().get(0).getCells().get(0).getQuantity()).isEqualTo(3L);
+            assertThat(dto.getRows().get(0).getCells().get(0).getTotalValue()).isEqualByComparingTo("300");
+            assertThat(dto.getRows().get(0).getCells().get(0).getDataQualityFlag())
+                    .isEqualTo(ReceivedDenominationsService.FLAG_VALUE_MISMATCH);
+            assertThat(dto.getRows().get(0).isHasDataQualityIssue()).isTrue();
+            assertThat(dto.getDataQualityIssueCount()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    @DisplayName("FR-1: egyetlen hibas forrassor is megjeloli a cellat, ha a tobbi sor rendben van")
+    void singleBadSourceRowFlagsTheMergedCell() {
+        withCompany(() -> {
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                    .thenReturn(List.of(branch(BRANCH_A, "BR001", "Deak ter"), branch(BRANCH_B, "BR002", "Szeged")));
+            when(snapshotRepository.findByBranchIdInAndSnapshotDateAndClosingType(anyList(), any(), any()))
+                    .thenReturn(List.of(
+                            snapshot(BRANCH_A, "EUR", "100", 2, "200"),
+                            snapshot(BRANCH_B, "EUR", "100", 1, "90")));
+
+            ReceivedDenominationsDto dto = service.load(DATE, null);
+
+            assertThat(dto.getRows().get(0).getCells().get(0).getDataQualityFlag())
+                    .isEqualTo(ReceivedDenominationsService.FLAG_VALUE_MISMATCH);
+        });
+    }
+
+    @Test
     @DisplayName("FR-1b tenant-izolacio: idegen ceg branchId-jara ures valasz, snapshot-lekerdezes nelkul")
     void foreignBranchIdIsNotQueried() {
         withCompany(() -> {

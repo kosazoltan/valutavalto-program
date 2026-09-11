@@ -26,6 +26,15 @@ function formatNumber(value: number | null | undefined, fractionDigits = 0) {
 }
 
 /**
+ * Face values are shown at their STORED precision. Rounding to whole units would hide the very
+ * defect the red highlight reports (a legacy fractional 0.5 would read as "1", 0.2 as "0").
+ */
+function formatFaceValue(value: number | null | undefined) {
+  if (value == null) return '-'
+  return value.toLocaleString('hu-HU', { maximumFractionDigits: 20 })
+}
+
+/**
  * FK-111 FR-2: closing-time denomination matrix ("Keszletek, cimletek" tab).
  *
  * The data is fetched on button press only — the hosting page never auto-queries.
@@ -184,7 +193,7 @@ export default function ReceivedDenominationsView() {
                         }`}
                       >
                         <div className="text-[11px] text-slate-500">
-                          {formatNumber(cell.faceValue)}
+                          {formatFaceValue(cell.faceValue)}
                         </div>
                         <div className="flex items-center justify-end gap-1">
                           {flagged && <AlertTriangle size={12} />}

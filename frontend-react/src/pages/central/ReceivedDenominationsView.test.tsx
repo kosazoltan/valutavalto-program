@@ -105,6 +105,76 @@ describe('ReceivedDenominationsView (FK-111 FR-2)', () => {
     expect(screen.getByTestId('denominations-issue-hint')).toHaveTextContent('1')
   })
 
+  it('a törtrészes névértéket pontosan mutatja, nem kerekíti egészre', async () => {
+    mockLoad.mockResolvedValue({
+      ...payload,
+      rows: [
+        {
+          currencyCode: 'EUR',
+          totalValue: 2.4,
+          totalQuantity: 6,
+          hasDataQualityIssue: true,
+          cells: [
+            {
+              faceValue: 0.5,
+              denominationType: 'COIN',
+              quantity: 4,
+              totalValue: 2,
+              dataQualityFlag: 'FRACTIONAL_FACE_VALUE',
+            },
+            {
+              faceValue: 0.2,
+              denominationType: 'COIN',
+              quantity: 2,
+              totalValue: 0.4,
+              dataQualityFlag: 'FRACTIONAL_FACE_VALUE',
+            },
+          ],
+        },
+      ],
+    })
+    render(<ReceivedDenominationsView />)
+    await userEvent.click(screen.getByTestId('denominations-load-button'))
+
+    // A 0,5 nem jelenhet meg 1-ként, a 0,2 pedig 0-ként — az a tárolt hibás
+    // értéket rejtené el pont ott, ahol a jelölés hibát állít.
+    const half = await screen.findByTestId('denom-cell-EUR-0.5')
+    expect(half).toHaveTextContent('0,5')
+    expect(screen.getByTestId('denom-cell-EUR-0.2')).toHaveTextContent('0,2')
+  })
+
+  it('a NON_POSITIVE_FACE_VALUE cella is jelölve van, és a magyarázat említi ezt az esetet', async () => {
+    mockLoad.mockResolvedValue({
+      ...payload,
+      rows: [
+        {
+          currencyCode: 'EUR',
+          totalValue: 0,
+          totalQuantity: 3,
+          hasDataQualityIssue: true,
+          cells: [
+            {
+              faceValue: 0,
+              denominationType: 'BANKNOTE',
+              quantity: 3,
+              totalValue: 0,
+              dataQualityFlag: 'NON_POSITIVE_FACE_VALUE',
+            },
+          ],
+        },
+      ],
+    })
+    render(<ReceivedDenominationsView />)
+    await userEvent.click(screen.getByTestId('denominations-load-button'))
+
+    const cell = await screen.findByTestId('denom-cell-EUR-0')
+    expect(cell.className).toContain('bg-red-50')
+    expect(screen.getByTestId('denominations-issue-hint')).toHaveTextContent(
+      hu.centralReceivedData.denominationsIssueHint,
+    )
+    expect(hu.centralReceivedData.denominationsIssueHint).toMatch(/nem pozitív|nempozitív/i)
+  })
+
   it('az összesítő sáv a HUF-készletet mutatja, átváltott „összes érték” nélkül', async () => {
     mockLoad.mockResolvedValue(payload)
     render(<ReceivedDenominationsView />)
