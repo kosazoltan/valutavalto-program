@@ -36,6 +36,14 @@ const config: UserConfig & { test: InlineConfig } = {
       provider: 'v8',
       reporter: ['text-summary', 'lcov', 'cobertura'],
       reportsDirectory: './coverage',
+      // #1748: `all` + `include` is REQUIRED for the blocking diff-coverage gate. Without
+      // it v8 only reports files some test imported, so a brand-new module that NO test
+      // touches is absent from the cobertura report entirely - diff-cover then treats it
+      // as "no lines with coverage information" and PASSES, letting the completely
+      // untested case slip through the very threshold meant to catch it (verified: a
+      // never-imported probe file did not appear in the report).
+      all: true,
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'e2e/**',
         'playwright/**',
@@ -44,6 +52,10 @@ const config: UserConfig & { test: InlineConfig } = {
         '**/*.test.{ts,tsx}',
         '**/*.config.{ts,js}',
         'src/test/**',
+        // Type-only declarations carry no executable lines; keeping them in would add
+        // noise without adding signal.
+        'src/**/*.d.ts',
+        'src/types/**',
       ],
     },
   },

@@ -38,11 +38,14 @@ jobs:
       - name: Relevant changes?
         id: changed
         run: |
-          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- backend/src/main/java | grep -q .; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
+          # #1748: no `| grep -q` here. Under pipefail `grep -q` exits on the first match,
+          # git diff takes SIGPIPE, and the pipeline can report non-zero even though files
+          # DID change - which would silently skip the gate. `--quiet` exits 1 on changes.
+          if git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- backend/src/main/java; then
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "No backend main-source change in this PR - diff-coverage is vacuous, skipping."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/setup-java@v5
         if: steps.changed.outputs.run == 'true'
@@ -88,11 +91,14 @@ jobs:
       - name: Relevant changes?
         id: changed
         run: |
-          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- frontend-react/src | grep -q .; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
+          # #1748: no `| grep -q` here. Under pipefail `grep -q` exits on the first match,
+          # git diff takes SIGPIPE, and the pipeline can report non-zero even though files
+          # DID change - which would silently skip the gate. `--quiet` exits 1 on changes.
+          if git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- frontend-react/src; then
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "No frontend-react/src change in this PR - diff-coverage is vacuous, skipping."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/setup-node@v7
         if: steps.changed.outputs.run == 'true'
@@ -146,11 +152,14 @@ jobs:
       - name: Relevant changes?
         id: changed
         run: |
-          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- frontend-react | grep -q .; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
+          # #1748: no `| grep -q` here. Under pipefail `grep -q` exits on the first match,
+          # git diff takes SIGPIPE, and the pipeline can report non-zero even though files
+          # DID change - which would silently skip the gate. `--quiet` exits 1 on changes.
+          if git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- frontend-react; then
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "No frontend-react change in this PR - skipping."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/setup-node@v7
         if: steps.changed.outputs.run == 'true'
