@@ -212,7 +212,7 @@ class ClosingWizardStaleSessionFk065Test {
         // (zárás-domain precedens: KAT=TX + VV-BIZ-* — ld. osztály-javadoc; a VV-BIZ-011
         // sorszám a §3 katalógussal egyeztetendő, provizórikus).
         ArgumentCaptor<String> auditMessage = ArgumentCaptor.forClass(String.class);
-        verify(auditLogService).logForCompany(
+        verify(auditLogService).logInNewTransactionForCompany(
                 eq("CLOSING_WIZARD_AUTO_EXPIRED"),
                 auditMessage.capture(),
                 eq(wizardId.toString()),
@@ -258,12 +258,12 @@ class ClosingWizardStaleSessionFk065Test {
         // Pontos, cégenkénti verify a konkrét várt paraméterekkel (a korábbi
         // verifyNoMoreInteractions helyett — extra, pl. kör-összegző bejegyzést
         // ez a teszt már nem tilt).
-        verify(auditLogService).logForCompany(
+        verify(auditLogService).logInNewTransactionForCompany(
                 eq("CLOSING_WIZARD_AUTO_EXPIRED"),
                 argThat(msg -> msg.contains("\"KAT\":\"TX\"") && msg.contains("VV-BIZ-011")),
                 eq(wizardA.toString()),
                 eq(companyA));
-        verify(auditLogService).logForCompany(
+        verify(auditLogService).logInNewTransactionForCompany(
                 eq("CLOSING_WIZARD_AUTO_EXPIRED"),
                 argThat(msg -> msg.contains("\"KAT\":\"TX\"") && msg.contains("VV-BIZ-011")),
                 eq(wizardB.toString()),

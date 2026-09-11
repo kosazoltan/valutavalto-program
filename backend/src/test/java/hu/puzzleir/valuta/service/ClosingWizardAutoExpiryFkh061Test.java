@@ -110,8 +110,10 @@ class ClosingWizardAutoExpiryFkh061Test {
                 .as("managed entity must not be mutated after the bulk UPDATE")
                 .isEqualTo(WizardStatus.IN_PROGRESS);
 
-        // The tenant-scoped audit entry is still written (company from the wizard's own row).
-        verify(auditLogService).logForCompany(
+        // FKH-061 (PR #1740 review): the audit MUST use the REQUIRES_NEW overload, so an audit
+        // failure cannot mark the shared scheduler transaction rollback-only and discard the
+        // other wizards' already-successful transitions.
+        verify(auditLogService).logInNewTransactionForCompany(
                 eq("CLOSING_WIZARD_AUTO_EXPIRED"), anyString(), eq(WIZARD_ID.toString()),
                 eq(COMPANY_ID));
     }
@@ -133,6 +135,7 @@ class ClosingWizardAutoExpiryFkh061Test {
         assertThat(expired).isZero();
         assertThat(wizard.getWizardStatus()).isEqualTo(WizardStatus.IN_PROGRESS);
         verify(auditLogService, org.mockito.Mockito.never())
-                .logForCompany(eq("CLOSING_WIZARD_AUTO_EXPIRED"), anyString(), anyString(), any(UUID.class));
+                .logInNewTransactionForCompany(
+                        eq("CLOSING_WIZARD_AUTO_EXPIRED"), anyString(), anyString(), any(UUID.class));
     }
 }
