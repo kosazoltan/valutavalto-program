@@ -190,8 +190,9 @@ class DailyBalanceServiceTest {
     // ============================================================
 
     @Test
-    @DisplayName("calculateAllCurrenciesForDay: egy valuta hibája nem állítja le a többit")
-    void testCalculateAllCurrencies_oneCurrencyFails_othersProcessed() {
+    @DisplayName("calculateAllCurrenciesForDay: egy valuta hibája ValidationException-t dob, "
+            + "és a részleges hibát külön tranzakcióban auditálja (FKH-061)")
+    void testCalculateAllCurrencies_oneCurrencyFails_throwsAndAuditsInNewTransaction() {
         // EUR és USD aktív
         hu.puzzleir.valuta.entity.Currency eur = new hu.puzzleir.valuta.entity.Currency();
         eur.setCode("EUR");
@@ -241,11 +242,14 @@ class DailyBalanceServiceTest {
             .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
             .hasMessageContaining("USD");
 
-        // Audit log rögzítve a részleges hibáról (a kivetel ELOTT irodik)
-        verify(auditLogService).log(
+        // FKH-061 round-3: the audit MUST use the REQUIRES_NEW overload, otherwise the throw
+        // above rolls the audit row back together with the caller's transaction and the forensic
+        // record of the failure is lost. Pinning the overload, not just the action name.
+        verify(auditLogService).logInNewTransactionForCompany(
             eq("DAILY_BALANCE_PARTIAL_FAILURE"),
             contains("USD"),
-            eq(TEST_BRANCH_ID.toString())
+            eq(TEST_BRANCH_ID.toString()),
+            any(UUID.class)
         );
     }
 

@@ -161,14 +161,18 @@ public class DailyBalanceService {
     /**
      * Összes valuta napi mérlege (egy napra).
      *
-     * FIX: Per-valuta hiba izolálás — egy valuta hibája nem állítja le a többi feldolgozását.
-     * Részleges hiba esetén audit log bejegyzés készül.
+     * <p>FKH-061: per-currency failures are collected so that ONE currency's error does not
+     * abort the others, but a partial result is NOT returned — the method throws a
+     * ValidationException naming the failing currencies, because the day closing must not
+     * proceed with missing daily_balance rows. The partial-failure audit entry is written in a
+     * separate (REQUIRES_NEW) transaction so it survives the caller's rollback.
      */
     public List<DailyBalance> calculateAllCurrenciesForDay(UUID branchId, LocalDate date) {
         log.info("Összes valuta napi mérlege: branchId={}, date={}", branchId, date);
 
         // Aktív valuták
-        List<Currency> currencies = currencyRepository.findActiveByCompany(SecurityUtils.getCurrentCompanyId());
+        UUID auditCompanyId = SecurityUtils.getCurrentCompanyId();
+        List<Currency> currencies = currencyRepository.findActiveByCompany(auditCompanyId);
 
         List<DailyBalance> results = new ArrayList<>();
         List<String> failedCurrencies = new ArrayList<>();
@@ -190,10 +194,19 @@ public class DailyBalanceService {
             String failedList = String.join(", ", failedCurrencies);
             log.warn("Részleges napi mérleg hiba: branchId={}, date={}, hibás valuták: {}",
                 branchId, date, failedList);
-            auditLogService.log(
+            // FKH-061 round-3 (reviewer WARNING 1): REQUIRES_NEW, because the throw below rolls
+            // the caller's transaction back. The 3-arg log() overload is REQUIRED propagation
+            // (AuditLogService.java:52), so it joined the caller's transaction and the
+            // partial-failure audit row was rolled back with it — the forensic record of WHY the
+            // closing failed was lost exactly when it mattered. logInNewTransactionForCompany
+            // (AuditLogService.java:88) exists for this case: audit preserved despite a financial
+            // rollback. companyId is captured above from the SecurityContext, which is still
+            // populated here (this runs inside the request thread, not in an afterCommit hook).
+            auditLogService.logInNewTransactionForCompany(
                 "DAILY_BALANCE_PARTIAL_FAILURE",
                 String.format("Részleges napi mérleg hiba (%s): hibás valuták: %s", date, failedList),
-                branchId.toString()
+                branchId.toString(),
+                auditCompanyId
             );
             // FKH-061 (PR review): a partial result must NOT be accepted silently. The method
             // used to only log the failing currencies and return the partial list, so the day

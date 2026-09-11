@@ -1,5 +1,6 @@
 package hu.puzzleir.valuta.service;
 
+import hu.puzzleir.valuta.entity.Company;
 import hu.puzzleir.valuta.entity.WorkerSession;
 import hu.puzzleir.valuta.repository.WorkerSessionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -37,9 +39,11 @@ import static org.mockito.Mockito.when;
  * <p>RED on BASE 1588b5b2: the finder returns {@code Optional} there, so this test does not even
  * compile against the base revision — the signature change is the fix.</p>
  *
- * <p>Note: the bulk close writes an audit entry
- * ({@code WORKER_SESSION_BULK_CLOSED}, {@code WorkerService.java:566-568}) via the 3-arg
- * {@code AuditLogService.log} overload; {@code AuditLogService} is the 13th constructor
+ * <p>Note: the bulk close writes a TENANT-SCOPED audit entry
+ * ({@code WORKER_SESSION_BULK_CLOSED}, {@code WorkerService.java:573-585}) via
+ * {@code AuditLogService.logForCompany}, with the companyId derived from
+ * {@code worker_session.company_id} rather than the SecurityContext, which is empty on the
+ * blacklisted-token JWT fallback branch. {@code AuditLogService} is the 13th constructor
  * dependency, so no constructor change was needed.</p>
  */
 @ExtendWith(MockitoExtension.class)
@@ -67,9 +71,18 @@ class WorkerLogoutSessionsFkh061Test {
                 null, null, null, null, null, null, auditLogService);
     }
 
+    private static final UUID COMPANY_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
+
+    /**
+     * FKH-061 round-3 (reviewer WARNING): the session MUST carry a company, because
+     * worker_session.company_id is NOT NULL (WorkerSession.java:38 @JoinColumn(nullable=false)).
+     * A company-less session would only exercise the defensive else-branch and leave the real
+     * production path (tenant-scoped logForCompany) uncovered.
+     */
     private static WorkerSession openSession(Long id) {
         return WorkerSession.builder()
                 .id(id)
+                .company(Company.builder().id(COMPANY_ID).build())
                 .loginAt(LocalDateTime.now().minusHours(1))
                 .logoutAt(null)
                 .build();
@@ -99,10 +112,15 @@ class WorkerLogoutSessionsFkh061Test {
         assertThat(saved).allSatisfy(s -> assertThat(s.getLogoutAt()).isNotNull());
 
         // Pin the audit contract: the bulk close must leave a trace (reviewer NIT 1).
-        verify(auditLogService).log(
+        // FKH-061 round-3 (reviewer WARNING): pin the TENANT-SCOPED overload. Asserting
+        // logForCompany (not the 3-arg log()) is what proves multi-tenant isolation
+        // (invariant #1) holds here — the 3-arg overload resolves companyId from the
+        // SecurityContext, which is empty on the blacklisted-token JWT fallback branch.
+        verify(auditLogService).logForCompany(
                 org.mockito.ArgumentMatchers.eq("WORKER_SESSION_BULK_CLOSED"),
                 org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString());
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(COMPANY_ID));
     }
 
     @Test
