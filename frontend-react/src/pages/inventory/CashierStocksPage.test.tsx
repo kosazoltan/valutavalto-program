@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   currencyList: vi.fn(),
   exchangeRateList: vi.fn(),
   appMode: vi.fn(),
+  vaultTurnoverDaily: vi.fn(),
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }))
 
@@ -20,6 +21,11 @@ vi.mock('../../services/api/index', () => ({
   branchApi: { listActive: mocks.branchListActive, listMyTerritory: mocks.branchListMyTerritory },
   currencyApi: { list: mocks.currencyList },
   exchangeRateApi: { list: mocks.exchangeRateList },
+}))
+
+// FKH-066: the turnover columns now come from the vault-daily turnover endpoint, not movement-log.
+vi.mock('../../services/api/vault-turnover', () => ({
+  vaultTurnoverApi: { daily: (...args: unknown[]) => mocks.vaultTurnoverDaily(...args) },
 }))
 
 vi.mock('../../hooks/useAppMode', () => ({ useAppMode: () => ({ mode: mocks.appMode() }) }))
@@ -94,6 +100,7 @@ describe('CashierStocksPage (FK-007/008)', () => {
     mocks.exchangeRateList.mockResolvedValue([])
     // FK-1: a legördülő forrása a my-territory lista (a pénztárak + az értéktár — utóbbi kiszűrve).
     mocks.branchListMyTerritory.mockResolvedValue(BRANCHES)
+    mocks.vaultTurnoverDaily.mockResolvedValue({ byCurrency: [] })
     // FK-040: alapértelmezésben értéktáros (ertektar) mód — a teljes nézet (felső táblázat + kártyák).
     mocks.appMode.mockReturnValue('ertektar')
   })
@@ -238,11 +245,12 @@ describe('CashierStocksPage (FK-007/008)', () => {
     await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
     expect(screen.getByText('Körzet összesen')).toBeInTheDocument()
     expect(mocks.exchangeRateList).toHaveBeenCalled()
-    await waitFor(() =>
-      expect(mocks.apiGet).toHaveBeenCalledWith(
-        '/inventory-movements/movement-log',
-        expect.anything(),
-      ),
+    // FKH-066: coverage inherited from the movement-log assertion - the turnover data is still
+    // fetched in ertektar mode, only its SOURCE changed to the actual BUY/SELL turnover.
+    await waitFor(() => expect(mocks.vaultTurnoverDaily).toHaveBeenCalled())
+    expect(mocks.apiGet).not.toHaveBeenCalledWith(
+      '/inventory-movements/movement-log',
+      expect.anything(),
     )
   })
 
@@ -250,5 +258,44 @@ describe('CashierStocksPage (FK-007/008)', () => {
     mocks.appMode.mockReturnValue(undefined as unknown as string)
     render(<CashierStocksPage />)
     await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
+  })
+
+  // --- FKH-066: tényleges vétel/eladás forgalom + kezelési díj ---
+
+  it('FKH-066 FR-3: a Forgalom oszlopok a tényleges BUY/SELL forgalmat mutatják, nem banki mozgást', async () => {
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      byCurrency: [{ currencyCode: 'EUR', buyHuf: 1234567, sellHuf: 890123, fee: 4500 }],
+    })
+    render(<CashierStocksPage />)
+
+    await waitFor(() => expect(mocks.vaultTurnoverDaily).toHaveBeenCalled())
+    // A movement-log forrás teljesen kikerült erről a nézetről (spec: "nem marad meg semmilyen formában").
+    expect(mocks.apiGet).not.toHaveBeenCalledWith(
+      '/inventory-movements/movement-log',
+      expect.anything(),
+    )
+    const table = await screen.findByText('Részletes pénztári készlet')
+    expect(table).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('cashier-stock-fee-EUR')).toBeInTheDocument())
+  })
+
+  it('FKH-066 FR-4: a Kezelési díj oszlop a válasz fee mezőjéből, HUF-ra kerekítve jelenik meg', async () => {
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      byCurrency: [{ currencyCode: 'EUR', buyHuf: 0, sellHuf: 0, fee: 4503 }],
+    })
+    render(<CashierStocksPage />)
+
+    // roundHuf: 5 Ft-ra kerekítés (4503 -> 4505), a repo pénzügyi invariánsa szerint.
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent('4505'),
+    )
+  })
+
+  it('FKH-066 NFR-1: ha a forgalom-lekérdezés hibázik, a nézet nem omlik össze (0 díj marad)', async () => {
+    mocks.vaultTurnoverDaily.mockRejectedValue(new Error('territory 404'))
+    render(<CashierStocksPage />)
+
+    await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
+    expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent('0')
   })
 })
