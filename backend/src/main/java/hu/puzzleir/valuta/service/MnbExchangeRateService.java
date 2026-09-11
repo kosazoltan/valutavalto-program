@@ -180,6 +180,26 @@ public class MnbExchangeRateService {
         return Optional.ofNullable(rates.get(currencyCode));
     }
 
+    /**
+     * FKH-063: has the MNB EVER quoted this currency (any date, {@code source='MNB'})?
+     *
+     * <p>Distinguishes "MNB does not quote this currency at all" (a hand-entered rate is the only
+     * possible source, and legitimate) from "the MNB cache happens to be missing this rate for
+     * this period" (must fail closed, because the fix is to repair the MNB import, not to
+     * substitute another rate source into a statutory valuation).</p>
+     *
+     * <p>Deliberately NOT {@code getRatesForDate} / {@code getRateForCurrency}: those are
+     * date-scoped and would answer "no" for exactly the gap case we must reject. This is one
+     * indexed read against the cache table and never triggers a SOAP call.</p>
+     */
+    @Transactional(readOnly = true)
+    public boolean isQuotedByMnb(String currencyCode) {
+        if (currencyCode == null) {
+            return false;
+        }
+        return cacheRepository.existsByCurrencyCodeAndSource(currencyCode, MNB_SOURCE);
+    }
+
     // ============ SOAP + CACHE LOGIKA ============
 
     /**

@@ -38,6 +38,14 @@ public interface MnbExchangeRateCacheRepository extends JpaRepository<MnbExchang
     boolean existsByRateDate(LocalDate rateDate);
 
     /**
+     * FKH-063: has this source ever cached a rate for this currency (any date)?
+     *
+     * <p>Used to tell "MNB does not quote this currency at all" from "the MNB cache is missing
+     * this rate right now" — only the former may fall back to a hand-entered rate.</p>
+     */
+    boolean existsByCurrencyCodeAndSource(String currencyCode, String source);
+
+    /**
      * Utolsó elérhető árfolyam keresése egy valutához (fallback).
      * Ha az adott napra nincs, a legutolsó cache-elt értéket adja vissza.
      */

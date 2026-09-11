@@ -46104,6 +46104,12 @@
           },
           "profitHuf": {
             "type": "number"
+          },
+          "openingRateSource": {
+            "type": "string"
+          },
+          "closingRateSource": {
+            "type": "string"
           }
         }
       },

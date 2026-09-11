@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -29,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +50,16 @@ public class MnbSettlementRateService {
     private static final String ENTITY_TYPE = "MnbSettlementRate";
     private static final String AUTH_ERROR = "VV-AUTH-001";
     private static final String VALID_ERROR = "VV-VALID-028";
+
+    /**
+     * FKH-063: FK-028 records the boundary rate on the day AFTER the decade boundary
+     * ("mindig másnap", FK-028-v2-spec.md:109), so an as-of lookup for date D must still see a
+     * snapshot recorded on D+1.
+     */
+    private static final int SETTLEMENT_RECORDING_LAG_DAYS = 1;
+
+    /** FKH-063: business time zone; never {@code ZoneId.systemDefault()} (prod UTC vs dev CET). */
+    private static final ZoneId BUDAPEST = ZoneId.of("Europe/Budapest");
 
     private final MnbSettlementRateRepository rateRepository;
     private final MnbSettlementRateHistoryRepository historyRepository;
@@ -319,6 +332,45 @@ public class MnbSettlementRateService {
             return null;
         }
         return code.trim().toUpperCase(Locale.ROOT);
+    }
+
+    /**
+     * FKH-063: the settlement rate usable for valuing stock on {@code valuationDate}.
+     *
+     * <p>Reads the HISTORY table, never the current {@code mnb_settlement_rate} row: the current
+     * row holds one value per currency, so a past decade would be valued with today's rate and
+     * regeneration of an old report would not be deterministic.</p>
+     *
+     * <p>As-of window: the newest snapshot recorded strictly before the start of
+     * {@code valuationDate + SETTLEMENT_RECORDING_LAG_DAYS + 1} in {@code Europe/Budapest}.
+     * FK-028 records the boundary rate on the FOLLOWING day ("mindig másnap",
+     * FK-028-v2-spec.md:109), so a date-exclusive window would always miss the rate that belongs
+     * to the boundary, while a wider one could pull in a rate recorded for a later period.</p>
+     *
+     * <p>A snapshot with {@code official_rate <= 0} is ABSENT, not a rate: V353 seeds 0 as the
+     * "never recorded" marker (FR-8) and {@link #validateRequest} (the {@code signum() <= 0}
+     * rejection) makes a genuine zero impossible to write through the FK-028 screen. The filter
+     * lives in the query predicate so a zero can never reach a valuation multiply.</p>
+     *
+     * <p>Internal valuation read: {@code companyId} is passed explicitly by the caller, which has
+     * already performed its own IDOR check ({@code DecadeReportService} lines 73-76). There is no
+     * HTTP surface and therefore no role assertion here.</p>
+     *
+     * @return the rate for one unit of the currency, or empty when the vault has recorded none
+     */
+    @Transactional(readOnly = true)
+    public Optional<BigDecimal> findSettlementRateAsOf(UUID companyId, String currencyCode, LocalDate valuationDate) {
+        if (companyId == null || currencyCode == null || valuationDate == null) {
+            return Optional.empty();
+        }
+        Instant asOfExclusive = valuationDate
+                .plusDays(SETTLEMENT_RECORDING_LAG_DAYS + 1L)
+                .atStartOfDay(BUDAPEST)
+                .toInstant();
+        return historyRepository
+                .findFirstByCompanyIdAndCurrencyCodeAndOfficialRateGreaterThanAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        companyId, normalizeCode(currencyCode), BigDecimal.ZERO, asOfExclusive)
+                .map(MnbSettlementRateHistory::getOfficialRate);
     }
 
     private String json(String value) {

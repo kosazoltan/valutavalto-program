@@ -69,6 +69,14 @@ class DecadeReportZeroBalanceFkh061Test {
     private DailyBalanceRepository dailyBalanceRepository;
     @Mock
     private MnbExchangeRateService mnbExchangeRateService;
+    /**
+     * FKH-063: DecadeReportService gained a second rate source. Left unstubbed here, so
+     * {@code findSettlementRateAsOf} returns an empty Optional and the fail-closed throw of
+     * {@code nonZeroStockStillRequiresMnbRate} still asserts the "no rate from ANY source"
+     * behaviour this test was written for.
+     */
+    @Mock
+    private MnbSettlementRateService mnbSettlementRateService;
 
     private final UUID BRANCH_ID = UUID.randomUUID();
     private final UUID COMPANY_ID = UUID.randomUUID();
@@ -184,7 +192,10 @@ class DecadeReportZeroBalanceFkh061Test {
 
             assertThatThrownBy(() -> service.generateDecadeReport(BRANCH_ID, 2026, DECADE))
                     .isInstanceOf(ValidationException.class)
-                    .hasMessageContaining("Hiányzó MNB árfolyam")
+                    // FKH-063: the message now names BOTH exhausted sources (MNB cache + walk-back
+                    // AND the FK-028 settlement rate). The asserted behaviour is unchanged:
+                    // non-zero stock without any usable rate still fails closed.
+                    .hasMessageContaining("Hiányzó értékelési árfolyam")
                     .hasMessageContaining("EUR");
         }
     }

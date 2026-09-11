@@ -22,4 +22,8 @@ public class DecadeReportLineDto {
     private BigDecimal closingMnbRate;
     private BigDecimal closingValueHuf;
     private BigDecimal profitHuf;
+    /** FKH-063: provenance of openingMnbRate — MNB | MANUAL_SETTLEMENT | null (no rate resolved). */
+    private String openingRateSource;
+    /** FKH-063: provenance of closingMnbRate — MNB | MANUAL_SETTLEMENT | null (no rate resolved). */
+    private String closingRateSource;
 }

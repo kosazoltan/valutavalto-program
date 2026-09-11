@@ -14,6 +14,9 @@ export interface DecadeReportLineDto {
   mnbRate: number
   openingValueHuf: number
   closingValueHuf: number
+  /** FKH-063: provenance of the rates — 'MNB' | 'MANUAL_SETTLEMENT' | undefined (zero stock). */
+  openingRateSource?: string
+  closingRateSource?: string
 }
 
 export interface DecadeReportDto {

@@ -19806,6 +19806,8 @@ export interface components {
       closingMnbRate?: number
       closingValueHuf?: number
       profitHuf?: number
+      openingRateSource?: string
+      closingRateSource?: string
     }
     GenerateDecadeReportDto: {
       /** Format: uuid */
