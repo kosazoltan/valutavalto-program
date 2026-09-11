@@ -61,6 +61,19 @@ public class DecadeReportLine {
     @Builder.Default
     private BigDecimal profitHuf = BigDecimal.ZERO;
 
+    /**
+     * FKH-063: provenance of {@link #openingMnbRate} — {@code MNB} (official cache) or
+     * {@code MANUAL_SETTLEMENT} (FK-028 hand-entered settlement rate). {@code null} when no rate
+     * was resolved at all (zero stock, see FKH-061) or for rows written before V391. A
+     * hand-entered rate must never be presented as an official MNB rate (invariant #5).
+     */
+    @Column(name = "opening_rate_source", length = 24)
+    private String openingRateSource;
+
+    /** FKH-063: provenance of {@link #closingMnbRate}; see {@link #openingRateSource}. */
+    @Column(name = "closing_rate_source", length = 24)
+    private String closingRateSource;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

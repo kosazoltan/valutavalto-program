@@ -62,6 +62,8 @@ class DecadeReportParityTest {
     @Mock private BranchRepository branchRepository;
     @Mock private DailyBalanceRepository dailyBalanceRepository;
     @Mock private MnbExchangeRateService mnbExchangeRateService;
+    /** FKH-063: second rate source; unstubbed = empty, so a8 still asserts the fail-closed throw. */
+    @Mock private MnbSettlementRateService mnbSettlementRateService;
 
     @ParameterizedTest(name = "D1/D2: dekád {1} -> {2}..{3}")
     @CsvSource({

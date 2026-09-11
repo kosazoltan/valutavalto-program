@@ -51,6 +51,12 @@ public class DecadeReportService {
     private final BranchRepository branchRepository;
     private final DailyBalanceRepository dailyBalanceRepository;
     private final MnbExchangeRateService mnbExchangeRateService;
+    /**
+     * FKH-063: second, company-scoped rate source for currencies MNB does not quote
+     * (BAM/BRL/EUA/ILS/MXN/NZD/RSD/THB — the main vault records those by hand on the FK-028
+     * screen). Consulted only after the MNB cache and its 7-day walk-back have both missed.
+     */
+    private final MnbSettlementRateService mnbSettlementRateService;
 
     /**
      * Dekádjelentés generálása. Összesíti az adott 10 napos időszak tranzakcióit.
@@ -245,13 +251,16 @@ public class DecadeReportService {
             // getUnitRate ValidationException-t dobott, ami megbuktatta az egész dekádjelentést —
             // holott az érték minden árfolyamon 0 HUF lenne. Nulla egyenlegnél tehát null az
             // árfolyam (nem hazudunk értéket) és 0.00 az érték. NEM nulla készletnél az árfolyam
-            // továbbra is KÖTELEZŐ: ott a getUnitRate hibája jogos (5. invariáns).
-            BigDecimal openingRate = openingBal.signum() == 0
+            // továbbra is KÖTELEZŐ: ott a resolveUnitRate hibája jogos (5. invariáns).
+            ResolvedRate openingResolved = openingBal.signum() == 0
                 ? null
-                : getUnitRate(openingRates, currency, periodStart);
-            BigDecimal closingRate = closingBal.signum() == 0
+                : resolveUnitRate(openingRates, companyId, currency, periodStart);
+            ResolvedRate closingResolved = closingBal.signum() == 0
                 ? null
-                : getUnitRate(closingRates, currency, periodEnd);
+                : resolveUnitRate(closingRates, companyId, currency, periodEnd);
+
+            BigDecimal openingRate = openingResolved == null ? null : openingResolved.rate();
+            BigDecimal closingRate = closingResolved == null ? null : closingResolved.rate();
 
             // Felértékelés HUF-ra
             BigDecimal openingValueHuf = openingRate == null
@@ -272,6 +281,8 @@ public class DecadeReportService {
                 .closingMnbRate(closingRate)
                 .closingValueHuf(closingValueHuf)
                 .profitHuf(profitHuf)
+                .openingRateSource(openingResolved == null ? null : openingResolved.source())
+                .closingRateSource(closingResolved == null ? null : closingResolved.source())
                 .build();
 
             report.getLines().add(line);
@@ -290,15 +301,36 @@ public class DecadeReportService {
     }
 
     /**
-     * MNB árfolyam kinyerése 1 egységre vetítve.
-     * Ha az adott nap térképében nincs árfolyam (pl. hétvége, ünnepnap),
-     * legfeljebb 7 nappal visszamegy és onnan tölti be az árfolyamot.
-     * Csak akkor dob kivételt, ha 7 napos visszalépés után sem talál adatot.
+     * A resolved valuation rate together with its provenance (FKH-063).
+     *
+     * @param rate   the rate for one unit of the currency
+     * @param source {@code MNB} (official cache) or {@code MANUAL_SETTLEMENT} (FK-028 hand-entered)
      */
-    private BigDecimal getUnitRate(Map<String, MnbExchangeRateCache> rates, String currency, LocalDate date) {
+    private record ResolvedRate(BigDecimal rate, String source) { }
+
+    /** FKH-063: provenance marker for a rate taken from the official MNB cache. */
+    private static final String RATE_SOURCE_MNB = "MNB";
+    /** FKH-063: provenance marker for a rate taken from the FK-028 settlement-rate history. */
+    private static final String RATE_SOURCE_MANUAL = "MANUAL_SETTLEMENT";
+
+    /**
+     * Értékelési árfolyam kinyerése 1 egységre vetítve, a forrás megjelölésével.
+     *
+     * <p>Feloldási sorrend — az MNB MINDIG elsőbbséget élvez:</p>
+     * <ol>
+     *   <li>az adott nap MNB térképe ({@code source='MNB'} cache),</li>
+     *   <li>legfeljebb 7 napos visszalépés ugyanabban a cache-ben (hétvége, ünnepnap),</li>
+     *   <li>FKH-063: a cég kézzel rögzített FK-028 elszámolási árfolyama az adott napra.</li>
+     * </ol>
+     *
+     * <p>Ha egyik forrás sem ad árfolyamot, {@link ValidationException} — nem-nulla készletet
+     * SOHA nem értékelünk 0 HUF-on (5. invariáns). A hívó a nulla készletet már kiszűrte.</p>
+     */
+    private ResolvedRate resolveUnitRate(Map<String, MnbExchangeRateCache> rates, UUID companyId,
+                                         String currency, LocalDate date) {
         MnbExchangeRateCache rate = rates.get(currency);
         if (rate != null) {
-            return rate.getRatePerUnit();
+            return new ResolvedRate(rate.getRatePerUnit(), RATE_SOURCE_MNB);
         }
 
         // Fallback: legfeljebb 7 nappal visszamenő keresés
@@ -309,14 +341,26 @@ public class DecadeReportService {
             if (fallbackRate != null) {
                 log.info("MNB árfolyam fallback: {} dátumra nincs {} árfolyam, {} napot visszalépve ({})",
                     date, currency, i, date.minusDays(i));
-                return fallbackRate.getRatePerUnit();
+                return new ResolvedRate(fallbackRate.getRatePerUnit(), RATE_SOURCE_MNB);
             }
         }
 
+        // FKH-063: az MNB (és a Raiffeisen) nem jegyzi ezeket a valutákat (BAM/BRL/EUA/ILS/MXN/
+        // NZD/RSD/THB) — a főértéktár kézzel rögzíti az FK-028 képernyőn. A kézi árfolyam a
+        // cég-szkópos elszámolási árfolyam history-ból jön, as-of az értékelési napra.
+        Optional<BigDecimal> manualRate =
+            mnbSettlementRateService.findSettlementRateAsOf(companyId, currency, date);
+        if (manualRate.isPresent()) {
+            log.info("FKH-063 kézi elszámolási árfolyam használva: currency={}, dátum={}, forrás={}",
+                currency, date, RATE_SOURCE_MANUAL);
+            return new ResolvedRate(manualRate.get(), RATE_SOURCE_MANUAL);
+        }
+
         throw new ValidationException(
-            "Hiányzó MNB árfolyam a dekádjelentés generálásához: " + currency +
-            " (dátum: " + date + ", 7 napos visszalépés után sem elérhető). " +
-            "Ellenőrizze, hogy az MNB árfolyamok be vannak-e töltve az adott időszakra!"
+            "Hiányzó értékelési árfolyam a dekádjelentéshez: " + currency +
+            " (dátum: " + date + "). Nincs MNB árfolyam (7 napos visszalépés után sem) és " +
+            "nincs rögzített MNB elszámolási árfolyam sem. " +
+            "Rögzítse a Főértéktár → MNB árfolyamok rögzítése oldalon."
         );
     }
 
@@ -532,6 +576,8 @@ public class DecadeReportService {
             .closingMnbRate(line.getClosingMnbRate())
             .closingValueHuf(line.getClosingValueHuf())
             .profitHuf(line.getProfitHuf())
+            .openingRateSource(line.getOpeningRateSource())
+            .closingRateSource(line.getClosingRateSource())
             .build();
     }
 }
