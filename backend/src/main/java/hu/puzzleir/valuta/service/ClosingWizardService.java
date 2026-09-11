@@ -412,7 +412,14 @@ public class ClosingWizardService {
                         wizard.getId(), wizard.getStartedAt(), expireMinutes);
 
                 if (auditLogService != null && auditCompanyId != null) {
-                    auditLogService.logForCompany(
+                    // FKH-061 (PR #1740 review): REQUIRES_NEW. logForCompany uses default
+                    // REQUIRED propagation, so a hash-chain or DB failure inside the audit write
+                    // would mark THIS shared scheduler transaction rollback-only; the per-item
+                    // catch below cannot clear that flag, so the commit would roll back the
+                    // already-successful transitions of every other wizard while the loop still
+                    // reported them as expired. That is the same rollback-only poisoning class
+                    // this whole FKH-061 series fixes, so the audit gets its own transaction.
+                    auditLogService.logInNewTransactionForCompany(
                             "CLOSING_WIZARD_AUTO_EXPIRED",
                             String.format(
                                     "{\"KAT\":\"TX\",\"error_code\":\"VV-BIZ-011\","
