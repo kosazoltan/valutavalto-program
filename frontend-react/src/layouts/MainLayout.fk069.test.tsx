@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { menuGroups } from './menuGroups'
+import {
+  isMenuGroupVisible,
+  isMenuItemVisible,
+  resolveVisibleMenuGroups,
+  type MenuVisibilityContext,
+} from './menuVisibility'
+import type { AppMode } from '../types/appMode'
 
 /**
  * FK-069 — Navigációs menü csoportonkénti összecsukása.
@@ -77,11 +84,123 @@ describe('FK-069 FR-3 — chevron mutatja az állapotot', () => {
 })
 
 describe('FK-069 FR-5 / NFR-2 — RBAC szűrés és FK-057 kontraktus érintetlen', () => {
-  it('a csoport- és item-szűrés változatlanul a menuVisibility helpereket hívja', () => {
-    expect(src).toMatch(/\.filter\(\(group\) => isMenuGroupVisible\(group, menuVisibilityCtx\)\)/)
-    expect(src).toMatch(
-      /\.filter\(\(item\) => isMenuItemVisible\(item, group, menuVisibilityCtx\)\)/,
+  // #1744: this used to regex-match the SOURCE TEXT of MainLayout.tsx
+  // (`.filter((group) => isMenuGroupVisible(group, menuVisibilityCtx))`). When the
+  // kanban #8 zero-visible fallback moved filtering into `resolveVisibleMenuGroups`,
+  // the regex broke WHILE the guarded guarantee stayed intact - the test was pinning
+  // the shape of the implementation, not its behaviour. The cases below assert the
+  // actual RBAC outcome, so they survive the next refactor too.
+  const ctxFor = (canonicalRoles: string[], appMode: AppMode = 'full'): MenuVisibilityContext => ({
+    appMode,
+    hasCanonicalRole: (role: string) => canonicalRoles.includes(role),
+    hasRole: () => true,
+    featureFlags: {},
+  })
+
+  /** Item paths the layout would actually render for this context. */
+  const renderedPaths = (ctx: MenuVisibilityContext): string[] => {
+    const { groups, fallbackApplied } = resolveVisibleMenuGroups(menuGroups, ctx)
+    return groups.flatMap((group) =>
+      group.items
+        .filter((item) => (fallbackApplied ? true : isMenuItemVisible(item, group, ctx)))
+        .map((item) => item.path),
     )
+  }
+
+  it('a csoport-szűrés a menuVisibility szabályait érvényesíti (jogosulatlan szerep → nincs csoport)', () => {
+    const { groups, fallbackApplied } = resolveVisibleMenuGroups(menuGroups, ctxFor([]))
+
+    // In `full` mode there is no fallback (FALLBACK_GROUP_LABEL_BY_MODE omits it on
+    // purpose), so a user without roles sees no group at all.
+    expect(fallbackApplied).toBe(false)
+    expect(groups).toEqual([])
+  })
+
+  it('minden visszaadott csoport és item átmegy az isMenuGroupVisible / isMenuItemVisible szűrőn', () => {
+    const ctx = ctxFor(['foertektar'])
+    const { groups, fallbackApplied } = resolveVisibleMenuGroups(menuGroups, ctx)
+
+    expect(fallbackApplied).toBe(false)
+    expect(groups.length).toBeGreaterThan(0)
+    for (const group of groups) {
+      expect(isMenuGroupVisible(group, ctx)).toBe(true)
+      // MainLayout filters items with this very predicate when fallbackApplied === false.
+      const visibleItems = group.items.filter((item) => isMenuItemVisible(item, group, ctx))
+      expect(visibleItems.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('a szűkebb szerep szigorúan kevesebb csoportot lát, mint a felügyeleti (least-privilege)', () => {
+    const supervisory = resolveVisibleMenuGroups(menuGroups, ctxFor(['foertektar'])).groups
+    const narrow = resolveVisibleMenuGroups(menuGroups, ctxFor(['arfolyam_nezo'])).groups
+
+    expect(narrow.length).toBeLessThan(supervisory.length)
+  })
+
+  it('a rejtett (hidden) bejegyzés nem jelenik meg a központi felület navigációjában', () => {
+    // Fixture guard: without at least one `hidden` entry this would be vacuously true.
+    const hiddenEntries = menuGroups.flatMap((group) =>
+      group.items.filter((item) => item.hidden).map((item) => ({ group, item })),
+    )
+    expect(hiddenEntries.length).toBeGreaterThan(0)
+
+    const paths = renderedPaths(ctxFor(['foertektar']))
+    expect(paths.length).toBeGreaterThan(0)
+    for (const { item } of hiddenEntries) {
+      expect(paths).not.toContain(item.path)
+    }
+  })
+
+  it('a hidden flag lokál módban is elrejt: szerepkör-alapú (nem felügyeleti) user nem látja', () => {
+    // The `full`-mode case above cannot isolate the `hidden` rule, because every hidden
+    // entry currently lives in a penztar/ertektar-scoped group that `full` excludes by
+    // mode anyway. Here mode and roles both PERMIT the entry, so visibility is decided by
+    // `hidden` alone - the assertion fails if that rule is dropped.
+    const localCtx: MenuVisibilityContext = {
+      appMode: 'ertektar',
+      hasCanonicalRole: (role: string) => role === 'ertektar',
+      hasRole: () => true,
+      featureFlags: {},
+    }
+    const hiddenInMode = menuGroups
+      .filter((group) => !group.modes || group.modes.includes('ertektar'))
+      .flatMap((group) =>
+        group.items.filter((item) => item.hidden).map((item) => ({ group, item })),
+      )
+    expect(hiddenInMode.length).toBeGreaterThan(0)
+
+    for (const { group, item } of hiddenInMode) {
+      expect({ path: item.path, visible: isMenuItemVisible(item, group, localCtx) }).toEqual({
+        path: item.path,
+        visible: false,
+      })
+    }
+  })
+
+  it('lokál módban a felügyeleti bypass MEGMUTATJA a rejtett bejegyzést (a fenti teszt nem vacuous)', () => {
+    // Counter-case proving the previous test measures the `hidden` rule and not some
+    // unrelated exclusion: with a supervisory role the very same entries become visible.
+    const supervisoryCtx = ctxFor(['foertektar'], 'ertektar')
+    const hiddenInMode = menuGroups
+      .filter((group) => !group.modes || group.modes.includes('ertektar'))
+      .flatMap((group) =>
+        group.items.filter((item) => item.hidden).map((item) => ({ group, item })),
+      )
+
+    const visibleUnderBypass = hiddenInMode.filter(({ group, item }) =>
+      isMenuItemVisible(item, group, supervisoryCtx),
+    )
+    expect(visibleUnderBypass.length).toBe(hiddenInMode.length)
+  })
+
+  it('a MainLayout a szűrt csoportokat rendereli, nem a nyers menuGroups-t', () => {
+    // Contract anchor: the layout must ITERATE the resolved list. A weaker "the
+    // identifier appears somewhere" check would still pass if the map switched back to
+    // menuGroups, so the call site itself is pinned.
+    expect(src).toMatch(/resolveVisibleMenuGroups\(/)
+    expect(src).toMatch(/resolvedGroups\.map\(/)
+    expect(src).not.toMatch(/menuGroups\.map\(\(group\)/)
+    expect(src).toMatch(/isMenuItemVisible\(item, group, menuVisibilityCtx\)/)
   })
 
   it('a <nav> és <main> class-stringje változatlan (FK-057)', () => {
