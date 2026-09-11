@@ -23,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import hu.puzzleir.valuta.security.SecurityUtils;
@@ -53,8 +54,14 @@ public class DecadeReportService {
 
     /**
      * Dekádjelentés generálása. Összesíti az adott 10 napos időszak tranzakcióit.
+     *
+     * FKH-061: REQUIRES_NEW — a dekádjelentés best-effort riport-artefaktum, nem része a
+     * napzárás atomi money-láncának. Ha ez a hívás a napzárás tranzakcióján belül futna
+     * (REQUIRED), egy kivétel rollback-only-ra jelölné a külső tranzakciót, és a commit
+     * UnexpectedRollbackException-nel buknna — a napzárás "sikertelen" lenne a sikeres
+     * pénz-lépések ellenére. Saját tranzakcióban a hiba izolált marad.
      */
-    @Transactional(rollbackFor = Exception.class)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public DecadeReportDto generateDecadeReport(UUID branchId, int year, int decade) {
         if (decade < 1 || decade > 36) {
             throw new ValidationException("Érvénytelen dekád: " + decade + " (1-36 között kell legyen)");
@@ -231,15 +238,28 @@ public class DecadeReportService {
             BigDecimal openingBal = openingMap.getOrDefault(currency, BigDecimal.ZERO);
             BigDecimal closingBal = closingMap.getOrDefault(currency, BigDecimal.ZERO);
 
-            // MNB árfolyam lekérés (1 egységre vetítve) — fallback-kel ha nincs adott napra
-            BigDecimal openingRate = getUnitRate(openingRates, currency, periodStart);
-            BigDecimal closingRate = getUnitRate(closingRates, currency, periodEnd);
+            // MNB árfolyam lekérés (1 egységre vetítve) — fallback-kel ha nincs adott napra.
+            // FKH-061 (Defect D): NULLA készletre nem követelünk árfolyamot. A dekád-valutakészlet
+            // a napi mérleg sorokból jön, és tartalmaz olyan valutákat is, amelyeket az MNB nem
+            // jegyez (élesben BAM/RSD, mindkettő 0.00 nyitó ÉS 0.00 záró egyenleggel). Ezekre a
+            // getUnitRate ValidationException-t dobott, ami megbuktatta az egész dekádjelentést —
+            // holott az érték minden árfolyamon 0 HUF lenne. Nulla egyenlegnél tehát null az
+            // árfolyam (nem hazudunk értéket) és 0.00 az érték. NEM nulla készletnél az árfolyam
+            // továbbra is KÖTELEZŐ: ott a getUnitRate hibája jogos (5. invariáns).
+            BigDecimal openingRate = openingBal.signum() == 0
+                ? null
+                : getUnitRate(openingRates, currency, periodStart);
+            BigDecimal closingRate = closingBal.signum() == 0
+                ? null
+                : getUnitRate(closingRates, currency, periodEnd);
 
             // Felértékelés HUF-ra
-            BigDecimal openingValueHuf = openingBal.multiply(openingRate)
-                .setScale(2, RoundingMode.HALF_UP);
-            BigDecimal closingValueHuf = closingBal.multiply(closingRate)
-                .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal openingValueHuf = openingRate == null
+                ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+                : openingBal.multiply(openingRate).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal closingValueHuf = closingRate == null
+                ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
+                : closingBal.multiply(closingRate).setScale(2, RoundingMode.HALF_UP);
             BigDecimal profitHuf = closingValueHuf.subtract(openingValueHuf);
 
             DecadeReportLine line = DecadeReportLine.builder()

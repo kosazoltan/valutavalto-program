@@ -537,41 +537,61 @@ public class DailyClosingService {
         dailySessionService.closeSession(closingDate);
 
         // 3. Napi mérleg számítása (MODERN KIEGÉSZÍTÉS — Delphi napi forgalom számítás)
+        // FKH-061 (WU-4): this step writes the daily_balance rows (money aggregation,
+        // invariant #2) and every later artifact (decade report, findClosedDates) treats them as
+        // the closing's output — a closing without its balance rows is not a closing. The failure
+        // is therefore NOT swallowed: the step is atomic with the closing. The catch used to
+        // swallow it, but the callee ran in the SAME transaction, so the commit died with
+        // UnexpectedRollbackException (HTTP 500, unattributable) — the outcome was identical,
+        // only the error was meaningless. Now it is a step-named ValidationException -> HTTP 400.
         try {
             dailyBalanceService.calculateAllCurrenciesForDay(branchId, closingDate);
             log.info("Napi mérleg számítás sikeres: datum={}, iroda={}", closingDate, branchId);
+        } catch (ValidationException e) {
+            VV_LOG.error("VV-BIZ-006", "daily_closing.balance_calc_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "balance_calc"));
+            throw e;
         } catch (Exception e) {
             VV_LOG.error("VV-BIZ-006", "daily_closing.balance_calc_failed", e,
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "step", "balance_calc"));
-            warnings.add(ClosingWarning.builder()
-                    .step("balance_calc")
-                    .message("Napi mérleg számítás hiba: " + e.getMessage())
-                    .build());
-            // NEM dobunk kivételt — ne akadjon meg a zárás, csak logoljuk
+            throw new ValidationException(
+                    "Napi mérleg számítás sikertelen, a napzárás nem hajtható végre: " + e.getMessage(), e);
         }
 
         // 3.b FK-046: pénztári SZÁMZÁR (fizikailag leszámolt záró készlet) + Többlet/Hiány (TH
         //     elszámolási pénztár) bekötése a napi mérlegbe. A napi mérleg-sorok (3. lépés) már
         //     léteznek; ez a lépés tölti az actualStock/surplus/shortage mezőket pénztári irodákra.
+        // FKH-061 (WU-4): this step writes the actualStock/surplus/shortage (SZAMZAR + TH) money
+        // fields onto those same balance rows, so it is atomic with the closing too — silently
+        // accepting a half-written TH adjustment would be a financial defect. Not swallowed.
         try {
             dailyBalanceService.recordClosingAdjustments(branchId, closingDate);
+        } catch (ValidationException e) {
+            VV_LOG.error("VV-BIZ-006", "daily_closing.szamzar_th_failed", e,
+                    java.util.Map.of("closing_date", closingDate,
+                            "branch_id", branchId,
+                            "step", "szamzar_th_adjustment"));
+            throw e;
         } catch (Exception e) {
             VV_LOG.error("VV-BIZ-006", "daily_closing.szamzar_th_failed", e,
                     java.util.Map.of("closing_date", closingDate,
                             "branch_id", branchId,
                             "step", "szamzar_th_adjustment"));
-            warnings.add(ClosingWarning.builder()
-                    .step("szamzar_th_adjustment")
-                    .message("SZÁMZÁR TH igazítás hiba: " + e.getMessage())
-                    .build());
-            // NEM dobunk kivételt — ne akadjon meg a zárás (FR-7/FR-9 szellemében)
+            throw new ValidationException(
+                    "SZÁMZÁR/TH igazítás sikertelen, a napzárás nem hajtható végre: " + e.getMessage(), e);
         }
 
         // 3.c FK-052: a banki (technikai RB) BANK+/BANK− bekötés csak a teljes napzárás
         //     sikeres commitja UTÁN indul. A callback szinkron fut a commit közben, ezért a
         //     mutable warnings lista kiegészítése még látszik a visszaadott eredményben.
+        //     FKH-061 (R3): the warning log in ClosingWizardService.finalizeClosing
+        //     (ClosingWizardService.java:968-974) runs inside the STILL-OPEN transaction, so it
+        //     does NOT see warnings appended later by afterCommit callbacks — only the mutable
+        //     list serialized into the API response carries them.
         TransactionAfterCommit.run(() -> {
             try {
                 dailyBalanceService.recordVaultBankAdjustments(branchId, closingDate);
@@ -595,20 +615,28 @@ public class DailyClosingService {
         executeEveningSync(branchId, closingDate);
 
         // 6. Napi tranzakciók archiválása (legacy BfCopy + BtCopy)
-        try {
-            int archivedCount = monthlyArchiveService.archiveDailyTransactions(branchId, closingDate);
-            log.info("Napi archiválás kész: datum={}, iroda={}, archivált={}", closingDate, branchId, archivedCount);
-        } catch (Exception e) {
-            VV_LOG.error("VV-BIZ-010", "daily_closing.archive_failed", e,
-                    java.util.Map.of("closing_date", closingDate,
-                            "branch_id", branchId,
-                            "phase", "daily_archive"));
-            warnings.add(ClosingWarning.builder()
-                    .step("daily_archive")
-                    .message("Napi archiválás hiba: " + e.getMessage())
-                    .build());
-            // NEM dobunk kivételt — ne akadjon meg a zárás
-        }
+        // FKH-061 (reviewer WARNING): this call runs AFTER the main closing COMMIT. REQUIRES_NEW
+        // alone protects the closing transaction from poisoning, BUT it would commit the archive
+        // copy immediately — if any later closing step (3.b, or the wizard's
+        // saveWizardWithConflictCheck) then failed, an archive for a day that never closed would
+        // remain in the DB. Inside afterCommit the archive only starts if the closing actually
+        // committed. Idempotency (receipt/originalId) also protects a re-run.
+        TransactionAfterCommit.run(() -> {
+            try {
+                int archivedCount = monthlyArchiveService.archiveDailyTransactions(branchId, closingDate);
+                log.info("Napi archiválás kész: datum={}, iroda={}, archivált={}", closingDate, branchId, archivedCount);
+            } catch (Exception e) {
+                VV_LOG.error("VV-BIZ-010", "daily_closing.archive_failed", e,
+                        java.util.Map.of("closing_date", closingDate,
+                                "branch_id", branchId,
+                                "phase", "daily_archive"));
+                warnings.add(ClosingWarning.builder()
+                        .step("daily_archive")
+                        .message("Napi archiválás hiba: " + e.getMessage())
+                        .build());
+                // A fő zárás ekkor már commitált; az archiválás saját tranzakcióban bukott.
+            }
+        }, "FKH-061 daily archive branch=" + branchId + ", date=" + closingDate);
 
         // 6b. S1-02: Teljes napi archiválás (Delphi: HaviGyujtokbeMasolas — CimtCopy, EdatCopy, KdatCopy, WuniCopy, WzarCopy)
         try {
@@ -791,21 +819,33 @@ public class DailyClosingService {
             }
             log.info("Dekad zaras: nap={}, idoszak={}, globalDekad={}", dayOfMonth, decadePeriod, globalDecade);
 
-            // Dekádjelentés generálása (legacy DekzarCtrl)
-            try {
-                decadeReportService.generateDecadeReport(branchId, date.getYear(), globalDecade);
-                log.info("Dekadjelentes generálva: branchId={}, ev={}, dekad={}", branchId, date.getYear(), globalDecade);
-            } catch (Exception e) {
-                VV_LOG.error("VV-BIZ-009", "daily_closing.decade_report_failed", e,
-                        java.util.Map.of("branch_id", branchId,
-                                "year", date.getYear(),
-                                "decade", globalDecade));
-                warnings.add(ClosingWarning.builder()
-                        .step("decade_report")
-                        .message("Dekád jelentés hiba: " + e.getMessage())
-                        .build());
-                // NEM dobunk kivételt — ne akadjon meg a zárás
-            }
+            // FKH-061: the decade report runs AFTER the main closing COMMIT, in its own
+            // (REQUIRES_NEW) transaction. Two reasons: (1) failing inside the closing transaction
+            // would mark the outer transaction rollback-only -> UnexpectedRollbackException at
+            // commit, no matter that the exception is swallowed here; (2) the report's
+            // validateDailyClosingCompleteness check reads step 3's daily_balance rows, which are
+            // committed and visible by the time afterCommit runs. The callback is synchronous on
+            // the caller thread, so the SecurityContext (IDOR check) is still valid; a failure
+            // only produces a ClosingWarning while the main closing is already committed — the
+            // mutable warnings list stays visible in the response.
+            TransactionAfterCommit.run(() -> {
+                try {
+                    decadeReportService.generateDecadeReport(branchId, date.getYear(), globalDecade);
+                    log.info("Dekadjelentes generálva: branchId={}, ev={}, dekad={}", branchId, date.getYear(), globalDecade);
+                } catch (Exception e) {
+                    VV_LOG.error("VV-BIZ-009", "daily_closing.decade_report_failed", e,
+                            java.util.Map.of("branch_id", branchId,
+                                    "year", date.getYear(),
+                                    "decade", globalDecade));
+                    warnings.add(ClosingWarning.builder()
+                            .step("decade_report")
+                            .message("Dekád jelentés hiba: " + e.getMessage())
+                            .build());
+                    // The main closing is already committed; the decade report failed in its own
+                    // transaction — so swallowing is TRUE here: the failure cannot poison the
+                    // closing transaction.
+                }
+            }, "FKH-061 decade report branch=" + branchId + ", date=" + date);
 
             // Audit log
             auditLogService.log(

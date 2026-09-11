@@ -122,7 +122,7 @@ public class ReceiptSequenceService {
      * @param closingDate Vizsgált nap
      * @return Hiányzó bizonylat számok listája (pl. ["V001000042", "E001000017"])
      */
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public List<String> checkReceiptContinuity(UUID branchId, LocalDate closingDate) {
         List<Transaction> transactions = transactionRepository.findActiveByBranchAndDate(branchId, closingDate);
 

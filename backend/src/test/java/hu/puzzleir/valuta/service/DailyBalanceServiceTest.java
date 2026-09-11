@@ -190,8 +190,9 @@ class DailyBalanceServiceTest {
     // ============================================================
 
     @Test
-    @DisplayName("calculateAllCurrenciesForDay: egy valuta hibája nem állítja le a többit")
-    void testCalculateAllCurrencies_oneCurrencyFails_othersProcessed() {
+    @DisplayName("calculateAllCurrenciesForDay: egy valuta hibája ValidationException-t dob, "
+            + "és a részleges hibát külön tranzakcióban auditálja (FKH-061)")
+    void testCalculateAllCurrencies_oneCurrencyFails_throwsAndAuditsInNewTransaction() {
         // EUR és USD aktív
         hu.puzzleir.valuta.entity.Currency eur = new hu.puzzleir.valuta.entity.Currency();
         eur.setCode("EUR");
@@ -232,17 +233,23 @@ class DailyBalanceServiceTest {
         when(dailyBalanceRepository.save(any(DailyBalance.class)))
             .thenAnswer(inv -> inv.getArgument(0));
 
-        List<DailyBalance> results = dailyBalanceService.calculateAllCurrenciesForDay(TEST_BRANCH_ID, TEST_DATE);
+        // FKH-061 LANC-MODOSITAS: a reszleges eredmeny tobbe NEM fogadhato el csendben.
+        // Korabban a metodus visszaadta a reszleges listat, ezert a napzaras hianyzo
+        // daily_balance sorokkal ment tovabb (a WU-4 atomicitasi szerzodes megkerulheto volt,
+        // es perzisztencia-hiba eseten a tranzakcio rollback-only-ként erte el a commitot).
+        // Uj viselkedes: a hibás valutakat megnevezo ValidationException.
+        assertThatThrownBy(() -> dailyBalanceService.calculateAllCurrenciesForDay(TEST_BRANCH_ID, TEST_DATE))
+            .isInstanceOf(hu.puzzleir.valuta.exception.ValidationException.class)
+            .hasMessageContaining("USD");
 
-        // Csak EUR sikerült
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getCurrencyCode()).isEqualTo("EUR");
-
-        // Audit log rögzítve a részleges hibáról
-        verify(auditLogService).log(
+        // FKH-061 round-3: the audit MUST use the REQUIRES_NEW overload, otherwise the throw
+        // above rolls the audit row back together with the caller's transaction and the forensic
+        // record of the failure is lost. Pinning the overload, not just the action name.
+        verify(auditLogService).logInNewTransactionForCompany(
             eq("DAILY_BALANCE_PARTIAL_FAILURE"),
             contains("USD"),
-            eq(TEST_BRANCH_ID.toString())
+            eq(TEST_BRANCH_ID.toString()),
+            any(UUID.class)
         );
     }
 

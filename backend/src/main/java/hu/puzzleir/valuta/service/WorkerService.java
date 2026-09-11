@@ -59,6 +59,8 @@ public class WorkerService {
     private final SessionBranchResolver sessionBranchResolver;
     // v2.4.5 (B6): branchId override engedélyezésének ellenőrzéséhez.
     private final WorkerBranchAccessService workerBranchAccessService;
+    /** FKH-061 (WU-8): a kilépéskori tömeges session-lezárás auditálásához. */
+    private final AuditLogService auditLogService;
 
     // HIGH FIX #16: Brute force védelem — max 5 sikertelen próba, utána 15 perc lock
     private static final int MAX_FAILED_ATTEMPTS = 5;
@@ -547,14 +549,43 @@ public class WorkerService {
             workerId = jwtToken != null ? jwtTokenProvider.getWorkerIdFromToken(jwtToken) : null;
         }
 
-        // Aktív session bezárás
+        // Aktív sessionök bezárása
+        // FKH-061 (Defect C): MINDEN nyitott sort lezárunk, nem csak egyet. A repository
+        // korábbi Optional visszatérése IncorrectResultSizeDataAccessException-t dobott, ha a
+        // workerhez több nyitott sor tartozott (élesben 1771 ilyen sor volt) — ettől a kilépés
+        // HTTP 500-zal bukott, a session nyitva maradt, és a következő belépés újabb nyitott
+        // sort hozott létre. Üres lista esetén no-op (nincs audit, nincs írás): a művelet
+        // idempotens. A tömeges zárás darabszáma audit-ponton rögzített (WORKER_SESSION_BULK_CLOSED).
         if (workerId != null) {
             final Long wId = workerId;
-            sessionRepository.findByWorkerIdAndLogoutAtIsNull(wId)
-                    .ifPresent(session -> {
-                        session.setLogoutAt(LocalDateTime.now());
-                        sessionRepository.save(session);
-                    });
+            List<WorkerSession> openSessions = sessionRepository.findByWorkerIdAndLogoutAtIsNull(wId);
+            if (!openSessions.isEmpty()) {
+                LocalDateTime logoutAt = LocalDateTime.now();
+                openSessions.forEach(session -> session.setLogoutAt(logoutAt));
+                sessionRepository.saveAll(openSessions);
+                // FKH-061 (PR review): derive the tenant scope from the SESSION row, not from
+                // the SecurityContext. Logout can run with an empty SecurityContext (blacklisted
+                // token -> the JWT fallback branch above); in that case resolveCompanyId() inside
+                // the 3-arg log() overload returns null and the audit row would be written
+                // WITHOUT tenant scope, weakening multi-tenant isolation (invariant #1).
+                // worker_session.company_id is NOT NULL, so the row always resolves it.
+                UUID auditCompanyId = openSessions.stream()
+                        .map(WorkerSession::getCompany)
+                        .filter(java.util.Objects::nonNull)
+                        .map(Company::getId)
+                        .filter(java.util.Objects::nonNull)
+                        .findFirst()
+                        .orElse(null);
+                String auditMessage = openSessions.size()
+                        + " nyitott worker session zarva a kilepeskor (bulk)";
+                if (auditCompanyId != null) {
+                    auditLogService.logForCompany("WORKER_SESSION_BULK_CLOSED",
+                        auditMessage, wId.toString(), auditCompanyId);
+                } else {
+                    auditLogService.log("WORKER_SESSION_BULK_CLOSED",
+                        auditMessage, wId.toString());
+                }
+            }
         }
 
         // 🔴 Token blacklisting — a JWT tokenId-t visszavonjuk

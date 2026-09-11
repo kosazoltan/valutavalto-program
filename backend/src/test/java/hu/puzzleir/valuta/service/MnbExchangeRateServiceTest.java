@@ -1,7 +1,9 @@
 package hu.puzzleir.valuta.service;
 
 import hu.puzzleir.valuta.entity.MnbExchangeRateCache;
+import hu.puzzleir.valuta.repository.CurrencyRepository;
 import hu.puzzleir.valuta.repository.MnbExchangeRateCacheRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +37,20 @@ class MnbExchangeRateServiceTest {
 
     @Mock
     private MnbExchangeRateCacheRepository cacheRepository;
+
+    /**
+     * FKH-061 (WU-6/R1): a service konstruktor-függősége bővült a CurrencyRepository-val
+     * (cache-teljesség vizsgálata). Default stub: az aktív valuta-lista üres → a cache-t
+     * teljesnek tekintjük, így a meglévő cache/fallback tesztek viselkedése változatlan.
+     */
+    @Mock
+    private CurrencyRepository currencyRepository;
+
+    @BeforeEach
+    void stubActiveCurrenciesEmpty() {
+        when(currencyRepository.findByActiveTrueOrderByDisplayOrderAsc())
+                .thenReturn(Collections.emptyList());
+    }
 
     // ============ XML PARSING TESZTEK ============
 
@@ -127,7 +143,7 @@ class MnbExchangeRateServiceTest {
                 .unit(1)
                 .build();
 
-        when(cacheRepository.findByRateDate(date)).thenReturn(List.of(cachedEur));
+        when(cacheRepository.findByRateDateAndSource(date, "MNB")).thenReturn(List.of(cachedEur));
 
         Map<String, MnbExchangeRateCache> result = mnbExchangeRateService.getRatesForDate(date);
 
@@ -144,7 +160,7 @@ class MnbExchangeRateServiceTest {
         LocalDate date = LocalDate.of(2026, 3, 10);
 
         // Nincs pontos nap
-        when(cacheRepository.findByRateDate(date)).thenReturn(Collections.emptyList());
+        when(cacheRepository.findByRateDateAndSource(date, "MNB")).thenReturn(Collections.emptyList());
 
         // Fallback
         MnbExchangeRateCache fallbackEur = MnbExchangeRateCache.builder()
@@ -154,7 +170,7 @@ class MnbExchangeRateServiceTest {
                 .unit(1)
                 .build();
 
-        when(cacheRepository.findLatestRates(date)).thenReturn(List.of(fallbackEur));
+        when(cacheRepository.findLatestRatesBySource(date, "MNB")).thenReturn(List.of(fallbackEur));
 
         Map<String, MnbExchangeRateCache> result = mnbExchangeRateService.getRatesForDate(date);
 

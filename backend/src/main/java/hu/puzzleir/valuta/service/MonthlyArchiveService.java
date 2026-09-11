@@ -11,6 +11,7 @@ import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -144,6 +145,7 @@ public class MonthlyArchiveService {
      * @param closingDate A zárt nap dátuma
      * @return Archivált tranzakciók száma (duplikátumokat kihagyva)
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public int archiveDailyTransactions(UUID branchId, LocalDate closingDate) {
         String archiveMonth = YearMonth.from(closingDate).format(MONTH_FORMAT);
 
