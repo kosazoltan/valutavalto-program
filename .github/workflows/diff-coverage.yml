@@ -68,13 +68,18 @@ jobs:
         if: steps.changed.outputs.run == 'true'
         # BLOCKING: no `|| true` - that swallowed the non-zero exit of --fail-under and made the
         # threshold decorative. diff-cover exits 1 below the threshold, which fails the job.
+        #
+        # Run from the REPO ROOT, not from backend/. `git diff --name-only` yields paths like
+        # `backend/src/main/java/...`, so a `cd backend` + `--src-roots src/main/java` pair can
+        # never match them: diff-cover printed "No lines with coverage information in this diff."
+        # and exited 0 for EVERY backend PR - a permanently vacuous gate. Measured on the FK-111
+        # range: from backend/ it reported nothing; from the root it reports 115 lines / 99%.
         run: |
-          cd backend
-          diff-cover target/site/jacoco/jacoco.xml \
+          diff-cover backend/target/site/jacoco/jacoco.xml \
             --compare-branch=origin/${{ github.base_ref }} \
             --fail-under=${{ env.DIFF_COVERAGE_MIN }} \
-            --markdown-report ../backend-diff-cover.md \
-            --src-roots src/main/java
+            --markdown-report backend-diff-cover.md \
+            --src-roots backend/src/main/java
       - name: Job summary (backend)
         if: always() && steps.changed.outputs.run == 'true'
         run: |
@@ -127,12 +132,15 @@ jobs:
       - name: Diff-coverage kiértékelés (frontend)
         if: steps.changed.outputs.run == 'true'
         # BLOCKING: see the backend job above - `|| true` would neutralise --fail-under.
+        # Also run from the REPO ROOT so --src-roots matches the `backend/...`-style paths that
+        # `git diff --name-only` produces. This job happened to work from frontend-react/ because
+        # the cobertura report stores repo-relative paths, but relying on that coincidence is how
+        # the backend job stayed silently vacuous - keep both invocations root-relative.
         run: |
-          cd frontend-react
-          diff-cover coverage/cobertura-coverage.xml \
+          diff-cover frontend-react/coverage/cobertura-coverage.xml \
             --compare-branch=origin/${{ github.base_ref }} \
             --fail-under=${{ env.DIFF_COVERAGE_MIN }} \
-            --markdown-report ../frontend-diff-cover.md \
+            --markdown-report frontend-diff-cover.md \
             --src-roots .
       - name: Job summary (frontend)
         if: always() && steps.changed.outputs.run == 'true'
