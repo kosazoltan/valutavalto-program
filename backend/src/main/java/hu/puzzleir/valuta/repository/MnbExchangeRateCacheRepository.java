@@ -77,4 +77,20 @@ public interface MnbExchangeRateCacheRepository extends JpaRepository<MnbExchang
     List<MnbExchangeRateCache> findLatestRatesBySource(
             @Param("date") LocalDate date,
             @Param("source") String source);
+
+    /**
+     * Adott forrás cache-sorainak száma.
+     *
+     * <p>FKH-064: a tábla megosztott a források között (unique kulcs:
+     * currency_code, rate_date, source), ezért a monitoring sem olvashatja szűrés nélkül.</p>
+     */
+    long countBySource(String source);
+
+    /**
+     * Adott forrás legfrissebb cache-elt árfolyam-dátuma (FKH-064).
+     *
+     * @return a legnagyobb {@code rateDate}, vagy üres, ha a forrásnak nincs sora
+     */
+    @Query("SELECT MAX(m.rateDate) FROM MnbExchangeRateCache m WHERE m.source = :source")
+    Optional<LocalDate> findMaxRateDateBySource(@Param("source") String source);
 }

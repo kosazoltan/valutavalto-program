@@ -34,6 +34,13 @@ import java.util.UUID;
 @Slf4j
 public class BankIntegrationStatusController {
 
+    /**
+     * FKH-064: the {@code mnb_exchange_rate_cache} table is shared between rate sources, so every
+     * read on the MNB path must be source-filtered. Same constant as
+     * {@code MnbExchangeRateService.MNB_SOURCE}.
+     */
+    private static final String MNB_SOURCE = "MNB";
+
     private final MnbExchangeRateCacheRepository mnbCacheRepository;
     private final DariusDailyReportRepository dariusReportRepository;
     private final BankApiConfigService bankApiConfigService;
@@ -45,12 +52,16 @@ public class BankIntegrationStatusController {
         LocalDate today = LocalDate.now();
 
         // MNB cache friss-ség: a legutóbbi cache-elt rateDate alapján (Codex P1 #567)
-        LocalDate mnbLatestRateDate = mnbCacheRepository.findAll().stream()
-                .map(c -> c.getRateDate())
-                .filter(d -> d != null)
-                .max(java.util.Comparator.naturalOrder())
+        // FKH-064: a mnb_exchange_rate_cache tábla MEGOSZTOTT a források között (unique kulcs:
+        // currency_code, rate_date, source). Szűrés nélküli findAll()/count() a RAIFFEISEN
+        // sorokat is beszámolta — élesben 705 RAIFFEISEN sor (2026-09-11-ig) vs 17 MNB sor
+        // (2026-03-16-on megállva), így a kijelző "friss" MNB cache-t mutatott, holott az MNB
+        // oldal március óta nem frissült. Minden MNB-olvasás source-szűrt (vö.
+        // MnbExchangeRateService.MNB_SOURCE).
+        LocalDate mnbLatestRateDate = mnbCacheRepository
+                .findMaxRateDateBySource(MNB_SOURCE)
                 .orElse(null);
-        long mnbCacheCount = mnbCacheRepository.count();
+        long mnbCacheCount = mnbCacheRepository.countBySource(MNB_SOURCE);
         // Sikeres ha van cache ÉS a legutolsó rateDate >= today-3 (üzleti nap puffer)
         boolean mnbFresh = mnbLatestRateDate != null
                 && !mnbLatestRateDate.isBefore(today.minusDays(3));
