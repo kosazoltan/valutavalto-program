@@ -77,4 +77,20 @@ public interface MnbExchangeRateCacheRepository extends JpaRepository<MnbExchang
     List<MnbExchangeRateCache> findLatestRatesBySource(
             @Param("date") LocalDate date,
             @Param("source") String source);
+
+    /**
+     * Row count of the cache for one source.
+     *
+     * <p>FKH-064: the table is shared between sources (unique key: currency_code, rate_date,
+     * source), so even monitoring must not read it unfiltered.</p>
+     */
+    long countBySource(String source);
+
+    /**
+     * Newest cached rate date of one source (FKH-064).
+     *
+     * @return the greatest {@code rateDate}, or empty when the source has no row
+     */
+    @Query("SELECT MAX(m.rateDate) FROM MnbExchangeRateCache m WHERE m.source = :source")
+    Optional<LocalDate> findMaxRateDateBySource(@Param("source") String source);
 }
