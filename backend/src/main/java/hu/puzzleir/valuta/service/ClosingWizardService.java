@@ -394,14 +394,32 @@ public class ClosingWizardService {
                     continue;
                 }
 
-                // In-memory szinkron a betöltött példányon (a bulk UPDATE nem frissíti).
-                wizard.setWizardStatus(WizardStatus.EXPIRED);
+                // FKH-061 (prod evidence 2026-09-11 03:30Z): NO in-memory mutation here.
+                // transitionIfStale is a @Modifying bulk UPDATE that increments the DB `version`
+                // column directly. Setting the field on the still-managed entity made it dirty,
+                // so the surrounding transaction (SchedulerService is class-level
+                // @Transactional(rollbackFor = Exception.class)) flushed an entity UPDATE with
+                // the PRE-bulk version and failed with
+                // "Unexpected row count (expected row count 1 but was 0)" —
+                // which rolled back the whole tick INCLUDING the successful bulk UPDATE, so no
+                // wizard was ever expired (prod: 0 EXPIRED rows while the log claimed 1).
+                // This was masked until now: before V389 the bulk UPDATE itself died on the
+                // wizard_status CHECK constraint. Nothing below reads getWizardStatus() — the
+                // audit uses only getId/getStartedAt/getClosingDate — so dropping the setter is
+                // behaviour-preserving for the audit and removes the stale-version flush.
                 count++;
                 log.info("Beragadt zárási varázsló lejáratva: id={}, indítva={}, küszöb={} perc",
                         wizard.getId(), wizard.getStartedAt(), expireMinutes);
 
                 if (auditLogService != null && auditCompanyId != null) {
-                    auditLogService.logForCompany(
+                    // FKH-061 (PR #1740 review): REQUIRES_NEW. logForCompany uses default
+                    // REQUIRED propagation, so a hash-chain or DB failure inside the audit write
+                    // would mark THIS shared scheduler transaction rollback-only; the per-item
+                    // catch below cannot clear that flag, so the commit would roll back the
+                    // already-successful transitions of every other wizard while the loop still
+                    // reported them as expired. That is the same rollback-only poisoning class
+                    // this whole FKH-061 series fixes, so the audit gets its own transaction.
+                    auditLogService.logInNewTransactionForCompany(
                             "CLOSING_WIZARD_AUTO_EXPIRED",
                             String.format(
                                     "{\"KAT\":\"TX\",\"error_code\":\"VV-BIZ-011\","
