@@ -121,6 +121,20 @@ function emptyReport() {
   }
 }
 
+/**
+ * #1744: a hónapváltó tesztek korábban fixen '2026-09'-re váltottak. Amikor a naptár
+ * odaért, ez EGYEZETT a lap `currentMonth()` kezdőértékével, így a `setMonth` no-op lett,
+ * a `useEffect` nem futott újra, és a stale-response guard tesztje a második lekérdezésre
+ * várva bukott — nem termékhiba, elöregedett fixtúra. Relatív hónap: garantáltan
+ * különbözik az aktuálistól, tehát tényleges állapotváltást vált ki.
+ */
+function otherMonth(): string {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() - 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 function reportWithBranch(branchCode: string) {
   return {
     from: '2026-08-01',
@@ -417,7 +431,7 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     render(<TransactionLevyReportPage />)
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(1))
 
-    fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: '2026-09' } })
+    fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: otherMonth() } })
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(screen.getByText('FRESH1')).toBeInTheDocument())
 
@@ -440,7 +454,7 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     render(<TransactionLevyReportPage />)
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(1))
 
-    fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: '2026-09' } })
+    fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: otherMonth() } })
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(screen.getByText('FRESH2')).toBeInTheDocument())
 

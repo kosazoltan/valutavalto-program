@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { menuGroups } from './menuGroups'
+import {
+  isMenuGroupVisible,
+  isMenuItemVisible,
+  resolveVisibleMenuGroups,
+  type MenuVisibilityContext,
+} from './menuVisibility'
+import type { AppMode } from '../types/appMode'
 
 /**
  * FK-069 — Navigációs menü csoportonkénti összecsukása.
@@ -77,11 +84,64 @@ describe('FK-069 FR-3 — chevron mutatja az állapotot', () => {
 })
 
 describe('FK-069 FR-5 / NFR-2 — RBAC szűrés és FK-057 kontraktus érintetlen', () => {
-  it('a csoport- és item-szűrés változatlanul a menuVisibility helpereket hívja', () => {
-    expect(src).toMatch(/\.filter\(\(group\) => isMenuGroupVisible\(group, menuVisibilityCtx\)\)/)
-    expect(src).toMatch(
-      /\.filter\(\(item\) => isMenuItemVisible\(item, group, menuVisibilityCtx\)\)/,
+  // #1744: ez korábban a MainLayout.tsx FORRÁSSZÖVEGÉRE illesztett regex volt
+  // (`.filter((group) => isMenuGroupVisible(group, menuVisibilityCtx))`). A kanban #8
+  // zero-visible fallback bevezetésekor a szűrés a `resolveVisibleMenuGroups` helperbe
+  // került, így a regex elhasalt, MIKÖZBEN a védett garancia sértetlen maradt — a teszt
+  // tehát a megvalósítás alakját őrizte, nem a viselkedést. Az alábbi esetek a tényleges
+  // RBAC-eredményt állítják, ezért túlélik a következő refaktort is.
+  const ctxFor = (canonicalRoles: string[], appMode: AppMode = 'full'): MenuVisibilityContext => ({
+    appMode,
+    hasCanonicalRole: (role: string) => canonicalRoles.includes(role),
+    hasRole: () => true,
+    featureFlags: {},
+  })
+
+  it('a csoport-szűrés a menuVisibility szabályait érvényesíti (jogosulatlan szerep → nincs csoport)', () => {
+    const { groups, fallbackApplied } = resolveVisibleMenuGroups(menuGroups, ctxFor([]))
+
+    // `full` módban nincs fallback (FALLBACK_GROUP_LABEL_BY_MODE szándékosan kihagyja),
+    // így a szerep nélküli felhasználó egyetlen csoportot sem lát.
+    expect(fallbackApplied).toBe(false)
+    expect(groups).toEqual([])
+  })
+
+  it('minden visszaadott csoport és item átmegy az isMenuGroupVisible / isMenuItemVisible szűrőn', () => {
+    const ctx = ctxFor(['foertektar'])
+    const { groups, fallbackApplied } = resolveVisibleMenuGroups(menuGroups, ctx)
+
+    expect(fallbackApplied).toBe(false)
+    expect(groups.length).toBeGreaterThan(0)
+    for (const group of groups) {
+      expect(isMenuGroupVisible(group, ctx)).toBe(true)
+      // A MainLayout ugyanezzel a predikátummal szűri az itemeket (fallbackApplied === false).
+      const visibleItems = group.items.filter((item) => isMenuItemVisible(item, group, ctx))
+      expect(visibleItems.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('a szűkebb szerep szigorúan kevesebb csoportot lát, mint a felügyeleti (least-privilege)', () => {
+    const supervisory = resolveVisibleMenuGroups(menuGroups, ctxFor(['foertektar'])).groups
+    const narrow = resolveVisibleMenuGroups(menuGroups, ctxFor(['arfolyam_nezo'])).groups
+
+    expect(narrow.length).toBeLessThan(supervisory.length)
+  })
+
+  it('a rejtett (hidden) bejegyzés nem szivárog be a szűrt listába a központi felületen', () => {
+    const ctx = ctxFor(['foertektar'])
+    const { groups } = resolveVisibleMenuGroups(menuGroups, ctx)
+
+    const leakedHidden = groups.flatMap((group) =>
+      group.items.filter((item) => item.hidden && isMenuItemVisible(item, group, ctx)),
     )
+    expect(leakedHidden).toEqual([])
+  })
+
+  it('a MainLayout a szűrt csoportokat rendereli, nem a nyers menuGroups-t', () => {
+    // Kontraktus-horgony: a layout a helperből származó `resolvedGroups`-on iterál.
+    expect(src).toMatch(/resolveVisibleMenuGroups\(/)
+    expect(src).toMatch(/resolvedGroups/)
+    expect(src).toMatch(/isMenuItemVisible\(item, group, menuVisibilityCtx\)/)
   })
 
   it('a <nav> és <main> class-stringje változatlan (FK-057)', () => {
