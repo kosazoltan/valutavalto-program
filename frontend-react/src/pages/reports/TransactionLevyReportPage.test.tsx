@@ -122,17 +122,25 @@ function emptyReport() {
 }
 
 /**
- * #1744: a hónapváltó tesztek korábban fixen '2026-09'-re váltottak. Amikor a naptár
- * odaért, ez EGYEZETT a lap `currentMonth()` kezdőértékével, így a `setMonth` no-op lett,
- * a `useEffect` nem futott újra, és a stale-response guard tesztje a második lekérdezésre
- * várva bukott — nem termékhiba, elöregedett fixtúra. Relatív hónap: garantáltan
- * különbözik az aktuálistól, tehát tényleges állapotváltást vált ki.
+ * #1744: the month-switch tests used to target a hardcoded '2026-09'. Once the calendar
+ * reached that month the value EQUALLED the page's own `currentMonth()` default, so
+ * `setMonth` became a no-op, the effect never re-ran, and the stale-response guard test
+ * timed out waiting for a second request - an aged fixture, not a product defect.
+ *
+ * Derived from the month the component actually rendered (read back from the picker)
+ * rather than from a fresh wall-clock read, so a month rollover between render and the
+ * change event cannot make the two values collide again.
  */
-function otherMonth(): string {
-  const d = new Date()
-  d.setDate(1)
+function monthOtherThan(current: string): string {
+  const [year, month] = current.split('-').map(Number)
+  const d = new Date(year!, month! - 1, 1)
   d.setMonth(d.getMonth() - 1)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** The month currently selected in the rendered picker. */
+function renderedMonth(): string {
+  return (screen.getByLabelText('Hónap') as HTMLInputElement).value
 }
 
 function reportWithBranch(branchCode: string) {
@@ -431,7 +439,9 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     render(<TransactionLevyReportPage />)
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(1))
 
-    fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: otherMonth() } })
+    fireEvent.change(screen.getByLabelText('Hónap'), {
+      target: { value: monthOtherThan(renderedMonth()) },
+    })
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(screen.getByText('FRESH1')).toBeInTheDocument())
 
@@ -454,7 +464,9 @@ describe('TransactionLevyReportPage — FK-099 + FK-100', () => {
     render(<TransactionLevyReportPage />)
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(1))
 
-    fireEvent.change(screen.getByLabelText('Hónap'), { target: { value: otherMonth() } })
+    fireEvent.change(screen.getByLabelText('Hónap'), {
+      target: { value: monthOtherThan(renderedMonth()) },
+    })
     await waitFor(() => expect(mockGetReport).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(screen.getByText('FRESH2')).toBeInTheDocument())
 
