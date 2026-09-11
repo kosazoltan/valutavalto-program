@@ -23,6 +23,14 @@ public interface DailyDenominationSnapshotRepository extends JpaRepository<Daily
             UUID branchId, LocalDate snapshotDate, Integer closingType);
 
     /**
+     * FK-111: bulk variant for the "Keszletek, cimletek" view — one query for every branch of
+     * the company instead of a per-branch loop. Tenant isolation is the caller's duty: the id
+     * list must come from a company-scoped branch query.
+     */
+    List<DailyDenominationSnapshot> findByBranchIdInAndSnapshotDateAndClosingType(
+            List<UUID> branchIds, LocalDate snapshotDate, Integer closingType);
+
+    /**
      * Év-nyitó: régi snapshot-ok törlése adott dátum előtt (tenant-izolált).
      */
     @Modifying
