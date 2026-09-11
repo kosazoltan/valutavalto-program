@@ -132,10 +132,11 @@ jobs:
       - name: Diff-coverage kiértékelés (frontend)
         if: steps.changed.outputs.run == 'true'
         # BLOCKING: see the backend job above - `|| true` would neutralise --fail-under.
-        # Also run from the REPO ROOT so --src-roots matches the `backend/...`-style paths that
-        # `git diff --name-only` produces. This job happened to work from frontend-react/ because
-        # the cobertura report stores repo-relative paths, but relying on that coincidence is how
-        # the backend job stayed silently vacuous - keep both invocations root-relative.
+        # Also run from the REPO ROOT so --src-roots matches the repo-relative paths that
+        # `git diff --name-only` produces here (`frontend-react/src/...`). This job happened to
+        # work from frontend-react/ because the cobertura report already stores repo-relative
+        # paths, but relying on that coincidence is exactly how the backend job stayed silently
+        # vacuous - keep both invocations root-relative.
         run: |
           diff-cover frontend-react/coverage/cobertura-coverage.xml \
             --compare-branch=origin/${{ github.base_ref }} \
