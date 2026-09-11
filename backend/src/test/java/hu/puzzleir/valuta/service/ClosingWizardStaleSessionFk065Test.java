@@ -159,7 +159,16 @@ class ClosingWizardStaleSessionFk065Test {
         int count = service.autoExpireStaleWizards();
 
         assertThat(count).isEqualTo(1);
-        assertThat(stale.getWizardStatus()).isEqualTo(WizardStatus.EXPIRED);
+        // FKH-061 CONTRACT CHANGE (prod evidence 2026-09-11 03:30:00Z): the service must NOT
+        // mutate the loaded managed entity after the conditional bulk UPDATE. transitionIfStale
+        // is @Modifying and bumps the DB `version`; the old in-memory sync left the entity dirty,
+        // so the surrounding transaction (SchedulerService is class-level @Transactional) flushed
+        // an entity UPDATE with the pre-bulk version, threw "Unexpected row count (expected row
+        // count 1 but was 0)" and rolled back the ENTIRE tick — including the bulk UPDATE that
+        // had already succeeded (prod: log claimed "1 varázsló lejáratva" while closing_wizard
+        // held 0 EXPIRED rows). The DB is the source of truth here; the transition is proven by
+        // the verify(transitionIfStale) below, not by the in-memory field.
+        assertThat(stale.getWizardStatus()).isEqualTo(WizardStatus.IN_PROGRESS);
         assertThat(fresh.getWizardStatus()).isEqualTo(WizardStatus.IN_PROGRESS);
         verify(closingWizardRepository).transitionIfStale(
                 eq(stale.getId()), eq(WizardStatus.IN_PROGRESS), eq(WizardStatus.EXPIRED),
@@ -242,8 +251,10 @@ class ClosingWizardStaleSessionFk065Test {
         int count = service.autoExpireStaleWizards();
 
         assertThat(count).isEqualTo(2);
-        assertThat(staleA.getWizardStatus()).isEqualTo(WizardStatus.EXPIRED);
-        assertThat(staleB.getWizardStatus()).isEqualTo(WizardStatus.EXPIRED);
+        // FKH-061: managed entities stay untouched (see the contract note in
+        // autoExpire_staleExpired_freshUntouched); the per-tenant audit calls below are the proof.
+        assertThat(staleA.getWizardStatus()).isEqualTo(WizardStatus.IN_PROGRESS);
+        assertThat(staleB.getWizardStatus()).isEqualTo(WizardStatus.IN_PROGRESS);
         // Pontos, cégenkénti verify a konkrét várt paraméterekkel (a korábbi
         // verifyNoMoreInteractions helyett — extra, pl. kör-összegző bejegyzést
         // ez a teszt már nem tilt).
