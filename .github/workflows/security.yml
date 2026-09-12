@@ -27,6 +27,11 @@ jobs:
       - uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2.3.9 (audit-iter3 P1: pinned to SHA, CodeQL actions/unpinned-tag fix)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: KAN-15 HEAD titok-őr (Neon-jelszó literál)
+        run: node scripts/assert-no-plaintext-secrets.cjs
 
   backend-build:
     name: Backend Build + Test
