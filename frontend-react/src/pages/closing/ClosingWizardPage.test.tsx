@@ -1008,5 +1008,27 @@ describe('ClosingWizardPage', () => {
         expect(mocks.closingWizardApiSubmitDenominations).toHaveBeenCalled()
       })
     })
+    it('NFR-1: nem tomb valasz (pl. proxy {} objektum) sem omlasztja ossze az oldalt', async () => {
+      // E2E-ben bizonyitott eset: egy catch-all mock/proxy 200-nal {}-t ad vissza a
+      // self-check helyett. A DTO-t vakon map-elve a render dobna, es a TELJES wizard
+      // eltunne a DOM-bol (a cimletezes es a veglegesites utja is).
+      mocks.denominationBalanceApiSelfCheck.mockResolvedValue({} as never)
+      const user = await runStep1()
+
+      await waitFor(() => expect(screen.getByTestId('closing-expected-HUF')).toBeInTheDocument())
+      expect(screen.getByTestId('closing-expected-HUF').textContent).toBe('—')
+      expect(screen.getByRole('button', { name: /Cimletezés rogzitese/i })).toBeInTheDocument()
+
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.type(inputs[0]!, '5')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        expect(mocks.closingWizardApiSubmitDenominations).toHaveBeenCalled()
+      })
+    })
   })
 })

@@ -164,11 +164,17 @@ export default function ClosingWizardPage() {
    */
   const expectedByCurrency = useMemo<Record<string, number> | null>(
     () =>
-      selfCheckRows === null
-        ? null
-        : Object.fromEntries(
-            selfCheckRows.map((row) => [row.currencyCode, Number(row.expectedBalance)]),
-          ),
+      // A valasz alakja NEM garantalt (proxy/gateway 200-nal nem-tomb torzset adhat):
+      // egy vak .map() itt a teljes 2. lepest — a cimletezest es a veglegesitest is —
+      // levinne a DOM-rol. Ismeretlen alak = "nincs adat" (panel "—"), nem osszeomlas.
+      Array.isArray(selfCheckRows)
+        ? Object.fromEntries(
+            selfCheckRows
+              .filter((row) => row && typeof row.currencyCode === 'string')
+              .map((row) => [row.currencyCode, Number(row.expectedBalance)])
+              .filter(([, value]) => Number.isFinite(value)),
+          )
+        : null,
     [selfCheckRows],
   )
   const [denomSubmitted, setDenomSubmitted] = useState(false)
