@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-10T00:37:20.677Z",
-  "source_count": 1097,
+  "generated_at": "2026-09-12T05:34:10.622Z",
+  "source_count": 1104,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -5877,7 +5877,7 @@
     },
     {
       "path": "backend/src/main/java/hu/puzzleir/valuta/service/ReceiptSequenceService.java",
-      "sha256": "c99f42ff303971991d49df2c662b0c176ad848d4a7395844cddc436d28c60f15",
+      "sha256": "5e14305aae01efbfc2140c80ce1abbb548bec44f8ec890ee41a7701ea78c73d0",
       "type": "operational-receipt",
       "areas": [
         "legacy",
@@ -12830,11 +12830,95 @@
       ]
     },
     {
+      "path": "vault/sessions/handoff-2026-09-09-hygiene-memory-skill-kanban.md",
+      "sha256": "7c696189a1e2851a8d0dc2154845f6ceaa4f12d5005074f64e0ff068bd9d58df",
+      "type": "medium-term-episodic",
+      "areas": [
+        "deploy"
+      ]
+    },
+    {
       "path": "vault/sessions/handoff-2026-09-09-v2.28.108-signed-release.md",
       "sha256": "5e5522531a43addae8b93cebfcad164638156031a69e05592d2651ca01124e35",
       "type": "medium-term-episodic",
       "areas": [
         "deploy"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-11-fk111-cimletek-es-v2.28.111.md",
+      "sha256": "12c301d3292bbb246fed2bec0025bcd9efa2200baf2e05e2a4bcc5b02690556a",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "cimletezes",
+        "database",
+        "deploy",
+        "ertektar",
+        "frontend",
+        "installer",
+        "napzaras",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-11-fkh061-napzaras-500.md",
+      "sha256": "cef2d95c81fd8bf10af00b6d1ff766e0e89a6d9cadb4a4e816c93e27b278a2ec",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "installer",
+        "napzaras",
+        "riport"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-11-fkh062-worker-session-backfill.md",
+      "sha256": "bff41e5497c9bf48662b268fcad1dbd6ebab6de818807ce797d352f388ee4c72",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "database",
+        "deploy",
+        "ertektar",
+        "installer"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-11-fkh063-fkh064-manual-rate-decade.md",
+      "sha256": "f9c175ce9982fee181e8bfe9e413431d1305be2ec38466d3c7a006b97c70e118",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "database",
+        "deploy",
+        "ertektar",
+        "installer"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-11-fkh064-bank-integration-source.md",
+      "sha256": "0aa6e125b92188c73e999fcdf33431753258fec78f2504e22378055b8212ae2c",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "deploy",
+        "installer"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-12-fkh065-066-elvart-es-forgalom.md",
+      "sha256": "1db49e9edf5a3ef674de50984984bf57a5620702d83145f044c39601fbefe36d",
+      "type": "medium-term-episodic",
+      "areas": [
+        "cimletezes",
+        "deploy",
+        "ertektar",
+        "frontend",
+        "installer",
+        "penztar",
+        "specifikacio"
       ]
     },
     {

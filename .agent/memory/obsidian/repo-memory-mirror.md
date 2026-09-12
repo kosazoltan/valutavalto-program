@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-09-10T00:37:20.677Z
+generated: 2026-09-12T05:34:10.622Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-09-10T00:37:20.677Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1097
-- generated: 2026-09-10T00:37:20.677Z
+- sources: 1104
+- generated: 2026-09-12T05:34:10.622Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1106,6 +1106,13 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[FK-109 Darius RBAC + fixing-leválasztás + részleges export — pipeline PASS (2026-09-09)]] — `vault/sessions/handoff-2026-09-09-fk109-darius-pipeline-pass.md` (medium-term-episodic)
 - [[FK-109 Darius RBAC + fixing-leválasztás + részleges export → v2.28.109 (2026-09-09)]] — `vault/sessions/handoff-2026-09-09-fk109-v2.28.109-signed-release.md` (medium-term-episodic)
 - [[Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge]] — `vault/sessions/handoff-2026-09-09-fkh059-fkh058-purge.md` (medium-term-episodic)
+- [[Handoff — 2026-09-09 — hygiene pass (repo memory / Hermes memory / skills / kanban)]] — `vault/sessions/handoff-2026-09-09-hygiene-memory-skill-kanban.md` (medium-term-episodic)
 - [[v2.28.108 signed release (2026-09-09)]] — `vault/sessions/handoff-2026-09-09-v2.28.108-signed-release.md` (medium-term-episodic)
+- [[Handoff — FK-111 „Készletek, címletek" fül + v2.28.111 kiadás (2026-09-11)]] — `vault/sessions/handoff-2026-09-11-fk111-cimletek-es-v2.28.111.md` (medium-term-episodic)
+- [[FKH-061 — napzárás "Belső szerverhiba" (HTTP 500) — 2026-09-11 — LEZÁRVA]] — `vault/sessions/handoff-2026-09-11-fkh061-napzaras-500.md` (medium-term-episodic)
+- [[FKH-062 — árva worker_session sorok backfillje (V390) — 2026-09-11 — LEZÁRVA]] — `vault/sessions/handoff-2026-09-11-fkh062-worker-session-backfill.md` (medium-term-episodic)
+- [[FKH-063 + FKH-064 + #42 — 2026-09-11 — MIND LEZÁRVA]] — `vault/sessions/handoff-2026-09-11-fkh063-fkh064-manual-rate-decade.md` (medium-term-episodic)
+- [[FKH-064 — banki-státusz MNB forráskeveredés (board #38) — 2026-09-11 — LEZÁRVA]] — `vault/sessions/handoff-2026-09-11-fkh064-bank-integration-source.md` (medium-term-episodic)
+- [[Handoff — FKH-065 + FKH-066 (2026-09-12)]] — `vault/sessions/handoff-2026-09-12-fkh065-066-elvart-es-forgalom.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)
