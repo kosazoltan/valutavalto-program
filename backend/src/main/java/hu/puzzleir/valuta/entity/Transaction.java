@@ -569,6 +569,15 @@ public class Transaction {
     @Column(name = "legal_deed_number", length = 100)
     private String legalDeedNumber;
 
+    /**
+     * FKH-067 (spec doc: FKH-063): a tranzakcio kliens-oldali, valtozatlan rogzitesi idobelyege
+     * (penztar-client pending_transactions.created_at). Csak belso/audit celu visszakovethetoseg —
+     * ez dontotte el, hogy az elavult arfolyam blokkolt-e (TTL_NONBLOCKING_CUTOFF).
+     * NULL: regi kliens verzio vagy nem kliens-eredetu tranzakcio.
+     */
+    @Column(name = "client_created_at")
+    private java.time.Instant clientCreatedAt;
+
     // ============ HELPER METHODS ============
 
     /**

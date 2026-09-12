@@ -108,7 +108,8 @@ public class TransactionMultiLineService {
                     .orElseThrow(() -> new ResourceNotFoundException("Valuta nem talalhato: sor " + (lineIdx + 1)));
             transactionValidationService.validateCurrencyExchangeable(lineCurrency);
 
-            ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId);
+            // FKH-067: a kliens eredeti rogzitesi idobelyege dont arrol, blokkol-e az elavult arfolyam.
+            ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId, request.getClientCreatedAt());
             BigDecimal appliedRate = calculationService.resolveBuyRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
 
             TransactionLine line = TransactionLine.builder()
@@ -253,6 +254,8 @@ public class TransactionMultiLineService {
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
                 .foreignStatus(txForeignStatus)
+                // FKH-067: a kliens eredeti rogzitesi ideje tartos tarolassal (audit-visszakovethetoseg)
+                .clientCreatedAt(request.getClientCreatedAt())
                 .notes(request.getNotes())
                 .build();
 
@@ -336,7 +339,8 @@ public class TransactionMultiLineService {
                     .orElseThrow(() -> new ResourceNotFoundException("Valuta nem talalhato: sor " + (lineIdx + 1)));
             transactionValidationService.validateCurrencyExchangeable(lineCurrency);
 
-            ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId);
+            // FKH-067: a kliens eredeti rogzitesi idobelyege dont arrol, blokkol-e az elavult arfolyam.
+            ExchangeRate lineRate = exchangeRateService.getCurrentRate(lineCurrencyId, request.getClientCreatedAt());
             BigDecimal appliedRate = calculationService.resolveSellRate(lineRate, lineReq.getBanknoteCount(), lineReq.getCustomExchangeRate());
 
             // Keszlet ellenorzes soronkent
@@ -465,6 +469,8 @@ public class TransactionMultiLineService {
                 .customerDocumentNumber(request.getCustomerDocumentNumber())
                 .customerNationality(request.getCustomerNationality())
                 .foreignStatus(txForeignStatus)
+                // FKH-067: a kliens eredeti rogzitesi ideje tartos tarolassal (audit-visszakovethetoseg)
+                .clientCreatedAt(request.getClientCreatedAt())
                 .notes(request.getNotes())
                 .build();
 

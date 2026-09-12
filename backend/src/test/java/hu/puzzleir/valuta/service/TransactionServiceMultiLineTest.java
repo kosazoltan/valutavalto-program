@@ -172,8 +172,8 @@ class TransactionServiceMultiLineTest {
         when(currencyRepository.findByCode("HUF")).thenReturn(Optional.of(hufCurrency));
         when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eurCurrency));
         when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(usdCurrency));
-        when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
-        when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(usdRate);
+        when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(eurRate);
+        when(exchangeRateService.getCurrentRate(eq(USD_ID), any())).thenReturn(usdRate);
         when(dailySessionService.hasOpenSession()).thenReturn(true);
         when(receiptSequenceService.generateReceiptNumber(any(), any())).thenReturn("V00001");
         when(handlingFeeCalculator.calculate(any(), any(), any(), any())).thenReturn(BigDecimal.ZERO);

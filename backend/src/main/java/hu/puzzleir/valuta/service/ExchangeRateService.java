@@ -23,14 +23,19 @@ import hu.puzzleir.valuta.dto.rate.ParsedRateFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -49,16 +54,50 @@ public class ExchangeRateService {
     private final CompanyRepository companyRepository;
     private final BranchRepository branchRepository;
     private final SystemParameterService systemParameterService;
+    private final AuditLogService auditLogService;
 
     /** Árfolyam maximális kora órában (0 = nincs limit) */
     @Value("${exchange-rate.max-age-hours:24}")
     private int maxAgeHours;
 
     /**
-     * Aktuális árfolyam lekérése egy valutához
+     * FKH-067 (spec doc: FKH-063): az az idopont, amely UTAN a kliensen rogzitett tranzakciokra
+     * az arfolyam-TTL lejarata mar NEM blokkol, csak figyelmeztet + audital. ISO-8601 instant
+     * (pl. 2026-09-12T06:00:00Z). Hianyzo/ures/ertelmezhetetlen ertek -> minden tranzakcio a
+     * regi, blokkolo szabaly ala esik (fail-closed, biztonsagos alapertelmezes).
+     */
+    public static final String TTL_NONBLOCKING_CUTOFF_KEY = "TTL_NONBLOCKING_CUTOFF";
+
+    /** FKH-067 FR-4: audit-esemeny minden nem-blokkoloan atengedett, elavult arfolyamu tranzakciora. */
+    public static final String AUDIT_STALE_RATE_TRANSACTION_COMMITTED = "STALE_RATE_TRANSACTION_COMMITTED";
+
+    /**
+     * FKH-067 TBD-2: a clientCreatedAt kliens-oldali, NEM hitelesitett idobelyeg. Ora-elcsuszasra
+     * ennyi toleranciat adunk; ezen tul jovobeli idobelyeg nem mentesit a blokkolas alol.
+     */
+    private static final Duration CLIENT_CLOCK_SKEW_TOLERANCE = Duration.ofMinutes(15);
+
+    /**
+     * Aktuális árfolyam lekérése egy valutához.
+     *
+     * <p>Valtozatlan (blokkolo) viselkedes: elavult arfolyam eseten ValidationException.
+     * A nem-blokkolo utat a {@link #getCurrentRate(Long, Instant)} tulterhelesen kell kerni,
+     * a kliens eredeti rogzitesi idobelyegevel.
      */
     @Transactional(readOnly = true)
     public ExchangeRate getCurrentRate(Long currencyId) {
+        return getCurrentRate(currencyId, null);
+    }
+
+    /**
+     * FKH-067 FR-2: aktualis arfolyam a kliens eredeti rogzitesi idobelyegevel.
+     *
+     * @param clientCreatedAt a penztar-kliensen rogzitett, valtozatlan letrehozasi idopont
+     *                        (pending_transactions.created_at). NULL (regi kliens verzio) eseten
+     *                        a regi, blokkolo ag fut.
+     */
+    @Transactional(readOnly = true)
+    public ExchangeRate getCurrentRate(Long currencyId, Instant clientCreatedAt) {
         UUID companyId = SecurityUtils.getCurrentCompanyId();
         UUID branchId = SecurityUtils.getCurrentBranchId();
 
@@ -67,7 +106,7 @@ public class ExchangeRateService {
                     "Nincs érvényes árfolyam ehhez a valutához: " + currencyId));
 
         // Árfolyam frissesség ellenőrzése
-        validateRateFreshness(rate);
+        validateRateFreshness(rate, clientCreatedAt);
 
         return rate;
     }
@@ -98,9 +137,10 @@ public class ExchangeRateService {
 
     /**
      * Árfolyam frissesség validálása.
-     * Ha az árfolyam régebbi mint a konfigurált max kor, elutasítjuk.
+     * Ha az árfolyam régebbi mint a konfigurált max kor, elutasítjuk — KIVEVE, ha a tranzakciot
+     * a kliensen a TTL_NONBLOCKING_CUTOFF rendszerparameter UTAN rogzitettek (FKH-067 FR-2).
      */
-    private void validateRateFreshness(ExchangeRate rate) {
+    private void validateRateFreshness(ExchangeRate rate, Instant clientCreatedAt) {
         if (maxAgeHours <= 0) {
             return; // nincs korhatár
         }
@@ -110,14 +150,76 @@ public class ExchangeRateService {
         // FKH-032: a szamitas kozos segedmetodusba emelve (calculateRateAgeMinutes/isRateStale),
         // hogy a listazo valasz isStale mezoje ugyanazt a hatart hasznalja.
         long minutesOld = calculateRateAgeMinutes(rate.getValidDate(), rate.getValidTime(), LocalDateTime.now());
-        if (isRateStale(minutesOld, maxAgeHours)) {
-            long hoursOld = minutesOld / 60L;
-            log.warn("Lejárt árfolyam: {} — {} órás (max: {} óra)",
-                    rate.getCurrency().getCode(), hoursOld, maxAgeHours);
-            throw new ValidationException(
-                String.format("Az árfolyam lejárt! (Utolsó frissítés: %s %s, %d órája — maximum: %d óra). " +
-                              "Kérjük frissítse az árfolyamokat.",
-                    rate.getValidDate(), rate.getValidTime(), hoursOld, maxAgeHours));
+        if (!isRateStale(minutesOld, maxAgeHours)) {
+            return;
+        }
+        long hoursOld = minutesOld / 60L;
+
+        // FKH-067 FR-2/FR-3/FR-5: a penztaros a valosagban a kiirt arfolyamon vegzi az ugyletet,
+        // ezert a cutoff UTAN rogzitett tranzakciokat nem blokkoljuk. Minden mas eset (hianyzo
+        // idobelyeg, cutoff elotti rogzites, beallitatlan/ertelmezhetetlen parameter, implauzibilis
+        // jovobeli idobelyeg) a regi, blokkolo agon marad — fail-closed.
+        if (isTtlNonBlockingFor(clientCreatedAt)) {
+            log.warn("Lejárt árfolyam ÁTENGEDVE (FKH-067, cutoff utáni rögzítés): {} — {} órás (max: {} óra), kliens-rögzítés: {}",
+                    rate.getCurrency().getCode(), hoursOld, maxAgeHours, clientCreatedAt);
+            auditLogService.log(
+                    AUDIT_STALE_RATE_TRANSACTION_COMMITTED,
+                    String.format("Elavult árfolyammal könyvelt tranzakció: %s, árfolyam kora %d óra (max: %d óra), "
+                                  + "érvényesség: %s %s, kliens-rögzítés: %s",
+                            rate.getCurrency().getCode(), hoursOld, maxAgeHours,
+                            rate.getValidDate(), rate.getValidTime(), clientCreatedAt),
+                    rate.getId() != null ? rate.getId().toString() : rate.getCurrency().getCode());
+            return;
+        }
+
+        log.warn("Lejárt árfolyam: {} — {} órás (max: {} óra)",
+                rate.getCurrency().getCode(), hoursOld, maxAgeHours);
+        throw new ValidationException(
+            String.format("Az árfolyam lejárt! (Utolsó frissítés: %s %s, %d órája — maximum: %d óra). " +
+                          "Kérjük frissítse az árfolyamokat.",
+                rate.getValidDate(), rate.getValidTime(), hoursOld, maxAgeHours));
+    }
+
+    /**
+     * FKH-067 FR-2/FR-3: a TTL-lejarat nem-blokkolo-e erre a kliens-idobelyegre.
+     * Fail-closed: barmi hianyzo/hibas/implauzibilis ertek eseten FALSE (marad a blokkolas).
+     */
+    private boolean isTtlNonBlockingFor(Instant clientCreatedAt) {
+        if (clientCreatedAt == null) {
+            return false; // regi kliens verzio, vagy nem kliens-eredetu hivas
+        }
+        // TBD-2: a clientCreatedAt hitelesitetlen kliens-adat — jovobeli idopont (ora-elcsuszason
+        // tul) manipulaciora utal, ezert nem mentesit.
+        if (clientCreatedAt.isAfter(Instant.now().plus(CLIENT_CLOCK_SKEW_TOLERANCE))) {
+            log.warn("FKH-067: implauzibilis (jövőbeli) kliens-időbélyeg, a blokkoló ág marad érvényben: {}",
+                    clientCreatedAt);
+            return false;
+        }
+        Optional<String> configured = systemParameterService.findEffectiveValue(TTL_NONBLOCKING_CUTOFF_KEY);
+        if (configured.isEmpty()) {
+            return false; // nincs tudatosan beallitva -> soha nem enged at senkit
+        }
+        Instant cutoff;
+        try {
+            cutoff = parseCutoff(configured.get().trim());
+        } catch (DateTimeParseException e) {
+            log.warn("FKH-067: a {} paraméter értéke nem értelmezhető ISO-8601 időpontként ({}), a blokkoló ág marad érvényben.",
+                    TTL_NONBLOCKING_CUTOFF_KEY, configured.get());
+            return false;
+        }
+        return !clientCreatedAt.isBefore(cutoff);
+    }
+
+    /**
+     * FKH-067: a cutoff parameter ISO-8601 instant (2026-09-12T06:00:00Z) vagy zona nelkuli
+     * local date-time (2026-09-12T06:00:00) alakban is megadhato; utobbit a szerver zonajaban
+     * ertelmezzuk (az uzemelteto a szerver ideje szerint gondolkodik).
+     */
+    private static Instant parseCutoff(String value) {
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException notAnInstant) {
+            return LocalDateTime.parse(value).atZone(ZoneId.systemDefault()).toInstant();
         }
     }
 

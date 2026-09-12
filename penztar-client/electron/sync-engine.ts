@@ -553,6 +553,27 @@ async function httpPostMultipart(
 
 // --- SyncEngine ---
 
+/**
+ * FKH-067 (spec doc: FKH-063): a lokalis SQLite idobelyeg ISO-8601 instantta alakitasa.
+ *
+ * A pending_* tablak `created_at` oszlopa `datetime('now')` default-tal keszul, ami SQLite-ban
+ * UTC-t ad, zona-jelzes NELKUL ('YYYY-MM-DD HH:MM:SS'). A `new Date(...)` egy ilyen stringet
+ * platformfuggoen HELYI idokent is ertelmezhetne — ezert az explicit 'Z' pótlas kotelezo,
+ * kulonben a felkuldott idopont orakkal elcsuszna a cutoff-osszehasonlitasnal.
+ *
+ * Mar zonazott ertek (Z vagy +HH:MM) valtozatlanul ertelmezodik. Ervenytelen bemenet ->
+ * undefined (a hivo ilyenkor nem kuldi fel a mezot, a backend fail-closed agara bizva a dontest).
+ */
+export function toIsoInstant(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+  const zoneless = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(trimmed);
+  const normalized = zoneless ? `${trimmed.replace(' ', 'T')}Z` : trimmed;
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
+
 export class SyncEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private syncAllInFlight: Promise<SyncResult> | null = null;
@@ -2052,6 +2073,16 @@ export class SyncEngine {
       }
     }
 
+    // FKH-067 (spec doc: FKH-063) FR-1: a helyi, VALTOZATLAN rogzitesi idobelyeg atvitele.
+    // A backend (TTL_NONBLOCKING_CUTOFF) ebbol dönti el, hogy egy elavult arfolyamu tetel az UJ
+    // (nem-blokkolo) vagy a REGI (blokkolo) szabaly ala esik. A `created_at` retry eseten sem
+    // valtozik (a markTransactionSynced csak a `synced` oszlopot irja), ezert alkalmas erre.
+    // Ertelmezhetetlen ertek -> a mezot NEM kuldjuk fel: a backend ilyenkor fail-closed agra esik.
+    const clientCreatedAt = toIsoInstant(tx.created_at);
+    if (clientCreatedAt) {
+      body['clientCreatedAt'] = clientCreatedAt;
+    }
+
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
     await poster(endpoint, body, token, tx.idempotency_key ?? undefined);
   }
@@ -2459,9 +2490,7 @@ export class SyncEngine {
       // nem-éles díjat).
       const status = (response as { status?: string }).status;
       if (status === 'DRAFT') {
-        log.warn(
-          '[SyncEngine] Kezelési díj konfiguráció sync: DRAFT payload elutasítva (FR-8).',
-        );
+        log.warn('[SyncEngine] Kezelési díj konfiguráció sync: DRAFT payload elutasítva (FR-8).');
         return;
       }
 

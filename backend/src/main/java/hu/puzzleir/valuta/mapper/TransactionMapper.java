@@ -136,6 +136,8 @@ public class TransactionMapper {
                 .legalEntityTaxNumber(dto.getLegalEntityTaxNumber())
                 .legalDeedNumber(dto.getLegalDeedNumber())
                 .beneficialOwners(dto.getBeneficialOwners())
+                // FKH-067: kliens-oldali rogzitesi idobelyeg atvitele az arfolyam-TTL cutoff-hoz
+                .clientCreatedAt(dto.getClientCreatedAt())
                 .notes(dto.getNotes())
                 .cashierCustomRate(dto.getCashierCustomRate())
                 .foreignStatus(dto.getForeignStatus())
@@ -191,6 +193,8 @@ public class TransactionMapper {
                 .legalEntityTaxNumber(dto.getLegalEntityTaxNumber())
                 .legalDeedNumber(dto.getLegalDeedNumber())
                 .beneficialOwners(dto.getBeneficialOwners())
+                // FKH-067: kliens-oldali rogzitesi idobelyeg atvitele az arfolyam-TTL cutoff-hoz
+                .clientCreatedAt(dto.getClientCreatedAt())
                 .notes(dto.getNotes())
                 .cashierCustomRate(dto.getCashierCustomRate())
                 .foreignStatus(dto.getForeignStatus())

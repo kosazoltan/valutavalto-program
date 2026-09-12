@@ -109,7 +109,7 @@ class TransactionServiceIdentificationTest {
                 .baseSellRate(new BigDecimal("400.00"))
                 .validDate(LocalDate.now())
                 .build();
-        when(exchangeRateService.getCurrentRate(2L)).thenReturn(rate);
+        when(exchangeRateService.getCurrentRate(eq(2L), any())).thenReturn(rate);
 
         // CalculationService mock — rate validation + resolve
         when(calculationService.resolveSellRate(any(), any(), any()))

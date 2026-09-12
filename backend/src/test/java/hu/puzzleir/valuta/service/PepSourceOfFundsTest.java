@@ -114,7 +114,7 @@ class PepSourceOfFundsTest {
             lenient().when(currencyRepository.findByCode("EUR")).thenReturn(Optional.of(eur));
 
             ExchangeRate rate = rate(eur, "395.00", "400.00");
-            when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(rate);
+            when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(rate);
 
             when(calculationService.resolveBuyRate(any(), any(), any()))
                     .thenAnswer(inv -> ((ExchangeRate) inv.getArgument(0)).getBaseBuyRate());

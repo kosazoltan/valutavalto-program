@@ -123,8 +123,8 @@ class TransactionServiceBusinessLogicTest {
         when(currencyRepository.findById(USD_ID)).thenReturn(Optional.of(usd));
         when(currencyRepository.findByCode("USD")).thenReturn(Optional.of(usd));
 
-        when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(rate(eur, "395.00", "400.00"));
-        when(exchangeRateService.getCurrentRate(USD_ID)).thenReturn(rate(usd, "360.00", "365.00"));
+        when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(rate(eur, "395.00", "400.00"));
+        when(exchangeRateService.getCurrentRate(eq(USD_ID), any())).thenReturn(rate(usd, "360.00", "365.00"));
 
         when(calculationService.resolveBuyRate(any(), any(), any()))
                 .thenAnswer(inv -> {

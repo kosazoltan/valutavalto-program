@@ -120,6 +120,13 @@ public class SellRequestDto {
     @Size(max = 4, message = "Legfeljebb 4 tényleges tulajdonos adható meg")
     private List<BeneficialOwnerDto> beneficialOwners;
 
+    /**
+     * FKH-067 (spec doc: FKH-063): a tranzakcio kliens-oldali, valtozatlan rogzitesi idobelyege
+     * (penztar-client pending_transactions.created_at), ISO-8601. Opcionalis — regi kliens verzio
+     * nem kuldi, ekkor az arfolyam-TTL a regi, blokkolo szabaly szerint ervenyesul (fail-closed).
+     */
+    private java.time.Instant clientCreatedAt;
+
     private String notes;
 
     /** Penztarosi sav: egyedi arfolyam 400k+ Ft felett (napi 5x limit) */
