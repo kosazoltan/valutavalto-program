@@ -120,6 +120,14 @@ public class SellRequestDto {
     @Size(max = 4, message = "Legfeljebb 4 tényleges tulajdonos adható meg")
     private List<BeneficialOwnerDto> beneficialOwners;
 
+    /**
+     * FKH-067 (spec doc: FKH-063): the client-side, unchanged recording timestamp of the
+     * transaction (penztar-client pending_transactions.created_at), ISO-8601. Optional - an older
+     * client version does not send it, and then the exchange-rate TTL applies with the old,
+     * blocking rule (fail-closed).
+     */
+    private java.time.Instant clientCreatedAt;
+
     private String notes;
 
     /** Penztarosi sav: egyedi arfolyam 400k+ Ft felett (napi 5x limit) */

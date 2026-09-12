@@ -272,7 +272,8 @@ public class TransactionService {
         transactionValidationService.validateCurrencyExchangeable(currency);
 
         // Ürfolyam meghatározása
-        ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
+        // FKH-067: the client's original recording timestamp decides whether a stale rate blocks.
+        ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId, request.getClientCreatedAt());
 
         // Kedvezmény validálás (ELŐBB, mielőtt bármilyen számítás történne)
         if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
@@ -444,6 +445,8 @@ public class TransactionService {
                 .legalDeedNumber(request.getLegalDeedNumber())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
+                // FKH-067: persist the client's original recording instant (audit traceability)
+                .clientCreatedAt(request.getClientCreatedAt())
                 .notes(request.getNotes())
                 .cashierCustomRate(buyCashierCustomRate)
                 .foreignStatus(ForeignStatus.parseOrNull(request.getForeignStatus()))
@@ -506,7 +509,8 @@ public class TransactionService {
         transactionValidationService.validateCurrencyExchangeable(currency);
 
         // Ürfolyam meghatározása
-        ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId);
+        // FKH-067: the client's original recording timestamp decides whether a stale rate blocks.
+        ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId, request.getClientCreatedAt());
 
         // Kedvezmény validálás (ELŐBB, mielőtt bármilyen számítás történne)
         if (request.getDiscountPercent() != null && request.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
@@ -672,6 +676,8 @@ public class TransactionService {
                 .legalDeedNumber(request.getLegalDeedNumber())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
+                // FKH-067: persist the client's original recording instant (audit traceability)
+                .clientCreatedAt(request.getClientCreatedAt())
                 .notes(request.getNotes())
                 .cashierCustomRate(sellCashierCustomRate)
                 .foreignStatus(ForeignStatus.parseOrNull(request.getForeignStatus()))
@@ -1372,6 +1378,8 @@ public class TransactionService {
         private String legalEntityTaxNumber;
         private String legalDeedNumber;
         private java.util.List<hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto> beneficialOwners;
+        /** FKH-067: client-side, unchanged recording timestamp for the exchange-rate TTL cutoff. */
+        private java.time.Instant clientCreatedAt;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;
@@ -1435,6 +1443,8 @@ public class TransactionService {
         private String legalEntityTaxNumber;
         private String legalDeedNumber;
         private java.util.List<hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto> beneficialOwners;
+        /** FKH-067: client-side, unchanged recording timestamp for the exchange-rate TTL cutoff. */
+        private java.time.Instant clientCreatedAt;
         private String notes;
         private Boolean cashierCustomRate;
         private String foreignStatus;

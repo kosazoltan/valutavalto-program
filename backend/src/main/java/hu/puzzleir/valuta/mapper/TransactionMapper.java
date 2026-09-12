@@ -136,6 +136,8 @@ public class TransactionMapper {
                 .legalEntityTaxNumber(dto.getLegalEntityTaxNumber())
                 .legalDeedNumber(dto.getLegalDeedNumber())
                 .beneficialOwners(dto.getBeneficialOwners())
+                // FKH-067: carry the client-side recording timestamp for the exchange-rate TTL cutoff
+                .clientCreatedAt(dto.getClientCreatedAt())
                 .notes(dto.getNotes())
                 .cashierCustomRate(dto.getCashierCustomRate())
                 .foreignStatus(dto.getForeignStatus())
@@ -191,6 +193,8 @@ public class TransactionMapper {
                 .legalEntityTaxNumber(dto.getLegalEntityTaxNumber())
                 .legalDeedNumber(dto.getLegalDeedNumber())
                 .beneficialOwners(dto.getBeneficialOwners())
+                // FKH-067: carry the client-side recording timestamp for the exchange-rate TTL cutoff
+                .clientCreatedAt(dto.getClientCreatedAt())
                 .notes(dto.getNotes())
                 .cashierCustomRate(dto.getCashierCustomRate())
                 .foreignStatus(dto.getForeignStatus())

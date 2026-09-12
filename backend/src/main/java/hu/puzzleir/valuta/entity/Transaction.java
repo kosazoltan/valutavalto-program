@@ -569,6 +569,15 @@ public class Transaction {
     @Column(name = "legal_deed_number", length = 100)
     private String legalDeedNumber;
 
+    /**
+     * FKH-067 (spec doc: FKH-063): the client-side, unchanged recording timestamp of the
+     * transaction (penztar-client pending_transactions.created_at). Internal/audit traceability
+     * only - this is what decided whether an expired rate blocked the booking
+     * (TTL_NONBLOCKING_CUTOFF). NULL: older client version or a non-client-originated transaction.
+     */
+    @Column(name = "client_created_at")
+    private java.time.Instant clientCreatedAt;
+
     // ============ HELPER METHODS ============
 
     /**

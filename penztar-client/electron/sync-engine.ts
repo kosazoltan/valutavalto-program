@@ -553,6 +553,44 @@ async function httpPostMultipart(
 
 // --- SyncEngine ---
 
+/**
+ * FKH-067 (spec doc: FKH-063): converts the local SQLite timestamp into an ISO-8601 instant.
+ *
+ * The `created_at` column of the pending_* tables is created with a `datetime('now')` default,
+ * which SQLite emits as UTC WITHOUT a zone marker ('YYYY-MM-DD HH:MM:SS'). `new Date(...)` could
+ * interpret such a string as LOCAL time depending on the platform, so appending 'Z' explicitly is
+ * mandatory - otherwise the uploaded instant would be off by hours at the cutoff comparison.
+ *
+ * Only that exact zone-less shape is accepted, and the parsed value must round-trip to the same
+ * calendar day: Date's permissive parser would silently normalize an impossible date
+ * (2026-02-30 -> 2026-03-02). Anything else returns undefined, and the caller then omits the
+ * field, leaving the decision to the backend's fail-closed branch.
+ */
+export function toIsoInstant(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+  const shape = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/.exec(trimmed);
+  if (!shape) {
+    // Anything that is not the zone-less SQLite shape is rejected: Date's permissive parser would
+    // silently normalize impossible calendar values (2026-02-30 -> 2026-03-02), which would let
+    // malformed local data qualify for the non-blocking cutoff. Fail-closed instead.
+    return undefined;
+  }
+  const [, year, month, day, hour, minute, second] = shape;
+  const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second ?? '00'}Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+  // Round-trip check: an overflowing calendar date (2026-02-30) parses, but comes back as a
+  // different day -> reject it rather than sending a silently shifted instant.
+  const roundTripped =
+    parsed.getUTCFullYear() === Number(year) &&
+    parsed.getUTCMonth() + 1 === Number(month) &&
+    parsed.getUTCDate() === Number(day);
+  return roundTripped ? parsed.toISOString() : undefined;
+}
+
 export class SyncEngine {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private syncAllInFlight: Promise<SyncResult> | null = null;
@@ -2052,6 +2090,16 @@ export class SyncEngine {
       }
     }
 
+    // FKH-067 (spec doc: FKH-063) FR-1: carry the local, UNCHANGED recording timestamp.
+    // The backend (TTL_NONBLOCKING_CUTOFF) uses it to decide whether a stale-rate item falls under
+    // the NEW (non-blocking) or the OLD (blocking) rule. `created_at` does not change on retry
+    // (markTransactionSynced only writes the `synced` column), which is what makes it usable here.
+    // Unparsable value -> the field is NOT sent, so the backend takes its fail-closed branch.
+    const clientCreatedAt = toIsoInstant(tx.created_at);
+    if (clientCreatedAt) {
+      body['clientCreatedAt'] = clientCreatedAt;
+    }
+
     // A tárolt idempotency_key-t használjuk — retry-nál is ugyanazt küldjük
     await poster(endpoint, body, token, tx.idempotency_key ?? undefined);
   }
@@ -2459,9 +2507,7 @@ export class SyncEngine {
       // nem-éles díjat).
       const status = (response as { status?: string }).status;
       if (status === 'DRAFT') {
-        log.warn(
-          '[SyncEngine] Kezelési díj konfiguráció sync: DRAFT payload elutasítva (FR-8).',
-        );
+        log.warn('[SyncEngine] Kezelési díj konfiguráció sync: DRAFT payload elutasítva (FR-8).');
         return;
       }
 

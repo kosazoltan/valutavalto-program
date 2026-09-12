@@ -40591,6 +40591,10 @@
             "maxItems": 4,
             "minItems": 0
           },
+          "clientCreatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "notes": {
             "type": "string"
           },
@@ -41160,6 +41164,10 @@
             },
             "maxItems": 4,
             "minItems": 0
+          },
+          "clientCreatedAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "notes": {
             "type": "string"

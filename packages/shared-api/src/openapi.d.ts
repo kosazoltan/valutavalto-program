@@ -17778,6 +17778,8 @@ export interface components {
       legalEntityTaxNumber?: string
       legalDeedNumber?: string
       beneficialOwners?: components['schemas']['BeneficialOwnerDto'][]
+      /** Format: date-time */
+      clientCreatedAt?: string
       notes?: string
       cashierCustomRate?: boolean
       foreignStatus?: string
@@ -17969,6 +17971,8 @@ export interface components {
       legalEntityTaxNumber?: string
       legalDeedNumber?: string
       beneficialOwners?: components['schemas']['BeneficialOwnerDto'][]
+      /** Format: date-time */
+      clientCreatedAt?: string
       notes?: string
       cashierCustomRate?: boolean
       foreignStatus?: string

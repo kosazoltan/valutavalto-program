@@ -219,7 +219,7 @@ class TransactionFlowTest {
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
 
                 // Rate
-                when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+                when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(eurRate);
 
                 // K__szlet ellen_'rz__s -  EUR __s HUF k__l__n (read + pessimistic lock)
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
@@ -303,7 +303,7 @@ class TransactionFlowTest {
                 when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
-                when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+                when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(eurRate);
 
                 // __res k__szlet
                 CashBalance emptyBalance = new CashBalance();
@@ -345,7 +345,7 @@ class TransactionFlowTest {
                 when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
-                when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+                when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(eurRate);
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
@@ -400,7 +400,7 @@ class TransactionFlowTest {
                 when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
-                when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+                when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(eurRate);
 
                 // 1000 EUR * 390 = 390.000 Ft > 300.000 limit -> __gyf__l n__lk__l hib__t dob
                 TransactionService.BuyRequest request = TransactionService.BuyRequest.builder()
@@ -428,7 +428,7 @@ class TransactionFlowTest {
                 when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
-                when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+                when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(eurRate);
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyId(BRANCH_ID, EUR_ID, COMPANY_ID))
                         .thenReturn(Optional.of(eurBalance));
                 when(cashBalanceRepository.findByBranchIdAndCurrencyIdAndCompanyIdForUpdate(BRANCH_ID, EUR_ID, COMPANY_ID))
@@ -472,7 +472,7 @@ class TransactionFlowTest {
                 when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
                 when(workerRepository.findById(WORKER_ID)).thenReturn(Optional.of(worker));
                 when(currencyRepository.findById(EUR_ID)).thenReturn(Optional.of(eurCurrency));
-                when(exchangeRateService.getCurrentRate(EUR_ID)).thenReturn(eurRate);
+                when(exchangeRateService.getCurrentRate(eq(EUR_ID), any())).thenReturn(eurRate);
 
                 // 2%+ kedvezmeny supervisor nelkul _ hiba
                 doThrow(new ValidationException("2% feletti kedvezmenyhez supervisor jogosultsag szukseges!"))
