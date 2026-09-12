@@ -100,6 +100,11 @@ export default function CashierStocksPage() {
   const [turnoverByBranch, setTurnoverByBranch] = useState<
     Map<string, Map<string, TurnoverSummary>>
   >(new Map())
+  // FKH-066: cash desks whose turnover lookup failed — their rows and the territory
+  // total must show "unavailable", never a zero that looks like real money.
+  const [turnoverFailedBranchIds, setTurnoverFailedBranchIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [branchMeta, setBranchMeta] = useState<
     Map<string, { id?: string; region: string; isVault: boolean; vaultTerritoryId?: number | null }>
   >(new Map())
@@ -121,7 +126,7 @@ export default function CashierStocksPage() {
       // elhasal, a stock attól még megjelenik (allItems → fallback a nyers sorokra).
       const today = todayLocalIso()
       // FK-040: full (főértéktár) módban a felső táblázat rejtve → az árfolyam (oszlopok) és a
-      // forgalmi adatok feleslegesek, ezért nem is hívjuk őket (NFR-1 teljesítmény).
+      // turnover data is not needed here, so it is not fetched at all (NFR-1 performance).
       const isFull = appMode === 'full'
       const [stockResult, currencyResult, ratesResult, vaultStockResult, territoryResult] =
         await Promise.allSettled([
@@ -195,18 +200,36 @@ export default function CashierStocksPage() {
         )
         const turnoverResults = await Promise.allSettled(
           branchIds.map(async (branchId) => {
-            const report = await vaultTurnoverApi.daily(branchId, today)
-            return [branchId, safeArray<VaultTurnoverCurrencyRow>(report.byCurrency)] as const
+            try {
+              const report = await vaultTurnoverApi.daily(branchId, today)
+              return {
+                branchId,
+                rows: safeArray<VaultTurnoverCurrencyRow>(report.byCurrency),
+              }
+            } catch (err) {
+              // Rethrow with the branch attached: the caller must know WHICH desk is
+              // unavailable, otherwise a missing lookup silently becomes a zero.
+              throw Object.assign(new Error(`turnover failed for branch ${branchId}`), {
+                branchId,
+                cause: err,
+              })
+            }
           }),
         )
+        const failedBranchIds = new Set<string>()
         const nextTurnover = new Map<string, Map<string, TurnoverSummary>>()
         for (const result of turnoverResults) {
           if (result.status === 'rejected') {
             // NFR-1: a failing branch must not break the view; the others still render.
+            // The branch is NOT silently dropped either — a missing lookup must not be
+            // presented as a legitimate zero turnover, so it stays out of the map and
+            // the rows mark themselves unavailable (see detailedRows).
             logger.warn('CashierStocksPage', 'Forgalmi adatok betöltése sikertelen', result.reason)
+            const failedId = (result.reason as { branchId?: string } | undefined)?.branchId
+            if (failedId) failedBranchIds.add(failedId)
             continue
           }
-          const [branchId, rows] = result.value
+          const { branchId, rows } = result.value
           const byCurrency = new Map<string, TurnoverSummary>()
           for (const row of rows) {
             if (!row.currencyCode) continue
@@ -219,6 +242,7 @@ export default function CashierStocksPage() {
           nextTurnover.set(branchId, byCurrency)
         }
         setTurnoverByBranch(nextTurnover)
+        setTurnoverFailedBranchIds(failedBranchIds)
       }
       setLastRefreshAt(new Date())
     } catch (err) {
@@ -418,6 +442,9 @@ export default function CashierStocksPage() {
 
     const stockByCurrency = new Map<string, number>()
     const turnoverByCurrency = new Map<string, TurnoverSummary>()
+    // A single failing cash desk makes the WHOLE selection's turnover incomplete:
+    // reporting a partial sum as if it were the territory total would be a money lie.
+    let turnoverUnavailable = false
     for (const group of selectedGroups) {
       const branchId = group.branchId ?? branchMeta.get(group.branchName)?.id
       for (const item of group.items) {
@@ -428,6 +455,7 @@ export default function CashierStocksPage() {
         )
       }
       if (branchId) {
+        if (turnoverFailedBranchIds.has(branchId)) turnoverUnavailable = true
         const branchTurnover = turnoverByBranch.get(branchId)
         if (branchTurnover) {
           for (const [currencyCode, summary] of branchTurnover.entries()) {
@@ -457,9 +485,18 @@ export default function CashierStocksPage() {
         currencyCode,
         stock: stockByCurrency.get(currencyCode) ?? 0,
         turnover: turnoverByCurrency.get(currencyCode) ?? { buyHuf: 0, sellHuf: 0, fee: 0 },
+        turnoverUnavailable,
         rate: ratesByCurrency.get(currencyCode),
       }))
-  }, [branchGroups, branchMeta, currencies, ratesByCurrency, selectedBranchId, turnoverByBranch])
+  }, [
+    branchGroups,
+    branchMeta,
+    currencies,
+    ratesByCurrency,
+    selectedBranchId,
+    turnoverByBranch,
+    turnoverFailedBranchIds,
+  ])
 
   // FK-002: területenként csoportosítás (8 terület = 1 értéktár + pénztárai).
   const territories = useMemo(() => {
@@ -689,17 +726,37 @@ export default function CashierStocksPage() {
                       <td className="px-2 py-1.5 text-right font-mono">
                         {formatBalance(row.stock, row.currencyCode)}
                       </td>
-                      <td className="px-2 py-1.5 text-right font-mono">
-                        {roundHuf(row.turnover.buyHuf).toLocaleString('hu-HU')}
-                      </td>
-                      <td className="px-2 py-1.5 text-right font-mono">
-                        {roundHuf(row.turnover.sellHuf).toLocaleString('hu-HU')}
+                      {/* FKH-066: an unavailable turnover lookup is marked, NEVER shown
+                          as a zero — a missing money figure must not look like a real one. */}
+                      <td
+                        className={`px-2 py-1.5 text-right font-mono ${
+                          row.turnoverUnavailable ? 'text-amber-700' : ''
+                        }`}
+                        data-testid={`cashier-stock-buy-${row.currencyCode}`}
+                      >
+                        {row.turnoverUnavailable
+                          ? i18n.t('literals.forgalom-nem-elerheto')
+                          : roundHuf(row.turnover.buyHuf).toLocaleString('hu-HU')}
                       </td>
                       <td
-                        className="px-2 py-1.5 text-right font-mono"
+                        className={`px-2 py-1.5 text-right font-mono ${
+                          row.turnoverUnavailable ? 'text-amber-700' : ''
+                        }`}
+                        data-testid={`cashier-stock-sell-${row.currencyCode}`}
+                      >
+                        {row.turnoverUnavailable
+                          ? i18n.t('literals.forgalom-nem-elerheto')
+                          : roundHuf(row.turnover.sellHuf).toLocaleString('hu-HU')}
+                      </td>
+                      <td
+                        className={`px-2 py-1.5 text-right font-mono ${
+                          row.turnoverUnavailable ? 'text-amber-700' : ''
+                        }`}
                         data-testid={`cashier-stock-fee-${row.currencyCode}`}
                       >
-                        {roundHuf(row.turnover.fee).toLocaleString('hu-HU')}
+                        {row.turnoverUnavailable
+                          ? i18n.t('literals.forgalom-nem-elerheto')
+                          : roundHuf(row.turnover.fee).toLocaleString('hu-HU')}
                       </td>
                       <td className={`px-2 py-1.5 text-right font-mono ${rateClass}`}>
                         {row.rate?.baseBuyRate?.toLocaleString('hu-HU') ?? '-'}

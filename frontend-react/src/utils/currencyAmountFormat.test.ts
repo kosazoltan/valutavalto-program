@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currencyDecimals, formatCurrencyAmount } from './currencyAmountFormat'
+import { currencyDecimals, displayedAmount, formatCurrencyAmount } from './currencyAmountFormat'
 
 /**
  * FKH-065 FR-5 + NFR-3: per-currency decimal formatting for the closing wizard's
@@ -52,5 +52,24 @@ describe('formatCurrencyAmount', () => {
   it('returns an em dash for a missing value', () => {
     expect(formatCurrencyAmount(null, 'HUF')).toBe('—')
     expect(formatCurrencyAmount(undefined, 'EUR')).toBe('—')
+  })
+})
+
+describe('displayedAmount', () => {
+  it('HUF carries the 5 Ft rounding', () => {
+    expect(displayedAmount(1233, 'HUF')).toBe(1235)
+  })
+
+  it('rounds to the DISPLAYED precision so a shown zero never compares as non-zero', () => {
+    // Reviewer P2: a JPY residue renders as "0" (0 decimals) but must also COMPARE as 0,
+    // otherwise the match colouring paints a displayed zero red. The backend keeps two
+    // decimals, so this input is reachable.
+    expect(displayedAmount(0.4, 'JPY')).toBe(0)
+    expect(formatCurrencyAmount(0.4, 'JPY')).toBe('0')
+  })
+
+  it('keeps EUR at its own two-decimal precision', () => {
+    expect(displayedAmount(0.4, 'EUR')).toBe(0.4)
+    expect(displayedAmount(0.004, 'EUR')).toBe(0)
   })
 })

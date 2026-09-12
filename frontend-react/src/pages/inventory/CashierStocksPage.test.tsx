@@ -260,7 +260,7 @@ describe('CashierStocksPage (FK-007/008)', () => {
     await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
   })
 
-  // --- FKH-066: tényleges vétel/eladás forgalom + kezelési díj ---
+  // --- FKH-066: actual buy/sell turnover + handling fee ---
 
   it('FKH-066 FR-3: a Forgalom oszlopok a tényleges BUY/SELL forgalmat mutatják, nem banki mozgást', async () => {
     mocks.vaultTurnoverDaily.mockResolvedValue({
@@ -269,7 +269,7 @@ describe('CashierStocksPage (FK-007/008)', () => {
     render(<CashierStocksPage />)
 
     await waitFor(() => expect(mocks.vaultTurnoverDaily).toHaveBeenCalled())
-    // A movement-log forrás teljesen kikerült erről a nézetről (spec: "nem marad meg semmilyen formában").
+    // The movement-log source is gone from this view entirely (spec: "must not remain in any form").
     expect(mocks.apiGet).not.toHaveBeenCalledWith(
       '/inventory-movements/movement-log',
       expect.anything(),
@@ -285,17 +285,36 @@ describe('CashierStocksPage (FK-007/008)', () => {
     })
     render(<CashierStocksPage />)
 
-    // roundHuf: 5 Ft-ra kerekítés (4503 -> 4505), a repo pénzügyi invariánsa szerint.
+    // roundHuf: statutory 5 Ft rounding (4503 -> 4505), the repo's money invariant.
     await waitFor(() =>
       expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent('4505'),
     )
   })
 
-  it('FKH-066 NFR-1: ha a forgalom-lekérdezés hibázik, a nézet nem omlik össze (0 díj marad)', async () => {
+  it('FKH-066 FR-3: a Forgalom oszlopok a válasz buyHuf/sellHuf mezőjét mutatják', async () => {
+    // Reviewer finding: a swap or a zeroed render used to pass, because only the
+    // endpoint call and the fee cell were asserted.
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      byCurrency: [{ currencyCode: 'EUR', buyHuf: 123000, sellHuf: 456000, fee: 0 }],
+    })
+    render(<CashierStocksPage />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent('123 000'),
+    )
+    expect(screen.getByTestId('cashier-stock-sell-EUR')).toHaveTextContent('456 000')
+  })
+
+  it('FKH-066 NFR-1: bukó forgalom-lekérdezés NEM jelenhet meg nullaként, a cella ismeretlent jelöl', async () => {
+    // Reviewer finding (money data): an unavailable lookup rendered as a legitimate
+    // zero, which also corrupted the territory total.
     mocks.vaultTurnoverDaily.mockRejectedValue(new Error('territory 404'))
     render(<CashierStocksPage />)
 
     await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
-    expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent('0')
+    expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent('n.a.')
+    expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent('n.a.')
+    expect(screen.getByTestId('cashier-stock-sell-EUR')).toHaveTextContent('n.a.')
+    expect(screen.getByTestId('cashier-stock-fee-EUR')).not.toHaveTextContent('0')
   })
 })

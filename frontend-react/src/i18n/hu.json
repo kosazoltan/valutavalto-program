@@ -4813,6 +4813,7 @@
     "utolagos-zaras-folyamatban": "Zárás folyamatban…",
     "utolagos-nap-zarasa": "Nap zárása ({{date}})",
     "utolagos-az-egyeztetes-elterest-talalt": "Az egyeztetés eltérést talált — a zárás nem indítható.",
+    "forgalom-nem-elerheto": "n.a.",
     "kezelesi-dij-oszlop": "Kezelési díj"
   }
 }

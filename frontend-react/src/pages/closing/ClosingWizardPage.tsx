@@ -95,8 +95,8 @@ export default function ClosingWizardPage() {
 
   // Denomination input state
   const [currencyDenominations, setCurrencyDenominations] = useState<Record<string, number[]>>({})
-  // FKH-065 (FR-1): tajekoztato "Elvart" referencia a 2. lepeshez. A meglevo,
-  // valtozatlan self-check vegpontrol jon; hiba eseten null marad (NFR-1).
+  // FKH-065 (FR-1): informational "Expected" reference for step 2. It comes from the
+  // existing, UNCHANGED self-check endpoint; on failure it stays null (NFR-1).
   const [selfCheckRows, setSelfCheckRows] = useState<DenominationSelfCheck[] | null>(null)
   // FK-063 FR-2: pénztár módban a becímletezendő pénznemek a backend
   // currencies-with-balance végpontból jönnek (HUF mindig kötelező).
@@ -159,14 +159,14 @@ export default function ClosingWizardPage() {
     [denominationTotals],
   )
   /**
-   * FKH-065 (FR-1): penznemenkenti elvart egyenleg a self-check valaszbol.
-   * Kizarolag a DTO expectedBalance mezoje — nincs uj szamitasi logika.
+   * FKH-065 (FR-1): per-currency expected balance from the self-check response.
+   * Strictly the DTO's expectedBalance field — no new calculation logic.
    */
   const expectedByCurrency = useMemo<Record<string, number> | null>(
     () =>
-      // A valasz alakja NEM garantalt (proxy/gateway 200-nal nem-tomb torzset adhat):
-      // egy vak .map() itt a teljes 2. lepest — a cimletezest es a veglegesitest is —
-      // levinne a DOM-rol. Ismeretlen alak = "nincs adat" (panel "—"), nem osszeomlas.
+      // The response SHAPE is not guaranteed (a proxy/gateway may answer 200 with a
+      // non-array body): a blind .map() here would take the whole step 2 — denomination
+      // entry and finalize alike — off the DOM. Unknown shape = "no data" (panel "—").
       Array.isArray(selfCheckRows)
         ? Object.fromEntries(
             selfCheckRows
@@ -375,11 +375,11 @@ export default function ClosingWizardPage() {
     }
   }, [isVaultContext, t])
 
-  // FKH-065 (FR-1 / NFR-1): az "Elvart" referencia mountkor tolt be, a meglevo,
-  // valtozatlan self-check vegpontrol. A wizard esti cimletezese BRANCH-kulccsal
-  // irodik (ClosingWizardController -> countDenominations(wizard.branchId, ...)),
-  // ezert a self-check ugyanarra a branchId-ra kerdez — a wizard cashDeskId mezoje
-  // itt nem hasznalhato. Hiba eseten a panel "—"-t mutat, semmit nem blokkol.
+  // FKH-065 (FR-1 / NFR-1): the "Expected" reference loads on mount from the existing,
+  // UNCHANGED self-check endpoint. The wizard writes its evening denomination rows
+  // BRANCH-keyed (ClosingWizardController -> countDenominations(wizard.branchId, ...)),
+  // so the self-check is queried with the same branchId — the wizard's cashDeskId field
+  // is not usable here. On failure the panel shows "—" and blocks nothing.
   useEffect(() => {
     const branchId = worker?.branchId
     if (!branchId) return
@@ -1058,9 +1058,9 @@ export default function ClosingWizardPage() {
                         {(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')}
                       </div>
                     )}
-                    {/* FKH-065 (FR-1/FR-2/FR-5): tajekoztato Elvart + elo elteres.
-                        A becimletezes es a tovabblepes viselkedese VALTOZATLAN — ez a
-                        panel semmit nem blokkol (a blokkolas a veglegesitesi gate-en marad). */}
+                    {/* FKH-065 (FR-1/FR-2/FR-5): informational Expected + live difference.
+                        Denomination entry and the continue button behave EXACTLY as before —
+                        this panel blocks nothing (blocking stays on the finalize gate). */}
                     <div className="mt-1 flex flex-wrap items-center justify-end gap-3 text-xs">
                       <span className="text-gray-600 dark:text-gray-300">
                         {t('closing.elvartReferencia')}:{' '}
@@ -1118,7 +1118,7 @@ export default function ClosingWizardPage() {
                   )}
                 </span>
               </div>
-              {/* FKH-065 FR-3: a panel tajekoztato jelleget es az adat forrasat kimondo felirat. */}
+              {/* FKH-065 FR-3: states that the panel is informational and names its source. */}
               <p
                 className="mt-1 text-[10px] leading-snug text-gray-500 dark:text-gray-400"
                 data-testid="closing-expected-hint"

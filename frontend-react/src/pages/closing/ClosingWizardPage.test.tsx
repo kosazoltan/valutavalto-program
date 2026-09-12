@@ -859,7 +859,7 @@ describe('ClosingWizardPage', () => {
       expect(finalizeBtn).toBeDisabled()
     })
   })
-  // ========== FKH-065: ESTI CIMLETEZES "ELVART" REFERENCIA (informational) ==========
+  // ========== FKH-065: EVENING DENOMINATION "EXPECTED" REFERENCE (informational) ==========
 
   describe('FKH-065 Elvart referencia es elo elteres a 2. lepesen', () => {
     /** Digits only, so the hu-HU thousands separator (NBSP) cannot make the test brittle. */

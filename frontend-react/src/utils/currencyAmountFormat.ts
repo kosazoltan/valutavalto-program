@@ -19,12 +19,17 @@ export function currencyDecimals(currencyCode: string | null | undefined): numbe
 
 /**
  * The amount as it is DISPLAYED, before formatting: HUF carries the statutory 5 Ft
- * rounding, every other currency is returned unchanged. Comparisons that drive a
- * displayed state (e.g. "matches" colouring) must use this, otherwise a rounded "0"
- * could be painted as a mismatch.
+ * rounding, every other currency is rounded to its own display precision.
+ * Comparisons that drive a displayed state (e.g. "matches" colouring) must use this,
+ * otherwise a rounded "0" could be painted as a mismatch — a JPY residue of 0.4
+ * renders as "0" but would still compare as non-zero (the backend keeps two decimals,
+ * so that input is reachable).
  */
 export function displayedAmount(amount: number, currencyCode: string | null | undefined): number {
-  return (currencyCode ?? '').toUpperCase() === 'HUF' ? roundHuf(amount) : amount
+  const code = (currencyCode ?? '').toUpperCase()
+  if (code === 'HUF') return roundHuf(amount)
+  const factor = 10 ** currencyDecimals(code)
+  return Math.round(amount * factor) / factor
 }
 
 /**
