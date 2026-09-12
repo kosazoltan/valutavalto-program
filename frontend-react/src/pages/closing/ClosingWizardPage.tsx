@@ -17,6 +17,7 @@ import {
   dailySessionApi,
   currencyApi,
   denominationApi,
+  denominationBalanceApi,
 } from '../../services/api/index'
 import type {
   ClosingWizard,
@@ -26,11 +27,12 @@ import type {
   DailyClosingValidation,
 } from '../../services/api/transactions'
 import type { Currency } from '../../services/api/exchange-rates'
-import type { Denomination } from '../../services/api/settings'
+import type { Denomination, DenominationSelfCheck } from '../../services/api/settings'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { isAllowedFaceValue } from '../../utils/denominationRules'
+import { displayedAmount, formatCurrencyAmount } from '../../utils/currencyAmountFormat'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 import {
@@ -93,6 +95,9 @@ export default function ClosingWizardPage() {
 
   // Denomination input state
   const [currencyDenominations, setCurrencyDenominations] = useState<Record<string, number[]>>({})
+  // FKH-065 (FR-1): tajekoztato "Elvart" referencia a 2. lepeshez. A meglevo,
+  // valtozatlan self-check vegpontrol jon; hiba eseten null marad (NFR-1).
+  const [selfCheckRows, setSelfCheckRows] = useState<DenominationSelfCheck[] | null>(null)
   // FK-063 FR-2: pénztár módban a becímletezendő pénznemek a backend
   // currencies-with-balance végpontból jönnek (HUF mindig kötelező).
   const [cashierCurrencies, setCashierCurrencies] = useState<string[]>(['HUF'])
@@ -152,6 +157,19 @@ export default function ClosingWizardPage() {
   const denomTotal = useMemo(
     () => Object.values(denominationTotals).reduce((sum, value) => sum + value, 0),
     [denominationTotals],
+  )
+  /**
+   * FKH-065 (FR-1): penznemenkenti elvart egyenleg a self-check valaszbol.
+   * Kizarolag a DTO expectedBalance mezoje — nincs uj szamitasi logika.
+   */
+  const expectedByCurrency = useMemo<Record<string, number> | null>(
+    () =>
+      selfCheckRows === null
+        ? null
+        : Object.fromEntries(
+            selfCheckRows.map((row) => [row.currencyCode, Number(row.expectedBalance)]),
+          ),
+    [selfCheckRows],
   )
   const [denomSubmitted, setDenomSubmitted] = useState(false)
   const [closingDifferences, setClosingDifferences] = useState<ClosingWizardDifference[]>([])
@@ -350,6 +368,34 @@ export default function ClosingWizardPage() {
       cancelled = true
     }
   }, [isVaultContext, t])
+
+  // FKH-065 (FR-1 / NFR-1): az "Elvart" referencia mountkor tolt be, a meglevo,
+  // valtozatlan self-check vegpontrol. A wizard esti cimletezese BRANCH-kulccsal
+  // irodik (ClosingWizardController -> countDenominations(wizard.branchId, ...)),
+  // ezert a self-check ugyanarra a branchId-ra kerdez — a wizard cashDeskId mezoje
+  // itt nem hasznalhato. Hiba eseten a panel "—"-t mutat, semmit nem blokkol.
+  useEffect(() => {
+    const branchId = worker?.branchId
+    if (!branchId) return
+
+    let cancelled = false
+    const loadExpected = async () => {
+      try {
+        const rows = await denominationBalanceApi.selfCheck(branchId, 'EVENING')
+        if (!cancelled) setSelfCheckRows(rows)
+      } catch (err) {
+        if (!cancelled) {
+          logger.warn('ClosingWizardPage', 'Elvárt referencia (önellenőrzés) nem elérhető:', err)
+          setSelfCheckRows(null)
+        }
+      }
+    }
+
+    void loadExpected()
+    return () => {
+      cancelled = true
+    }
+  }, [worker?.branchId])
 
   useEffect(() => {
     if (!routeWizardId) return
@@ -1006,6 +1052,48 @@ export default function ClosingWizardPage() {
                         {(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')}
                       </div>
                     )}
+                    {/* FKH-065 (FR-1/FR-2/FR-5): tajekoztato Elvart + elo elteres.
+                        A becimletezes es a tovabblepes viselkedese VALTOZATLAN — ez a
+                        panel semmit nem blokkol (a blokkolas a veglegesitesi gate-en marad). */}
+                    <div className="mt-1 flex flex-wrap items-center justify-end gap-3 text-xs">
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {t('closing.elvartReferencia')}:{' '}
+                        <span
+                          className="font-mono font-semibold text-blue-700 dark:text-blue-300"
+                          data-testid={`closing-expected-${currencyCode}`}
+                        >
+                          {formatCurrencyAmount(
+                            expectedByCurrency?.[currencyCode] ?? null,
+                            currencyCode,
+                          )}
+                        </span>
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {t('closing.eloElteres')}:{' '}
+                        <span
+                          className={`font-mono font-semibold ${
+                            expectedByCurrency?.[currencyCode] === undefined
+                              ? 'text-gray-500'
+                              : displayedAmount(
+                                    (expectedByCurrency[currencyCode] ?? 0) -
+                                      (denominationTotals[currencyCode] ?? 0),
+                                    currencyCode,
+                                  ) === 0
+                                ? 'text-green-700 dark:text-green-400'
+                                : 'text-red-700 dark:text-red-400'
+                          }`}
+                          data-testid={`closing-diff-${currencyCode}`}
+                        >
+                          {expectedByCurrency?.[currencyCode] === undefined
+                            ? '—'
+                            : formatCurrencyAmount(
+                                (expectedByCurrency[currencyCode] ?? 0) -
+                                  (denominationTotals[currencyCode] ?? 0),
+                                currencyCode,
+                              )}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1024,6 +1112,13 @@ export default function ClosingWizardPage() {
                   )}
                 </span>
               </div>
+              {/* FKH-065 FR-3: a panel tajekoztato jelleget es az adat forrasat kimondo felirat. */}
+              <p
+                className="mt-1 text-[10px] leading-snug text-gray-500 dark:text-gray-400"
+                data-testid="closing-expected-hint"
+              >
+                {t('closing.elvartTajekoztato')}
+              </p>
               <button
                 onClick={continueAfterDenom}
                 disabled={
