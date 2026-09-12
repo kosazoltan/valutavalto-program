@@ -37,13 +37,18 @@ if (Test-Path ".env") {
     }
 }
 
-# Deploy to Neon
+# Deploy to Neon — a jelszó a .env DATABASE_PASSWORD-ből jön (KAN-15).
+$pw = [Environment]::GetEnvironmentVariable("DATABASE_PASSWORD", "Process")
+if (-not $pw) { throw "DATABASE_PASSWORD hiányzik — ne írd be a doksiba" }
+$hostName = [Environment]::GetEnvironmentVariable("DATABASE_HOST", "Process")
+if (-not $hostName) { throw "DATABASE_HOST hiányzik" }
+
 .\scripts\deploy-database.ps1 `
-    -Host "ep-hidden-bread-ag06kat1-pooler.c-2.eu-central-1.aws.neon.tech" `
+    -Host $hostName `
     -Port 5432 `
     -Database "neondb" `
     -Username "neondb_owner" `
-    -Password "npg_vUByfDYK39QH" `
+    -Password $pw `
     -SchemaFile "database/schema/valuta_schema.sql" `
     -Force
 ```
