@@ -387,6 +387,9 @@
     "ellenorzesInditasa": "ELLENŐRZÉS INDÍTÁSA",
     "elonezet": "Előnézet",
     "elorehaladas": "Előrehaladás",
+    "elvartReferencia": "Elvárt",
+    "eloElteres": "Eltérés",
+    "elvartTajekoztato": "Tájékoztató jellegű: az eltérés a mentést nem blokkolja. Az Elvárt érték a nyilvántartott (könyv szerinti) egyenlegből számol, nem független igazságforrás.",
     "elteresEllenorzes": "Eltérés ellenőrzés",
     "elteresEllenorzesLeiras": "Backend eltérés számítás a fizikai és nyilvántartott készletre",
     "elteresEllenorzesHiba": "Eltérés ellenőrzés hiba",
@@ -4809,6 +4812,8 @@
     "utolagos-3-lepes": "3. lépés — Küldés és zárás",
     "utolagos-zaras-folyamatban": "Zárás folyamatban…",
     "utolagos-nap-zarasa": "Nap zárása ({{date}})",
-    "utolagos-az-egyeztetes-elterest-talalt": "Az egyeztetés eltérést talált — a zárás nem indítható."
+    "utolagos-az-egyeztetes-elterest-talalt": "Az egyeztetés eltérést talált — a zárás nem indítható.",
+    "forgalom-nem-elerheto": "n.a.",
+    "kezelesi-dij-oszlop": "Kezelési díj"
   }
 }

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   currencyList: vi.fn(),
   exchangeRateList: vi.fn(),
   appMode: vi.fn(),
+  vaultTurnoverDaily: vi.fn(),
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }))
 
@@ -20,6 +21,11 @@ vi.mock('../../services/api/index', () => ({
   branchApi: { listActive: mocks.branchListActive, listMyTerritory: mocks.branchListMyTerritory },
   currencyApi: { list: mocks.currencyList },
   exchangeRateApi: { list: mocks.exchangeRateList },
+}))
+
+// FKH-066: the turnover columns now come from the vault-daily turnover endpoint, not movement-log.
+vi.mock('../../services/api/vault-turnover', () => ({
+  vaultTurnoverApi: { daily: (...args: unknown[]) => mocks.vaultTurnoverDaily(...args) },
 }))
 
 vi.mock('../../hooks/useAppMode', () => ({ useAppMode: () => ({ mode: mocks.appMode() }) }))
@@ -94,6 +100,7 @@ describe('CashierStocksPage (FK-007/008)', () => {
     mocks.exchangeRateList.mockResolvedValue([])
     // FK-1: a legördülő forrása a my-territory lista (a pénztárak + az értéktár — utóbbi kiszűrve).
     mocks.branchListMyTerritory.mockResolvedValue(BRANCHES)
+    mocks.vaultTurnoverDaily.mockResolvedValue({ byCurrency: [] })
     // FK-040: alapértelmezésben értéktáros (ertektar) mód — a teljes nézet (felső táblázat + kártyák).
     mocks.appMode.mockReturnValue('ertektar')
   })
@@ -238,11 +245,12 @@ describe('CashierStocksPage (FK-007/008)', () => {
     await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
     expect(screen.getByText('Körzet összesen')).toBeInTheDocument()
     expect(mocks.exchangeRateList).toHaveBeenCalled()
-    await waitFor(() =>
-      expect(mocks.apiGet).toHaveBeenCalledWith(
-        '/inventory-movements/movement-log',
-        expect.anything(),
-      ),
+    // FKH-066: coverage inherited from the movement-log assertion - the turnover data is still
+    // fetched in ertektar mode, only its SOURCE changed to the actual BUY/SELL turnover.
+    await waitFor(() => expect(mocks.vaultTurnoverDaily).toHaveBeenCalled())
+    expect(mocks.apiGet).not.toHaveBeenCalledWith(
+      '/inventory-movements/movement-log',
+      expect.anything(),
     )
   })
 
@@ -250,5 +258,63 @@ describe('CashierStocksPage (FK-007/008)', () => {
     mocks.appMode.mockReturnValue(undefined as unknown as string)
     render(<CashierStocksPage />)
     await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
+  })
+
+  // --- FKH-066: actual buy/sell turnover + handling fee ---
+
+  it('FKH-066 FR-3: a Forgalom oszlopok a tényleges BUY/SELL forgalmat mutatják, nem banki mozgást', async () => {
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      byCurrency: [{ currencyCode: 'EUR', buyHuf: 1234567, sellHuf: 890123, fee: 4500 }],
+    })
+    render(<CashierStocksPage />)
+
+    await waitFor(() => expect(mocks.vaultTurnoverDaily).toHaveBeenCalled())
+    // The movement-log source is gone from this view entirely (spec: "must not remain in any form").
+    expect(mocks.apiGet).not.toHaveBeenCalledWith(
+      '/inventory-movements/movement-log',
+      expect.anything(),
+    )
+    const table = await screen.findByText('Részletes pénztári készlet')
+    expect(table).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('cashier-stock-fee-EUR')).toBeInTheDocument())
+  })
+
+  it('FKH-066 FR-4: a Kezelési díj oszlop a válasz fee mezőjéből, HUF-ra kerekítve jelenik meg', async () => {
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      byCurrency: [{ currencyCode: 'EUR', buyHuf: 0, sellHuf: 0, fee: 4503 }],
+    })
+    render(<CashierStocksPage />)
+
+    // roundHuf: statutory 5 Ft rounding (4503 -> 4505), the repo's money invariant.
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent('4505'),
+    )
+  })
+
+  it('FKH-066 FR-3: a Forgalom oszlopok a válasz buyHuf/sellHuf mezőjét mutatják', async () => {
+    // Reviewer finding: a swap or a zeroed render used to pass, because only the
+    // endpoint call and the fee cell were asserted.
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      byCurrency: [{ currencyCode: 'EUR', buyHuf: 123000, sellHuf: 456000, fee: 0 }],
+    })
+    render(<CashierStocksPage />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent('123 000'),
+    )
+    expect(screen.getByTestId('cashier-stock-sell-EUR')).toHaveTextContent('456 000')
+  })
+
+  it('FKH-066 NFR-1: bukó forgalom-lekérdezés NEM jelenhet meg nullaként, a cella ismeretlent jelöl', async () => {
+    // Reviewer finding (money data): an unavailable lookup rendered as a legitimate
+    // zero, which also corrupted the territory total.
+    mocks.vaultTurnoverDaily.mockRejectedValue(new Error('territory 404'))
+    render(<CashierStocksPage />)
+
+    await waitFor(() => expect(screen.getByText('Részletes pénztári készlet')).toBeInTheDocument())
+    expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent('n.a.')
+    expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent('n.a.')
+    expect(screen.getByTestId('cashier-stock-sell-EUR')).toHaveTextContent('n.a.')
+    expect(screen.getByTestId('cashier-stock-fee-EUR')).not.toHaveTextContent('0')
   })
 })

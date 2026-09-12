@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   closingWizardApiGetReport: vi.fn(),
   closingWizardApiGetCurrenciesWithBalance: vi.fn(),
   denominationApiList: vi.fn(),
+  denominationBalanceApiSelfCheck: vi.fn(),
   currencyApiGetActive: vi.fn(),
   dailySessionApiValidateClosing: vi.fn(),
   toast: {
@@ -54,6 +55,9 @@ vi.mock('../../services/api/index', () => ({
   },
   denominationApi: {
     list: mocks.denominationApiList,
+  },
+  denominationBalanceApi: {
+    selfCheck: mocks.denominationBalanceApiSelfCheck,
   },
   currencyApi: {
     getActive: mocks.currencyApiGetActive,
@@ -213,6 +217,7 @@ describe('ClosingWizardPage', () => {
     // FK-063: default pénztári készlet — csak HUF (a meglévő tesztek HUF-only formát várnak)
     mocks.closingWizardApiGetCurrenciesWithBalance.mockResolvedValue(['HUF'])
     mocks.denominationApiList.mockResolvedValue([])
+    mocks.denominationBalanceApiSelfCheck.mockResolvedValue([])
     mocks.currencyApiGetActive.mockResolvedValue([])
     mocks.dailySessionApiValidateClosing.mockResolvedValue({
       validationDate: '2026-06-18',
@@ -852,6 +857,178 @@ describe('ClosingWizardPage', () => {
       })
       const finalizeBtn = screen.getByRole('button', { name: /Minden lépés szükséges/i })
       expect(finalizeBtn).toBeDisabled()
+    })
+  })
+  // ========== FKH-065: EVENING DENOMINATION "EXPECTED" REFERENCE (informational) ==========
+
+  describe('FKH-065 Elvart referencia es elo elteres a 2. lepesen', () => {
+    /** Digits only, so the hu-HU thousands separator (NBSP) cannot make the test brittle. */
+    const digits = (el: HTMLElement) => (el.textContent ?? '').replace(/\s/g, '')
+
+    it('FR-1: mountkor lefut a self-check hivas a dolgozo irodajara, EVENING kategoriaval', async () => {
+      renderClosingWizardPage()
+
+      await waitFor(() => {
+        expect(mocks.denominationBalanceApiSelfCheck).toHaveBeenCalledWith('b1', 'EVENING')
+      })
+    })
+
+    it('FR-1: a panel penznemenkent mutatja az Elvart erteket', async () => {
+      mocks.denominationBalanceApiSelfCheck.mockResolvedValue([
+        {
+          currencyCode: 'HUF',
+          currencyId: 1,
+          denominatedAmount: 0,
+          expectedBalance: 100000,
+          difference: -100000,
+          matches: false,
+        },
+      ])
+      await runStep1()
+
+      await waitFor(() => {
+        expect(screen.getByTestId('closing-expected-HUF')).toBeInTheDocument()
+      })
+      expect(digits(screen.getByTestId('closing-expected-HUF'))).toBe('100000')
+    })
+
+    it('FR-2: gepeleskor elo eltereskent frissul, es a tovabblepes gomb AKTIV marad', async () => {
+      mocks.denominationBalanceApiSelfCheck.mockResolvedValue([
+        {
+          currencyCode: 'HUF',
+          currencyId: 1,
+          denominatedAmount: 0,
+          expectedBalance: 100000,
+          difference: -100000,
+          matches: false,
+        },
+      ])
+      const user = await runStep1()
+
+      await waitFor(() => expect(screen.getByTestId('closing-diff-HUF')).toBeInTheDocument())
+      // Meg nincs bevitel: a teljes elvart osszeg az elteres.
+      expect(digits(screen.getByTestId('closing-diff-HUF'))).toBe('100000')
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.type(inputs[0]!, '2') // 2 x 20 000 = 40 000 HUF
+
+      await waitFor(() => {
+        expect(digits(screen.getByTestId('closing-diff-HUF'))).toBe('60000')
+      })
+      // FR-2: az elteres SEMMIT nem blokkol.
+      expect(screen.getByRole('button', { name: /Cimletezés rogzitese/i })).not.toBeDisabled()
+    })
+
+    it('FR-2: egyezesnel a jelzes zold, elteresnel piros', async () => {
+      mocks.denominationBalanceApiSelfCheck.mockResolvedValue([
+        {
+          currencyCode: 'HUF',
+          currencyId: 1,
+          denominatedAmount: 0,
+          expectedBalance: 40000,
+          difference: -40000,
+          matches: false,
+        },
+      ])
+      const user = await runStep1()
+
+      await waitFor(() => expect(screen.getByTestId('closing-diff-HUF')).toBeInTheDocument())
+      expect(screen.getByTestId('closing-diff-HUF').className).toContain('text-red')
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.type(inputs[0]!, '2') // pontosan 40 000 HUF
+
+      await waitFor(() => {
+        expect(screen.getByTestId('closing-diff-HUF').className).toContain('text-green')
+      })
+      expect(digits(screen.getByTestId('closing-diff-HUF'))).toBe('0')
+    })
+
+    it('NFR-3: a HUF elteres 5 Ft-ra kerekitve jelenik meg (nem sima Math.round)', async () => {
+      mocks.denominationBalanceApiSelfCheck.mockResolvedValue([
+        {
+          currencyCode: 'HUF',
+          currencyId: 1,
+          denominatedAmount: 0,
+          // 100 001 - 40 000 = 60 001 -> roundHuf -> 60 000 (Math.round 60 001-et adna)
+          expectedBalance: 100001,
+          difference: -100001,
+          matches: false,
+        },
+      ])
+      const user = await runStep1()
+
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.type(inputs[0]!, '2')
+
+      await waitFor(() => {
+        expect(digits(screen.getByTestId('closing-diff-HUF'))).toBe('60000')
+      })
+      expect(digits(screen.getByTestId('closing-expected-HUF'))).toBe('100000')
+    })
+
+    it('FR-3: tajekoztato felirat jelzi, hogy nem blokkol es nyilvantartott egyenlegbol szamol', async () => {
+      mocks.denominationBalanceApiSelfCheck.mockResolvedValue([
+        {
+          currencyCode: 'HUF',
+          currencyId: 1,
+          denominatedAmount: 0,
+          expectedBalance: 100000,
+          difference: -100000,
+          matches: false,
+        },
+      ])
+      await runStep1()
+
+      await waitFor(() => {
+        expect(screen.getByTestId('closing-expected-hint')).toBeInTheDocument()
+      })
+      const hint = screen.getByTestId('closing-expected-hint').textContent ?? ''
+      expect(hint).toMatch(/nem blokkolja/i)
+      expect(hint).toMatch(/nyilvántartott/i)
+    })
+
+    it('NFR-1: a self-check hibaja nem omlasztja ossze a lepest, a panel "—"-t mutat', async () => {
+      mocks.denominationBalanceApiSelfCheck.mockRejectedValue(new Error('offline'))
+      const user = await runStep1()
+
+      await waitFor(() => expect(screen.getByTestId('closing-expected-HUF')).toBeInTheDocument())
+      expect(screen.getByTestId('closing-expected-HUF').textContent).toBe('—')
+      expect(screen.getByTestId('closing-diff-HUF').textContent).toBe('—')
+
+      // A mentes utja valtozatlanul jarhato.
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.type(inputs[0]!, '5')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        expect(mocks.closingWizardApiSubmitDenominations).toHaveBeenCalled()
+      })
+    })
+    it('NFR-1: nem tomb valasz (pl. proxy {} objektum) sem omlasztja ossze az oldalt', async () => {
+      // E2E-ben bizonyitott eset: egy catch-all mock/proxy 200-nal {}-t ad vissza a
+      // self-check helyett. A DTO-t vakon map-elve a render dobna, es a TELJES wizard
+      // eltunne a DOM-bol (a cimletezes es a veglegesites utja is).
+      mocks.denominationBalanceApiSelfCheck.mockResolvedValue({} as never)
+      const user = await runStep1()
+
+      await waitFor(() => expect(screen.getByTestId('closing-expected-HUF')).toBeInTheDocument())
+      expect(screen.getByTestId('closing-expected-HUF').textContent).toBe('—')
+      expect(screen.getByRole('button', { name: /Cimletezés rogzitese/i })).toBeInTheDocument()
+
+      mocks.closingWizardApiNavigate.mockResolvedValue({
+        steps: [{ stepNumber: 2, completed: true }],
+      })
+      const inputs = screen.getAllByRole('spinbutton')
+      await user.type(inputs[0]!, '5')
+      await user.click(screen.getByRole('button', { name: /Cimletezés rogzitese/i }))
+
+      await waitFor(() => {
+        expect(mocks.closingWizardApiSubmitDenominations).toHaveBeenCalled()
+      })
     })
   })
 })

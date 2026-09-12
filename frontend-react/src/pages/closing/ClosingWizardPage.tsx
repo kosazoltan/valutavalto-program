@@ -17,6 +17,7 @@ import {
   dailySessionApi,
   currencyApi,
   denominationApi,
+  denominationBalanceApi,
 } from '../../services/api/index'
 import type {
   ClosingWizard,
@@ -26,11 +27,12 @@ import type {
   DailyClosingValidation,
 } from '../../services/api/transactions'
 import type { Currency } from '../../services/api/exchange-rates'
-import type { Denomination } from '../../services/api/settings'
+import type { Denomination, DenominationSelfCheck } from '../../services/api/settings'
 import { useAuthStore } from '../../stores/authStore'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { isAllowedFaceValue } from '../../utils/denominationRules'
+import { displayedAmount, formatCurrencyAmount } from '../../utils/currencyAmountFormat'
 import { localIsoDate } from '../../utils/dateFormat'
 import { useTranslation } from 'react-i18next'
 import {
@@ -93,6 +95,9 @@ export default function ClosingWizardPage() {
 
   // Denomination input state
   const [currencyDenominations, setCurrencyDenominations] = useState<Record<string, number[]>>({})
+  // FKH-065 (FR-1): informational "Expected" reference for step 2. It comes from the
+  // existing, UNCHANGED self-check endpoint; on failure it stays null (NFR-1).
+  const [selfCheckRows, setSelfCheckRows] = useState<DenominationSelfCheck[] | null>(null)
   // FK-063 FR-2: pénztár módban a becímletezendő pénznemek a backend
   // currencies-with-balance végpontból jönnek (HUF mindig kötelező).
   const [cashierCurrencies, setCashierCurrencies] = useState<string[]>(['HUF'])
@@ -152,6 +157,25 @@ export default function ClosingWizardPage() {
   const denomTotal = useMemo(
     () => Object.values(denominationTotals).reduce((sum, value) => sum + value, 0),
     [denominationTotals],
+  )
+  /**
+   * FKH-065 (FR-1): per-currency expected balance from the self-check response.
+   * Strictly the DTO's expectedBalance field — no new calculation logic.
+   */
+  const expectedByCurrency = useMemo<Record<string, number> | null>(
+    () =>
+      // The response SHAPE is not guaranteed (a proxy/gateway may answer 200 with a
+      // non-array body): a blind .map() here would take the whole step 2 — denomination
+      // entry and finalize alike — off the DOM. Unknown shape = "no data" (panel "—").
+      Array.isArray(selfCheckRows)
+        ? Object.fromEntries(
+            selfCheckRows
+              .filter((row) => row && typeof row.currencyCode === 'string')
+              .map((row) => [row.currencyCode, Number(row.expectedBalance)])
+              .filter(([, value]) => Number.isFinite(value)),
+          )
+        : null,
+    [selfCheckRows],
   )
   const [denomSubmitted, setDenomSubmitted] = useState(false)
   const [closingDifferences, setClosingDifferences] = useState<ClosingWizardDifference[]>([])
@@ -350,6 +374,34 @@ export default function ClosingWizardPage() {
       cancelled = true
     }
   }, [isVaultContext, t])
+
+  // FKH-065 (FR-1 / NFR-1): the "Expected" reference loads on mount from the existing,
+  // UNCHANGED self-check endpoint. The wizard writes its evening denomination rows
+  // BRANCH-keyed (ClosingWizardController -> countDenominations(wizard.branchId, ...)),
+  // so the self-check is queried with the same branchId — the wizard's cashDeskId field
+  // is not usable here. On failure the panel shows "—" and blocks nothing.
+  useEffect(() => {
+    const branchId = worker?.branchId
+    if (!branchId) return
+
+    let cancelled = false
+    const loadExpected = async () => {
+      try {
+        const rows = await denominationBalanceApi.selfCheck(branchId, 'EVENING')
+        if (!cancelled) setSelfCheckRows(rows)
+      } catch (err) {
+        if (!cancelled) {
+          logger.warn('ClosingWizardPage', 'Elvárt referencia (önellenőrzés) nem elérhető:', err)
+          setSelfCheckRows(null)
+        }
+      }
+    }
+
+    void loadExpected()
+    return () => {
+      cancelled = true
+    }
+  }, [worker?.branchId])
 
   useEffect(() => {
     if (!routeWizardId) return
@@ -1006,6 +1058,48 @@ export default function ClosingWizardPage() {
                         {(denominationTotals[currencyCode] ?? 0).toLocaleString('hu-HU')}
                       </div>
                     )}
+                    {/* FKH-065 (FR-1/FR-2/FR-5): informational Expected + live difference.
+                        Denomination entry and the continue button behave EXACTLY as before —
+                        this panel blocks nothing (blocking stays on the finalize gate). */}
+                    <div className="mt-1 flex flex-wrap items-center justify-end gap-3 text-xs">
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {t('closing.elvartReferencia')}:{' '}
+                        <span
+                          className="font-mono font-semibold text-blue-700 dark:text-blue-300"
+                          data-testid={`closing-expected-${currencyCode}`}
+                        >
+                          {formatCurrencyAmount(
+                            expectedByCurrency?.[currencyCode] ?? null,
+                            currencyCode,
+                          )}
+                        </span>
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {t('closing.eloElteres')}:{' '}
+                        <span
+                          className={`font-mono font-semibold ${
+                            expectedByCurrency?.[currencyCode] === undefined
+                              ? 'text-gray-500'
+                              : displayedAmount(
+                                    (expectedByCurrency[currencyCode] ?? 0) -
+                                      (denominationTotals[currencyCode] ?? 0),
+                                    currencyCode,
+                                  ) === 0
+                                ? 'text-green-700 dark:text-green-400'
+                                : 'text-red-700 dark:text-red-400'
+                          }`}
+                          data-testid={`closing-diff-${currencyCode}`}
+                        >
+                          {expectedByCurrency?.[currencyCode] === undefined
+                            ? '—'
+                            : formatCurrencyAmount(
+                                (expectedByCurrency[currencyCode] ?? 0) -
+                                  (denominationTotals[currencyCode] ?? 0),
+                                currencyCode,
+                              )}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1024,6 +1118,13 @@ export default function ClosingWizardPage() {
                   )}
                 </span>
               </div>
+              {/* FKH-065 FR-3: states that the panel is informational and names its source. */}
+              <p
+                className="mt-1 text-[10px] leading-snug text-gray-500 dark:text-gray-400"
+                data-testid="closing-expected-hint"
+              >
+                {t('closing.elvartTajekoztato')}
+              </p>
               <button
                 onClick={continueAfterDenom}
                 disabled={
