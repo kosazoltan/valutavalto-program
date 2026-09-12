@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-09-10T00:37:20.677Z
+generated_at: 2026-09-12T05:34:10.622Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7660,6 +7660,13 @@ nodes:
     summary: "# Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge ## What happened FKH-059 asked for DB-level proof of FKH-058's status. Verdict: **FKH-058 had never been executed** (0 commits, 0 repo hits, no migration, no audit_log trace). The earlier \"done\" referred to V368 / FK-070, a different Tisza Sarok correction. FR-3 closed too: the backend uses `jdbc:postgresql://localhost:6432/valuta` (pgbouncer → local postgres"
     tags: [handoff, 2026, fkh, 059, 058, test, data, purge, what, happened]
     areas: [database, deploy, frontend]
+  - id: 655d1f4018a8a448
+    type: medium-term-episodic
+    title: "Handoff — 2026-09-09 — hygiene pass (repo memory / Hermes memory / skills / kanban)"
+    source_path: vault/sessions/handoff-2026-09-09-hygiene-memory-skill-kanban.md
+    summary: "# Handoff — 2026-09-09 — hygiene pass (repo memory / Hermes memory / skills / kanban) Follow-up to `handoff-2026-09-09-fkh059-fkh058-purge.md`. Main: `514310a1`. ## Repo memory `memory:stale-check` was stale (1 added source: the FKH-059 handoff) plus drift from the FKH-053..FKH-059 cycles. `npm run memory:build` → 1097 sources; landed as PR **#1736** (`514310a1`, generated `.agent/memory` only, 10/10 required green,"
+    tags: [handoff, 2026, hygiene, pass, repo, memory, hermes, skills, kanban, follow]
+    areas: [deploy]
   - id: 7cc88d6b95fe54a3
     type: medium-term-episodic
     title: "v2.28.108 signed release (2026-09-09)"
@@ -7667,6 +7674,48 @@ nodes:
     summary: "# v2.28.108 signed release (2026-09-09) - Main SHA `3ab81080` = tag `v2.28.108` (#1733 9-way bump). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.108 / 2026-09-09T05:11:03Z; health ok. - Deploy: 34313639119 SUCCESS. Signed release: 34313653462 SUCCESS. Security Pipeline: 34313639133 SUCCESS. - Contents: FKH-056 FALSE_CLOSED simplified close; FKH-057 retroactive list + EVENING denomination without today-open b"
     tags: [108, signed, release, 2026, main, sha, 3ab81080, tag, 1733, way]
     areas: [deploy]
+  - id: 95814d9b1bf638c5
+    type: medium-term-episodic
+    title: "Handoff — FK-111 „Készletek, címletek\" fül + v2.28.111 kiadás (2026-09-11)"
+    source_path: vault/sessions/handoff-2026-09-11-fk111-cimletek-es-v2.28.111.md
+    summary: "# Handoff — FK-111 „Készletek, címletek\" fül + v2.28.111 kiadás (2026-09-11) ## Mi készült el FK-111: a `/central/received-data` oldal második fület kapott, ami a záráskori `daily_denomination_snapshot` adatot mutatja irodánként / valutánként / névértékenként. Az átadólap-egyeztetés nézet változatlan és alapértelmezett maradt (10 tesztje módosítás nélkül zöld). - Backend: `ReceivedDenominationsController` + `Received"
+    tags: [handoff, 111, keszletek, cimletek, ful, kiadas, 2026, keszult, central, received]
+    areas: [arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, napzaras, penztar]
+  - id: 2b6cc3ecabfc87fe
+    type: medium-term-episodic
+    title: "FKH-061 — napzárás \"Belső szerverhiba\" (HTTP 500) — 2026-09-11 — LEZÁRVA"
+    source_path: vault/sessions/handoff-2026-09-11-fkh061-napzaras-500.md
+    summary: "# FKH-061 — napzárás \"Belső szerverhiba\" (HTTP 500) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN PR **#1739** mergelve: **`432d858e`** (squash, 13 commit). Board #37 `done`, #38 follow-up `todo`. Deploy run `34556658720` **success**; prod restart **03:00:42Z**, buildTime **03:00:58Z**. Telepítő **nem** készült: a PR backend-only (0 frontend/Electron fájl). Verzió maradt 2.28.110. ## Gyökérok (prod log, 2026-"
+    tags: [fkh, 061, napzaras, belso, szerverhiba, http, 500, 2026, lezarva, allapot]
+    areas: [arfolyam, deploy, installer, napzaras, riport]
+  - id: 777bd78afb7513d0
+    type: medium-term-episodic
+    title: "FKH-062 — árva worker_session sorok backfillje (V390) — 2026-09-11 — LEZÁRVA"
+    source_path: vault/sessions/handoff-2026-09-11-fkh062-worker-session-backfill.md
+    summary: "# FKH-062 — árva worker_session sorok backfillje (V390) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN + GATE B IGAZOLVA PR **#1741** → `b2c27b6d` (squash, `--admin`, `ALL REQUIRED GREEN` 10/10). Deploy run `34571837556` **success**, prod buildTime **06:55:36Z**. Verzió maradt 2.28.110 (backend-only, 0 frontend/Electron fájl → telepítő nem készült). Board #40 `done`. ## Gyökérok FKH-061 Defect C a logout ÍRÁSI"
+    tags: [fkh, 062, arva, worker_session, sorok, backfillje, v390, 2026, lezarva, allapot]
+    areas: [arfolyam, database, deploy, ertektar, installer]
+  - id: 3f1443a700d05e77
+    type: medium-term-episodic
+    title: "FKH-063 + FKH-064 + #42 — 2026-09-11 — MIND LEZÁRVA"
+    source_path: vault/sessions/handoff-2026-09-11-fkh063-fkh064-manual-rate-decade.md
+    summary: "# FKH-063 + FKH-064 + #42 — 2026-09-11 — MIND LEZÁRVA ## Eredmény: 3 tétel mergelve, élesben, Gate B igazolva. Board üres. | Board | Mi | PR | Merge SHA | Prod | |---|---|---|---|---| | #38 | FKH-064 banki-státusz forráskeveredés | #1742 | `6102b59e` | buildTime 08:34:01Z | | #41 | FKH-063 kézi árfolyam a dekádjelentéshez | #1743 | `bf1b1418` | buildTime 12:15:28Z | | #42 | Dekád-újragenerálás duplikált-kulcs (pre-ex"
+    tags: [fkh, 063, 064, 2026, mind, lezarva, eredmeny, tetel, mergelve, elesben]
+    areas: [arfolyam, database, deploy, ertektar, installer]
+  - id: ff0fcb8dc4de90aa
+    type: medium-term-episodic
+    title: "FKH-064 — banki-státusz MNB forráskeveredés (board #38) — 2026-09-11 — LEZÁRVA"
+    source_path: vault/sessions/handoff-2026-09-11-fkh064-bank-integration-source.md
+    summary: "# FKH-064 — banki-státusz MNB forráskeveredés (board #38) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN + GATE B IGAZOLVA PR **#1742** → `6102b59e` (squash, `--admin`, `ALL REQUIRED GREEN` 10/10). Deploy run `34579598139` **success**, prod buildTime **08:34:01Z**, verzió 2.28.110 (backend-only, 0 frontend/Electron fájl → telepítő nem készült). Board #38 `done`. ## Gyökérok A `mnb_exchange_rate_cache` tábla ME"
+    tags: [fkh, 064, banki, statusz, mnb, forraskeveredes, board, 2026, lezarva, allapot]
+    areas: [arfolyam, deploy, installer]
+  - id: 650830623e5ddcfc
+    type: medium-term-episodic
+    title: "Handoff — FKH-065 + FKH-066 (2026-09-12)"
+    source_path: vault/sessions/handoff-2026-09-12-fkh065-066-elvart-es-forgalom.md
+    summary: "# Handoff — FKH-065 + FKH-066 (2026-09-12) PR **#1751 MERGED** → main `64178ee8`, **v2.28.112 élesben** (prod buildTime 2026-09-12T04:55:54Z). Ticket: `.hermes/tickets/2026-09-11-fkh065-066-cimletezes-elvart-es-penztari-forgalom.md`. ## Commits (squash-olva #1751-be) | SHA | Tartalom | |---|---| | `e820ed18` | FKH-066 backend: `VaultTurnoverController` + `VaultTurnoverService` (territory-scope, 404 nem 403) | | `960d"
+    tags: [handoff, fkh, 065, 066, 2026, 1751, merged, main, 64178ee8, 112]
+    areas: [cimletezes, deploy, ertektar, frontend, installer, penztar, specifikacio]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -23255,8 +23304,113 @@ edges:
   - from: 5980169d7d4c4e78
     to: area_frontend
     relation: belongs_to_area
+  - from: 655d1f4018a8a448
+    to: area_deploy
+    relation: belongs_to_area
   - from: 7cc88d6b95fe54a3
     to: area_deploy
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_database
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_installer
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 95814d9b1bf638c5
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 2b6cc3ecabfc87fe
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: 2b6cc3ecabfc87fe
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 2b6cc3ecabfc87fe
+    to: area_installer
+    relation: belongs_to_area
+  - from: 2b6cc3ecabfc87fe
+    to: area_napzaras
+    relation: belongs_to_area
+  - from: 2b6cc3ecabfc87fe
+    to: area_riport
+    relation: belongs_to_area
+  - from: 777bd78afb7513d0
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: 777bd78afb7513d0
+    to: area_database
+    relation: belongs_to_area
+  - from: 777bd78afb7513d0
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 777bd78afb7513d0
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 777bd78afb7513d0
+    to: area_installer
+    relation: belongs_to_area
+  - from: 3f1443a700d05e77
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: 3f1443a700d05e77
+    to: area_database
+    relation: belongs_to_area
+  - from: 3f1443a700d05e77
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 3f1443a700d05e77
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 3f1443a700d05e77
+    to: area_installer
+    relation: belongs_to_area
+  - from: ff0fcb8dc4de90aa
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: ff0fcb8dc4de90aa
+    to: area_deploy
+    relation: belongs_to_area
+  - from: ff0fcb8dc4de90aa
+    to: area_installer
+    relation: belongs_to_area
+  - from: 650830623e5ddcfc
+    to: area_cimletezes
+    relation: belongs_to_area
+  - from: 650830623e5ddcfc
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 650830623e5ddcfc
+    to: area_ertektar
+    relation: belongs_to_area
+  - from: 650830623e5ddcfc
+    to: area_frontend
+    relation: belongs_to_area
+  - from: 650830623e5ddcfc
+    to: area_installer
+    relation: belongs_to_area
+  - from: 650830623e5ddcfc
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 650830623e5ddcfc
+    to: area_specifikacio
     relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
@@ -23315,27 +23469,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 02427f75bf1529bb
-    to: repo_project_state
-    relation: informs
-  - from: 3e87a7c1a129c94c
-    to: repo_project_state
-    relation: informs
-  - from: 0ad8716ae4b9d13f
-    to: repo_project_state
-    relation: informs
-  - from: b8eceb35d97d3e9a
-    to: repo_project_state
-    relation: informs
-  - from: 68af548a4ed87087
-    to: repo_project_state
-    relation: informs
-  - from: 55ee59debe750e76
-    to: repo_project_state
-    relation: informs
-  - from: d8d6d97f9f2f52ba
-    to: repo_project_state
-    relation: informs
   - from: 532b39357eabdbac
     to: repo_project_state
     relation: informs
@@ -23546,7 +23679,28 @@ edges:
   - from: 5980169d7d4c4e78
     to: repo_project_state
     relation: informs
+  - from: 655d1f4018a8a448
+    to: repo_project_state
+    relation: informs
   - from: 7cc88d6b95fe54a3
+    to: repo_project_state
+    relation: informs
+  - from: 95814d9b1bf638c5
+    to: repo_project_state
+    relation: informs
+  - from: 2b6cc3ecabfc87fe
+    to: repo_project_state
+    relation: informs
+  - from: 777bd78afb7513d0
+    to: repo_project_state
+    relation: informs
+  - from: 3f1443a700d05e77
+    to: repo_project_state
+    relation: informs
+  - from: ff0fcb8dc4de90aa
+    to: repo_project_state
+    relation: informs
+  - from: 650830623e5ddcfc
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

@@ -1,6 +1,6 @@
-generated_at: 2026-09-10T00:37:20.677Z
+generated_at: 2026-09-12T05:34:10.622Z
 schema_version: 1
-source_count: 1097
+source_count: 1104
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,66 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: 54b57983c29909b3
-    title: "2026-05-06 hallucináció-korrekció — saját session-output felülvizsgálat"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-06-hallucination-correction.md
-    sha256: 0412338fc2c3d14c6a06d306a0ac47c3604405f1701196a291e0bc51f5a58bd1
-    summary: "--- title: 2026-05-06 hallucináció-korrekció — saját session-output felülvizsgálat type: session created: 2026-05-06 22:00 CEST trigger: Kósa Zoltán user-direktíva — \"kuna konverzió 2025-ben lezárult\" hallucináció felfedezése után --- # Hallucináció-korrekció — saját session-output felülvizsgálat ## Trigger A user 2026-05-06 22:00 körül kötelezően jelezte, hogy a saját Product-Ready Roadmap-omban hallucináltam: **\"HR"
-    areas: [frontend]
-    keywords: [2026, hallucinacio, korrekcio, sajat, session, output, felulvizsgalat, title, type, created, cest, trigger]
-  - id: 5a962a6a83e6ed6c
-    title: "2026-05-07 — Handoff dokumentum (v2.5.27 → v2.5.35 sprint sorozat)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-07-handoff-v2.5.35-comprehensive.md
-    status: "ACTIVE — handoff for next agent/session"
-    sha256: 30756317e74061a341dccabc2b5e3e9fed111006057973007012edbe377410fc
-    summary: "--- title: 2026-05-07 — Handoff dokumentum (v2.5.27 → v2.5.35 sprint sorozat) type: session created: 2026-05-07 status: ACTIVE — handoff for next agent/session covers: 2026-05-06 napközben + éjszaka + 2026-05-07 hajnal production_version: 2.5.35 production_health: bootstrap 200 OK --- # Handoff: v2.5.27 → v2.5.35 sprint sorozat ## TL;DR (egyetlen képernyőn) | Mit | Érték | |---|---| | **Production verzió** | v2.5.35"
-    areas: [arfolyam, database, deploy, ertektar, frontend, installer, penztar, riport, sync, tenant]
-    keywords: [2026, handoff, dokumentum, sprint, sorozat, title, type, session, created, status, active, next]
-  - id: f00769cf56b48f68
-    title: "2026-05-07 — PR434 stack merge + repo-local memory consolidation"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-07-pr434-stack-merge-memory-consolidation.md
-    status: completed
-    sha256: c8255858a4037d1523c9960ef426dd795dc9c4f2cc2b7bf30e9a4aa179649f43
-    summary: "--- title: 2026-05-07 — PR434 stack merge + repo-local memory consolidation type: session created: 2026-05-07 status: completed main_head: aaf0588c production_health: bootstrap 200 OK --- # 2026-05-07 — PR434 stack merge + repo-local memory consolidation ## Summary - Repo-local vault activated at `D:\\repo\\valutavalto-program\\vault\\`. - Old external `D:\\valutavalto-vault\\` deleted to prevent double read/write. - Multi"
-    areas: [deploy, frontend, penztar, riport]
-    keywords: [2026, pr434, stack, merge, repo, local, memory, consolidation, title, type, session, created]
-  - id: 6470e36a8c9612c1
-    title: "2026-05-09: Hibaüzenet humanizálás + teszt bővítés (PR #536 + #537)"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-09-error-humanization-test-expansion-pr536-537.md
-    sha256: 21806dac4f24e4b509250e65302d7361c9a4ad26281bcfb3429cfacf1e9d46f8
-    summary: "# 2026-05-09: Hibaüzenet humanizálás + teszt bővítés (PR #536 + #537) ## Kontextus A felhasználó (Kósa Zoltán) jelentette, hogy a SetupWizard \"Network Connection Error\"-t ír a valódi hibaüzenetek helyett, és a teljes tesztrendszer átfogó auditját kérte. ## Elvégzett munka ### PR #536 — Szerepkör-hozzárendelés javítás (előző session-ből folytatva) - **V195 Flyway migráció**: mind az 5 whitelisted worker (BALI, BORSI,"
-    areas: [database, frontend]
-    keywords: [2026, hibauzenet, humanizalas, teszt, bovites, 536, 537, kontextus, felhasznalo, kosa, zoltan, jelentette]
-  - id: a6d37d23ab2fa89f
-    title: "2026-05-11: Installer build v2.5.40 + V196 NOT NULL hotfix"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-11-installer-build-v196-hotfix.md
-    sha256: 7b51fab918d719fe719002b5d1cf13e7865e350c69b8595a4dcd893009b5d6d7
-    summary: "# 2026-05-11: Installer build v2.5.40 + V196 NOT NULL hotfix ## Kontextus Az előző session (2026-05-09) után a user kérte a v2.5.39/v2.5.40 installer buildet, mert nem volt meg neki. A build közben kiderült, hogy a V196 migration productionban FAILELT. ## Elvégzett munka ### PR #539 — Version bump 2.5.39 → 2.5.40 - 4-way sync: root package.json, frontend-react, penztar-client, backend/pom.xml - Auto-patch a build-ins"
-    areas: [database, deploy, frontend, installer, penztar, security]
-    keywords: [2026, installer, build, v196, not, hotfix, kontextus, elozo, session, utan, user, kerte]
-  - id: cc0837508100cf38
-    title: "2026-05-12 árfolyamkészítő telepítő build"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-12-arfolyamkeszito-installer-build.md
-    status: completed
-    sha256: 5bf7ae1a2910e58bada374602dbc706874b3f62cb5f81af8fb39f05b9906df03
-    summary: "--- title: 2026-05-12 árfolyamkészítő telepítő build date: 2026-05-12 status: completed --- # 2026-05-12 árfolyamkészítő telepítő build ## Döntés Az árfolyamkészítő kliensben történt változások telepítőértékűek: - Google Desktop OAuth belépés bekerült a külön `rate-maker` Electron appba. - A kezdő árfolyam/munkacsoport adatbetöltés a dedikált `/api/v1/local-rate-maker/bootstrap` végpontra került. - A publikálás továb"
-    areas: [arfolyam, deploy, ertektar, installer]
-    keywords: [2026, arfolyamkeszito, telepito, build, title, date, status, completed, dontes, kliensben, tortent, valtozasok]
-  - id: 4931eba83f1f6d7e
-    title: "Központi Electron szolgáltatások befejezési kör"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-12-central-workstation-services-completion.md
-    status: implemented
-    sha256: 2461c8544dec60867e561a263ab2dd0039146edb11f845d6e22cee4b2e5761af
-    summary: "--- title: Központi Electron szolgáltatások befejezési kör date: 2026-05-12 status: implemented version: 2.5.46 tags: - kozponti-munkaallomas - legacy-modulok - szolgaltatasok - installer --- # Központi Electron szolgáltatások befejezési kör Felhasználói döntés: a központi Electronban kijelölt összes, korábban megalapított szolgáltatást végig kell vinni, nem elég sprintlistába tenni. ## Készre húzott részek - Napi el"
-    areas: [frontend, installer, penztar]
-    keywords: [kozponti, electron, szolgaltatasok, befejezesi, kor, title, date, 2026, status, implemented, version, tags]
   - id: c1e4ef81288e626c
     title: "Központi irányítóközpont sprint"
     type: medium-term-episodic
@@ -1684,6 +1624,14 @@ medium_term:
     summary: "# Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge ## What happened FKH-059 asked for DB-level proof of FKH-058's status. Verdict: **FKH-058 had never been executed** (0 commits, 0 repo hits, no migration, no audit_log trace). The earlier \"done\" referred to V368 / FK-070, a different Tisza Sarok correction. FR-3 closed too: the backend uses `jdbc:postgresql://localhost:6432/valuta` (pgbouncer → local postgres"
     areas: [database, deploy, frontend]
     keywords: [handoff, 2026, fkh, 059, 058, test, data, purge, what, happened, asked, level]
+  - id: 655d1f4018a8a448
+    title: "Handoff — 2026-09-09 — hygiene pass (repo memory / Hermes memory / skills / kanban)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-09-hygiene-memory-skill-kanban.md
+    sha256: 7c696189a1e2851a8d0dc2154845f6ceaa4f12d5005074f64e0ff068bd9d58df
+    summary: "# Handoff — 2026-09-09 — hygiene pass (repo memory / Hermes memory / skills / kanban) Follow-up to `handoff-2026-09-09-fkh059-fkh058-purge.md`. Main: `514310a1`. ## Repo memory `memory:stale-check` was stale (1 added source: the FKH-059 handoff) plus drift from the FKH-053..FKH-059 cycles. `npm run memory:build` → 1097 sources; landed as PR **#1736** (`514310a1`, generated `.agent/memory` only, 10/10 required green,"
+    areas: [deploy]
+    keywords: [handoff, 2026, hygiene, pass, repo, memory, hermes, skills, kanban, follow, fkh059, fkh058]
   - id: 7cc88d6b95fe54a3
     title: "v2.28.108 signed release (2026-09-09)"
     type: medium-term-episodic
@@ -1692,6 +1640,54 @@ medium_term:
     summary: "# v2.28.108 signed release (2026-09-09) - Main SHA `3ab81080` = tag `v2.28.108` (#1733 9-way bump). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.108 / 2026-09-09T05:11:03Z; health ok. - Deploy: 34313639119 SUCCESS. Signed release: 34313653462 SUCCESS. Security Pipeline: 34313639133 SUCCESS. - Contents: FKH-056 FALSE_CLOSED simplified close; FKH-057 retroactive list + EVENING denomination without today-open b"
     areas: [deploy]
     keywords: [108, signed, release, 2026, main, sha, 3ab81080, tag, 1733, way, bump, prod]
+  - id: 95814d9b1bf638c5
+    title: "Handoff — FK-111 „Készletek, címletek\" fül + v2.28.111 kiadás (2026-09-11)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-11-fk111-cimletek-es-v2.28.111.md
+    sha256: 12c301d3292bbb246fed2bec0025bcd9efa2200baf2e05e2a4bcc5b02690556a
+    summary: "# Handoff — FK-111 „Készletek, címletek\" fül + v2.28.111 kiadás (2026-09-11) ## Mi készült el FK-111: a `/central/received-data` oldal második fület kapott, ami a záráskori `daily_denomination_snapshot` adatot mutatja irodánként / valutánként / névértékenként. Az átadólap-egyeztetés nézet változatlan és alapértelmezett maradt (10 tesztje módosítás nélkül zöld). - Backend: `ReceivedDenominationsController` + `Received"
+    areas: [arfolyam, cimletezes, database, deploy, ertektar, frontend, installer, napzaras, penztar]
+    keywords: [handoff, 111, keszletek, cimletek, ful, kiadas, 2026, keszult, central, received, data, oldal]
+  - id: 2b6cc3ecabfc87fe
+    title: "FKH-061 — napzárás \"Belső szerverhiba\" (HTTP 500) — 2026-09-11 — LEZÁRVA"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-11-fkh061-napzaras-500.md
+    sha256: cef2d95c81fd8bf10af00b6d1ff766e0e89a6d9cadb4a4e816c93e27b278a2ec
+    summary: "# FKH-061 — napzárás \"Belső szerverhiba\" (HTTP 500) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN PR **#1739** mergelve: **`432d858e`** (squash, 13 commit). Board #37 `done`, #38 follow-up `todo`. Deploy run `34556658720` **success**; prod restart **03:00:42Z**, buildTime **03:00:58Z**. Telepítő **nem** készült: a PR backend-only (0 frontend/Electron fájl). Verzió maradt 2.28.110. ## Gyökérok (prod log, 2026-"
+    areas: [arfolyam, deploy, installer, napzaras, riport]
+    keywords: [fkh, 061, napzaras, belso, szerverhiba, http, 500, 2026, lezarva, allapot, mergelve, elesben]
+  - id: 777bd78afb7513d0
+    title: "FKH-062 — árva worker_session sorok backfillje (V390) — 2026-09-11 — LEZÁRVA"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-11-fkh062-worker-session-backfill.md
+    sha256: bff41e5497c9bf48662b268fcad1dbd6ebab6de818807ce797d352f388ee4c72
+    summary: "# FKH-062 — árva worker_session sorok backfillje (V390) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN + GATE B IGAZOLVA PR **#1741** → `b2c27b6d` (squash, `--admin`, `ALL REQUIRED GREEN` 10/10). Deploy run `34571837556` **success**, prod buildTime **06:55:36Z**. Verzió maradt 2.28.110 (backend-only, 0 frontend/Electron fájl → telepítő nem készült). Board #40 `done`. ## Gyökérok FKH-061 Defect C a logout ÍRÁSI"
+    areas: [arfolyam, database, deploy, ertektar, installer]
+    keywords: [fkh, 062, arva, worker_session, sorok, backfillje, v390, 2026, lezarva, allapot, mergelve, elesben]
+  - id: 3f1443a700d05e77
+    title: "FKH-063 + FKH-064 + #42 — 2026-09-11 — MIND LEZÁRVA"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-11-fkh063-fkh064-manual-rate-decade.md
+    sha256: f9c175ce9982fee181e8bfe9e413431d1305be2ec38466d3c7a006b97c70e118
+    summary: "# FKH-063 + FKH-064 + #42 — 2026-09-11 — MIND LEZÁRVA ## Eredmény: 3 tétel mergelve, élesben, Gate B igazolva. Board üres. | Board | Mi | PR | Merge SHA | Prod | |---|---|---|---|---| | #38 | FKH-064 banki-státusz forráskeveredés | #1742 | `6102b59e` | buildTime 08:34:01Z | | #41 | FKH-063 kézi árfolyam a dekádjelentéshez | #1743 | `bf1b1418` | buildTime 12:15:28Z | | #42 | Dekád-újragenerálás duplikált-kulcs (pre-ex"
+    areas: [arfolyam, database, deploy, ertektar, installer]
+    keywords: [fkh, 063, 064, 2026, mind, lezarva, eredmeny, tetel, mergelve, elesben, gate, igazolva]
+  - id: ff0fcb8dc4de90aa
+    title: "FKH-064 — banki-státusz MNB forráskeveredés (board #38) — 2026-09-11 — LEZÁRVA"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-11-fkh064-bank-integration-source.md
+    sha256: 0aa6e125b92188c73e999fcdf33431753258fec78f2504e22378055b8212ae2c
+    summary: "# FKH-064 — banki-státusz MNB forráskeveredés (board #38) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN + GATE B IGAZOLVA PR **#1742** → `6102b59e` (squash, `--admin`, `ALL REQUIRED GREEN` 10/10). Deploy run `34579598139` **success**, prod buildTime **08:34:01Z**, verzió 2.28.110 (backend-only, 0 frontend/Electron fájl → telepítő nem készült). Board #38 `done`. ## Gyökérok A `mnb_exchange_rate_cache` tábla ME"
+    areas: [arfolyam, deploy, installer]
+    keywords: [fkh, 064, banki, statusz, mnb, forraskeveredes, board, 2026, lezarva, allapot, mergelve, elesben]
+  - id: 650830623e5ddcfc
+    title: "Handoff — FKH-065 + FKH-066 (2026-09-12)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-12-fkh065-066-elvart-es-forgalom.md
+    sha256: 1db49e9edf5a3ef674de50984984bf57a5620702d83145f044c39601fbefe36d
+    summary: "# Handoff — FKH-065 + FKH-066 (2026-09-12) PR **#1751 MERGED** → main `64178ee8`, **v2.28.112 élesben** (prod buildTime 2026-09-12T04:55:54Z). Ticket: `.hermes/tickets/2026-09-11-fkh065-066-cimletezes-elvart-es-penztari-forgalom.md`. ## Commits (squash-olva #1751-be) | SHA | Tartalom | |---|---| | `e820ed18` | FKH-066 backend: `VaultTurnoverController` + `VaultTurnoverService` (territory-scope, 404 nem 403) | | `960d"
+    areas: [cimletezes, deploy, ertektar, frontend, installer, penztar, specifikacio]
+    keywords: [handoff, fkh, 065, 066, 2026, 1751, merged, main, 64178ee8, 112, elesben, prod]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic
@@ -1905,7 +1901,7 @@ operational:
     title: ReceiptSequenceService.java
     type: operational-receipt
     path: backend/src/main/java/hu/puzzleir/valuta/service/ReceiptSequenceService.java
-    sha256: c99f42ff303971991d49df2c662b0c176ad848d4a7395844cddc436d28c60f15
+    sha256: 5e14305aae01efbfc2140c80ce1abbb548bec44f8ec890ee41a7701ea78c73d0
     summary: "package hu.puzzleir.valuta.service; import hu.puzzleir.valuta.entity.Branch; import hu.puzzleir.valuta.entity.Transaction; import hu.puzzleir.valuta.exception.ResourceNotFoundException; import hu.puzzleir.valuta.repository.BranchRepository; import hu.puzzleir.valuta.entity.ReceiptSequence; import hu.puzzleir.valuta.entity.TransactionType; import hu.puzzleir.valuta.repository.ReceiptSequenceRepository; import hu.puzzl"
     areas: [legacy, napzaras, penztar]
     keywords: [receiptsequenceservice, java, package, puzzleir, valuta, service, import, entity, branch, transaction, exception, resourcenotfoundexception]

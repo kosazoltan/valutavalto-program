@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-10T00:37:20.677Z
+generated: 2026-09-12T05:34:10.622Z
 format: gfm
 ---
 
@@ -112,34 +112,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 ## Kozep Tavu Memoria
 
-- **Platform-refaktor 2. kör — zárójelentés (a telepítőig)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-10-platform-refaktor-2kor-telepitovel.md`
-  - summary: # Platform-refaktor 2. kör — zárójelentés (a telepítőig) **Dátum:** 2026-08-10 | **Repo:** `D:\repo\valutavalto-program` **Megbízás:** a platform-refaktor befejezése, szeletenként **kétszer ellenőrzött terv**, majd autonóm verifikált futás **a telepítőig**. --- ## 1. Eredmény egy táblázatban | Metrika | 1. kör előtt | 1. kör után | MOST | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 96 | **90** | | **Cross-
-
-- **Platform-refaktor — végrehajtási zárójelentés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-10-platform-refaktor.md`
-  - summary: # Platform-refaktor — végrehajtási zárójelentés **Dátum:** 2026-08-10 | **Repo:** `D:\repo\valutavalto-program` **Kiindulás:** `47522cb8` (v2.28.74, main) | **Állapot:** uncommitted, PR-re vár **Megbízás:** teljes platform-irányú refaktor autonóm végrehajtása + a Hermes ökoszisztéma platform-tudatossá tétele. --- ## 1. Mit tettem — mérhető eredmény | Metrika | Előtte | Utána | |---|---:|---:| | `vv-logger` duplikált
-
-- **Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-11-fk080-engedelyezett-ermek.md`
-  - summary: # Handoff — FK-080 engedélyezett érmék egységesítése (2026-08-11/12) **Állapot: pipeline PASS, merge a felhasználó döntése.** Branch `feature/engedelyezett-ermek-egysegesitese`, bázis `4ad7c54d`, 6 commit, fa tiszta, `main == origin/main` (érintetlen). ## Mi készült el `denomination_allowed` = egyetlen igazságforrás, a HUF-ot is beleértve. - **V379**: HUF-seed, cégenként 12 sor (nincs 1/2 Ft). **V380**: tiltott COIN
-
-- **Platform-refaktor 3. kör — zárójelentés** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-11-platform-refaktor-3kor.md`
-  - summary: # Platform-refaktor 3. kör — zárójelentés **Dátum:** 2026-08-11 | **Repo:** `D:\repo\valutavalto-program` | **HEAD:** `47522cb8` (v2.28.76) **Fázis:** az előterjesztés **1. fázisa** (platform-kiemelés). **NEM** app-merge (3-5. fázis, D2 blokkolja), **NEM** installer-merge. --- ## 1. Eredmény | Metrika | 1. kör előtt | 2. kör után | **MOST** | |---|---:|---:|---:| | Duplikált függvénytörzs | 102 | 90 | **84** | | **Cr
-
-- **Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-11-teljes-ciklus-merge-es-f8.md`
-  - summary: # Handoff — 2026-08-11 — teljes ciklus lezárás (merge-lánc + F8 indítás) ## Státusz: merge-lánc KÉSZ, F8 release-workflow FUT (run 31496447047) **main: `f8c34cff`** — a teljes ciklus (F0–F7 munka) main-ben, minden merge előtt 10/10 required-check-mátrix ellenőrizve. ## Merge-sor (délután) #1605 `52101a89` → #1612 `f0a43709` (volt #1606; base-törés miatt új PR) → #1607 `1adcbd49` → #1608 `404ccb9f` → #1609 `f8c34cff`.
-
-- **Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-17-fkh036-ertektar-napi-zaras.md`
-  - summary: # Handoff — FKH-036 Értéktári „Napi zárás" egyesített blokkoló zárás (2026-08-17) Branch: pipeline/20260817-fk087-fk088-beerkezett-adatok (8 egység, b0d4feee-re építve). Terv + riport: .hermes/pipeline/20260817-fkh036-ertektar-napi-zaras-cimletezes/round-1/. ## Mi változott - /evening-closing: crash-biztos (opcionális DTO-mezők), auto-load mountkor, becímletezés-CTA a checklist ELŐTT (EVENING + feltételes HANDLING_FE
-
-- **FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-18-fkh037-fk086-v2.28.83.md`
-  - summary: --- date: 2026-08-18 title: FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 type: session status: complete tags: [fkh037, fk086, fkh030, fkh036, specifikacio, frontend, deploy, installer, napzaras, penztar, release] --- # Handoff — FKH-037 + FK-086 + stacked FKH-030/036 → v2.28.83 (2026-08-18) Status: **KIADVA**. Prod `2.28.83`, tag `v2.28.83` = `c51a7434`. Letöltött másolat: `C:\zk\Downloads\valutavalto-v2.28.83`.
-
 - **Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md`
   - summary: # Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19) Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` ## Hiba A `GET /cash-desks/{id}/denominations/currency/{currencyId}` READ-út nem szűrt `denomination_category`-ra. Az Esti zárás (EVENING) HUF-készlet előtöltődött a Kezelési díj (HANDLING_FEE) oldalon. A WRITE-út (`POST .../batch?category=`) már helyes volt (FK-078 / FKH-0
@@ -240,9 +212,37 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `vault/sessions/handoff-2026-09-09-fkh059-fkh058-purge.md`
   - summary: # Handoff — 2026-09-09 — FKH-059 / FKH-058 test data purge ## What happened FKH-059 asked for DB-level proof of FKH-058's status. Verdict: **FKH-058 had never been executed** (0 commits, 0 repo hits, no migration, no audit_log trace). The earlier "done" referred to V368 / FK-070, a different Tisza Sarok correction. FR-3 closed too: the backend uses `jdbc:postgresql://localhost:6432/valuta` (pgbouncer → local postgres
 
+- **Handoff — 2026-09-09 — hygiene pass (repo memory / Hermes memory / skills / kanban)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-09-hygiene-memory-skill-kanban.md`
+  - summary: # Handoff — 2026-09-09 — hygiene pass (repo memory / Hermes memory / skills / kanban) Follow-up to `handoff-2026-09-09-fkh059-fkh058-purge.md`. Main: `514310a1`. ## Repo memory `memory:stale-check` was stale (1 added source: the FKH-059 handoff) plus drift from the FKH-053..FKH-059 cycles. `npm run memory:build` → 1097 sources; landed as PR **#1736** (`514310a1`, generated `.agent/memory` only, 10/10 required green,
+
 - **v2.28.108 signed release (2026-09-09)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-09-v2.28.108-signed-release.md`
   - summary: # v2.28.108 signed release (2026-09-09) - Main SHA `3ab81080` = tag `v2.28.108` (#1733 9-way bump). - Prod: `https://excvaluta.com/api/v1/version` → 2.28.108 / 2026-09-09T05:11:03Z; health ok. - Deploy: 34313639119 SUCCESS. Signed release: 34313653462 SUCCESS. Security Pipeline: 34313639133 SUCCESS. - Contents: FKH-056 FALSE_CLOSED simplified close; FKH-057 retroactive list + EVENING denomination without today-open b
+
+- **Handoff — FK-111 „Készletek, címletek" fül + v2.28.111 kiadás (2026-09-11)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-11-fk111-cimletek-es-v2.28.111.md`
+  - summary: # Handoff — FK-111 „Készletek, címletek" fül + v2.28.111 kiadás (2026-09-11) ## Mi készült el FK-111: a `/central/received-data` oldal második fület kapott, ami a záráskori `daily_denomination_snapshot` adatot mutatja irodánként / valutánként / névértékenként. Az átadólap-egyeztetés nézet változatlan és alapértelmezett maradt (10 tesztje módosítás nélkül zöld). - Backend: `ReceivedDenominationsController` + `Received
+
+- **FKH-061 — napzárás "Belső szerverhiba" (HTTP 500) — 2026-09-11 — LEZÁRVA** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-11-fkh061-napzaras-500.md`
+  - summary: # FKH-061 — napzárás "Belső szerverhiba" (HTTP 500) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN PR **#1739** mergelve: **`432d858e`** (squash, 13 commit). Board #37 `done`, #38 follow-up `todo`. Deploy run `34556658720` **success**; prod restart **03:00:42Z**, buildTime **03:00:58Z**. Telepítő **nem** készült: a PR backend-only (0 frontend/Electron fájl). Verzió maradt 2.28.110. ## Gyökérok (prod log, 2026-
+
+- **FKH-062 — árva worker_session sorok backfillje (V390) — 2026-09-11 — LEZÁRVA** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-11-fkh062-worker-session-backfill.md`
+  - summary: # FKH-062 — árva worker_session sorok backfillje (V390) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN + GATE B IGAZOLVA PR **#1741** → `b2c27b6d` (squash, `--admin`, `ALL REQUIRED GREEN` 10/10). Deploy run `34571837556` **success**, prod buildTime **06:55:36Z**. Verzió maradt 2.28.110 (backend-only, 0 frontend/Electron fájl → telepítő nem készült). Board #40 `done`. ## Gyökérok FKH-061 Defect C a logout ÍRÁSI
+
+- **FKH-063 + FKH-064 + #42 — 2026-09-11 — MIND LEZÁRVA** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-11-fkh063-fkh064-manual-rate-decade.md`
+  - summary: # FKH-063 + FKH-064 + #42 — 2026-09-11 — MIND LEZÁRVA ## Eredmény: 3 tétel mergelve, élesben, Gate B igazolva. Board üres. | Board | Mi | PR | Merge SHA | Prod | |---|---|---|---|---| | #38 | FKH-064 banki-státusz forráskeveredés | #1742 | `6102b59e` | buildTime 08:34:01Z | | #41 | FKH-063 kézi árfolyam a dekádjelentéshez | #1743 | `bf1b1418` | buildTime 12:15:28Z | | #42 | Dekád-újragenerálás duplikált-kulcs (pre-ex
+
+- **FKH-064 — banki-státusz MNB forráskeveredés (board #38) — 2026-09-11 — LEZÁRVA** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-11-fkh064-bank-integration-source.md`
+  - summary: # FKH-064 — banki-státusz MNB forráskeveredés (board #38) — 2026-09-11 — LEZÁRVA ## Állapot: MERGELVE + ÉLESBEN + GATE B IGAZOLVA PR **#1742** → `6102b59e` (squash, `--admin`, `ALL REQUIRED GREEN` 10/10). Deploy run `34579598139` **success**, prod buildTime **08:34:01Z**, verzió 2.28.110 (backend-only, 0 frontend/Electron fájl → telepítő nem készült). Board #38 `done`. ## Gyökérok A `mnb_exchange_rate_cache` tábla ME
+
+- **Handoff — FKH-065 + FKH-066 (2026-09-12)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-12-fkh065-066-elvart-es-forgalom.md`
+  - summary: # Handoff — FKH-065 + FKH-066 (2026-09-12) PR **#1751 MERGED** → main `64178ee8`, **v2.28.112 élesben** (prod buildTime 2026-09-12T04:55:54Z). Ticket: `.hermes/tickets/2026-09-11-fkh065-066-cimletezes-elvart-es-penztari-forgalom.md`. ## Commits (squash-olva #1751-be) | SHA | Tartalom | |---|---| | `e820ed18` | FKH-066 backend: `VaultTurnoverController` + `VaultTurnoverService` (territory-scope, 404 nem 403) | | `960d
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
