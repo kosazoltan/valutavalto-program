@@ -1,12 +1,12 @@
 /**
- * FKH-067 (spec doc: FKH-063) FR-1 — a sync payload viszi a kliens eredeti rogzitesi idejet.
+ * FKH-067 (spec doc: FKH-063) FR-1 - the sync payload carries the client's original recording time.
  *
- * A backend (ExchangeRateService, TTL_NONBLOCKING_CUTOFF) ebbol tudja eldonteni, hogy egy elavult
- * arfolyamu tetel az UJ (nem-blokkolo) vagy a REGI (blokkolo) szabaly ala esik. A `created_at`
- * a helyi rogziteskor kapott, VALTOZATLAN ertek — retry eseten sem frissul (a markTransactionSynced
- * csak a `synced` oszlopot irja), ezert alkalmas a megkulonboztetesre.
+ * The backend (ExchangeRateService, TTL_NONBLOCKING_CUTOFF) uses it to decide whether a stale-rate
+ * item falls under the NEW (non-blocking) or the OLD (blocking) rule. `created_at` is captured at
+ * local recording time and never refreshed on retry (markTransactionSynced only writes the `synced`
+ * column), which is what makes it usable for the distinction.
  *
- * A sync-engine.test.ts mock-preambulumanak mintajara.
+ * Mock preamble follows sync-engine.test.ts.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -104,7 +104,7 @@ const baseRow = (overrides: Partial<PendingRow>): PendingRow =>
     ...overrides,
   }) as PendingRow;
 
-describe('SyncEngine — FKH-067 FR-1: clientCreatedAt a tranzakcio-payloadban', () => {
+describe('SyncEngine - FKH-067 FR-1: clientCreatedAt in the transaction payload', () => {
   let engine: SyncEngine;
   let mockFetch: ReturnType<typeof vi.fn>;
 
@@ -135,29 +135,29 @@ describe('SyncEngine — FKH-067 FR-1: clientCreatedAt a tranzakcio-payloadban',
     return JSON.parse((fetchCall[1] as { body: string }).body);
   };
 
-  it('a BUY payload a pending sor created_at erteket kuldi ISO-8601-ben', async () => {
+  it('the BUY payload sends the pending row created_at as ISO-8601', async () => {
     mockedGetPendingTransactions.mockReturnValue([baseRow({})]);
 
     const body = await syncOneAndReadBody();
 
-    // A pending sor `created_at`-ja SQLite `datetime('now')` = UTC, zona-jelzes nelkul.
+    // The pending row's `created_at` is SQLite `datetime('now')` = UTC without a zone marker.
     expect(body.clientCreatedAt).toBe('2026-09-12T08:15:00.000Z');
   });
 
-  it('a SELL payload is viszi a mezot (mindket vegpont)', async () => {
+  it('the SELL payload carries the field as well (both endpoints)', async () => {
     mockedGetPendingTransactions.mockReturnValue([
       baseRow({ id: 2, type: 'SELL', idempotency_key: 'key-fkh067-2' }),
     ]);
 
     const body = await syncOneAndReadBody();
 
-    // A pending sor `created_at`-ja SQLite `datetime('now')` = UTC, zona-jelzes nelkul.
+    // The pending row's `created_at` is SQLite `datetime('now')` = UTC without a zone marker.
     expect(body.clientCreatedAt).toBe('2026-09-12T08:15:00.000Z');
   });
 
-  it('a kuldott ertek a ROGZITES ideje, NEM a szinkron pillanata (retry-nal sem csuszik)', async () => {
-    // A tetel 3 napja rogzult, a sync most fut. Ha a kliens `Date.now()`-ot kuldene, egy regi,
-    // fennakadt tetel a cutoff UTANI-nak latszana es a hatter-retry akaratlanul feloldana (FR-5).
+  it('the sent value is the RECORDING time, NOT the sync moment (stable across retries)', async () => {
+    // The item was recorded 3 days ago and the sync runs now. If the client sent `Date.now()`, an
+    // old stuck item would look post-cutoff and the background retry would unblock it (FR-5).
     const recordedAt = new Date(Date.now() - 3 * 24 * 3_600_000);
     const recordedAtSqlite = recordedAt.toISOString().replace('T', ' ').slice(0, 19);
     mockedGetPendingTransactions.mockReturnValue([
@@ -168,17 +168,37 @@ describe('SyncEngine — FKH-067 FR-1: clientCreatedAt a tranzakcio-payloadban',
 
     const sent = new Date(body.clientCreatedAt as string).getTime();
     expect(Math.abs(sent - recordedAt.getTime())).toBeLessThan(1000);
-    // A sync pillanatatol legalabb 2 nap tavolsagra van — nem a mostani ido ment fel.
+    // At least 2 days away from the sync moment - the current time was not uploaded.
     expect(Date.now() - sent).toBeGreaterThan(2 * 24 * 3_600_000);
   });
 
-  it('hianyzo/ertelmezhetetlen created_at eseten a mezo KIMARAD (a backend fail-closed agara esik)', async () => {
+  it('missing/unparsable created_at -> the field is OMITTED (backend falls back to fail-closed)', async () => {
     mockedGetPendingTransactions.mockReturnValue([
-      baseRow({ id: 4, created_at: 'nem-datum', idempotency_key: 'key-fkh067-4' }),
+      baseRow({ id: 4, created_at: 'not-a-date', idempotency_key: 'key-fkh067-4' }),
     ]);
 
     const body = await syncOneAndReadBody();
 
     expect(body).not.toHaveProperty('clientCreatedAt');
   });
+
+  it.each([
+    ['impossible calendar day', '2026-02-30 08:15:00'],
+    ['month 13', '2026-13-01 08:15:00'],
+    ['already zoned value (not the SQLite shape)', '2026-09-12T08:15:00+02:00'],
+    ['blank string', '   '],
+  ])(
+    'review fix: %s is rejected instead of being silently normalized',
+    async (_label, createdAt) => {
+      // Date's permissive parser turns 2026-02-30 into 2026-03-02, which could push a pre-cutoff
+      // item past the cutoff. Fail-closed: omit the field rather than send a shifted instant.
+      mockedGetPendingTransactions.mockReturnValue([
+        baseRow({ id: 5, created_at: createdAt, idempotency_key: `key-fkh067-${createdAt}` }),
+      ]);
+
+      const body = await syncOneAndReadBody();
+
+      expect(body).not.toHaveProperty('clientCreatedAt');
+    },
+  );
 });

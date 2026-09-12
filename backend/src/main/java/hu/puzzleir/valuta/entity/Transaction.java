@@ -570,10 +570,10 @@ public class Transaction {
     private String legalDeedNumber;
 
     /**
-     * FKH-067 (spec doc: FKH-063): a tranzakcio kliens-oldali, valtozatlan rogzitesi idobelyege
-     * (penztar-client pending_transactions.created_at). Csak belso/audit celu visszakovethetoseg —
-     * ez dontotte el, hogy az elavult arfolyam blokkolt-e (TTL_NONBLOCKING_CUTOFF).
-     * NULL: regi kliens verzio vagy nem kliens-eredetu tranzakcio.
+     * FKH-067 (spec doc: FKH-063): the client-side, unchanged recording timestamp of the
+     * transaction (penztar-client pending_transactions.created_at). Internal/audit traceability
+     * only - this is what decided whether an expired rate blocked the booking
+     * (TTL_NONBLOCKING_CUTOFF). NULL: older client version or a non-client-originated transaction.
      */
     @Column(name = "client_created_at")
     private java.time.Instant clientCreatedAt;

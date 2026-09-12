@@ -61,28 +61,28 @@ public class ExchangeRateService {
     private int maxAgeHours;
 
     /**
-     * FKH-067 (spec doc: FKH-063): az az idopont, amely UTAN a kliensen rogzitett tranzakciokra
-     * az arfolyam-TTL lejarata mar NEM blokkol, csak figyelmeztet + audital. ISO-8601 instant
-     * (pl. 2026-09-12T06:00:00Z). Hianyzo/ures/ertelmezhetetlen ertek -> minden tranzakcio a
-     * regi, blokkolo szabaly ala esik (fail-closed, biztonsagos alapertelmezes).
+     * FKH-067 (spec doc: FKH-063): the instant AFTER which a client-recorded transaction is no
+     * longer blocked by an expired exchange rate - it only warns and writes an audit entry.
+     * ISO-8601 instant (e.g. 2026-09-12T06:00:00Z). Missing/blank/unparsable value -> every
+     * transaction falls under the old, blocking rule (fail-closed, safe default).
      */
     public static final String TTL_NONBLOCKING_CUTOFF_KEY = "TTL_NONBLOCKING_CUTOFF";
 
-    /** FKH-067 FR-4: audit-esemeny minden nem-blokkoloan atengedett, elavult arfolyamu tranzakciora. */
+    /** FKH-067 FR-4: audit event for every stale-rate transaction let through without blocking. */
     public static final String AUDIT_STALE_RATE_TRANSACTION_COMMITTED = "STALE_RATE_TRANSACTION_COMMITTED";
 
     /**
-     * FKH-067 TBD-2: a clientCreatedAt kliens-oldali, NEM hitelesitett idobelyeg. Ora-elcsuszasra
-     * ennyi toleranciat adunk; ezen tul jovobeli idobelyeg nem mentesit a blokkolas alol.
+     * FKH-067 TBD-2: clientCreatedAt is a client-side, NON-authenticated timestamp. This much
+     * clock skew is tolerated; beyond it a future-dated timestamp does not grant the exemption.
      */
     private static final Duration CLIENT_CLOCK_SKEW_TOLERANCE = Duration.ofMinutes(15);
 
     /**
      * Aktuális árfolyam lekérése egy valutához.
      *
-     * <p>Valtozatlan (blokkolo) viselkedes: elavult arfolyam eseten ValidationException.
-     * A nem-blokkolo utat a {@link #getCurrentRate(Long, Instant)} tulterhelesen kell kerni,
-     * a kliens eredeti rogzitesi idobelyegevel.
+     * <p>Unchanged (blocking) behaviour: an expired rate raises ValidationException. The
+     * non-blocking path must be requested through the {@link #getCurrentRate(Long, Instant)}
+     * overload, passing the client's original recording timestamp.
      */
     @Transactional(readOnly = true)
     public ExchangeRate getCurrentRate(Long currencyId) {
@@ -90,11 +90,11 @@ public class ExchangeRateService {
     }
 
     /**
-     * FKH-067 FR-2: aktualis arfolyam a kliens eredeti rogzitesi idobelyegevel.
+     * FKH-067 FR-2: current rate resolved with the client's original recording timestamp.
      *
-     * @param clientCreatedAt a penztar-kliensen rogzitett, valtozatlan letrehozasi idopont
-     *                        (pending_transactions.created_at). NULL (regi kliens verzio) eseten
-     *                        a regi, blokkolo ag fut.
+     * @param clientCreatedAt the unchanged creation instant recorded on the cashier client
+     *                        (pending_transactions.created_at). NULL (older client version)
+     *                        keeps the old, blocking branch.
      */
     @Transactional(readOnly = true)
     public ExchangeRate getCurrentRate(Long currencyId, Instant clientCreatedAt) {
@@ -137,8 +137,9 @@ public class ExchangeRateService {
 
     /**
      * Árfolyam frissesség validálása.
-     * Ha az árfolyam régebbi mint a konfigurált max kor, elutasítjuk — KIVEVE, ha a tranzakciot
-     * a kliensen a TTL_NONBLOCKING_CUTOFF rendszerparameter UTAN rogzitettek (FKH-067 FR-2).
+     * Ha az árfolyam régebbi mint a konfigurált max kor, elutasítjuk.
+     * FKH-067 FR-2: EXCEPT when the transaction was recorded on the client AFTER the
+     * TTL_NONBLOCKING_CUTOFF system parameter.
      */
     private void validateRateFreshness(ExchangeRate rate, Instant clientCreatedAt) {
         if (maxAgeHours <= 0) {
@@ -155,10 +156,10 @@ public class ExchangeRateService {
         }
         long hoursOld = minutesOld / 60L;
 
-        // FKH-067 FR-2/FR-3/FR-5: a penztaros a valosagban a kiirt arfolyamon vegzi az ugyletet,
-        // ezert a cutoff UTAN rogzitett tranzakciokat nem blokkoljuk. Minden mas eset (hianyzo
-        // idobelyeg, cutoff elotti rogzites, beallitatlan/ertelmezhetetlen parameter, implauzibilis
-        // jovobeli idobelyeg) a regi, blokkolo agon marad — fail-closed.
+        // FKH-067 FR-2/FR-3/FR-5: the cashier trades at the rate that was actually printed, so a
+        // transaction recorded after the cutoff is not blocked. Every other case (missing timestamp,
+        // pre-cutoff recording, unset/unparsable parameter, implausible future timestamp) stays on
+        // the old, blocking branch - fail-closed.
         if (isTtlNonBlockingFor(clientCreatedAt)) {
             log.warn("Lejárt árfolyam ÁTENGEDVE (FKH-067, cutoff utáni rögzítés): {} — {} órás (max: {} óra), kliens-rögzítés: {}",
                     rate.getCurrency().getCode(), hoursOld, maxAgeHours, clientCreatedAt);
@@ -181,15 +182,15 @@ public class ExchangeRateService {
     }
 
     /**
-     * FKH-067 FR-2/FR-3: a TTL-lejarat nem-blokkolo-e erre a kliens-idobelyegre.
-     * Fail-closed: barmi hianyzo/hibas/implauzibilis ertek eseten FALSE (marad a blokkolas).
+     * FKH-067 FR-2/FR-3: is the TTL expiry non-blocking for this client timestamp?
+     * Fail-closed: any missing/invalid/implausible value yields FALSE (blocking stays).
      */
     private boolean isTtlNonBlockingFor(Instant clientCreatedAt) {
         if (clientCreatedAt == null) {
-            return false; // regi kliens verzio, vagy nem kliens-eredetu hivas
+            return false; // older client version, or a non-client-originated call
         }
-        // TBD-2: a clientCreatedAt hitelesitetlen kliens-adat — jovobeli idopont (ora-elcsuszason
-        // tul) manipulaciora utal, ezert nem mentesit.
+        // TBD-2: clientCreatedAt is unauthenticated client data - a future instant (beyond clock
+        // skew) indicates manipulation, so it does not grant the exemption.
         if (clientCreatedAt.isAfter(Instant.now().plus(CLIENT_CLOCK_SKEW_TOLERANCE))) {
             log.warn("FKH-067: implauzibilis (jövőbeli) kliens-időbélyeg, a blokkoló ág marad érvényben: {}",
                     clientCreatedAt);
@@ -197,7 +198,7 @@ public class ExchangeRateService {
         }
         Optional<String> configured = systemParameterService.findEffectiveValue(TTL_NONBLOCKING_CUTOFF_KEY);
         if (configured.isEmpty()) {
-            return false; // nincs tudatosan beallitva -> soha nem enged at senkit
+            return false; // not consciously configured -> never lets anyone through
         }
         Instant cutoff;
         try {
@@ -211,9 +212,9 @@ public class ExchangeRateService {
     }
 
     /**
-     * FKH-067: a cutoff parameter ISO-8601 instant (2026-09-12T06:00:00Z) vagy zona nelkuli
-     * local date-time (2026-09-12T06:00:00) alakban is megadhato; utobbit a szerver zonajaban
-     * ertelmezzuk (az uzemelteto a szerver ideje szerint gondolkodik).
+     * FKH-067: the cutoff parameter accepts an ISO-8601 instant (2026-09-12T06:00:00Z) or a
+     * zone-less local date-time (2026-09-12T06:00:00); the latter is interpreted in the server's
+     * zone (the operator reasons in server time).
      */
     private static Instant parseCutoff(String value) {
         try {

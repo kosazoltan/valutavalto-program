@@ -123,9 +123,10 @@ public class BuyRequestDto {
     private List<BeneficialOwnerDto> beneficialOwners;
 
     /**
-     * FKH-067 (spec doc: FKH-063): a tranzakcio kliens-oldali, valtozatlan rogzitesi idobelyege
-     * (penztar-client pending_transactions.created_at), ISO-8601. Opcionalis — regi kliens verzio
-     * nem kuldi, ekkor az arfolyam-TTL a regi, blokkolo szabaly szerint ervenyesul (fail-closed).
+     * FKH-067 (spec doc: FKH-063): the client-side, unchanged recording timestamp of the
+     * transaction (penztar-client pending_transactions.created_at), ISO-8601. Optional - an older
+     * client version does not send it, and then the exchange-rate TTL applies with the old,
+     * blocking rule (fail-closed).
      */
     private java.time.Instant clientCreatedAt;
 

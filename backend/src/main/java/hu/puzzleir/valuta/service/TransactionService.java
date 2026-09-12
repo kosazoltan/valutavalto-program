@@ -272,7 +272,7 @@ public class TransactionService {
         transactionValidationService.validateCurrencyExchangeable(currency);
 
         // Ürfolyam meghatározása
-        // FKH-067: a kliens eredeti rogzitesi idobelyege dont arrol, blokkol-e az elavult arfolyam.
+        // FKH-067: the client's original recording timestamp decides whether a stale rate blocks.
         ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId, request.getClientCreatedAt());
 
         // Kedvezmény validálás (ELŐBB, mielőtt bármilyen számítás történne)
@@ -445,7 +445,7 @@ public class TransactionService {
                 .legalDeedNumber(request.getLegalDeedNumber())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
-                // FKH-067: a kliens eredeti rogzitesi ideje tartos tarolassal (audit-visszakovethetoseg)
+                // FKH-067: persist the client's original recording instant (audit traceability)
                 .clientCreatedAt(request.getClientCreatedAt())
                 .notes(request.getNotes())
                 .cashierCustomRate(buyCashierCustomRate)
@@ -509,7 +509,7 @@ public class TransactionService {
         transactionValidationService.validateCurrencyExchangeable(currency);
 
         // Ürfolyam meghatározása
-        // FKH-067: a kliens eredeti rogzitesi idobelyege dont arrol, blokkol-e az elavult arfolyam.
+        // FKH-067: the client's original recording timestamp decides whether a stale rate blocks.
         ExchangeRate rate = exchangeRateService.getCurrentRate(currencyId, request.getClientCreatedAt());
 
         // Kedvezmény validálás (ELŐBB, mielőtt bármilyen számítás történne)
@@ -676,7 +676,7 @@ public class TransactionService {
                 .legalDeedNumber(request.getLegalDeedNumber())
                 .amlSuspicious(amlResult.isSuspiciousFlag())
                 .amlAnnualLimitReached(amlResult.isAnnualLimitReached())
-                // FKH-067: a kliens eredeti rogzitesi ideje tartos tarolassal (audit-visszakovethetoseg)
+                // FKH-067: persist the client's original recording instant (audit traceability)
                 .clientCreatedAt(request.getClientCreatedAt())
                 .notes(request.getNotes())
                 .cashierCustomRate(sellCashierCustomRate)
@@ -1378,7 +1378,7 @@ public class TransactionService {
         private String legalEntityTaxNumber;
         private String legalDeedNumber;
         private java.util.List<hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto> beneficialOwners;
-        /** FKH-067: kliens-oldali, valtozatlan rogzitesi idobelyeg az arfolyam-TTL cutoff-hoz. */
+        /** FKH-067: client-side, unchanged recording timestamp for the exchange-rate TTL cutoff. */
         private java.time.Instant clientCreatedAt;
         private String notes;
         private Boolean cashierCustomRate;
@@ -1443,7 +1443,7 @@ public class TransactionService {
         private String legalEntityTaxNumber;
         private String legalDeedNumber;
         private java.util.List<hu.puzzleir.valuta.dto.transaction.BeneficialOwnerDto> beneficialOwners;
-        /** FKH-067: kliens-oldali, valtozatlan rogzitesi idobelyeg az arfolyam-TTL cutoff-hoz. */
+        /** FKH-067: client-side, unchanged recording timestamp for the exchange-rate TTL cutoff. */
         private java.time.Instant clientCreatedAt;
         private String notes;
         private Boolean cashierCustomRate;

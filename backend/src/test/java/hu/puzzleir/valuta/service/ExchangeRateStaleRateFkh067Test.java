@@ -113,7 +113,7 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("FR-2: elavult arfolyam + cutoff UTANI kliens-idobelyeg -> NEM blokkol")
+    @DisplayName("FR-2: stale rate + post-cutoff client timestamp -> does NOT block")
     void staleRateAfterCutoffIsNotBlocking() {
         arrange(staleRate());
         cutoffParameter(DateTimeFormatter.ISO_INSTANT.format(CUTOFF));
@@ -124,7 +124,7 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("FR-4: a nem-blokkolo agon STALE_RATE_TRANSACTION_COMMITTED audit keletkezik az arfolyam koraval")
+    @DisplayName("FR-4: the non-blocking branch writes a STALE_RATE_TRANSACTION_COMMITTED audit with the rate age")
     void nonBlockingBranchWritesAuditEvent() {
         arrange(staleRate());
         cutoffParameter(DateTimeFormatter.ISO_INSTANT.format(CUTOFF));
@@ -140,7 +140,7 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("FR-2/FR-5: cutoff ELOTTI kliens-idobelyeg -> valtozatlanul blokkol, nincs audit")
+    @DisplayName("FR-2/FR-5: pre-cutoff client timestamp -> still blocks, no audit")
     void staleRateBeforeCutoffStillBlocks() {
         arrange(staleRate());
         cutoffParameter(DateTimeFormatter.ISO_INSTANT.format(CUTOFF));
@@ -154,11 +154,11 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("FR-2: hianyzo kliens-idobelyeg (regi kliens verzio) -> fail-closed, blokkol")
+    @DisplayName("FR-2: missing client timestamp (older client version) -> fail-closed, blocks")
     void missingClientTimestampIsFailClosed() {
         arrange(staleRate());
-        // Nincs cutoff-stub: a hianyzo idobelyeg mar a parameter-olvasas ELOTT blokkol (rovidzar),
-        // ezt a verify(never()) allitja — a cutoff erteke nem befolyasolhatja az eredmenyt.
+        // No cutoff stub: a missing timestamp blocks BEFORE the parameter is read (short circuit),
+        // asserted by verify(never()) - the cutoff value cannot influence the outcome.
 
         try (MockedStatic<SecurityUtils> su = securityContext()) {
             assertThatThrownBy(() -> service.getCurrentRate(EUR_ID, null))
@@ -169,7 +169,7 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("FR-3: beallitatlan TTL_NONBLOCKING_CUTOFF -> minden tranzakcio blokkol (biztonsagos alapertelmezes)")
+    @DisplayName("FR-3: unset TTL_NONBLOCKING_CUTOFF -> every transaction blocks (safe default)")
     void missingCutoffParameterBlocksEverything() {
         arrange(staleRate());
         cutoffParameter(null);
@@ -182,7 +182,7 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("FR-3: ertelmezhetetlen cutoff ertek -> fail-closed, blokkol")
+    @DisplayName("FR-3: unparsable cutoff value -> fail-closed, blocks")
     void unparsableCutoffParameterBlocks() {
         arrange(staleRate());
         cutoffParameter("nem-datum");
@@ -195,11 +195,11 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("TBD-2: jovobeli kliens-idobelyeg (manipulalt kliens) -> nem menti fel, blokkol")
+    @DisplayName("TBD-2: future client timestamp (manipulated client) -> no exemption, blocks")
     void futureClientTimestampIsRejected() {
         arrange(staleRate());
-        // Nincs cutoff-stub: a plauzibilitas-ellenorzes a parameter-olvasas ELOTT dont (rovidzar),
-        // igy egy manipulalt jovobeli idobelyeg semmilyen cutoff-ertek mellett sem mentesit.
+        // No cutoff stub: the plausibility check decides BEFORE the parameter is read (short
+        // circuit), so a manipulated future timestamp is never exempt for any cutoff value.
 
         Instant implausibleFuture = Instant.now().plus(Duration.ofDays(1));
         try (MockedStatic<SecurityUtils> su = securityContext()) {
@@ -211,7 +211,7 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("NFR-5: friss arfolyam -> valtozatlan ut, nincs cutoff-lekerdezes es nincs audit")
+    @DisplayName("NFR-5: fresh rate -> unchanged path, no cutoff lookup and no audit")
     void freshRateIsUntouched() {
         arrange(freshRate());
 
@@ -223,7 +223,7 @@ class ExchangeRateStaleRateFkh067Test {
     }
 
     @Test
-    @DisplayName("FR-5 regresszio: a fennakadt V020000002/003 (cutoff elotti rogzites) tovabbra sem konyvelodik")
+    @DisplayName("FR-5 regression: the stuck V020000002/003 (pre-cutoff recording) is still not booked")
     void stuckLiveItemsStayBlocked() {
         arrange(staleRate());
         // Live cutoff shape: an operator sets it to the rollout instant; the stuck items were

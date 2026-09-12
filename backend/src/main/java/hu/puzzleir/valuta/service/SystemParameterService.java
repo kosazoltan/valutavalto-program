@@ -148,10 +148,13 @@ public class SystemParameterService {
     /**
      * Védett pénzügyi kontroll-kulcsok: a GLOBÁLIS (company_id IS NULL) soruk írása minden
      * cég zárási/ellenőrzési viselkedését befolyásolja, ezért ADMIN-only.
-     * FK-066 HIGH-fix (Codex): CLOSING_TOLERANCE_*; FK-067 HIGH#1-fix (Codex): FEATURE_*.
+     * FK-066 HIGH-fix (Codex): CLOSING_TOLERANCE_*; FK-067 HIGH#1-fix (Codex): FEATURE_*;
+     * FKH-067 (review fix): TTL_NONBLOCKING_CUTOFF — the global row decides whether an expired
+     * exchange rate may be booked in EVERY company, so it must not be settable by a MANAGER.
      */
     private static final List<String> PROTECTED_FINANCIAL_CONTROL_KEY_PREFIXES =
-            List.of(ClosingToleranceService.KEY_PREFIX, FEATURE_KEY_PREFIX);
+            List.of(ClosingToleranceService.KEY_PREFIX, FEATURE_KEY_PREFIX,
+                    ExchangeRateService.TTL_NONBLOCKING_CUTOFF_KEY);
 
     /**
      * FK-066 HIGH-fix (Codex), FK-067 HIGH#1-fixszel általánosítva: a GLOBÁLIS
