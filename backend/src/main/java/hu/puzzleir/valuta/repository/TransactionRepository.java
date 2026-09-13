@@ -288,6 +288,36 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("types") java.util.Collection<TransactionType> types
     );
 
+    /**
+     * FKH-070: a HANDLING_FEE cimletezesi onellenorzes Elvart forrasa — AZONNALI
+     * (live) fej-szintu {@code Transaction.handlingFee} osszeg a company + branch +
+     * uzleti nap + COMPLETED + buy/sell tipushalmazra.
+     *
+     * <p>A kulonbseg a felette allo FK-075-os
+     * {@link #sumCompletedHandlingFeeByBranchAndDateAndTypes}-hoz kepest SZANDÉKOS:
+     * itt {@code financialEffective = true} is szur. A parent CONVERSION sor
+     * (financialEffective = false) a child convBuy/convSell sorokkal EGYUTT duplan
+     * szamolna a konverzios csoport kezelesi dijat, ezert a parent ki kell, hogy
+     * essen. A REVERSAL sorokat a tipushalmaz zarja ki (a REVERSAL nincs a
+     * buy/sell csaladban), a flag nem — ezert a ket feltetel egyutt marad.</p>
+     *
+     * <p>A FK-075-os finder VALTOZATLAN (a Mai statisztika mas szamitast igyenal);
+     * ez egy uj metoda, nem annak modositasa.</p>
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "AND t.transactionType IN :types")
+    BigDecimal sumHandlingFeeForBranchAndDate(
+        @Param("companyId") UUID companyId,
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("types") java.util.Collection<TransactionType> types
+    );
+
     // A korábbi header-alapú sumDailyTurnoverByCurrency / sumDailyTurnoverHufByCurrency query-k
     // ELTÁVOLÍTVA (Codex #903): multi-valutás (multiLine) bizonylatnál az első valutára számolták a
     // teljes összeget. Helyettük a sumDailySingleLineTurnover* (lent, multi-line kizárva) + a
