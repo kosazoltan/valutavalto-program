@@ -442,9 +442,9 @@ class DenominationBalanceServiceTest {
     }
 
     /**
-     * FKH-039 FR-6/FR-7 + FKH-070: HANDLING_FEE önellenőrzés az aznapi ÉLŐ
-     * Transaction.handlingFee összeget várja el (nem cash_balance-t, és nem a
-     * soha nem töltődő KK ShipmentHandlingFee-t); üres nap → elvárt 0, egy HUF sor.
+     * FKH-039 FR-6/FR-7 + FKH-070: HANDLING_FEE self-check Expected comes from
+     * the live Transaction.handlingFee sum (not cash_balance, and not the never-
+     * populated KK ShipmentHandlingFee); empty day → expected 0, one HUF row.
      */
     @Test
     void selfCheckHandlingFeeUsesDailyFeeSumNotCashBalance() {

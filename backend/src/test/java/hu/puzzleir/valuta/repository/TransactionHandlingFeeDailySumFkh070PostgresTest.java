@@ -14,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -42,7 +41,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Pinning test (plan WU-1): do not edit after commit.</p>
  */
 @Testcontainers
-@EnableJpaAuditing
 @SpringBootTest(
         classes = TestApplication.class,
         properties = {
@@ -119,18 +117,21 @@ class TransactionHandlingFeeDailySumFkh070PostgresTest {
                 .code("FKH070-BT-" + suffix)
                 .name("FKH-070 branch type")
                 .createdAt(now)
+                .updatedAt(now)
                 .build());
         Dictionary country = dictionaryRepository.save(Dictionary.builder()
                 .category("COUNTRY")
                 .code("FKH070-CO-" + suffix)
                 .name("Hungary")
                 .createdAt(now)
+                .updatedAt(now)
                 .build());
         Dictionary branchStatus = dictionaryRepository.save(Dictionary.builder()
                 .category("BRANCH_STATUS")
                 .code("FKH070-BS-" + suffix)
                 .name("Active")
                 .createdAt(now)
+                .updatedAt(now)
                 .build());
         Currency huf = currencyRepository.findByCode("HUF")
                 .orElseGet(() -> currencyRepository.saveAndFlush(Currency.builder()
@@ -141,17 +142,20 @@ class TransactionHandlingFeeDailySumFkh070PostgresTest {
                         .active(true)
                         .displayOrder(1)
                         .createdAt(now)
+                        .updatedAt(now)
                         .build()));
 
         Company companyA = companyRepository.save(Company.builder()
                 .code("FKH070A-" + suffix)
                 .name("FKH-070 Company A")
                 .createdAt(now)
+                .updatedAt(now)
                 .build());
         Company companyA2 = companyRepository.save(Company.builder()
                 .code("FKH070Z-" + suffix)
                 .name("FKH-070 Company A2")
                 .createdAt(now)
+                .updatedAt(now)
                 .build());
         Branch branchB = seedBranch(companyA, "B" + suffix, branchType, country, branchStatus, now);
         Branch branchB2 = seedBranch(companyA, "B2" + suffix, branchType, country, branchStatus, now);
@@ -208,6 +212,7 @@ class TransactionHandlingFeeDailySumFkh070PostgresTest {
                 .isVault(false)
                 .openingDate(D)
                 .createdAt(now)
+                .updatedAt(now)
                 .build());
     }
 
@@ -221,6 +226,7 @@ class TransactionHandlingFeeDailySumFkh070PostgresTest {
                 .role(WorkerRole.CASHIER)
                 .active(true)
                 .createdAt(now)
+                .updatedAt(now)
                 .build());
     }
 

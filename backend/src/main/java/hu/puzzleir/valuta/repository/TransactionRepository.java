@@ -289,20 +289,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     /**
-     * FKH-070: a HANDLING_FEE cimletezesi onellenorzes Elvart forrasa — AZONNALI
-     * (live) fej-szintu {@code Transaction.handlingFee} osszeg a company + branch +
-     * uzleti nap + COMPLETED + buy/sell tipushalmazra.
+     * FKH-070: live header-level {@code Transaction.handlingFee} sum that feeds the
+     * HANDLING_FEE denomination self-check Expected value (company + branch +
+     * business date + COMPLETED + buy/sell type family).
      *
-     * <p>A kulonbseg a felette allo FK-075-os
-     * {@link #sumCompletedHandlingFeeByBranchAndDateAndTypes}-hoz kepest SZANDÉKOS:
-     * itt {@code financialEffective = true} is szur. A parent CONVERSION sor
-     * (financialEffective = false) a child convBuy/convSell sorokkal EGYUTT duplan
-     * szamolna a konverzios csoport kezelesi dijat, ezert a parent ki kell, hogy
-     * essen. A REVERSAL sorokat a tipushalmaz zarja ki (a REVERSAL nincs a
-     * buy/sell csaladban), a flag nem — ezert a ket feltetel egyutt marad.</p>
+     * <p>The delta versus the FK-075 neighbour
+     * {@link #sumCompletedHandlingFeeByBranchAndDateAndTypes} is intentional:
+     * this query also filters {@code financialEffective = true}. The parent
+     * CONVERSION row ({@code financialEffective = false}) would otherwise
+     * double-count the conversion group's fee together with the convBuy/convSell
+     * children, so the parent must drop out. REVERSAL rows are excluded by the
+     * type family (REVERSAL is not a buy/sell type), not by the flag — both
+     * conditions stay.</p>
      *
-     * <p>A FK-075-os finder VALTOZATLAN (a Mai statisztika mas szamitast igyenal);
-     * ez egy uj metoda, nem annak modositasa.</p>
+     * <p>The FK-075 finder is UNCHANGED (Mai-statisztika uses a different
+     * calculation); this is a new method, not a mutation of that one.</p>
      */
     @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
            "WHERE t.company.id = :companyId " +
