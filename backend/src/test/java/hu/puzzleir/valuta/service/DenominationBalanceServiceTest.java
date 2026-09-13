@@ -23,7 +23,7 @@ import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
-import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.Test;
@@ -53,7 +53,7 @@ class DenominationBalanceServiceTest {
     @Mock private CashBalanceRepository cashBalanceRepository;
     // FK-080 (FR-5): a mentes-ut allowlist-gatjanak katalogus-repoja.
     @Mock private DenominationAllowedRepository denominationAllowedRepository;
-    @Mock private ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    @Mock private TransactionRepository transactionRepository;
     @Mock private CurrencyRepository currencyRepository;
     @Mock private VatSupplyStockRepository vatSupplyStockRepository;
     @Mock private CurrencyStockRepository currencyStockRepository;
@@ -62,7 +62,7 @@ class DenominationBalanceServiceTest {
         return new DenominationBalanceService(
                 balanceRepository, denominationRepository, cashRegisterDeviceRepository, branchRepository,
                 cashBalanceRepository, denominationAllowedRepository,
-                shipmentHandlingFeeRepository, currencyRepository, vatSupplyStockRepository,
+                transactionRepository, currencyRepository, vatSupplyStockRepository,
                 currencyStockRepository);
     }
 
@@ -442,8 +442,9 @@ class DenominationBalanceServiceTest {
     }
 
     /**
-     * FKH-039 FR-6/FR-7: HANDLING_FEE önellenőrzés az aznapi KK calculatedFee összeget
-     * várja el (nem cash_balance-t); üres nap → elvárt 0, egy HUF sor.
+     * FKH-039 FR-6/FR-7 + FKH-070: HANDLING_FEE self-check Expected comes from
+     * the live Transaction.handlingFee sum (not cash_balance, and not the never-
+     * populated KK ShipmentHandlingFee); empty day → expected 0, one HUF row.
      */
     @Test
     void selfCheckHandlingFeeUsesDailyFeeSumNotCashBalance() {
@@ -453,7 +454,8 @@ class DenominationBalanceServiceTest {
         when(balanceRepository.sumActualStockByCurrency(
                 branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE))
                 .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("5000.00")}));
-        when(shipmentHandlingFeeRepository.sumDailyFeeForBranch(companyId, branchId, LocalDate.now()))
+        when(transactionRepository.sumHandlingFeeForBranchAndDate(
+                eq(companyId), eq(branchId), eq(LocalDate.now()), anyCollection()))
                 .thenReturn(new BigDecimal("5000"));
         when(currencyRepository.findByCode("HUF"))
                 .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));
@@ -469,7 +471,8 @@ class DenominationBalanceServiceTest {
             assertThat(result.get(0).isMatches()).isTrue();
         }
 
-        verify(shipmentHandlingFeeRepository).sumDailyFeeForBranch(companyId, branchId, LocalDate.now());
+        verify(transactionRepository).sumHandlingFeeForBranchAndDate(
+                eq(companyId), eq(branchId), eq(LocalDate.now()), anyCollection());
         verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
     }
 
@@ -481,7 +484,8 @@ class DenominationBalanceServiceTest {
         when(balanceRepository.sumActualStockByCurrency(
                 branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE))
                 .thenReturn(List.of());
-        when(shipmentHandlingFeeRepository.sumDailyFeeForBranch(companyId, branchId, LocalDate.now()))
+        when(transactionRepository.sumHandlingFeeForBranchAndDate(
+                eq(companyId), eq(branchId), eq(LocalDate.now()), anyCollection()))
                 .thenReturn(BigDecimal.ZERO);
         when(currencyRepository.findByCode("HUF"))
                 .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));

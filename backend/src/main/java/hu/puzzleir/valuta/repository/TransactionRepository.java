@@ -288,6 +288,37 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
         @Param("types") java.util.Collection<TransactionType> types
     );
 
+    /**
+     * FKH-070: live header-level {@code Transaction.handlingFee} sum that feeds the
+     * HANDLING_FEE denomination self-check Expected value (company + branch +
+     * business date + COMPLETED + buy/sell type family).
+     *
+     * <p>The delta versus the FK-075 neighbour
+     * {@link #sumCompletedHandlingFeeByBranchAndDateAndTypes} is intentional:
+     * this query also filters {@code financialEffective = true}. The parent
+     * CONVERSION row ({@code financialEffective = false}) would otherwise
+     * double-count the conversion group's fee together with the convBuy/convSell
+     * children, so the parent must drop out. REVERSAL rows are excluded by the
+     * type family (REVERSAL is not a buy/sell type), not by the flag — both
+     * conditions stay.</p>
+     *
+     * <p>The FK-075 finder is UNCHANGED (Mai-statisztika uses a different
+     * calculation); this is a new method, not a mutation of that one.</p>
+     */
+    @Query("SELECT COALESCE(SUM(t.handlingFee), 0) FROM Transaction t " +
+           "WHERE t.company.id = :companyId " +
+           "AND t.branch.id = :branchId " +
+           "AND t.transactionDate = :date " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.financialEffective = true " +
+           "AND t.transactionType IN :types")
+    BigDecimal sumHandlingFeeForBranchAndDate(
+        @Param("companyId") UUID companyId,
+        @Param("branchId") UUID branchId,
+        @Param("date") LocalDate date,
+        @Param("types") java.util.Collection<TransactionType> types
+    );
+
     // A korábbi header-alapú sumDailyTurnoverByCurrency / sumDailyTurnoverHufByCurrency query-k
     // ELTÁVOLÍTVA (Codex #903): multi-valutás (multiLine) bizonylatnál az első valutára számolták a
     // teljes összeget. Helyettük a sumDailySingleLineTurnover* (lent, multi-line kizárva) + a

@@ -12,6 +12,7 @@ import hu.puzzleir.valuta.entity.Denomination;
 import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationBalance;
 import hu.puzzleir.valuta.entity.DenominationCategory;
+import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.entity.VatSupplyStock;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
@@ -22,7 +23,7 @@ import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
-import hu.puzzleir.valuta.repository.ShipmentHandlingFeeRepository;
+import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.util.HungarianRounding;
@@ -57,13 +58,30 @@ public class DenominationBalanceService {
     private final CashBalanceRepository cashBalanceRepository;
     // FK-080 (FR-5): az engedelyezett cimlet-katalogus — a mentes-ut gatja.
     private final DenominationAllowedRepository denominationAllowedRepository;
-    private final ShipmentHandlingFeeRepository shipmentHandlingFeeRepository;
+    // FKH-070: the HANDLING_FEE self-check "expected" value comes from the LIVE
+    // Transaction.handlingFee header sum (company + branch + business date),
+    // not from the never-populated KK ShipmentHandlingFee sum. Declared in the
+    // same field position as the removed shipmentHandlingFeeRepository so the
+    // @RequiredArgsConstructor arity/order stays identical.
+    private final TransactionRepository transactionRepository;
     private final CurrencyRepository currencyRepository;
     private final VatSupplyStockRepository vatSupplyStockRepository;
     // FKH-046: the vault-arm self-check "expected" value comes from this repository
     // (entity_type=VAULT, entity_id=vault_territory_id), not from the
     // cashier-pattern cash_balance table.
     private final CurrencyStockRepository currencyStockRepository;
+
+    /**
+     * FKH-070: buy+sell type family for the HANDLING_FEE self-check live sum —
+     * same family as CashBalanceService's BUY_AND_SELL_TYPES (built from
+     * TransactionType.isBuyType()/isSellType()). REVERSAL rows are excluded by
+     * this filter (they are not a buy/sell type), so the reversal fee never
+     * inflates the expected balance.
+     */
+    private static final List<TransactionType> BUY_AND_SELL_TYPES =
+            java.util.Arrays.stream(TransactionType.values())
+                    .filter(type -> type.isBuyType() || type.isSellType())
+                    .toList();
 
     /**
      * FK-080 (FR-5): a mentes elott a hivatkozott denomination sort ELLENORIZZUK.
@@ -365,10 +383,15 @@ public class DenominationBalanceService {
         }
 
         if (effectiveCategory == DenominationCategory.HANDLING_FEE) {
+            // FKH-070: Expected comes from the LIVE Transaction.handlingFee header
+            // sum (company + branch + business date), not the never-populated KK
+            // ShipmentHandlingFee sum. `today` (the resolved businessDate) must be
+            // passed through — FKH-050 retroactive self-checks read a past day.
             return List.of(hufSelfCheckRow(
                     denominated,
                     HungarianRounding.roundToFive(
-                            shipmentHandlingFeeRepository.sumDailyFeeForBranch(companyId, cashDeskId, today))));
+                            transactionRepository.sumHandlingFeeForBranchAndDate(
+                                    companyId, cashDeskId, today, BUY_AND_SELL_TYPES))));
         }
         if (effectiveCategory == DenominationCategory.VAT) {
             return List.of(hufSelfCheckRow(denominated, vatSupplyExpectedBalance(cashDeskId, companyId)));
