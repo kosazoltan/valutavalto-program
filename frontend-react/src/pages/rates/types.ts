@@ -22,6 +22,19 @@ export function parseNum(val: string): number {
 }
 
 /**
+ * Codex PR #1767 LOW: a `parseNum` a nem-numerikus/sérült stringet csendben 0-vá alakítja, ami
+ * engedélyezett-nulla irányon „legitim 0"-ként mehetne tovább. Ez a szigorú változat üres,
+ * nem-numerikus vagy nem-véges bemenetre `null`-t ad — a hívó explicit hibát jelezhet.
+ */
+export function parseNumStrict(val: string | null | undefined): number | null {
+  if (val == null) return null
+  const t = val.trim()
+  if (t === '') return null
+  const n = parseFloat(t.replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+/**
  * FK13 (FR-5): a 0 megjelenítési szerződése. `allowZero: true` = a currency-irányra engedélyezett,
  * ténylegesen beírt/számított 0, amit NEM szabad üres cellává (`''`) veszíteni visszaíráskor.
  * A valódi „üres cella" (null/undefined) ábrázolása mindkét módban `''` marad.

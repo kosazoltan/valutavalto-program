@@ -21,7 +21,7 @@ import {
   type RateOverviewItem,
   type WorkgroupDetailDTO,
 } from '../../services/api/exchange-rates'
-import { parseNum } from './types'
+import { parseNumStrict } from './types'
 import {
   validateWorkgroupProtection,
   workgroupProtectionLabel,
@@ -88,10 +88,16 @@ async function buildGroupRates(
 
   // FK13 (FR-3): a fix overlay „0” csak az engedélyezett irányon (buyRate ↔ buyZeroAllowed,
   // sellRate ↔ sellZeroAllowed) marad szám; minden más mezőn a 0 = „nincs beállítva” (null).
-  const numOrNull = (s: string | undefined, allowZero = false): number | null => {
+  // Codex PR #1767 LOW: a sérült / nem-numerikus tárolt overlay-érték NEM válhat csendben 0-vá
+  // (engedélyezett-nulla irányon „legitim 0”-ként menne ki) — explicit csoport-hiba lesz belőle.
+  const invalidOverlay: string[] = []
+  const numOrNull = (s: string | undefined, allowZero = false, label?: string): number | null => {
     if (s == null || s.trim() === '') return null
-    const n = parseNum(s)
-    if (!Number.isFinite(n)) return null
+    const n = parseNumStrict(s)
+    if (n == null) {
+      if (label) invalidOverlay.push(`${label} („${s}”)`)
+      return null
+    }
     if (n === 0) return allowZero ? 0 : null
     return n
   }
@@ -113,12 +119,16 @@ async function buildGroupRates(
     }
     const field = (f: Exclude<WgField, 'officialRate'>): number | null => {
       const o = overlay[`${c.currencyId}.${f}`]
-      return o != null ? numOrNull(o, zeroAllowedFor(c, f)) : baseline[f]
+      return o != null ? numOrNull(o, zeroAllowedFor(c, f), `${c.currencyCode} ${f}`) : baseline[f]
     }
     const values: WgComputeRow['values'] = {
       officialRate:
         overlay[`${c.currencyId}.officialRate`] != null
-          ? numOrNull(overlay[`${c.currencyId}.officialRate`])
+          ? numOrNull(
+              overlay[`${c.currencyId}.officialRate`],
+              false,
+              `${c.currencyCode} officialRate`,
+            )
           : c.officialRate,
       buyRate: field('buyRate'),
       sellRate: field('sellRate'),
@@ -131,6 +141,14 @@ async function buildGroupRates(
     }
     return { currencyId: c.currencyId, currencyCode: c.currencyCode, values }
   })
+
+  if (invalidOverlay.length > 0) {
+    return {
+      rates: [],
+      protectionRows: [],
+      error: `érvénytelen tárolt érték: ${invalidOverlay.join('; ')}`,
+    }
+  }
 
   // Képletek alkalmazása (pure motor) — csak ha vannak; divergencia = csoport-hiba.
   let rows = computeRows

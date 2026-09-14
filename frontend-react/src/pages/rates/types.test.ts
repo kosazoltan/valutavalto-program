@@ -1,5 +1,33 @@
 import { describe, it, expect } from 'vitest'
-import { fmtRate, parseNum } from './types'
+import { fmtRate, parseNum, parseNumStrict } from './types'
+
+/**
+ * Codex PR #1767 LOW: a `parseNum` NaN→0 konverziója engedélyezett-nulla irányon „legitim 0"-vá
+ * tenné a sérült stringet; a szigorú változat ilyenkor `null`-t ad (explicit hiba a hívónál).
+ */
+describe('parseNumStrict — sérült / nem-numerikus bemenet', () => {
+  it('nem-numerikus string → null (nem 0)', () => {
+    expect(parseNumStrict('abc')).toBeNull()
+    expect(parseNumStrict('NaN')).toBeNull()
+    expect(parseNumStrict('Infinity')).toBeNull()
+    // a laza parseNum ugyanezt csendben 0-nak veszi — ezt a szerződést a szigorú változat zárja ki
+    expect(parseNum('abc')).toBe(0)
+  })
+
+  it('üres / null / undefined → null', () => {
+    expect(parseNumStrict('')).toBeNull()
+    expect(parseNumStrict('   ')).toBeNull()
+    expect(parseNumStrict(null)).toBeNull()
+    expect(parseNumStrict(undefined)).toBeNull()
+  })
+
+  it('valódi 0 és magyar tizedesvessző értékek változatlanul számok', () => {
+    expect(parseNumStrict('0')).toBe(0)
+    expect(parseNumStrict('0,0000')).toBe(0)
+    expect(parseNumStrict('7,87')).toBe(7.87)
+    expect(parseNumStrict('395')).toBe(395)
+  })
+})
 
 /**
  * FK13 (FR-5) — `fmtRate` 0-szerződése. Alapesetben (FK10) a 0 üres cellaként jelenik meg;

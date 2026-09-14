@@ -582,6 +582,68 @@ class RateCreationServiceTest {
         verify(ratePublishService).publish(eq(FK13_WG_ID), org.mockito.ArgumentMatchers.anyList(), any(), any());
     }
 
+    // ===================== Codex PR #1767 HIGH: kerekítési megkerülés (2026-09-14) =====================
+    // A policy „nulla-e" döntése a TÁROLT (4 tizedes) értéken fut: a nyers 0,00001 (nem nulla) is
+    // 0,0000-ként tárolódna, ezért a NEM engedélyezett irányon VV-VALID-008-cal el kell utasítani.
+
+    @Test
+    @DisplayName("Codex HIGH: vétel=0 / eladás=0,00001, vétel engedélyezett, eladás tiltott → VV-VALID-008 (az eladás 0,0000-ra kerekedik)")
+    void publishGroupRate_sellRoundsToZero_notAllowed_rejected() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(true, false)));
+
+        assertThatThrownBy(() -> service.publishGroupRate(fk13Dto("0", "0.00001", "7.50")))
+                .isInstanceOf(hu.puzzleir.valuta.exception.BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "VV-VALID-008")
+                .hasMessageContaining("eladási");
+
+        verify(rateTemplateRepository, never()).save(any());
+        verify(ratePublishService, never()).publish(any(UUID.class), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Codex HIGH: vétel=0,00001 / eladás=0, vétel tiltott, eladás engedélyezett → VV-VALID-008 (a vétel 0,0000-ra kerekedik)")
+    void publishGroupRate_buyRoundsToZero_notAllowed_rejected() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(false, true)));
+
+        assertThatThrownBy(() -> service.publishGroupRate(fk13Dto("0.00001", "0", "7.50")))
+                .isInstanceOf(hu.puzzleir.valuta.exception.BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "VV-VALID-008")
+                .hasMessageContaining("vételi");
+
+        verify(rateTemplateRepository, never()).save(any());
+        verify(ratePublishService, never()).publish(any(UUID.class), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Codex HIGH: engedélyezett irányon a 0,00001 is engedélyezett nullaként publikálódik — a sablon a TÁROLT (0,0000) értéket kapja")
+    void publishGroupRate_roundsToZero_allowed_publishesStoredZero() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(true, null)));
+
+        service.publishGroupRate(fk13Dto("0.00001", "7.87", "7.50"));
+
+        ArgumentCaptor<hu.puzzleir.valuta.entity.RateTemplate> tpl =
+                ArgumentCaptor.forClass(hu.puzzleir.valuta.entity.RateTemplate.class);
+        verify(rateTemplateRepository).save(tpl.capture());
+        assertThat(tpl.getValue().getBaseBuyRate()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(tpl.getValue().getBaseBuyRate().scale()).isEqualTo(RateSpreadGate.STORED_SCALE);
+        verify(ratePublishService).publish(eq(FK13_WG_ID), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Codex HIGH guard: a 0,00005 HALF_UP 0,0001-re kerekedik → NEM nulla, nincs policy-lookup, a normál sanity fut")
+    void publishGroupRate_roundsToPositive_noPolicyLookup() {
+        fk13StubCommonPublishPath();
+
+        // buy 0,00005 → 0,0001 > 0; sell 7,87 → sell>buy OK; spread-kapu: (7,87−0,0001)/7,5 ≫ 5% → ValidationException
+        assertThatThrownBy(() -> service.publishGroupRate(fk13Dto("0.00005", "7.87", "7.50")))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("spread");
+        verify(currencyRepository, never()).findById(any());
+    }
+
     @Test
     @DisplayName("FK13 FR-12 guard: pozitív vétel/eladás engedély nélkül is változatlanul publikálódik (nincs regresszió)")
     void publishGroupRate_positiveRates_unaffectedByPolicy() {

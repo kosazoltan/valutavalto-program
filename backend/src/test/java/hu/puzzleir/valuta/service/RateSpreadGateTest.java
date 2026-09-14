@@ -117,6 +117,33 @@ class RateSpreadGateTest {
                         false, true));
     }
 
+    // ===================== Codex PR #1767 HIGH: a „nulla" döntés a tárolt (4 tizedes) értéken =====================
+
+    @Test
+    @DisplayName("Codex HIGH: vétel=0,00001 (tároltan 0,0000) + buyZeroAllowed → a kapu kihagyva (egyoldalú valuta)")
+    void buyRoundsToZero_allowed_skipsSpreadCheck() {
+        assertDoesNotThrow(() ->
+                RateSpreadGate.enforce(new BigDecimal("0.00001"), new BigDecimal("7.87"), new BigDecimal("7.50"), 21L,
+                        true, false));
+    }
+
+    @Test
+    @DisplayName("Codex HIGH: vétel=0,00001 (tároltan 0,0000) engedély NÉLKÜL → a kapu változatlanul dob")
+    void buyRoundsToZero_notAllowed_stillThrows() {
+        assertThrows(ValidationException.class, () ->
+                RateSpreadGate.enforce(new BigDecimal("0.00001"), new BigDecimal("7.87"), new BigDecimal("7.50"), 21L,
+                        false, true));
+    }
+
+    @Test
+    @DisplayName("Codex HIGH: isZeroWhenStored — 0,00004 → igaz, 0,00005 (HALF_UP → 0,0001) → hamis, null → hamis")
+    void isZeroWhenStored_roundingBoundary() {
+        assertTrue(RateSpreadGate.isZeroWhenStored(new BigDecimal("0.00004")));
+        assertTrue(RateSpreadGate.isZeroWhenStored(BigDecimal.ZERO));
+        assertTrue(!RateSpreadGate.isZeroWhenStored(new BigDecimal("0.00005")));
+        assertTrue(!RateSpreadGate.isZeroWhenStored(null));
+    }
+
     @Test
     @DisplayName("FK13 FR-12 guard: az engedély csak a TÉNYLEGES 0-ra vonatkozik — pozitív, túl széles spread engedéllyel is dob")
     void positiveWideSpread_allowedFlags_stillThrows() {

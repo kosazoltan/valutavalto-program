@@ -503,6 +503,26 @@ describe('publishAllWorkgroups — FK13 engedélyezett 0 árfolyam', () => {
     expect(result.outcomes[0]).toEqual(expect.objectContaining({ status: 'skipped' }))
   })
 
+  it('Codex PR #1767 LOW: sérült (nem-numerikus) overlay-érték engedélyezett-nulla irányon NEM válik csendben 0-vá — explicit csoport-hiba, nincs publish', async () => {
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.rates.v1.g1',
+      JSON.stringify({ '21.buyRate': 'abc' }),
+    )
+
+    const result = await publishAllWorkgroups({
+      preloaded: { overview: [uah({ buyZeroAllowed: true })], workgroups: [group()] },
+    })
+
+    expect(mocks.publishGroupRate).not.toHaveBeenCalled()
+    expect(result.outcomes[0]).toEqual(
+      expect.objectContaining({
+        status: 'failed',
+        failureKind: 'business',
+        message: expect.stringContaining('érvénytelen tárolt érték: UAH buyRate („abc”)'),
+      }),
+    )
+  })
+
   it('FR-12 guard: engedély nélkül az E=0 forrás továbbra is „képlet-hiba: Nincs érték a 0-s lap E oszlopában”', async () => {
     localStorage.setItem(
       'arfolyamkeszito.mainSheet.v1',

@@ -675,8 +675,16 @@ public class RateCreationService {
             // FK13 (FR-6): a 0 árfolyam CSAK a currency-n az adott irányra engedélyezett kivételként
             // mehet át (buy_zero_allowed / sell_zero_allowed); minden más 0 = FK10 elgépelés-védelem.
             // A backend a szerver-oldali igazság — a DTO @PositiveOrZero csak a negatívot szűri.
-            boolean buyIsZero = entry.getBuyRate().signum() == 0;
-            boolean sellIsZero = entry.getSellRate().signum() == 0;
+            //
+            // Codex PR #1767 HIGH (kerekítési megkerülés): a „nulla-e" döntés a TÁROLT skálára
+            // (4 tizedes, RateSpreadGate.STORED_SCALE) kerekített értéken fut, és a sablonba is ez a
+            // kerekített érték kerül — így a 0,00001 nyers bemenet nem csúszhat át nem-nullaként, hogy
+            // aztán 0,0000-ként tárolódjon. A currency-lookup változatlanul csak akkor fut, ha a
+            // (kerekített) érték valamelyik oldalon nulla.
+            BigDecimal buyRate = RateSpreadGate.toStoredScale(entry.getBuyRate());
+            BigDecimal sellRate = RateSpreadGate.toStoredScale(entry.getSellRate());
+            boolean buyIsZero = buyRate.signum() == 0;
+            boolean sellIsZero = sellRate.signum() == 0;
             boolean buyZeroAllowed = false;
             boolean sellZeroAllowed = false;
             if (buyIsZero || sellIsZero) {
@@ -704,22 +712,22 @@ public class RateCreationService {
             // FK13 (5. döntés): engedélyezett 0 (egyoldalú valuta) mellett a sell>buy sanity nem
             // értelmezhető erre a sorra — különben a csak-vétel irányú valuta sosem publikálható.
             boolean oneSidedAllowedZero = (buyIsZero && buyZeroAllowed) || (sellIsZero && sellZeroAllowed);
-            if (!oneSidedAllowedZero && entry.getSellRate().compareTo(entry.getBuyRate()) <= 0) {
+            if (!oneSidedAllowedZero && sellRate.compareTo(buyRate) <= 0) {
                 throw new ValidationException(
                         "Eladási árfolyam nagyobb kell legyen a vételinél! currencyId=" + entry.getCurrencyId());
             }
 
             // RFM spread-kapu (VV-ELVI 7.2/7.4): a relatív spread nem lépheti túl az 5%-ot.
             // FK13 (FR-7): irány-tudatos — engedélyezett 0 oldal mellett a kapu kihagyva.
-            RateSpreadGate.enforce(entry.getBuyRate(), entry.getSellRate(), entry.getOfficialRate(),
+            RateSpreadGate.enforce(buyRate, sellRate, entry.getOfficialRate(),
                     entry.getCurrencyId(), buyZeroAllowed, sellZeroAllowed);
 
             RateTemplate template = RateTemplate.builder()
                     .company(company)
                     .currencyId(entry.getCurrencyId())
                     .workgroupId(workgroupId)
-                    .baseBuyRate(entry.getBuyRate())
-                    .baseSellRate(entry.getSellRate())
+                    .baseBuyRate(buyRate)
+                    .baseSellRate(sellRate)
                     .buySpread(BigDecimal.ZERO)
                     .sellSpread(BigDecimal.ZERO)
                     .officialRate(entry.getOfficialRate())
