@@ -1,0 +1,41 @@
+---
+description: "Cursor session briefing for the Valutavalto ERP — product essence, skill routing, memory/kanban, MCP honesty. Read .cursor.md for machine-local SHA/version."
+alwaysApply: true
+---
+
+# Valutaváltó — Cursor operating context
+
+This repo is a **Hungarian multi-tenant currency-exchange ERP**.
+Authority remains `AGENTS.md`. This rule only routes Cursor work.
+
+## At session start
+
+1. `git pull --ff-only` on a clean tree (dirty tree → report, do not pull).
+2. Read `.cursor.md` if it exists (untracked local snapshot: version, SHA, MCP).
+3. Non-trivial work → `npm run memory:query` with `--area` (plus `legacy` and
+   `specifikacio` for new behaviour). Cite hits or say the query was empty.
+4. Ticket first: `kanban.mjs add` before the first product write.
+
+## Skill routing
+
+| Trigger | Skill |
+|---|---|
+| `penztar-client/electron`, `kozponti-client/electron`, `packages/**` | `valutavalto-platform-architecture` |
+| FK / FKH spec, Flyway, money Expected, day-close | `valutavalto-spec-driven-feature-delivery` |
+| memory, kanban, six-souls vs direct fix | `valutavalto-memory-pipeline-kanban` |
+| deploy / release / auth / CI / security audit | `security-deploy-gate` |
+
+## Product essence (do not violate)
+
+- 4 companies, `companyId` isolation on every protected path.
+- HUF 5 Ft rounding; `financialEffective` on money sums.
+- OSIV off; new REST method needs `@PreAuthorize`; never widen `archunit_store/`.
+- Platform rule: client → platform yes, **client → client never**.
+- Renderer/Electron fixes reach offices only via a **signed installer**, not Hetzner.
+- End users are not developers: no manual CLI deliverable.
+- Tests are the contract: never weaken, skip, or rewrite a failing test to go green.
+
+## Language
+
+Machine artifacts, code, comments, commits: **English**.
+User-facing report and UI copy: **Hungarian**.

@@ -1,6 +1,6 @@
-generated_at: 2026-09-12T05:34:10.622Z
+generated_at: 2026-09-14T17:51:04.629Z
 schema_version: 1
-source_count: 1104
+source_count: 1107
 short_term:
   - id: a54ff182c7e8acf5
     title: AGENTS.md - AI coding agent szabalyzat
@@ -390,33 +390,6 @@ short_term:
     areas: [deploy, ertektar, installer, napzaras, security, specifikacio]
     keywords: [mandate, univerzalis, ugynok, protokoll, 2026, forras, user, atadott, universal_agent_protocol, 101, sor, teljes]
 medium_term:
-  - id: c1e4ef81288e626c
-    title: "Központi irányítóközpont sprint"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-12-central-workstation-sprint.md
-    status: implemented
-    sha256: 079ee8eb2af4c091aee89b9d41d6ffd4c379501e3fa04b2dec37ce42bf3eb51c
-    summary: "--- title: Központi irányítóközpont sprint date: 2026-05-12 status: implemented version: 2.5.45 tags: - kozponti-munkaallomas - sprint - legacy-modulok - installer --- # Központi irányítóközpont sprint Autonóm fejlesztési lépés: az eddig megalapított központi funkciók egy sprintben kerültek be a központi Electron programba. ## Elkészült - Új oldal: `frontend-react/src/pages/central/CentralSprintPage.tsx`. - Új route:"
-    areas: [aml, arfolyam, ertektar, frontend, installer, napzaras]
-    keywords: [kozponti, iranyitokozpont, sprint, title, date, 2026, status, implemented, version, tags, munkaallomas, legacy]
-  - id: 19a31f8c703059e1
-    title: CI hibabeolvasas es onellenorzo kapuk kotelezo mandatuma
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-12-ci-error-intake-and-self-check-mandate.md
-    status: implemented
-    sha256: dc3bbbeda57bcfda13c3a867290fd516676f817abe4a0666dff24f5bb7e7e427
-    summary: "--- title: CI hibabeolvasas es onellenorzo kapuk kotelezo mandatuma date: 2026-05-12 type: session-memory status: implemented --- # CI hibabeolvasas es onellenorzo kapuk ## Dontes Kotelezo ervenyu mukodesi szabaly lett, hogy a CI es AI review hibakat az AI ugynok olvassa ki kozvetlenul. A felhasznalot nem kerjuk Sorcery, GitHub Actions, Copilot vagy Codex hibak kezi bemasolasara. ## Implementacio - Uj script: `script"
-    areas: [deploy]
-    keywords: [hibabeolvasas, onellenorzo, kapuk, kotelezo, mandatuma, title, date, 2026, type, session, memory, status]
-  - id: b1f097f0cd60443c
-    title: "Zárás beérkezés központi modul"
-    type: medium-term-episodic
-    path: vault/sessions/2026-05-12-closing-control-central-module.md
-    status: implemented
-    sha256: 1a87650348e695832f2d6246465146b7079392ae1f065b2b15fda90891e02f61
-    summary: "--- title: Zárás beérkezés központi modul date: 2026-05-12 status: implemented version: 2.5.43 tags: - kozponti-munkaallomas - zaras - legacy-modulok - installer --- # Zárás beérkezés központi modul Autonóm fejlesztési lépés a szerver legacy modul inventory alapján. Legacy megfelelők: - `zarasctrl.dll` - `beerk.dll` - `missctrl.dll` - `daybook.fdb` zárási állapot/missing-closing működés ## Elkészült - Backend `Closin"
-    areas: [frontend, installer, napzaras]
-    keywords: [zaras, beerkezes, kozponti, modul, title, date, 2026, status, implemented, version, tags, munkaallomas]
   - id: b2787974cc08ee42
     title: "2026-05-12 Felmeres + Anti tudaslefedettsegi audit"
     type: medium-term-episodic
@@ -1688,6 +1661,30 @@ medium_term:
     summary: "# Handoff — FKH-065 + FKH-066 (2026-09-12) PR **#1751 MERGED** → main `64178ee8`, **v2.28.112 élesben** (prod buildTime 2026-09-12T04:55:54Z). Ticket: `.hermes/tickets/2026-09-11-fkh065-066-cimletezes-elvart-es-penztari-forgalom.md`. ## Commits (squash-olva #1751-be) | SHA | Tartalom | |---|---| | `e820ed18` | FKH-066 backend: `VaultTurnoverController` + `VaultTurnoverService` (territory-scope, 404 nem 403) | | `960d"
     areas: [cimletezes, deploy, ertektar, frontend, installer, penztar, specifikacio]
     keywords: [handoff, fkh, 065, 066, 2026, 1751, merged, main, 64178ee8, 112, elesben, prod]
+  - id: 934ee517d57d90bc
+    title: "Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-12-fkh067-arfolyam-ttl-nem-blokkolo.md
+    sha256: 6185d028badf504dcfaf6d964f27cd01b59a90dd6642bf4d1734adba543f6061
+    summary: "# Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking Date: 2026-09-12 · PR #1753 merged → main `b29c752e` · prod deploy verified ## What shipped A stale exchange rate (720h TTL) no longer blocks the booking of transactions recorded on the client AFTER `TTL_NONBLOCKING_CUTOFF`; everything recorded before it keeps the blocking rule. - `penztar-client/electron/sync-engine.ts`: `clientCreatedAt` fr"
+    areas: [arfolyam, database, deploy, penztar]
+    keywords: [handoff, fkh, 067, spec, doc, 063, exchange, rate, ttl, made, non, blocking]
+  - id: 34f5f7c84dcca046
+    title: "Handoff — 2026-09-13 — Cursor onboarding + pipeline bookkeeping"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-13-cursor-onboarding-pipeline-audit.md
+    sha256: b32b9b062326f9030d85e178d7e0b5f9738870f3f93c6770d6b5da75d0b6e6ba
+    summary: "# Handoff — 2026-09-13 — Cursor onboarding + pipeline bookkeeping Date: 2026-09-13. Main: `10a8122f` (v2.28.113). Kanban #48. ## Intent Make Cursor work on this repo the same way Hermes does: living memory, ticket-first kanban, spec Phase 0, platform rule, and an honest pipeline status. Schema remains `.agent/memory` only. ## What landed (local / committed-path) - `.cursor.md` (untracked, like `.hermes.md`) — product"
+    areas: [security]
+    keywords: [handoff, 2026, cursor, onboarding, pipeline, bookkeeping, date, main, 10a8122f, 113, kanban, intent]
+  - id: 9199cf30a3412946
+    title: "Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)"
+    type: medium-term-episodic
+    path: vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md
+    sha256: 7954a5cb45044c7b41ebde8ace7504c65aef6e66638f20d326fdc7955b2fcc93
+    summary: "# Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **pipeline PASS**, merge **not** done (user). HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, worktree `D:/repo/wt-fkh070`. Base `0df543d7` / v2.28.113. ## What landed (unmerged) HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `Hunga"
+    areas: [database, deploy]
+    keywords: [handoff, fkh, 070, handling_fee, expected, source, 2026, status, pipeline, pass, merge, not]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

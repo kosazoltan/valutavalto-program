@@ -1,5 +1,5 @@
 ingest_profile: repo-multilayer-memory
-generated_at: 2026-09-12T05:34:10.622Z
+generated_at: 2026-09-14T17:51:04.629Z
 kind: knowledge_bundle
 nodes:
   - id: 30a8a19e191ac3f2
@@ -7716,6 +7716,27 @@ nodes:
     summary: "# Handoff — FKH-065 + FKH-066 (2026-09-12) PR **#1751 MERGED** → main `64178ee8`, **v2.28.112 élesben** (prod buildTime 2026-09-12T04:55:54Z). Ticket: `.hermes/tickets/2026-09-11-fkh065-066-cimletezes-elvart-es-penztari-forgalom.md`. ## Commits (squash-olva #1751-be) | SHA | Tartalom | |---|---| | `e820ed18` | FKH-066 backend: `VaultTurnoverController` + `VaultTurnoverService` (territory-scope, 404 nem 403) | | `960d"
     tags: [handoff, fkh, 065, 066, 2026, 1751, merged, main, 64178ee8, 112]
     areas: [cimletezes, deploy, ertektar, frontend, installer, penztar, specifikacio]
+  - id: 934ee517d57d90bc
+    type: medium-term-episodic
+    title: "Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking"
+    source_path: vault/sessions/handoff-2026-09-12-fkh067-arfolyam-ttl-nem-blokkolo.md
+    summary: "# Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking Date: 2026-09-12 · PR #1753 merged → main `b29c752e` · prod deploy verified ## What shipped A stale exchange rate (720h TTL) no longer blocks the booking of transactions recorded on the client AFTER `TTL_NONBLOCKING_CUTOFF`; everything recorded before it keeps the blocking rule. - `penztar-client/electron/sync-engine.ts`: `clientCreatedAt` fr"
+    tags: [handoff, fkh, 067, spec, doc, 063, exchange, rate, ttl, made]
+    areas: [arfolyam, database, deploy, penztar]
+  - id: 34f5f7c84dcca046
+    type: medium-term-episodic
+    title: "Handoff — 2026-09-13 — Cursor onboarding + pipeline bookkeeping"
+    source_path: vault/sessions/handoff-2026-09-13-cursor-onboarding-pipeline-audit.md
+    summary: "# Handoff — 2026-09-13 — Cursor onboarding + pipeline bookkeeping Date: 2026-09-13. Main: `10a8122f` (v2.28.113). Kanban #48. ## Intent Make Cursor work on this repo the same way Hermes does: living memory, ticket-first kanban, spec Phase 0, platform rule, and an honest pipeline status. Schema remains `.agent/memory` only. ## What landed (local / committed-path) - `.cursor.md` (untracked, like `.hermes.md`) — product"
+    tags: [handoff, 2026, cursor, onboarding, pipeline, bookkeeping, date, main, 10a8122f, 113]
+    areas: [security]
+  - id: 9199cf30a3412946
+    type: medium-term-episodic
+    title: "Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)"
+    source_path: vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md
+    summary: "# Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **pipeline PASS**, merge **not** done (user). HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, worktree `D:/repo/wt-fkh070`. Base `0df543d7` / v2.28.113. ## What landed (unmerged) HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `Hunga"
+    tags: [handoff, fkh, 070, handling_fee, expected, source, 2026, status, pipeline, pass]
+    areas: [database, deploy]
   - id: 8e689c47bb831e58
     type: medium-term-episodic
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
@@ -23412,6 +23433,27 @@ edges:
   - from: 650830623e5ddcfc
     to: area_specifikacio
     relation: belongs_to_area
+  - from: 934ee517d57d90bc
+    to: area_arfolyam
+    relation: belongs_to_area
+  - from: 934ee517d57d90bc
+    to: area_database
+    relation: belongs_to_area
+  - from: 934ee517d57d90bc
+    to: area_deploy
+    relation: belongs_to_area
+  - from: 934ee517d57d90bc
+    to: area_penztar
+    relation: belongs_to_area
+  - from: 34f5f7c84dcca046
+    to: area_security
+    relation: belongs_to_area
+  - from: 9199cf30a3412946
+    to: area_database
+    relation: belongs_to_area
+  - from: 9199cf30a3412946
+    to: area_deploy
+    relation: belongs_to_area
   - from: 8e689c47bb831e58
     to: area_cimletezes
     relation: belongs_to_area
@@ -23469,15 +23511,6 @@ edges:
   - from: 2b29c56396c2ee3a
     to: area_tenant
     relation: belongs_to_area
-  - from: 532b39357eabdbac
-    to: repo_project_state
-    relation: informs
-  - from: a24aab35a28e080b
-    to: repo_project_state
-    relation: informs
-  - from: 7307b2388c3cda33
-    to: repo_project_state
-    relation: informs
   - from: b4425b2b164a7b6f
     to: repo_project_state
     relation: informs
@@ -23701,6 +23734,15 @@ edges:
     to: repo_project_state
     relation: informs
   - from: 650830623e5ddcfc
+    to: repo_project_state
+    relation: informs
+  - from: 934ee517d57d90bc
+    to: repo_project_state
+    relation: informs
+  - from: 34f5f7c84dcca046
+    to: repo_project_state
+    relation: informs
+  - from: 9199cf30a3412946
     to: repo_project_state
     relation: informs
   - from: 8e689c47bb831e58

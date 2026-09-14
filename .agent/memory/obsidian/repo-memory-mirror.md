@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-09-12T05:34:10.622Z
+generated: 2026-09-14T17:51:04.629Z
 ---
 
 # Repo Memory Mirror
@@ -8,8 +8,8 @@ generated: 2026-09-12T05:34:10.622Z
 Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
-- sources: 1104
-- generated: 2026-09-12T05:34:10.622Z
+- sources: 1107
+- generated: 2026-09-14T17:51:04.629Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1114,5 +1114,8 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[FKH-063 + FKH-064 + #42 — 2026-09-11 — MIND LEZÁRVA]] — `vault/sessions/handoff-2026-09-11-fkh063-fkh064-manual-rate-decade.md` (medium-term-episodic)
 - [[FKH-064 — banki-státusz MNB forráskeveredés (board #38) — 2026-09-11 — LEZÁRVA]] — `vault/sessions/handoff-2026-09-11-fkh064-bank-integration-source.md` (medium-term-episodic)
 - [[Handoff — FKH-065 + FKH-066 (2026-09-12)]] — `vault/sessions/handoff-2026-09-12-fkh065-066-elvart-es-forgalom.md` (medium-term-episodic)
+- [[Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking]] — `vault/sessions/handoff-2026-09-12-fkh067-arfolyam-ttl-nem-blokkolo.md` (medium-term-episodic)
+- [[Handoff — 2026-09-13 — Cursor onboarding + pipeline bookkeeping]] — `vault/sessions/handoff-2026-09-13-cursor-onboarding-pipeline-audit.md` (medium-term-episodic)
+- [[Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)]] — `vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)

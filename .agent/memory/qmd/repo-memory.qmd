@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-12T05:34:10.622Z
+generated: 2026-09-14T17:51:04.629Z
 format: gfm
 ---
 
@@ -111,18 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19)** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-19-fkh038-becimletezes-kategoria-vak-betoltes.md`
-  - summary: # Handoff — FKH-038 Becímletező kategória-vak betöltés (2026-08-19) Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` ## Hiba A `GET /cash-desks/{id}/denominations/currency/{currencyId}` READ-út nem szűrt `denomination_category`-ra. Az Esti zárás (EVENING) HUF-készlet előtöltődött a Kezelési díj (HANDLING_FEE) oldalon. A WRITE-út (`POST .../batch?category=`) már helyes volt (FK-078 / FKH-0
-
-- **Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-19-fkh038-fk090-fk089.md`
-  - summary: # Handoff — 2026-08-19 FKH-038 + FK-090 + FK-089 Branch: `feature/ertektar-fkh038-becimletezes-kategoria-vak-betoltes-javitas` HEAD at start: `bbf0a8aa` (a FK-090 jegy `55c8e9cc`-t várt — a main azóta release-elt). ## FKH-038 Becímletező READ kategória-szűrt (`findByCashDeskIdAndCurrencyIdAndCategory`). WRITE változatlan. EVENING/HANDLING_FEE nem keveredik. ## FK-090 Transfer-egyeztetés: - RECEIVED kikerült a megerős
-
-- **FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md`
-  - summary: --- date: 2026-08-24 title: FKH-039/040 + FK-091/092/093 → v2.28.86, dupla verzió, 2.28.87 gate WIP type: session status: partial tags: [fkh039, fkh040, fk091, fk092, fk093, installer, deploy, release, version-bump] --- # Handoff — 2026-08-24 (FKH-039…FK-093 + verzió-gate) Státusz: **funkciók a mainen, prod JAR 2.28.86, auto-update TORZÍTVA.** `origin/main` = `571dbd53` (#1651). Working tree **piszkos**: 2.28.87 bump
 
 - **Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md`
@@ -243,6 +231,18 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — FKH-065 + FKH-066 (2026-09-12)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-12-fkh065-066-elvart-es-forgalom.md`
   - summary: # Handoff — FKH-065 + FKH-066 (2026-09-12) PR **#1751 MERGED** → main `64178ee8`, **v2.28.112 élesben** (prod buildTime 2026-09-12T04:55:54Z). Ticket: `.hermes/tickets/2026-09-11-fkh065-066-cimletezes-elvart-es-penztari-forgalom.md`. ## Commits (squash-olva #1751-be) | SHA | Tartalom | |---|---| | `e820ed18` | FKH-066 backend: `VaultTurnoverController` + `VaultTurnoverService` (territory-scope, 404 nem 403) | | `960d
+
+- **Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-12-fkh067-arfolyam-ttl-nem-blokkolo.md`
+  - summary: # Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking Date: 2026-09-12 · PR #1753 merged → main `b29c752e` · prod deploy verified ## What shipped A stale exchange rate (720h TTL) no longer blocks the booking of transactions recorded on the client AFTER `TTL_NONBLOCKING_CUTOFF`; everything recorded before it keeps the blocking rule. - `penztar-client/electron/sync-engine.ts`: `clientCreatedAt` fr
+
+- **Handoff — 2026-09-13 — Cursor onboarding + pipeline bookkeeping** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-13-cursor-onboarding-pipeline-audit.md`
+  - summary: # Handoff — 2026-09-13 — Cursor onboarding + pipeline bookkeeping Date: 2026-09-13. Main: `10a8122f` (v2.28.113). Kanban #48. ## Intent Make Cursor work on this repo the same way Hermes does: living memory, ticket-first kanban, spec Phase 0, platform rule, and an honest pipeline status. Schema remains `.agent/memory` only. ## What landed (local / committed-path) - `.cursor.md` (untracked, like `.hermes.md`) — product
+
+- **Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md`
+  - summary: # Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **pipeline PASS**, merge **not** done (user). HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, worktree `D:/repo/wt-fkh070`. Base `0df543d7` / v2.28.113. ## What landed (unmerged) HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `Hunga
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`

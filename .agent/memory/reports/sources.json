@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-12T05:34:10.622Z",
-  "source_count": 1104,
+  "generated_at": "2026-09-14T17:51:04.629Z",
+  "source_count": 1107,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12919,6 +12919,34 @@
         "installer",
         "penztar",
         "specifikacio"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-12-fkh067-arfolyam-ttl-nem-blokkolo.md",
+      "sha256": "6185d028badf504dcfaf6d964f27cd01b59a90dd6642bf4d1734adba543f6061",
+      "type": "medium-term-episodic",
+      "areas": [
+        "arfolyam",
+        "database",
+        "deploy",
+        "penztar"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-13-cursor-onboarding-pipeline-audit.md",
+      "sha256": "b32b9b062326f9030d85e178d7e0b5f9738870f3f93c6770d6b5da75d0b6e6ba",
+      "type": "medium-term-episodic",
+      "areas": [
+        "security"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md",
+      "sha256": "7954a5cb45044c7b41ebde8ace7504c65aef6e66638f20d326fdc7955b2fcc93",
+      "type": "medium-term-episodic",
+      "areas": [
+        "database",
+        "deploy"
       ]
     },
     {
