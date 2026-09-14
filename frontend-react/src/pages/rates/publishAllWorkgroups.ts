@@ -31,6 +31,7 @@ import { recomputeWorkgroupSheet, type WgComputeRow, type WgField } from './work
 import type { WgValues } from './workgroupSheetFormula'
 import { classifyPublishFailure, type PublishFailureKind } from './publishFailureClassification'
 import {
+  buildZeroRatePolicyMap,
   loadSheet0ByCurrency,
   loadAllGroupValueSnapshots,
   loadGroupFormulas,
@@ -85,11 +86,18 @@ async function buildGroupRates(
   const overlay: Record<string, string> = { ...localValues, ...dbValues }
   const formulas = loadGroupFormulas(group.id)
 
-  const numOrNull = (s: string | undefined): number | null => {
+  // FK13 (FR-3): a fix overlay „0” csak az engedélyezett irányon (buyRate ↔ buyZeroAllowed,
+  // sellRate ↔ sellZeroAllowed) marad szám; minden más mezőn a 0 = „nincs beállítva” (null).
+  const numOrNull = (s: string | undefined, allowZero = false): number | null => {
     if (s == null || s.trim() === '') return null
     const n = parseNum(s)
-    return Number.isFinite(n) && n !== 0 ? n : null
+    if (!Number.isFinite(n)) return null
+    if (n === 0) return allowZero ? 0 : null
+    return n
   }
+  const zeroAllowedFor = (c: RateOverviewItem, f: WgField): boolean =>
+    (f === 'buyRate' && c.buyZeroAllowed === true) ||
+    (f === 'sellRate' && c.sellZeroAllowed === true)
 
   // Sor-állapot: overlay-érték ha van, különben szerver-baseline (a lap reset-logikájával egyezően).
   const computeRows: WgComputeRow[] = overview.map((c) => {
@@ -105,7 +113,7 @@ async function buildGroupRates(
     }
     const field = (f: Exclude<WgField, 'officialRate'>): number | null => {
       const o = overlay[`${c.currencyId}.${f}`]
-      return o != null ? numOrNull(o) : baseline[f]
+      return o != null ? numOrNull(o, zeroAllowedFor(c, f)) : baseline[f]
     }
     const values: WgComputeRow['values'] = {
       officialRate:
@@ -151,8 +159,29 @@ async function buildGroupRates(
     rows = result.rows
   }
 
-  const valid = rows.filter((r) => (r.values.buyRate ?? 0) > 0 && (r.values.sellRate ?? 0) > 0)
-  const wrongDirection = valid.find((r) => (r.values.buyRate ?? 0) >= (r.values.sellRate ?? 0))
+  // FK13 (FR-3): a 0 vétel/eladás csak az engedélyezett irányon érvényes ráta (egyoldalú valuta);
+  // engedély nélkül a sor változatlanul kiesik (FK10). Az engedélyezett 0 mellett a vétel ≥ eladás
+  // irány-ellenőrzés arra a sorra nem értelmezhető (a backend RateCreationService-szel egyezően).
+  const policyById = new Map(overview.map((c) => [c.currencyId, c]))
+  const rateOk = (v: number | null | undefined, allowZero: boolean): boolean =>
+    v != null && (v > 0 || (v === 0 && allowZero))
+  const hasAllowedZero = (r: WgComputeRow): boolean => {
+    const c = policyById.get(r.currencyId)
+    return (
+      (r.values.buyRate === 0 && c?.buyZeroAllowed === true) ||
+      (r.values.sellRate === 0 && c?.sellZeroAllowed === true)
+    )
+  }
+  const valid = rows.filter((r) => {
+    const c = policyById.get(r.currencyId)
+    return (
+      rateOk(r.values.buyRate, c?.buyZeroAllowed === true) &&
+      rateOk(r.values.sellRate, c?.sellZeroAllowed === true)
+    )
+  })
+  const wrongDirection = valid.find(
+    (r) => !hasAllowedZero(r) && (r.values.buyRate ?? 0) >= (r.values.sellRate ?? 0),
+  )
   if (wrongDirection) {
     return {
       rates: [],
@@ -242,7 +271,8 @@ export async function publishAllWorkgroups(
   let done = 0
 
   // A képlet-kontextus egyszer töltődik (0-s lap A–I + más csoportok J–S pillanatképei).
-  const sheet0ByCurrency = loadSheet0ByCurrency()
+  // FK13 (FR-1): a 0-s lap E/F 0-ja csak az overview policy-ja szerint engedélyezett irányon marad érték.
+  const sheet0ByCurrency = loadSheet0ByCurrency(localStorage, buildZeroRatePolicyMap(overview))
   const otherGroupsByCurrency = loadAllGroupValueSnapshots()
 
   // Codex P1 #1118: az épp nyitott csoport FRISS, memóriabeli értékeit beültetjük a

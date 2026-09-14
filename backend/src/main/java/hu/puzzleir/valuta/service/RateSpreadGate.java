@@ -31,11 +31,20 @@ public final class RateSpreadGate {
      * ÉS az a ráta ténylegesen 0 (egyoldalú valuta), a relatív spread nem értelmezhető, ezért a
      * spread-ellenőrzés arra a bejegyzésre kihagyandó (különben hamis "100%-os eltérés").
      *
-     * <p><b>RED-fázis scaffolding (2026-09-14):</b> a kihagyás NINCS bekötve — a régi,
-     * feltétel nélküli kapu fut. A GREEN fázisban itt kell a policy-vizsgálat.</p>
+     * <p>A kihagyás CSAK a ténylegesen 0 értékű, engedélyezett oldalra vonatkozik: pozitív, túl
+     * széles spread a flagek mellett is elutasítva marad (a flag nem lazítja a normál 5%-os sávot).</p>
      */
     public static void enforce(BigDecimal buyRate, BigDecimal sellRate, BigDecimal officialRate, Long currencyId,
                                boolean buyZeroAllowed, boolean sellZeroAllowed) {
+        if (buyRate == null || sellRate == null) {
+            return;
+        }
+        boolean allowedZeroBuy = buyZeroAllowed && buyRate.signum() == 0;
+        boolean allowedZeroSell = sellZeroAllowed && sellRate.signum() == 0;
+        if (allowedZeroBuy || allowedZeroSell) {
+            // Egyoldalú (sell-only / buy-only) valuta: nincs értelmezhető relatív spread.
+            return;
+        }
         enforce(buyRate, sellRate, officialRate, currencyId);
     }
 

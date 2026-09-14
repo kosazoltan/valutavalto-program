@@ -23,6 +23,8 @@ import i18n from '../../../i18n'
  *   <li>GET /api/v1/currencies/code/{code} — kód szerinti backend ellenorzes</li>
  *   <li>POST /api/v1/currencies — uj valuta hozzaadasa (admin/manager only)</li>
  *   <li>PATCH /api/v1/currencies/{id}/active — aktivalas/deaktivalas</li>
+ *   <li>PATCH /api/v1/currencies/{id}/zero-rate-policy — FK13: iranyonkenti "0 arfolyam
+ *       engedelyezett" jelolo (audit: ZERO_RATE_POLICY)</li>
  * </ul></p>
  *
  * <p>Minden modositast a backend a `currency_audit_log` tablaba ir (V238
@@ -81,6 +83,18 @@ export default function CurrencyManagerModal({
   } | null>(null)
   const [toggleNote, setToggleNote] = useState('')
   const [togglingActive, setTogglingActive] = useState(false)
+
+  // FK13 (FR-10): valutánkénti, IRÁNYONKÉNTI "0 árfolyam engedélyezett" kapcsolók — a checkbox
+  // kattintása NEM hív azonnal API-t, csak megerősítő panelt nyit (indoklás → audit note), a
+  // setActive mintájával azonosan. Hiba esetén a checkbox nem billen át (server-authority:
+  // a checked-állapot a betöltött currency adatból jön, nem lokális state-ből).
+  const [pendingZeroPolicy, setPendingZeroPolicy] = useState<{
+    currency: Currency
+    buyZeroAllowed: boolean
+    sellZeroAllowed: boolean
+  } | null>(null)
+  const [zeroPolicyNote, setZeroPolicyNote] = useState('')
+  const [savingZeroPolicy, setSavingZeroPolicy] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -147,6 +161,10 @@ export default function CurrencyManagerModal({
       setPendingToggle(null)
       setToggleNote('')
       setTogglingActive(false)
+      // FK13: a 0-engedély megerősítő panel state-je is törlődik záráskor (nincs stale pending).
+      setPendingZeroPolicy(null)
+      setZeroPolicyNote('')
+      setSavingZeroPolicy(false)
       setSelectedCurrencyDetail(null)
       setSelectedCurrencyCodeCheck(null)
     }
@@ -178,6 +196,47 @@ export default function CurrencyManagerModal({
       setTogglingActive(false)
     }
   }, [pendingToggle, togglingActive, toggleNote, refresh, onCurrencyChanged])
+
+  // FK13: checkbox-klikk → megerősítő panel a MÓDOSÍTOTT irány-párral (csak a kattintott oldal billen).
+  const handleToggleZeroPolicy = useCallback((currency: Currency, side: 'buy' | 'sell') => {
+    const buy = currency.buyZeroAllowed === true
+    const sell = currency.sellZeroAllowed === true
+    setZeroPolicyNote('')
+    setPendingZeroPolicy({
+      currency,
+      buyZeroAllowed: side === 'buy' ? !buy : buy,
+      sellZeroAllowed: side === 'sell' ? !sell : sell,
+    })
+  }, [])
+
+  // FK13: megerősítés után PATCH /currencies/{id}/zero-rate-policy (audit: ZERO_RATE_POLICY).
+  const confirmZeroPolicy = useCallback(async () => {
+    if (!pendingZeroPolicy || savingZeroPolicy) return
+    const { currency, buyZeroAllowed, sellZeroAllowed } = pendingZeroPolicy
+    setSavingZeroPolicy(true)
+    try {
+      await currencyApi.setZeroRatePolicy(
+        currency.id,
+        { buyZeroAllowed, sellZeroAllowed },
+        zeroPolicyNote.trim() || undefined,
+      )
+      toast.success(
+        'Sikeres',
+        `${currency.code}: 0 árfolyam — vétel ${buyZeroAllowed ? 'engedélyezve' : 'tiltva'}, eladás ${
+          sellZeroAllowed ? 'engedélyezve' : 'tiltva'
+        }`,
+      )
+      setPendingZeroPolicy(null)
+      setZeroPolicyNote('')
+      await refresh()
+      onCurrencyChanged?.()
+    } catch (err) {
+      logger.error('CurrencyManagerModal', 'setZeroRatePolicy failed', err)
+      toast.error('Hiba', getErrorMessage(err))
+    } finally {
+      setSavingZeroPolicy(false)
+    }
+  }, [pendingZeroPolicy, savingZeroPolicy, zeroPolicyNote, refresh, onCurrencyChanged])
 
   const handleAdd = useCallback(async () => {
     const code = newCode.trim().toUpperCase()
@@ -477,8 +536,70 @@ export default function CurrencyManagerModal({
             </div>
           )}
 
+          {pendingZeroPolicy && (
+            <div
+              className="rounded-md border border-sky-300 dark:border-sky-700 bg-sky-50/70 dark:bg-sky-950/20 p-3 space-y-2"
+              data-testid="zero-rate-policy-confirm"
+            >
+              <div className="text-sm font-semibold">
+                {i18n.t('literals.fk13-nulla-arfolyam-engedelyezese')}{' '}
+                {pendingZeroPolicy.currency.code} ({pendingZeroPolicy.currency.name})
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {i18n.t('literals.fk13-uj-beallitas', {
+                  buy: i18n.t(
+                    pendingZeroPolicy.buyZeroAllowed
+                      ? 'literals.fk13-engedelyezett'
+                      : 'literals.fk13-tiltott',
+                  ),
+                  sell: i18n.t(
+                    pendingZeroPolicy.sellZeroAllowed
+                      ? 'literals.fk13-engedelyezett'
+                      : 'literals.fk13-tiltott',
+                  ),
+                })}
+              </p>
+              <div>
+                <label className="text-xs block mb-0.5">
+                  {i18n.t('literals.indoklas-opcionalis-audit-log-ba-kerul')}
+                </label>
+                <input
+                  type="text"
+                  value={zeroPolicyNote}
+                  onChange={(e) => setZeroPolicyNote(e.target.value)}
+                  className="form-input w-full"
+                  placeholder={i18n.t('literals.fk13-indoklas-placeholder')}
+                  data-testid="zero-rate-policy-note"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingZeroPolicy(null)
+                    setZeroPolicyNote('')
+                  }}
+                  disabled={savingZeroPolicy}
+                  className="form-button disabled:opacity-50"
+                >
+                  {i18n.t('literals.megse')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmZeroPolicy()}
+                  disabled={savingZeroPolicy}
+                  className="form-button-primary disabled:opacity-50"
+                  data-testid="zero-rate-policy-confirm-btn"
+                >
+                  {savingZeroPolicy ? 'Mentés...' : i18n.t('literals.fk13-beallitas-mentese')}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   <th className="text-left p-2">{i18n.t('literals.kod-3')}</th>
@@ -487,13 +608,19 @@ export default function CurrencyManagerModal({
                   <th className="text-center p-2">{i18n.t('literals.tizedes-2')}</th>
                   <th className="text-center p-2">{i18n.t('literals.sorrend')}</th>
                   <th className="text-center p-2">{i18n.t('literals.allapot')}</th>
+                  <th
+                    className="text-center p-2 whitespace-nowrap"
+                    title={i18n.t('literals.fk13-nulla-engedely-fejlec-sugo')}
+                  >
+                    {i18n.t('literals.fk13-nulla-engedely-fejlec')}
+                  </th>
                   <th className="text-right p-2">{i18n.t('literals.muveletek')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center text-gray-500 p-4">
+                    <td colSpan={8} className="text-center text-gray-500 p-4">
                       {loading ? 'Betöltés...' : 'Nincs találat'}
                     </td>
                   </tr>
@@ -520,6 +647,38 @@ export default function CurrencyManagerModal({
                           {i18n.t('literals.inaktiv-2')}
                         </span>
                       )}
+                    </td>
+                    <td className="p-2 text-center whitespace-nowrap">
+                      <label
+                        className="inline-flex items-center gap-1 mr-3 cursor-pointer"
+                        title={`${c.code}: vételi (E/L) oldalon a 0 árfolyam ${
+                          c.buyZeroAllowed ? 'engedélyezett' : 'tiltott'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={c.buyZeroAllowed === true}
+                          onChange={() => handleToggleZeroPolicy(c, 'buy')}
+                          disabled={savingZeroPolicy}
+                          data-testid={`zero-rate-buy-${c.code}`}
+                        />
+                        <span className="text-xs">{i18n.t('literals.fk13-vetel-rovid')}</span>
+                      </label>
+                      <label
+                        className="inline-flex items-center gap-1 cursor-pointer"
+                        title={`${c.code}: eladási (F/M) oldalon a 0 árfolyam ${
+                          c.sellZeroAllowed ? 'engedélyezett' : 'tiltott'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={c.sellZeroAllowed === true}
+                          onChange={() => handleToggleZeroPolicy(c, 'sell')}
+                          disabled={savingZeroPolicy}
+                          data-testid={`zero-rate-sell-${c.code}`}
+                        />
+                        <span className="text-xs">{i18n.t('literals.fk13-eladas-rovid')}</span>
+                      </label>
                     </td>
                     <td className="p-2 text-right">
                       <button

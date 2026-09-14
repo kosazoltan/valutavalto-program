@@ -21,6 +21,7 @@ import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.RatePublication;
 import hu.puzzleir.valuta.entity.RateTemplate;
 import hu.puzzleir.valuta.entity.RateWorkgroup;
+import hu.puzzleir.valuta.exception.BusinessException;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.CompanyRepository;
@@ -33,6 +34,7 @@ import hu.puzzleir.valuta.repository.RateWorkgroupRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -444,6 +446,10 @@ public class RateCreationService {
                                     .currencyCode(currency.getCode())
                                     .currencyName(currency.getName())
                                     .displayOrder(currency.getDisplayOrder())
+                                    // FK13 (FR-1..FR-4): a currency irányonkénti "0 engedélyezett"
+                                    // jelölői — a rate-maker kliens EGYETLEN policy-forrása.
+                                    .buyZeroAllowed(currency.getBuyZeroAllowed())
+                                    .sellZeroAllowed(currency.getSellZeroAllowed())
                                     .hasRate(rate != null);
 
                     if (rate != null) {
@@ -666,13 +672,47 @@ public class RateCreationService {
                 continue;
             }
 
-            if (entry.getSellRate().compareTo(entry.getBuyRate()) <= 0) {
+            // FK13 (FR-6): a 0 árfolyam CSAK a currency-n az adott irányra engedélyezett kivételként
+            // mehet át (buy_zero_allowed / sell_zero_allowed); minden más 0 = FK10 elgépelés-védelem.
+            // A backend a szerver-oldali igazság — a DTO @PositiveOrZero csak a negatívot szűri.
+            boolean buyIsZero = entry.getBuyRate().signum() == 0;
+            boolean sellIsZero = entry.getSellRate().signum() == 0;
+            boolean buyZeroAllowed = false;
+            boolean sellZeroAllowed = false;
+            if (buyIsZero || sellIsZero) {
+                // A policy csak 0-s oldal esetén dönt — pozitív rátáknál nincs currency-lookup.
+                Currency policyCurrency = currencyRepository.findById(entry.getCurrencyId()).orElse(null);
+                buyZeroAllowed = policyCurrency != null && Boolean.TRUE.equals(policyCurrency.getBuyZeroAllowed());
+                sellZeroAllowed = policyCurrency != null && Boolean.TRUE.equals(policyCurrency.getSellZeroAllowed());
+                String policyCurrencyLabel = policyCurrency != null
+                        ? policyCurrency.getCode()
+                        : "currencyId=" + entry.getCurrencyId();
+                if (buyIsZero && !buyZeroAllowed) {
+                    throw new BusinessException(
+                            "A 0 vételi árfolyam nem engedélyezett ezen a valután: " + policyCurrencyLabel
+                                    + " (Valutakezelő → „vétel-0 engedélyezése”)",
+                            "VV-VALID-008", HttpStatus.BAD_REQUEST);
+                }
+                if (sellIsZero && !sellZeroAllowed) {
+                    throw new BusinessException(
+                            "A 0 eladási árfolyam nem engedélyezett ezen a valután: " + policyCurrencyLabel
+                                    + " (Valutakezelő → „eladás-0 engedélyezése”)",
+                            "VV-VALID-008", HttpStatus.BAD_REQUEST);
+                }
+            }
+
+            // FK13 (5. döntés): engedélyezett 0 (egyoldalú valuta) mellett a sell>buy sanity nem
+            // értelmezhető erre a sorra — különben a csak-vétel irányú valuta sosem publikálható.
+            boolean oneSidedAllowedZero = (buyIsZero && buyZeroAllowed) || (sellIsZero && sellZeroAllowed);
+            if (!oneSidedAllowedZero && entry.getSellRate().compareTo(entry.getBuyRate()) <= 0) {
                 throw new ValidationException(
                         "Eladási árfolyam nagyobb kell legyen a vételinél! currencyId=" + entry.getCurrencyId());
             }
 
             // RFM spread-kapu (VV-ELVI 7.2/7.4): a relatív spread nem lépheti túl az 5%-ot.
-            RateSpreadGate.enforce(entry.getBuyRate(), entry.getSellRate(), entry.getOfficialRate(), entry.getCurrencyId());
+            // FK13 (FR-7): irány-tudatos — engedélyezett 0 oldal mellett a kapu kihagyva.
+            RateSpreadGate.enforce(entry.getBuyRate(), entry.getSellRate(), entry.getOfficialRate(),
+                    entry.getCurrencyId(), buyZeroAllowed, sellZeroAllowed);
 
             RateTemplate template = RateTemplate.builder()
                     .company(company)

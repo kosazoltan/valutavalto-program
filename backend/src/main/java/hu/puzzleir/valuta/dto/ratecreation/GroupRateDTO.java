@@ -3,7 +3,7 @@ package hu.puzzleir.valuta.dto.ratecreation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -38,13 +38,16 @@ public class GroupRateDTO {
         private Long currencyId;
 
         /** Alap veteli arfolyam (Legacy: ALAPVETEL) */
+        // FK13 (FR-6): a DTO a 0-t ELFOGADJA (@PositiveOrZero); a "0 engedélyezett-e ezen a valután,
+        // ebben az irányban" döntés a service-rétegben, a currency-flag alapján történik
+        // (RateCreationService.publishGroupRateInternal → VV-VALID-008). A negatív továbbra is DTO-hiba.
         @NotNull(message = "Vételi árfolyam kötelező")
-        @Positive(message = "Vételi árfolyamnak pozitívnak kell lennie")
+        @PositiveOrZero(message = "Vételi árfolyam nem lehet negatív")
         private BigDecimal buyRate;
 
         /** Alap eladasi arfolyam (Legacy: ALAPELADAS) */
         @NotNull(message = "Eladási árfolyam kötelező")
-        @Positive(message = "Eladási árfolyamnak pozitívnak kell lennie")
+        @PositiveOrZero(message = "Eladási árfolyam nem lehet negatív")
         private BigDecimal sellRate;
 
         /** MNB hivatalos / elszamolasi arfolyam (Legacy: ELSZAMOLASIARFOLYAM) */

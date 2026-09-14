@@ -153,16 +153,33 @@ public class AdminCurrencyService {
     /**
      * FK13 (FR-9) — valutánkénti, irányonkénti "0 árfolyam engedélyezett" jelölő beállítása.
      *
-     * <p><b>RED-fázis scaffolding (2026-09-14):</b> a szignatúra a tesztek fordításához létezik,
-     * ÜZLETI LOGIKA NÉLKÜL. A GREEN fázisban a {@link #setActive} mintáját követi: no-op ha
-     * nincs változás (NULL = false), {@code cloneForAudit}, save, {@code writeAudit} a
-     * {@code ZERO_RATE_POLICY} actionnel (JSON-diff: {@code buyZeroAllowed}/{@code sellZeroAllowed}
-     * a snapshotban), indoklás a {@code note}-ban.</p>
+     * <p>A {@link #setActive} mintája: no-op ha nincs változás (a DB-beli NULL = false), egyébként
+     * {@code cloneForAudit} → save → {@code writeAudit} a generikus {@code ZERO_RATE_POLICY} actionnel
+     * (V393 CHECK); a váltás a snapshot {@code buyZeroAllowed}/{@code sellZeroAllowed} kulcsain
+     * JSON-diffként olvasható, az indoklás a {@code note}-ban. Globális, flotta-szintű jelölő.</p>
+     *
+     * @throws ResourceNotFoundException ismeretlen valuta-id
      */
     @Transactional
     public Currency setZeroRatePolicy(Long currencyId, boolean buyZeroAllowed, boolean sellZeroAllowed, String note) {
-        throw new UnsupportedOperationException(
-            "FK13 RED scaffolding: AdminCurrencyService.setZeroRatePolicy nincs implementálva");
+        Currency currency = currencyRepository.findById(currencyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Valuta nem talalhato: id=" + currencyId));
+        boolean currentBuy = Boolean.TRUE.equals(currency.getBuyZeroAllowed());
+        boolean currentSell = Boolean.TRUE.equals(currency.getSellZeroAllowed());
+        if (currentBuy == buyZeroAllowed && currentSell == sellZeroAllowed) {
+            log.debug("AdminCurrency: setZeroRatePolicy no-op (mar a kivant allapotban) code={} buy0={} sell0={}",
+                sanitizeForLog(currency.getCode()), buyZeroAllowed, sellZeroAllowed);
+            return currency; // no-op: nincs save, nincs audit-sor
+        }
+        Currency oldSnapshot = cloneForAudit(currency);
+        currency.setBuyZeroAllowed(buyZeroAllowed);
+        currency.setSellZeroAllowed(sellZeroAllowed);
+        Currency saved = currencyRepository.save(currency);
+        writeAudit(saved, "ZERO_RATE_POLICY", oldSnapshot, saved, note);
+        log.info("AdminCurrency: ZERO_RATE_POLICY code={} buy0={}->{} sell0={}->{} workerId={} note={}",
+            sanitizeForLog(currency.getCode()), currentBuy, buyZeroAllowed, currentSell, sellZeroAllowed,
+            safeWorkerId(), sanitizeForLog(note));
+        return saved;
     }
 
     /**
@@ -216,6 +233,10 @@ public class AdminCurrencyService {
         m.put("decimalPlaces", c.getDecimalPlaces());
         m.put("displayOrder", c.getDisplayOrder());
         m.put("active", c.getActive());
+        // FK13: az irányonkénti "0 engedélyezett" jelölők is a snapshot részei (JSON-diff a
+        // ZERO_RATE_POLICY audit-sorban). NULL = nem beállított = tiltott.
+        m.put("buyZeroAllowed", c.getBuyZeroAllowed());
+        m.put("sellZeroAllowed", c.getSellZeroAllowed());
         return m;
     }
 
@@ -228,6 +249,8 @@ public class AdminCurrencyService {
                 .decimalPlaces(c.getDecimalPlaces())
                 .displayOrder(c.getDisplayOrder())
                 .active(c.getActive())
+                .buyZeroAllowed(c.getBuyZeroAllowed())
+                .sellZeroAllowed(c.getSellZeroAllowed())
                 .build();
     }
 

@@ -31,17 +31,17 @@ export interface FmtRateOptions {
 }
 
 /**
- * FK13 (FR-5) — RED-fázis scaffolding (2026-09-14): az `opts` paraméter a tesztek fordításához
- * létezik, de MÉG NINCS BEKÖTVE — a 0 `allowZero` mellett is `''`-t ad. GREEN: `allowZero`
- * és `val === 0` → formázott nulla (`0,0000` 4 tizedesnél).
+ * FK13 (FR-5): `allowZero` mellett a 0 formázott nullaként jelenik meg (`0,0000` 4 tizedesnél) —
+ * így a `parseNum` kör-stabilan 0-ként olvassa vissza, és a képletből számított 0 nem veszik el.
+ * `allowZero` nélkül (FK10 alapviselkedés) a 0 üres cella marad.
  */
 export function fmtRate(
   val: number | null | undefined,
   decimals = 4,
   opts?: FmtRateOptions,
 ): string {
-  void opts
-  if (val == null || val === 0) return ''
+  if (val == null) return ''
+  if (val === 0 && !opts?.allowZero) return ''
   return val.toFixed(decimals).replace('.', ',')
 }
 
