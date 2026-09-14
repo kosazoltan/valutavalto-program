@@ -90,8 +90,15 @@ function requestLocalObsidian(urlString, options = {}) {
   })
 }
 
+// `.gitattributes` keeps *.md as `text=auto` with no fixed eol, so the same
+// commit has CRLF bytes on core.autocrlf=true (Windows) and LF bytes elsewhere.
+// Hashing the working tree verbatim therefore produced workstation-specific
+// sha256 values and `stale-check` reported unedited sources as `changed` on the
+// other checkout type. Normalize CRLF pairs only; a lone CR is left untouched.
+const CRLF_PAIR = /\u000d\u000a/g
+
 function readText(file) {
-  return fs.readFileSync(file, 'utf8')
+  return fs.readFileSync(file, 'utf8').replace(CRLF_PAIR, '\u000a')
 }
 
 function exists(file) {

@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-09-14T18:45:18.643Z
+generated: 2026-09-14T19:11:53.443Z
 ---
 
 # Repo Memory Mirror
@@ -9,7 +9,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
 - sources: 1108
-- generated: 2026-09-14T18:45:18.643Z
+- generated: 2026-09-14T19:11:53.443Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
