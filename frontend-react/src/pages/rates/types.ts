@@ -26,11 +26,20 @@ export function parseNum(val: string): number {
  * engedélyezett-nulla irányon „legitim 0"-ként mehetne tovább. Ez a szigorú változat üres,
  * nem-numerikus vagy nem-véges bemenetre `null`-t ad — a hívó explicit hibát jelezhet.
  */
+/**
+ * Teljes-sztring decimális minta: opcionális előjel, számjegyek, legfeljebb egy tizedespont
+ * (a magyar vessző normalizálás UTÁN), számjegyek. NEM elejéről-értelmező: a `parseFloat`
+ * a „0abc” / „0,00oops” / „0x10” bemenetet 0-nak olvasná (Codex PR #1767 fix-kör LOW).
+ */
+const STRICT_DECIMAL_PATTERN = /^[+-]?(\d+(\.\d+)?|\.\d+)$/
+
 export function parseNumStrict(val: string | null | undefined): number | null {
   if (val == null) return null
   const t = val.trim()
   if (t === '') return null
-  const n = parseFloat(t.replace(',', '.'))
+  const normalized = t.replace(',', '.')
+  if (!STRICT_DECIMAL_PATTERN.test(normalized)) return null
+  const n = Number(normalized)
   return Number.isFinite(n) ? n : null
 }
 

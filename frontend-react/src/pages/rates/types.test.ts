@@ -14,6 +14,34 @@ describe('parseNumStrict — sérült / nem-numerikus bemenet', () => {
     expect(parseNum('abc')).toBe(0)
   })
 
+  it('Codex fix-kör LOW: elejéről-értelmezhető, de nem tiszta decimális sztringek → null („0abc”, „0,00oops”, „0x10”)', () => {
+    expect(parseNumStrict('0abc')).toBeNull()
+    expect(parseNumStrict('0,00oops')).toBeNull()
+    expect(parseNumStrict('0x10')).toBeNull()
+    // a laza parseNum ezeket 0-nak / 0-nak / 0-nak olvassa — pont ezt zárja ki a szigorú változat
+    expect(parseNum('0abc')).toBe(0)
+    expect(parseNum('0,00oops')).toBe(0)
+    expect(parseNum('0x10')).toBe(0)
+  })
+
+  it('Codex fix-kör LOW: több tizedesjel, előjel rossz helyen, tudományos alak, csupasz pont → null', () => {
+    expect(parseNumStrict('1,000,5')).toBeNull()
+    expect(parseNumStrict('1.2.3')).toBeNull()
+    expect(parseNumStrict('5-')).toBeNull()
+    expect(parseNumStrict('--5')).toBeNull()
+    expect(parseNumStrict('1e3')).toBeNull()
+    expect(parseNumStrict('.')).toBeNull()
+    expect(parseNumStrict('5.')).toBeNull()
+  })
+
+  it('érvényes alakok: előjel, vezető/követő whitespace (trim), tizedespont és -vessző, .5 alak', () => {
+    expect(parseNumStrict(' 395 ')).toBe(395)
+    expect(parseNumStrict('-0,5')).toBe(-0.5)
+    expect(parseNumStrict('+7.87')).toBe(7.87)
+    expect(parseNumStrict(',5')).toBe(0.5)
+    expect(parseNumStrict('0')).toBe(0)
+  })
+
   it('üres / null / undefined → null', () => {
     expect(parseNumStrict('')).toBeNull()
     expect(parseNumStrict('   ')).toBeNull()
