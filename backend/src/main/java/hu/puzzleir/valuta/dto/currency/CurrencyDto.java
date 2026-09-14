@@ -20,4 +20,8 @@ public class CurrencyDto {
     private Integer decimals;
     private Integer displayOrder;
     private Boolean active;
+    /** FK13 (FR-9): vételi oldali "0 engedélyezett" jelölő (NULL = nem beállított = tiltott). */
+    private Boolean buyZeroAllowed;
+    /** FK13 (FR-9): eladási oldali "0 engedélyezett" jelölő (NULL = nem beállított = tiltott). */
+    private Boolean sellZeroAllowed;
 }

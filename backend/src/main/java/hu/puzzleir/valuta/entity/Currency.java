@@ -110,6 +110,19 @@ public class Currency {
     @Column(name = "flag_icon", length = 255)
     private String flagIcon;
 
+    /**
+     * FK13 (FR-11, V393): a VÉTELI (0-s lap E / munkacsoport L) oldalon a 0 árfolyam
+     * SZÁNDÉKOS, engedélyezett érték (pl. csak eladott valuta — UAH). NULL/false = a mai
+     * szigorú FK10-viselkedés (0 = "nincs érték", publikálás tiltott).
+     * Globális, flotta-szintű jelölő: a currency táblának nincs company_id-ja (V318).
+     */
+    @Column(name = "buy_zero_allowed")
+    private Boolean buyZeroAllowed;
+
+    /** FK13 (FR-11, V393): az ELADÁSI (0-s lap F / munkacsoport M) oldali párja. */
+    @Column(name = "sell_zero_allowed")
+    private Boolean sellZeroAllowed;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

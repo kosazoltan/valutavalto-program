@@ -244,4 +244,95 @@ class AdminCurrencyServiceTest {
         org.mockito.Mockito.verify(auditRepository).save(any(CurrencyAuditLog.class));
         org.mockito.Mockito.verify(cashBalanceService).initializeCurrencyBalancesForActiveBranches(any(Currency.class));
     }
+
+    // ===================== FK13 (FR-9): setZeroRatePolicy — RED (2026-09-14) =====================
+    // Valutánkénti ÉS irányonkénti "0 árfolyam engedélyezett" jelölő, a setActive mintája szerint:
+    // no-op check, cloneForAudit, save, writeAudit ZERO_RATE_POLICY actionnel + JSON-diff.
+
+    private static Currency uah(Boolean buyZero, Boolean sellZero) {
+        return Currency.builder().id(21L).code("UAH").name("Ukrán hrivnya").active(true)
+                .decimalPlaces(2).displayOrder(20)
+                .buyZeroAllowed(buyZero).sellZeroAllowed(sellZero).build();
+    }
+
+    @Test
+    @DisplayName("FK13 FR-9: vétel-0 engedélyezése → mező true, audit ZERO_RATE_POLICY, JSON-diff old=false/new=true")
+    void setZeroRatePolicy_allowBuy_writesAuditWithJsonDiff() throws Exception {
+        Currency c = uah(null, null);
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(c));
+        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Currency result = service.setZeroRatePolicy(21L, true, false, "UAH-t csak eladjuk");
+
+        assertThat(result.getBuyZeroAllowed()).isTrue();
+        assertThat(result.getSellZeroAllowed()).isFalse();
+        ArgumentCaptor<CurrencyAuditLog> auditCaptor = ArgumentCaptor.forClass(CurrencyAuditLog.class);
+        org.mockito.Mockito.verify(auditRepository).save(auditCaptor.capture());
+        CurrencyAuditLog audit = auditCaptor.getValue();
+        assertThat(audit.getAction()).isEqualTo("ZERO_RATE_POLICY");
+        assertThat(audit.getCurrencyCode()).isEqualTo("UAH");
+        assertThat(audit.getNote()).isEqualTo("UAH-t csak eladjuk");
+        // JSON-diff: a snapshotMap/cloneForAudit hordozza az új mezőket (különben az audit vak lenne a váltásra)
+        tools.jackson.databind.JsonNode oldJson = objectMapper.readTree(audit.getOldValue());
+        tools.jackson.databind.JsonNode newJson = objectMapper.readTree(audit.getNewValue());
+        assertThat(oldJson.has("buyZeroAllowed")).as("old_value tartalmazza a buyZeroAllowed kulcsot").isTrue();
+        assertThat(oldJson.get("buyZeroAllowed").isNull() || !oldJson.get("buyZeroAllowed").asBoolean())
+                .as("old_value: nem engedélyezett (null/false)").isTrue();
+        assertThat(newJson.get("buyZeroAllowed").asBoolean()).isTrue();
+        assertThat(newJson.get("sellZeroAllowed").asBoolean()).isFalse();
+    }
+
+    @Test
+    @DisplayName("FK13 FR-9: eladás-0 engedélyezése külön irány — a vétel-oldal érintetlen marad")
+    void setZeroRatePolicy_allowSell_independentDirection() {
+        Currency c = uah(true, null);
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(c));
+        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Currency result = service.setZeroRatePolicy(21L, true, true, null);
+
+        assertThat(result.getBuyZeroAllowed()).isTrue();
+        assertThat(result.getSellZeroAllowed()).isTrue();
+        ArgumentCaptor<CurrencyAuditLog> auditCaptor = ArgumentCaptor.forClass(CurrencyAuditLog.class);
+        org.mockito.Mockito.verify(auditRepository).save(auditCaptor.capture());
+        assertThat(auditCaptor.getValue().getAction()).isEqualTo("ZERO_RATE_POLICY");
+    }
+
+    @Test
+    @DisplayName("FK13 FR-9: tiltás (true → false) is auditált ZERO_RATE_POLICY — nincs külön DISALLOWED action")
+    void setZeroRatePolicy_disallow_writesSameGenericAction() {
+        Currency c = uah(true, true);
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(c));
+        when(currencyRepository.save(any(Currency.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Currency result = service.setZeroRatePolicy(21L, false, false, "visszavonás");
+
+        assertThat(result.getBuyZeroAllowed()).isFalse();
+        assertThat(result.getSellZeroAllowed()).isFalse();
+        ArgumentCaptor<CurrencyAuditLog> auditCaptor = ArgumentCaptor.forClass(CurrencyAuditLog.class);
+        org.mockito.Mockito.verify(auditRepository).save(auditCaptor.capture());
+        assertThat(auditCaptor.getValue().getAction()).isEqualTo("ZERO_RATE_POLICY");
+        assertThat(auditCaptor.getValue().getNote()).isEqualTo("visszavonás");
+    }
+
+    @Test
+    @DisplayName("FK13 FR-9: no-op — a kívánt állapot már érvényes (NULL = false) → nincs save, nincs audit-sor")
+    void setZeroRatePolicy_noop_whenUnchanged() {
+        Currency c = uah(null, false);
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(c));
+
+        Currency result = service.setZeroRatePolicy(21L, false, false, "semmi nem változik");
+
+        assertThat(result).isSameAs(c);
+        org.mockito.Mockito.verify(currencyRepository, org.mockito.Mockito.never()).save(any(Currency.class));
+        org.mockito.Mockito.verify(auditRepository, org.mockito.Mockito.never()).save(any(CurrencyAuditLog.class));
+    }
+
+    @Test
+    @DisplayName("FK13 FR-9: ismeretlen id → ResourceNotFoundException (a setActive paritása)")
+    void setZeroRatePolicy_notFound_throws() {
+        when(currencyRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.setZeroRatePolicy(999L, true, false, null))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
 }

@@ -92,7 +92,11 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
   await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 }
 
-async function mockApis(page: Page) {
+/** FK13: az overview valutánkénti policy-mezői felülírhatók tesztenként (a FK10-teszt változatlan). */
+type MockApiOptions = { overviewOverride?: typeof overview }
+
+async function mockApis(page: Page, options: MockApiOptions = {}) {
+  const bootstrapOverview = options.overviewOverride ?? overview
   const token = createJwt({
     exp: Math.floor(Date.now() / 1000) + 3600,
     activeRole: 'ADMIN',
@@ -132,7 +136,10 @@ async function mockApis(page: Page) {
       return fulfillJson(route, [])
     }
     if (path.endsWith('/local-rate-maker/bootstrap') && method === 'GET') {
-      return fulfillJson(route, { overview, workgroups: [workgroup] })
+      return fulfillJson(route, { overview: bootstrapOverview, workgroups: [workgroup] })
+    }
+    if (path.endsWith('/rate-creation/publish-group-rate') && method === 'POST') {
+      return fulfillJson(route, { acceptedRates: 1 })
     }
     if (path.endsWith('/local-rate-maker/sheet') && method === 'GET') {
       return route.fulfill({ status: 204 })
@@ -145,9 +152,9 @@ async function mockApis(page: Page) {
   })
 }
 
-async function loginAndOpenMain(page: Page) {
+async function loginAndOpenMain(page: Page, options: MockApiOptions = {}) {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await mockApis(page)
+  await mockApis(page, options)
   const baseUrl = process.env.PLAYWRIGHT_RATE_MAKER_BASE_URL ?? 'http://127.0.0.1:3102'
   await page.goto(`${baseUrl}/login`)
   await page.getByTestId('login-company-code').fill('EBC')
@@ -204,5 +211,79 @@ test('FK10: 0-s forrásérték képlethibája látható a munkacsoport-cellán',
   const cell = page.locator('input[title*="HIBA: Nincs érték a 0-s lap F oszlopában"]')
   await expect(cell).toBeVisible()
   await expect(cell).not.toHaveValue('')
+  expect(pageErrors).toEqual([])
+})
+
+/**
+ * FK13 (FR-1..FR-5, e2e): ha a valután az eladási irányra a 0 ENGEDÉLYEZETT (currency policy az
+ * overview-ban), ugyanaz a 0-s forrás NEM képlethiba, és a szétküldés sikeres — a publish-payload
+ * a 0 eladást explicit értékként viszi. A fenti FK10-teszt (engedély nélkül) változatlanul érvényes.
+ */
+test('FK13: engedélyezett 0 eladás — nincs „Nincs érték” hiba, a szétküldés 0 eladással sikeres', async ({
+  page,
+}) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  const overviewWithSellZeroAllowed = {
+    ...overview,
+    currencies: overview.currencies.map((c) => ({ ...c, sellZeroAllowed: true })),
+  }
+  await loginAndOpenMain(page, { overviewOverride: overviewWithSellZeroAllowed })
+
+  const initialLoad = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/v1/local-rate-maker/bootstrap') &&
+      response.request().method() === 'GET',
+  )
+  await page.getByRole('button', { name: 'CSOPORTOK KARBANTARTÁSA' }).click()
+  await expect(page).toHaveURL(/\/rates\/creation$/)
+  await initialLoad
+
+  const refreshButton = page.getByTitle('Frissítés')
+  const workgroupTile = page.getByRole('button', {
+    name: /Budapest központ.*árfolyamlap megnyitása/i,
+  })
+  await expect(refreshButton).toBeEnabled()
+  await expect(workgroupTile).toBeVisible()
+
+  await page.evaluate(() => {
+    const rows = JSON.parse(localStorage.getItem('arfolyamkeszito.mainSheet.v1') ?? '[]') as Array<{
+      weakMultiSell?: number
+    }>
+    if (rows[0]) rows[0].weakMultiSell = 0
+    localStorage.setItem('arfolyamkeszito.mainSheet.v1', JSON.stringify(rows))
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.formulas.v1.wg-1',
+      JSON.stringify({ '1.sellRate': 'F' }),
+    )
+  })
+  const refreshed = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/v1/local-rate-maker/bootstrap') &&
+      response.request().method() === 'GET',
+  )
+  await refreshButton.click()
+  await refreshed
+  await expect(refreshButton).toBeEnabled()
+  await workgroupTile.click()
+
+  // FR-2/FR-4: engedélyezett irányon a 0 forrás NEM hiba
+  await expect(page.locator('input[title*="HIBA: Nincs érték"]')).toHaveCount(0)
+
+  // FR-3/FR-4: a szétküldés lefut, és a payload a 0 eladást explicit értékként viszi
+  const publishRequest = page.waitForRequest(
+    (request) =>
+      request.url().endsWith('/api/v1/rate-creation/publish-group-rate') &&
+      request.method() === 'POST',
+  )
+  await page.getByRole('button', { name: 'ÁRFOLYAMOK SZÉTKÜLDÉSE' }).click()
+  const sent = (await publishRequest).postDataJSON() as {
+    groupId: string
+    rates: Array<{ currencyId: number; buyRate: number; sellRate: number }>
+  }
+  expect(sent.groupId).toBe('wg-1')
+  expect(sent.rates).toEqual(
+    expect.arrayContaining([expect.objectContaining({ currencyId: 1, buyRate: 395, sellRate: 0 })]),
+  )
   expect(pageErrors).toEqual([])
 })

@@ -151,6 +151,21 @@ public class AdminCurrencyService {
     }
 
     /**
+     * FK13 (FR-9) — valutánkénti, irányonkénti "0 árfolyam engedélyezett" jelölő beállítása.
+     *
+     * <p><b>RED-fázis scaffolding (2026-09-14):</b> a szignatúra a tesztek fordításához létezik,
+     * ÜZLETI LOGIKA NÉLKÜL. A GREEN fázisban a {@link #setActive} mintáját követi: no-op ha
+     * nincs változás (NULL = false), {@code cloneForAudit}, save, {@code writeAudit} a
+     * {@code ZERO_RATE_POLICY} actionnel (JSON-diff: {@code buyZeroAllowed}/{@code sellZeroAllowed}
+     * a snapshotban), indoklás a {@code note}-ban.</p>
+     */
+    @Transactional
+    public Currency setZeroRatePolicy(Long currencyId, boolean buyZeroAllowed, boolean sellZeroAllowed, String note) {
+        throw new UnsupportedOperationException(
+            "FK13 RED scaffolding: AdminCurrencyService.setZeroRatePolicy nincs implementálva");
+    }
+
+    /**
      * CodeQL log-injection guard: CRLF + control character stripping.
      *
      * <p>A backend logback-spring.xml `%redact(%msg)` converter mar globalisan

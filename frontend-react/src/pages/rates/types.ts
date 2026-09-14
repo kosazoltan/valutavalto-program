@@ -21,7 +21,26 @@ export function parseNum(val: string): number {
   return parseFloat(val.replace(',', '.')) || 0
 }
 
-export function fmtRate(val: number | null | undefined, decimals = 4): string {
+/**
+ * FK13 (FR-5): a 0 megjelenítési szerződése. `allowZero: true` = a currency-irányra engedélyezett,
+ * ténylegesen beírt/számított 0, amit NEM szabad üres cellává (`''`) veszíteni visszaíráskor.
+ * A valódi „üres cella" (null/undefined) ábrázolása mindkét módban `''` marad.
+ */
+export interface FmtRateOptions {
+  allowZero?: boolean
+}
+
+/**
+ * FK13 (FR-5) — RED-fázis scaffolding (2026-09-14): az `opts` paraméter a tesztek fordításához
+ * létezik, de MÉG NINCS BEKÖTVE — a 0 `allowZero` mellett is `''`-t ad. GREEN: `allowZero`
+ * és `val === 0` → formázott nulla (`0,0000` 4 tizedesnél).
+ */
+export function fmtRate(
+  val: number | null | undefined,
+  decimals = 4,
+  opts?: FmtRateOptions,
+): string {
+  void opts
   if (val == null || val === 0) return ''
   return val.toFixed(decimals).replace('.', ',')
 }

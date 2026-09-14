@@ -730,4 +730,40 @@ class RatePublishServiceTest {
         RatePublication pub = service.publish(wgId, List.of(tplId), "midpoint-ok");
         assertNotNull(pub.getId());
     }
+
+    // ===================== FK13 (FR-8): a publikált 0 TÉNYLEGESEN bekerül az exchange_rate-be =====================
+    // Eldöntött irány: engedélyezett 0 esetén a 0 explicit, auditálható értékként megy ki — nem marad ki,
+    // és nem hagy stale régi értéket aktívan. Ez a teszt a RatePublishService-szintű írási utat rögzíti.
+
+    @Test
+    @DisplayName("FK13 FR-8: sell-only sablon (buy=0) → a mentett ExchangeRate.baseBuyRate = 0 (nem null, nem kihagyott)")
+    void publish_zeroBuy_persistsZeroIntoExchangeRate() {
+        UUID wgId = UUID.randomUUID(); UUID tplId = UUID.randomUUID();
+        UUID companyId = ((WorkerAuthenticationDetails) SecurityContextHolder.getContext().getAuthentication().getDetails()).getCompanyId();
+        UUID branchId = UUID.randomUUID();
+        RateWorkgroup wg = wgWithProtection(wgId, companyId, branchId, false, 1);
+        RateTemplate tpl = tplWithRates(tplId, wgId, 21L,
+                new BigDecimal("7.50"), BigDecimal.ZERO, new BigDecimal("7.87"));
+        when(workgroupRepository.findById(wgId)).thenReturn(Optional.of(wg));
+        when(templateRepository.findById(tplId)).thenReturn(Optional.of(tpl));
+        when(templateRepository.save(any(RateTemplate.class))).thenAnswer(i -> i.getArgument(0));
+        when(currencyRepository.findAllById(anyList())).thenReturn(List.of(
+                Currency.builder().id(21L).code("UAH").name("Ukrán hrivnya").buyZeroAllowed(true).build()));
+        when(exchangeRateRepository.findCurrentRate(any(), eq(21L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.findActiveBranchRates(any(), eq(21L), any())).thenReturn(List.of());
+        when(exchangeRateRepository.save(any(ExchangeRate.class))).thenAnswer(i -> i.getArgument(0));
+        when(publicationRepository.save(any(RatePublication.class))).thenAnswer(i -> {
+            RatePublication p = i.getArgument(0); if (p.getId() == null) p.setId(UUID.randomUUID()); return p;
+        });
+        when(syncOutboxRepository.save(any(SyncOutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.publish(wgId, List.of(tplId), "FK13 sell-only UAH");
+
+        ArgumentCaptor<ExchangeRate> saved = ArgumentCaptor.forClass(ExchangeRate.class);
+        verify(exchangeRateRepository, times(1)).save(saved.capture());
+        assertNotNull(saved.getValue().getBaseBuyRate(), "a 0 vétel nem lehet null (kimaradó) az exchange_rate-ben");
+        assertEquals(0, saved.getValue().getBaseBuyRate().compareTo(BigDecimal.ZERO),
+                "a 0 vétel explicit értékként kerül az exchange_rate-be");
+        assertEquals(0, saved.getValue().getBaseSellRate().compareTo(new BigDecimal("7.87")));
+    }
 }

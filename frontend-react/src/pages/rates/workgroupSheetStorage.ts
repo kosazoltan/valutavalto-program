@@ -233,6 +233,19 @@ interface RawSheet0Row {
 }
 
 /**
+ * FK13 (FR-1): valutánkénti, irányonkénti "0 árfolyam engedélyezett" jelölő (a currency tábla
+ * `buy_zero_allowed` / `sell_zero_allowed` oszlopai, a RateOverviewItem / Currency DTO-n át).
+ * Hiányzó mező = nem beállított = tiltott (a mai FK10 viselkedés).
+ */
+export interface ZeroRatePolicy {
+  buyZeroAllowed?: boolean | null
+  sellZeroAllowed?: boolean | null
+}
+
+/** Valutakód (nagybetűs ISO) → policy. */
+export type ZeroRatePolicyByCurrency = Map<string, ZeroRatePolicy>
+
+/**
  * FK10: 0 / nem-pozitív / nem-véges forrás = „nincs érték”. A kulcs kihagyásával a
  * képletmotor meglévő `Nincs érték…` hibaága fut le, a MainRateSheetPage baseline-mintájával
  * konzisztensen.
@@ -240,8 +253,16 @@ interface RawSheet0Row {
 const pos = (n: number | undefined): n is number =>
   typeof n === 'number' && Number.isFinite(n) && n > 0
 
-/** Egy 0-s lap sor → A–I oszlop-értékek (a `D` ISO-címke kizárva, mint a motorban). */
-export function sheet0RowToValues(row: RawSheet0Row): Sheet0Values {
+/**
+ * Egy 0-s lap sor → A–I oszlop-értékek (a `D` ISO-címke kizárva, mint a motorban).
+ *
+ * FK13 (FR-1) — RED-fázis scaffolding (2026-09-14): a `policy` paraméter a tesztek
+ * típushelyes fordításához létezik, de MÉG NINCS BEKÖTVE: a 0 az E/F oszlopban engedélyezett
+ * irány mellett is kimarad. A GREEN fázisban: E megtartva (`E: 0`), ha `policy.buyZeroAllowed`,
+ * F megtartva, ha `policy.sellZeroAllowed`; negatív/nem-véges érték továbbra is kimarad.
+ */
+export function sheet0RowToValues(row: RawSheet0Row, policy?: ZeroRatePolicy): Sheet0Values {
+  void policy
   const v: Sheet0Values = {}
   if (pos(row.settlement)) v.A = row.settlement
   if (pos(row.otp)) v.B = row.otp
@@ -254,8 +275,17 @@ export function sheet0RowToValues(row: RawSheet0Row): Sheet0Values {
   return v
 }
 
-/** A 0-s lap A–I oszlop-értékei valutakód szerint (a `A`–`I` és `!<oszlop><KÓD>` hivatkozásokhoz). */
-export function loadSheet0ByCurrency(storage: Storage = localStorage): Map<string, Sheet0Values> {
+/**
+ * A 0-s lap A–I oszlop-értékei valutakód szerint (a `A`–`I` és `!<oszlop><KÓD>` hivatkozásokhoz).
+ *
+ * FK13 (FR-1) — RED-fázis scaffolding: a `policies` (valutakód → ZeroRatePolicy) paraméter
+ * MÉG NINCS BEKÖTVE; a GREEN fázisban soronként a `sheet0RowToValues(r, policies.get(KÓD))`.
+ */
+export function loadSheet0ByCurrency(
+  storage: Storage = localStorage,
+  policies?: ZeroRatePolicyByCurrency,
+): Map<string, Sheet0Values> {
+  void policies
   const map = new Map<string, Sheet0Values>()
   try {
     const raw = storage.getItem(SHEET0_STORAGE_KEY)

@@ -283,4 +283,77 @@ describe('RateCreationPage folyamatos árfolyamvédelmi validáció', () => {
       )
     })
   })
+
+  /**
+   * FK13 (FR-4, FR-5) — a nyitott lapon futó publish-út ugyanúgy irány-tudatos, mint a headless:
+   * a policy az overview-ból jön (buyZeroAllowed/sellZeroAllowed), a képletből számított 0 nem
+   * veszik el visszaíráskor (fmtRate allowZero), és a szétküldés 0 vétellel indul.
+   */
+  describe('FK13 — engedélyezett 0 vétel a munkacsoport-lapon', () => {
+    const overviewWithPolicy = (policy: {
+      buyZeroAllowed?: boolean
+      sellZeroAllowed?: boolean
+    }) => ({
+      ...overview,
+      currencies: overview.currencies.map((item) => ({ ...item, ...policy })),
+    })
+
+    it('FR-4/FR-5: buyZeroAllowed + E=0 forrás → nincs képlethiba, a cella 0,0000, a szétküldés buyRate: 0-val indul', async () => {
+      localStorage.setItem(
+        'arfolyamkeszito.mainSheet.v1',
+        JSON.stringify([{ currency: 'EUR', weakMultiBuy: 0, weakMultiSell: 420 }]),
+      )
+      saveGroupFormulas('wg-1', { '1.buyRate': 'E' })
+      publishMocks.publishAllWorkgroups.mockResolvedValue({ total: 1, published: 1, outcomes: [] })
+      publishMocks.summarizePublishAll.mockReturnValue({
+        ok: true,
+        title: 'Sikeres szétküldés',
+        detail: '1/1 munkacsoport elküldve',
+      })
+
+      await renderEditor(false, overviewWithPolicy({ buyZeroAllowed: true }))
+
+      await waitFor(() => expect(screen.getByTestId('current-buy')).toHaveTextContent('0,0000'))
+      expect(screen.getByTestId('cell-errors')).toHaveTextContent('{}')
+      expect(screen.getByTestId('current-sell')).toHaveTextContent('420')
+
+      fireEvent.click(screen.getByRole('button', { name: 'rates.arfolyamokSzetkuldese' }))
+
+      await waitFor(() => expect(publishMocks.publishAllWorkgroups).toHaveBeenCalledTimes(1))
+      const call = publishMocks.publishAllWorkgroups.mock.calls[0]![0] as {
+        inMemoryGroupRates: { groupId: string; rates: Array<Record<string, unknown>> }
+      }
+      expect(call.inMemoryGroupRates.groupId).toBe('wg-1')
+      expect(call.inMemoryGroupRates.rates[0]).toEqual(
+        expect.objectContaining({ currencyId: 1, buyRate: 0, sellRate: 420 }),
+      )
+      expect(toastMocks.error).not.toHaveBeenCalled()
+    })
+
+    it('FR-12 guard: engedély nélkül az E=0 forrás továbbra is képlethiba és blokkolja a szétküldést', async () => {
+      localStorage.setItem(
+        'arfolyamkeszito.mainSheet.v1',
+        JSON.stringify([{ currency: 'EUR', weakMultiBuy: 0, weakMultiSell: 420 }]),
+      )
+      saveGroupFormulas('wg-1', { '1.buyRate': 'E' })
+
+      await renderEditor(false, overviewWithPolicy({ sellZeroAllowed: true }))
+
+      await waitFor(() =>
+        expect(screen.getByTestId('cell-errors')).toHaveTextContent(
+          'Nincs érték a 0-s lap E oszlopában',
+        ),
+      )
+      // a pozitív baseline megmarad a cellában (FK10 viselkedés)
+      expect(screen.getByTestId('current-buy')).toHaveTextContent('395')
+
+      fireEvent.click(screen.getByRole('button', { name: 'rates.arfolyamokSzetkuldese' }))
+
+      expect(publishMocks.publishAllWorkgroups).not.toHaveBeenCalled()
+      expect(toastMocks.error).toHaveBeenCalledWith(
+        'Nem küldhető szét',
+        'Hibás árfolyam-képlet cella(k) van(nak) a lapon — előbb javítsa a hibás képleteket.',
+      )
+    })
+  })
 })

@@ -27,6 +27,19 @@ public final class RateSpreadGate {
     }
 
     /**
+     * FK13 (FR-7) — irány-tudatos spread-kapu: ha a valután az adott irányra a 0 engedélyezett
+     * ÉS az a ráta ténylegesen 0 (egyoldalú valuta), a relatív spread nem értelmezhető, ezért a
+     * spread-ellenőrzés arra a bejegyzésre kihagyandó (különben hamis "100%-os eltérés").
+     *
+     * <p><b>RED-fázis scaffolding (2026-09-14):</b> a kihagyás NINCS bekötve — a régi,
+     * feltétel nélküli kapu fut. A GREEN fázisban itt kell a policy-vizsgálat.</p>
+     */
+    public static void enforce(BigDecimal buyRate, BigDecimal sellRate, BigDecimal officialRate, Long currencyId,
+                               boolean buyZeroAllowed, boolean sellZeroAllowed) {
+        enforce(buyRate, sellRate, officialRate, currencyId);
+    }
+
+    /**
      * Érvényesíti a spread-kaput. Hiányzó (null) vételi/eladási árfolyamnál no-op —
      * a hiányzó-érték ellenőrzés a hívó felelőssége.
      *

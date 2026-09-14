@@ -398,3 +398,132 @@ describe('publishAllWorkgroups — FK05 egységes szétküldés', () => {
     expect(mocks.publishGroupRate).not.toHaveBeenCalled()
   })
 })
+
+/**
+ * FK13 (FR-3) — a headless publish irány-tudatosan engedi át a 0-t, ha a RateOverviewItem
+ * (a currency tábla policy-ja) az adott irányra `buyZeroAllowed` / `sellZeroAllowed` = true.
+ * A policy forrása az overview (egyetlen valutánkénti forrás), nincs külön opció.
+ */
+describe('publishAllWorkgroups — FK13 engedélyezett 0 árfolyam', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    mocks.publishGroupRate.mockResolvedValue({ acceptedRates: 1 })
+  })
+
+  const uah = (over: Partial<RateOverviewItem> = {}): RateOverviewItem =>
+    item({
+      currencyId: 21,
+      currencyCode: 'UAH',
+      currencyName: 'Ukrán hrivnya',
+      displayOrder: 20,
+      currentBuyRate: 7.2,
+      currentSellRate: 7.87,
+      officialRate: 7.5,
+      limit1BuyRate: null,
+      limit1SellRate: null,
+      limit2BuyRate: null,
+      limit2SellRate: null,
+      limit3BuyRate: null,
+      limit3SellRate: null,
+      ...over,
+    })
+
+  it('FR-3: fix overlay "0" vétel + buyZeroAllowed → a sor a payloadban buyRate: 0-val megy ki (nem kimaradó)', async () => {
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.rates.v1.g1',
+      JSON.stringify({ '21.buyRate': '0' }),
+    )
+
+    const result = await publishAllWorkgroups({
+      preloaded: { overview: [uah({ buyZeroAllowed: true })], workgroups: [group()] },
+    })
+
+    expect(mocks.publishGroupRate).toHaveBeenCalledTimes(1)
+    const sent = mocks.publishGroupRate.mock.calls[0]![0] as {
+      rates: Array<{ currencyId: number; buyRate: number; sellRate: number }>
+    }
+    expect(sent.rates).toEqual([
+      expect.objectContaining({ currencyId: 21, buyRate: 0, sellRate: 7.87 }),
+    ])
+    expect(result.published).toBe(1)
+    expect(result.outcomes[0]).toEqual(expect.objectContaining({ status: 'published' }))
+  })
+
+  it('FR-3: 0-s lap E=0 forrás + képlet (L = E) + buyZeroAllowed → nincs képlet-hiba, buyRate: 0 publikálódik', async () => {
+    localStorage.setItem(
+      'arfolyamkeszito.mainSheet.v1',
+      JSON.stringify([{ currency: 'UAH', weakMultiBuy: 0, weakMultiSell: 7.87 }]),
+    )
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.formulas.v1.g1',
+      JSON.stringify({ '21.buyRate': 'E', '21.sellRate': 'F' }),
+    )
+
+    const result = await publishAllWorkgroups({
+      preloaded: { overview: [uah({ buyZeroAllowed: true })], workgroups: [group()] },
+    })
+
+    expect(result.outcomes[0]).toEqual(
+      expect.objectContaining({ groupId: 'g1', status: 'published' }),
+    )
+    const sent = mocks.publishGroupRate.mock.calls[0]![0] as {
+      rates: Array<{ currencyId: number; buyRate: number; sellRate: number }>
+    }
+    expect(sent.rates[0]).toEqual(
+      expect.objectContaining({ currencyId: 21, buyRate: 0, sellRate: 7.87 }),
+    )
+  })
+
+  it('FR-3: az engedély IRÁNY-specifikus — csak sellZeroAllowed mellett a vétel-0 sor nem megy ki', async () => {
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.rates.v1.g1',
+      JSON.stringify({ '21.buyRate': '0' }),
+    )
+
+    const result = await publishAllWorkgroups({
+      preloaded: { overview: [uah({ sellZeroAllowed: true })], workgroups: [group()] },
+    })
+
+    expect(mocks.publishGroupRate).not.toHaveBeenCalled()
+    expect(result.outcomes[0]).toEqual(expect.objectContaining({ status: 'skipped' }))
+  })
+
+  it('FR-12 guard: engedély nélkül a fix "0" vétel változatlanul kiesik (skipped, nincs hívás)', async () => {
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.rates.v1.g1',
+      JSON.stringify({ '21.buyRate': '0' }),
+    )
+
+    const result = await publishAllWorkgroups({
+      preloaded: { overview: [uah()], workgroups: [group()] },
+    })
+
+    expect(mocks.publishGroupRate).not.toHaveBeenCalled()
+    expect(result.outcomes[0]).toEqual(expect.objectContaining({ status: 'skipped' }))
+  })
+
+  it('FR-12 guard: engedély nélkül az E=0 forrás továbbra is „képlet-hiba: Nincs érték a 0-s lap E oszlopában”', async () => {
+    localStorage.setItem(
+      'arfolyamkeszito.mainSheet.v1',
+      JSON.stringify([{ currency: 'UAH', weakMultiBuy: 0, weakMultiSell: 7.87 }]),
+    )
+    localStorage.setItem(
+      'arfolyamkeszito.workgroupSheet.formulas.v1.g1',
+      JSON.stringify({ '21.buyRate': 'E' }),
+    )
+
+    const result = await publishAllWorkgroups({
+      preloaded: { overview: [uah()], workgroups: [group()] },
+    })
+
+    expect(mocks.publishGroupRate).not.toHaveBeenCalled()
+    expect(result.outcomes[0]).toEqual(
+      expect.objectContaining({
+        status: 'failed',
+        failureKind: 'business',
+        message: expect.stringContaining('képlet-hiba: Nincs érték a 0-s lap E oszlopában'),
+      }),
+    )
+  })
+})

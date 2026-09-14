@@ -81,4 +81,48 @@ class RateSpreadGateTest {
         assertDoesNotThrow(() ->
                 RateSpreadGate.enforce(new BigDecimal("100"), new BigDecimal("103"), BigDecimal.ZERO, 1L));
     }
+
+    // ===================== FK13 (FR-7): irány-tudatos spread-kapu — RED (2026-09-14) =====================
+
+    @Test
+    @DisplayName("FK13 FR-7: vétel=0 ÉS buyZeroAllowed → a spread-ellenőrzés kihagyva (nincs hamis ~100%-os elutasítás)")
+    void zeroBuy_allowed_skipsSpreadCheck() {
+        // buy=0, sell=7.87, ref=7.50 → a nyers képlet 104.9%-ot adna; egyoldalú valutánál értelmezhetetlen.
+        assertDoesNotThrow(() ->
+                RateSpreadGate.enforce(BigDecimal.ZERO, new BigDecimal("7.87"), new BigDecimal("7.50"), 21L,
+                        true, false));
+    }
+
+    @Test
+    @DisplayName("FK13 FR-7: vétel=0 ÉS buyZeroAllowed, officialRate nélkül is kihagyva (középár-fallback sem dob)")
+    void zeroBuy_allowed_noOfficialRate_skipsSpreadCheck() {
+        // ref = (0+7.87)/2 = 3.935 → a nyers képlet 200%-ot adna.
+        assertDoesNotThrow(() ->
+                RateSpreadGate.enforce(BigDecimal.ZERO, new BigDecimal("7.87"), null, 21L, true, false));
+    }
+
+    @Test
+    @DisplayName("FK13 FR-12 guard: vétel=0 engedély NÉLKÜL → a kapu változatlanul dob (a 0 nem csúszik át)")
+    void zeroBuy_notAllowed_stillThrows() {
+        assertThrows(ValidationException.class, () ->
+                RateSpreadGate.enforce(BigDecimal.ZERO, new BigDecimal("7.87"), new BigDecimal("7.50"), 21L,
+                        false, false));
+    }
+
+    @Test
+    @DisplayName("FK13 FR-7: az engedély IRÁNY-specifikus — csak sellZeroAllowed mellett a vétel=0 továbbra is dob")
+    void zeroBuy_onlySellAllowed_stillThrows() {
+        assertThrows(ValidationException.class, () ->
+                RateSpreadGate.enforce(BigDecimal.ZERO, new BigDecimal("7.87"), new BigDecimal("7.50"), 21L,
+                        false, true));
+    }
+
+    @Test
+    @DisplayName("FK13 FR-12 guard: az engedély csak a TÉNYLEGES 0-ra vonatkozik — pozitív, túl széles spread engedéllyel is dob")
+    void positiveWideSpread_allowedFlags_stillThrows() {
+        // buy=100, sell=110, ref=105 → 9.52% > 5%; a flag nem lazítja a normál sávot.
+        assertThrows(ValidationException.class, () ->
+                RateSpreadGate.enforce(new BigDecimal("100"), new BigDecimal("110"), new BigDecimal("105"), 42L,
+                        true, true));
+    }
 }
