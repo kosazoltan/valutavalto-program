@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-14T18:19:29.753Z
+generated: 2026-09-14T19:47:10.187Z
 format: gfm
 ---
 
@@ -111,10 +111,6 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - summary: # B.7 — Code-signing függő release mandate **Hatály:** 2026-05-21-ig (DigiCert EV CS HSM cert kiadásig), utána re-evaluate **P-szint:** P0 **Forrás:** `claude-code-korrekcios-mandate-2026-05-17.md` 1.7 szakasz ## Tartalom A DigiCert EV CS HSM kiadásig (várható 2026-05-19 / 21): 1. **TILOS unsigned `Penztar-Setup-*.exe`-t** publikus GitHub Release-be feltölteni. 2. **TILOS auto-update channel-re unsigned bináris.** 3.
 
 ## Kozep Tavu Memoria
-
-- **Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás** (medium-term-episodic)
-  - source: `vault/sessions/handoff-2026-08-24-verzio-gate-standby-helyreallitas.md`
-  - summary: # Handoff — 2026-08-24 — verzió-gate kiadás + standby-helyreállítás ## Mi volt a feladat A `handoff-2026-08-24-fkh039-fk093-v2.28.86-verzio-gate.md` félbehagyott munkájának befejezése: v2.28.87 kiadása, mert a v2.28.86 tag kétszer kapott buildet, és az auto-update semverre ül — a második build tartalma sosem jutott ki a pénztárgépekre. ## Mergelve (6 PR) | PR | Mit | main SHA | |---|---|---| | #1652 | verzió-gate: Gi
 
 - **Handoff — FK-094/FK-095 release v2.28.88 + checkout-hang gyökérok-javítás** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-08-25-release-v2.28.88-checkout-hang.md`
@@ -243,6 +239,10 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 - **Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md`
   - summary: # Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **MERGED** as PR #1756 → main `10a8122f` (2026-09-13). Pipeline PASS from HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, base `0df543d7` / v2.28.113. ## What landed HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `HungarianRounding.
+
+- **Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1771)** (medium-term-episodic)
+  - source: `vault/sessions/handoff-2026-09-14-repo-memory-cursor-skills.md`
+  - summary: # Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1771) Base `a75601a4` (FK13). Merged: **#1768 → main `4593db3f`**. Follow-up **#1771** (this PR); #1770 closed as superseded. ## What shipped (#1768) Docs and generated artifacts only — no application code, no version bump, no installer. - `.agent/memory/*` regenerated on current main: **1107 sources**, `memory:stale-check ok=true` *on this working
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
