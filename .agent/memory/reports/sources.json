@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-14T18:40:20.345Z",
-  "source_count": 1107,
+  "generated_at": "2026-09-14T18:45:18.643Z",
+  "source_count": 1108,
   "sources": [
     {
       "path": ".agent/memory/legacy/legacy-module-map.md",
@@ -12946,6 +12946,15 @@
       "type": "medium-term-episodic",
       "areas": [
         "database"
+      ]
+    },
+    {
+      "path": "vault/sessions/handoff-2026-09-14-repo-memory-cursor-skills.md",
+      "sha256": "dbd3d3ace62d905140a01a3f0769474634829f024dd0ebe1056717d1508aa7bd",
+      "type": "medium-term-episodic",
+      "areas": [
+        "penztar",
+        "specifikacio"
       ]
     },
     {
