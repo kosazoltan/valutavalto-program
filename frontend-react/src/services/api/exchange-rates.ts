@@ -202,6 +202,16 @@ export interface Currency {
   decimals: number
   displayOrder?: number
   active: boolean
+  /** FK13: vételi oldali "0 árfolyam engedélyezett" (backend CurrencyDto.buyZeroAllowed). */
+  buyZeroAllowed?: boolean | null
+  /** FK13: eladási oldali "0 árfolyam engedélyezett" (backend CurrencyDto.sellZeroAllowed). */
+  sellZeroAllowed?: boolean | null
+}
+
+/** FK13 (FR-9/FR-10): a PATCH /currencies/{id}/zero-rate-policy törzse. */
+export interface ZeroRatePolicyRequest {
+  buyZeroAllowed: boolean
+  sellZeroAllowed: boolean
 }
 
 export const currencyApi = {
@@ -239,6 +249,18 @@ export const currencyApi = {
   },
   setActive: async (id: number, active: boolean, note?: string): Promise<Currency> => {
     const response = await api.patch<Currency>(`/currencies/${id}/active`, { active, note })
+    return response.data
+  },
+  // FK13 (FR-9): valutánkénti, irányonkénti "0 engedélyezett" jelölő — auditált (ZERO_RATE_POLICY).
+  setZeroRatePolicy: async (
+    id: number,
+    policy: ZeroRatePolicyRequest,
+    note?: string,
+  ): Promise<Currency> => {
+    const response = await api.patch<Currency>(`/currencies/${id}/zero-rate-policy`, {
+      ...policy,
+      note,
+    })
     return response.data
   },
   search: async (query: string): Promise<Currency[]> => {
@@ -527,6 +549,13 @@ export interface RateOverviewItem {
   middleRate: number | null
   lastUpdated: string | null
   hasRate: boolean
+  /**
+   * FK13 (FR-1..FR-4): a currency tábla irányonkénti "0 engedélyezett" jelölői — a rate-maker
+   * egyetlen policy-forrása (0-s lap kontextus, headless publish, munkacsoport-lap).
+   * Hiányzó/null = nem beállított = tiltott (FK10 viselkedés).
+   */
+  buyZeroAllowed?: boolean | null
+  sellZeroAllowed?: boolean | null
 }
 
 export interface WorkgroupDetailDTO {

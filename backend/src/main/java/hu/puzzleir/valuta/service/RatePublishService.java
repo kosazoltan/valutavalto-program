@@ -377,7 +377,9 @@ public class RatePublishService {
 
     private BigDecimal mergeRate(BigDecimal baseRate, BigDecimal spread) {
         BigDecimal safeSpread = spread != null ? spread : BigDecimal.ZERO;
-        return baseRate.add(safeSpread).setScale(4, RoundingMode.HALF_UP);
+        // A tárolt skála a RateSpreadGate.STORED_SCALE (4) — a policy/sanity „nulla-e" döntések
+        // ugyanerre a kerekítésre épülnek (Codex PR #1767 HIGH: kerekítési megkerülés).
+        return RateSpreadGate.toStoredScale(baseRate.add(safeSpread));
     }
 
     private BigDecimal resolveOfficialRate(ExchangeRate latestRate, BigDecimal buyRate, BigDecimal sellRate) {
@@ -559,7 +561,7 @@ public class RatePublishService {
      */
     private BigDecimal addSpread(BigDecimal base, BigDecimal spread) {
         if (base == null) return null;
-        return base.add(spread == null ? BigDecimal.ZERO : spread).setScale(4, RoundingMode.HALF_UP);
+        return RateSpreadGate.toStoredScale(base.add(spread == null ? BigDecimal.ZERO : spread));
     }
 
     /**

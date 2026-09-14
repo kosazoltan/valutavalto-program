@@ -184,3 +184,56 @@ describe('FK10 — 0 forrásérték = nincs érték hiba', () => {
     expect('error' in r && r.error).toBe('Nincs érték: !FEUR')
   })
 })
+
+/**
+ * FK13 (FR-2) — engedélyezett 0 forrásérték a 0-s lap hivatkozásokban. A kontextust a
+ * `sheet0RowToValues(row, policy)` adja (FR-1); a motor a 0-t számként továbbszámolja, nem dob.
+ */
+describe('FK13 — engedélyezett 0 forrásérték a sheet0 hivatkozásban', () => {
+  const uahSelf = () =>
+    sheet0RowToValues(
+      { currency: 'UAH', weakMultiBuy: 0, weakMultiSell: 7.87 },
+      { buyZeroAllowed: true },
+    )
+
+  it('FR-2: self E hivatkozás engedélyezett-0 currency-re NEM ParseError — 0-t ad', () => {
+    expect(evaluateWorkgroupFormula('E', ctx({ sheet0Self: uahSelf() }))).toEqual({ value: 0 })
+  })
+
+  it('FR-2: a hivatkozó képlet a 0-t helyesen tovább számolja (E+0,25 → 0,25; E*0,97 → 0)', () => {
+    expect(evaluateWorkgroupFormula('E+0,25', ctx({ sheet0Self: uahSelf() }))).toEqual({
+      value: 0.25,
+    })
+    expect(evaluateWorkgroupFormula('E*0,97', ctx({ sheet0Self: uahSelf() }))).toEqual({
+      value: 0,
+    })
+  })
+
+  it('FR-2: kereszt-valuta hivatkozás (!EUAH) engedélyezett-0-nál 0-t ad, nem „Nincs érték: !EUAH”', () => {
+    const r = evaluateWorkgroupFormula(
+      '!EUAH',
+      ctx({ sheet0ByCurrency: new Map([['UAH', uahSelf()]]) }),
+    )
+    expect(r).toEqual({ value: 0 })
+  })
+
+  it('FR-2: a nem engedélyezett irány (F) ugyanazon a soron továbbra is pozitív érték — 7,87', () => {
+    expect(evaluateWorkgroupFormula('F', ctx({ sheet0Self: uahSelf() }))).toEqual({ value: 7.87 })
+  })
+
+  it('FR-12 guard: engedély nélkül ugyanaz a 0 továbbra is „Nincs érték a 0-s lap E oszlopában”', () => {
+    const r = evaluateWorkgroupFormula(
+      'E',
+      ctx({
+        sheet0Self: sheet0RowToValues({ currency: 'UAH', weakMultiBuy: 0, weakMultiSell: 7.87 }),
+      }),
+    )
+    expect('error' in r && r.error).toBe('Nincs érték a 0-s lap E oszlopában')
+  })
+
+  it('FR-12 guard: a munkacsoport-oszlop 0-ja (L=0) ma is szám a motorban — L+0,25 = 0,25', () => {
+    expect(evaluateWorkgroupFormula('L+0,25', ctx({ workgroupSelf: { L: 0 } }))).toEqual({
+      value: 0.25,
+    })
+  })
+})

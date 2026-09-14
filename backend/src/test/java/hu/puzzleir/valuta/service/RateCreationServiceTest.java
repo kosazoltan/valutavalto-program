@@ -38,6 +38,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -481,5 +482,177 @@ class RateCreationServiceTest {
         ArgumentCaptor<UUID> rateCompany = ArgumentCaptor.forClass(UUID.class);
         verify(exchangeRateRepository).findAllActiveRates(rateCompany.capture(), any());
         assertThat(rateCompany.getValue()).isEqualTo(COMPANY_ID);
+    }
+
+    // ===================== FK13 (FR-6, FR-7, FR-8): publikálás 0 árfolyammal — RED (2026-09-14) =====================
+    // A backend a szerver-oldali igazság: a 0-t CSAK akkor engedi át, ha a currency-n az adott irányra
+    // engedélyezett (buy_zero_allowed / sell_zero_allowed). Nem engedélyezett 0 → VV-VALID-008.
+
+    private static final UUID FK13_WG_ID = UUID.randomUUID();
+
+    private void fk13StubCommonPublishPath() {
+        Company company = Company.builder().id(COMPANY_ID).code("EBC").name("EBC").build();
+        when(companyRepository.findById(COMPANY_ID)).thenReturn(Optional.of(company));
+        when(rateTemplateRepository.save(any(hu.puzzleir.valuta.entity.RateTemplate.class)))
+                .thenAnswer(inv -> {
+                    hu.puzzleir.valuta.entity.RateTemplate t = inv.getArgument(0);
+                    return hu.puzzleir.valuta.entity.RateTemplate.builder()
+                            .id(UUID.randomUUID())
+                            .currencyId(t.getCurrencyId())
+                            .baseBuyRate(t.getBaseBuyRate())
+                            .baseSellRate(t.getBaseSellRate())
+                            .build();
+                });
+        when(ratePublishService.publish(any(UUID.class), org.mockito.ArgumentMatchers.anyList(), any(), any()))
+                .thenReturn(hu.puzzleir.valuta.entity.RatePublication.builder().id(UUID.randomUUID()).build());
+    }
+
+    private static Currency fk13Uah(Boolean buyZeroAllowed, Boolean sellZeroAllowed) {
+        return Currency.builder().id(21L).code("UAH").name("Ukrán hrivnya").active(true)
+                .buyZeroAllowed(buyZeroAllowed).sellZeroAllowed(sellZeroAllowed).build();
+    }
+
+    private static hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO fk13Dto(String buy, String sell, String official) {
+        return hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO.builder()
+                .groupId(FK13_WG_ID)
+                .rates(List.of(hu.puzzleir.valuta.dto.ratecreation.GroupRateDTO.RateEntry.builder()
+                        .currencyId(21L)
+                        .buyRate(new BigDecimal(buy))
+                        .sellRate(new BigDecimal(sell))
+                        .officialRate(official == null ? null : new BigDecimal(official))
+                        .build()))
+                .build();
+    }
+
+    @Test
+    @DisplayName("FK13 FR-6/FR-8: vétel=0 ENGEDÉLYEZETT currency-n → publikálás sikeres, a sablon baseBuyRate=0 (nem kimaradó, nem stale)")
+    void publishGroupRate_zeroBuyAllowed_publishesWithZeroBaseBuy() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(true, null)));
+
+        service.publishGroupRate(fk13Dto("0", "7.87", "7.50"));
+
+        ArgumentCaptor<hu.puzzleir.valuta.entity.RateTemplate> tpl =
+                ArgumentCaptor.forClass(hu.puzzleir.valuta.entity.RateTemplate.class);
+        verify(rateTemplateRepository).save(tpl.capture());
+        assertThat(tpl.getValue().getBaseBuyRate()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(tpl.getValue().getBaseSellRate()).isEqualByComparingTo(new BigDecimal("7.87"));
+        verify(ratePublishService).publish(eq(FK13_WG_ID), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("FK13 FR-6: vétel=0 NEM engedélyezett currency-n → BusinessException VV-VALID-008, nincs sablon, nincs publikálás")
+    void publishGroupRate_zeroBuyNotAllowed_rejectedWithValidCode() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(null, null)));
+
+        assertThatThrownBy(() -> service.publishGroupRate(fk13Dto("0", "7.87", "7.50")))
+                .isInstanceOf(hu.puzzleir.valuta.exception.BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "VV-VALID-008")
+                .hasMessageContaining("UAH");
+
+        verify(rateTemplateRepository, never()).save(any());
+        verify(ratePublishService, never()).publish(any(UUID.class), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("FK13 FR-6: az engedély IRÁNY-specifikus — csak eladás-0 engedélyezett, a vétel-0 továbbra is VV-VALID-008")
+    void publishGroupRate_zeroBuy_onlySellAllowed_rejected() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(false, true)));
+
+        assertThatThrownBy(() -> service.publishGroupRate(fk13Dto("0", "7.87", "7.50")))
+                .isInstanceOf(hu.puzzleir.valuta.exception.BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "VV-VALID-008");
+    }
+
+    @Test
+    @DisplayName("FK13 FR-6/FR-8: eladás=0 ENGEDÉLYEZETT (csak vett valuta) → publikálás sikeres, baseSellRate=0; a sell>buy sanity erre a sorra kihagyva")
+    void publishGroupRate_zeroSellAllowed_publishesWithZeroBaseSell() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(null, true)));
+
+        service.publishGroupRate(fk13Dto("7.20", "0", "7.50"));
+
+        ArgumentCaptor<hu.puzzleir.valuta.entity.RateTemplate> tpl =
+                ArgumentCaptor.forClass(hu.puzzleir.valuta.entity.RateTemplate.class);
+        verify(rateTemplateRepository).save(tpl.capture());
+        assertThat(tpl.getValue().getBaseSellRate()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(tpl.getValue().getBaseBuyRate()).isEqualByComparingTo(new BigDecimal("7.20"));
+        verify(ratePublishService).publish(eq(FK13_WG_ID), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    // ===================== Codex PR #1767 HIGH: kerekítési megkerülés (2026-09-14) =====================
+    // A policy „nulla-e" döntése a TÁROLT (4 tizedes) értéken fut: a nyers 0,00001 (nem nulla) is
+    // 0,0000-ként tárolódna, ezért a NEM engedélyezett irányon VV-VALID-008-cal el kell utasítani.
+
+    @Test
+    @DisplayName("Codex HIGH: vétel=0 / eladás=0,00001, vétel engedélyezett, eladás tiltott → VV-VALID-008 (az eladás 0,0000-ra kerekedik)")
+    void publishGroupRate_sellRoundsToZero_notAllowed_rejected() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(true, false)));
+
+        assertThatThrownBy(() -> service.publishGroupRate(fk13Dto("0", "0.00001", "7.50")))
+                .isInstanceOf(hu.puzzleir.valuta.exception.BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "VV-VALID-008")
+                .hasMessageContaining("eladási");
+
+        verify(rateTemplateRepository, never()).save(any());
+        verify(ratePublishService, never()).publish(any(UUID.class), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Codex HIGH: vétel=0,00001 / eladás=0, vétel tiltott, eladás engedélyezett → VV-VALID-008 (a vétel 0,0000-ra kerekedik)")
+    void publishGroupRate_buyRoundsToZero_notAllowed_rejected() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(false, true)));
+
+        assertThatThrownBy(() -> service.publishGroupRate(fk13Dto("0.00001", "0", "7.50")))
+                .isInstanceOf(hu.puzzleir.valuta.exception.BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", "VV-VALID-008")
+                .hasMessageContaining("vételi");
+
+        verify(rateTemplateRepository, never()).save(any());
+        verify(ratePublishService, never()).publish(any(UUID.class), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Codex HIGH: engedélyezett irányon a 0,00001 is engedélyezett nullaként publikálódik — a sablon a TÁROLT (0,0000) értéket kapja")
+    void publishGroupRate_roundsToZero_allowed_publishesStoredZero() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(true, null)));
+
+        service.publishGroupRate(fk13Dto("0.00001", "7.87", "7.50"));
+
+        ArgumentCaptor<hu.puzzleir.valuta.entity.RateTemplate> tpl =
+                ArgumentCaptor.forClass(hu.puzzleir.valuta.entity.RateTemplate.class);
+        verify(rateTemplateRepository).save(tpl.capture());
+        assertThat(tpl.getValue().getBaseBuyRate()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(tpl.getValue().getBaseBuyRate().scale()).isEqualTo(RateSpreadGate.STORED_SCALE);
+        verify(ratePublishService).publish(eq(FK13_WG_ID), org.mockito.ArgumentMatchers.anyList(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Codex HIGH guard: a 0,00005 HALF_UP 0,0001-re kerekedik → NEM nulla, nincs policy-lookup, a normál sanity fut")
+    void publishGroupRate_roundsToPositive_noPolicyLookup() {
+        fk13StubCommonPublishPath();
+
+        // buy 0,00005 → 0,0001 > 0; sell 7,87 → sell>buy OK; spread-kapu: (7,87−0,0001)/7,5 ≫ 5% → ValidationException
+        assertThatThrownBy(() -> service.publishGroupRate(fk13Dto("0.00005", "7.87", "7.50")))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("spread");
+        verify(currencyRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("FK13 FR-12 guard: pozitív vétel/eladás engedély nélkül is változatlanul publikálódik (nincs regresszió)")
+    void publishGroupRate_positiveRates_unaffectedByPolicy() {
+        fk13StubCommonPublishPath();
+        when(currencyRepository.findById(21L)).thenReturn(Optional.of(fk13Uah(null, null)));
+
+        service.publishGroupRate(fk13Dto("7.40", "7.60", "7.50"));
+
+        verify(rateTemplateRepository).save(any(hu.puzzleir.valuta.entity.RateTemplate.class));
+        verify(ratePublishService).publish(eq(FK13_WG_ID), org.mockito.ArgumentMatchers.anyList(), any(), any());
     }
 }

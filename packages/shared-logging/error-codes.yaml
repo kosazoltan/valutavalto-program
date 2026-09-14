@@ -488,3 +488,20 @@ codes:
         DataIntegrityViolationException-bol is 409 + VV-VALID-003 (konkurens eset).
         A frontend (CurrencyManagerModal) az "Uj valuta" formot max(displayOrder)+1
         defaulttal tolti elo. NE kapcsold ki a constraintet.
+
+  VV-VALID-008:
+    name: 'Nem engedelyezett 0 arfolyam publikalasa — muvelet elutasitva (HTTP 400)'
+    category: VALID
+    level: ERROR
+    user_impact: 'Az arfolyam-szetkuldes nem tortent meg az erintett csoportra; a 0 vetel/eladas csak akkor kuldheto ki, ha a valutan az adott iranyra a Foertektaros engedelyezte'
+    ai_fix_hint: |
+      FK13 (V393, 2026-09-14): a currency.buy_zero_allowed / sell_zero_allowed IRANYONKENTI
+      flag az egyetlen kivetel a FK10 "0 = nincs ertek" elgepeles-vedelem alol.
+      Dobja: RateCreationService.publishGroupRateInternal (BusinessException, HTTP 400), ha a
+      GroupRateDTO.RateEntry buyRate/sellRate == 0 es a currency-n az adott iranyra a flag
+      NEM true (NULL = false). A DTO @PositiveOrZero csak a negativot szuri — a szerver-oldali
+      igazsag ez a service-ellenorzes. Engedelyezett 0 mellett a sell>buy sanity es a
+      RateSpreadGate is kihagyva arra a sorra (egyoldalu valuta). Engedelyezes: Valutakezelo
+      (CurrencyManagerModal) → PATCH /api/v1/currencies/{id}/zero-rate-policy
+      (ADMIN/MANAGER/FOERTEKTAR/UGYVEZETO), audit: currency_audit_log ZERO_RATE_POLICY + JSON-diff.
+      NE lazitsd a service-ellenorzest a flag nelkul — a 0 elgepeles ellen ez ved.

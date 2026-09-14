@@ -65,6 +65,7 @@ import {
   type WgComputeRow,
 } from './workgroupSheetCompute'
 import {
+  buildZeroRatePolicyMap,
   loadSheet0ByCurrency,
   loadAllGroupValueSnapshots,
   loadGroupFormulas,
@@ -223,6 +224,26 @@ export default function RateCreationPage() {
   // Védi a recompute setRates-ét a végtelen effekt-loop ellen (0-s lap minta).
   const recomputeGuardRef = useRef(false)
 
+  // FK13 (FR-4/FR-5): valutánkénti, irányonkénti "0 engedélyezett" policy az overview-ból
+  // (a currency tábla flagjei — egyetlen forrás). Ref-ben is, hogy a csoport-nyitó effekt
+  // függőség-listája stabil maradjon (a reload úgyis frissíti az overview-t ÉS a reloadVersion-t).
+  const zeroRatePolicies = useMemo(
+    () => buildZeroRatePolicyMap(overview?.currencies ?? []),
+    [overview],
+  )
+  const zeroRatePoliciesRef = useRef(zeroRatePolicies)
+  zeroRatePoliciesRef.current = zeroRatePolicies
+  const isZeroAllowed = useCallback(
+    (currencyCode: string, field: WgField): boolean => {
+      const p = zeroRatePolicies.get(currencyCode.toUpperCase())
+      if (!p) return false
+      if (field === 'buyRate') return p.buyZeroAllowed === true
+      if (field === 'sellRate') return p.sellZeroAllowed === true
+      return false
+    },
+    [zeroRatePolicies],
+  )
+
   // Limit editing state
   const [editLimits, setEditLimits] = useState<{ l1: string; l2: string; l3: string }>({
     l1: '',
@@ -264,7 +285,8 @@ export default function RateCreationPage() {
       return
     }
     sheetCtxRef.current = {
-      sheet0ByCurrency: loadSheet0ByCurrency(),
+      // FK13 (FR-1): a 0-s lap E/F 0-ja csak az engedélyezett irányon marad „van érték”.
+      sheet0ByCurrency: loadSheet0ByCurrency(localStorage, zeroRatePoliciesRef.current),
       otherGroupsByCurrency: loadAllGroupValueSnapshots(),
     }
     setFormulas(loadGroupFormulas(selectedWg.id))
@@ -467,7 +489,10 @@ export default function RateCreationPage() {
       for (const field of WG_STRING_FIELDS) {
         if (!formulas[`${r.currencyId}.${field}`]) continue
         const val = result.rows[i]!.values[field]
-        const str = val == null ? '' : fmtRate(val)
+        // FK13 (FR-5): engedélyezett irányon a számított 0 formázott nullaként íródik vissza,
+        // különben a következő körben „üres cella” → „Nincs érték a(z) L oszlopban” lenne.
+        const str =
+          val == null ? '' : fmtRate(val, 4, { allowZero: isZeroAllowed(r.currencyCode, field) })
         if (nr[field] !== str) {
           if (nr === r) nr = { ...r }
           nr[field] = str
@@ -495,7 +520,7 @@ export default function RateCreationPage() {
     }
     // cellErrors szándékosan kihagyva: rates/formulas/reload változásra számolunk újra
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a friss sheet0-kontextus reloadnál is újraszámítandó
-  }, [rates, formulas, selectedWg?.legacyGroupNumber, reloadVersion])
+  }, [rates, formulas, selectedWg?.legacyGroupNumber, reloadVersion, isZeroAllowed])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -557,8 +582,9 @@ export default function RateCreationPage() {
           currencyName: c.currencyName,
           displayOrder: c.displayOrder,
           officialRate: c.officialRate,
-          buyRate: fmtRate(c.currentBuyRate),
-          sellRate: fmtRate(c.currentSellRate),
+          // FK13 (FR-5): a szerverről érkező engedélyezett 0 is látható értékként jelenik meg.
+          buyRate: fmtRate(c.currentBuyRate, 4, { allowZero: c.buyZeroAllowed === true }),
+          sellRate: fmtRate(c.currentSellRate, 4, { allowZero: c.sellZeroAllowed === true }),
           limit1BuyRate: fmtRate(c.limit1BuyRate),
           limit1SellRate: fmtRate(c.limit1SellRate),
           limit2BuyRate: fmtRate(c.limit2BuyRate),
@@ -1168,11 +1194,22 @@ export default function RateCreationPage() {
       return
     }
 
-    const validRates = rates.filter((r) => {
-      const buy = parseNum(r.buyRate)
-      const sell = parseNum(r.sellRate)
-      return buy > 0 && sell > 0
-    })
+    // FK13 (FR-4): a TÉNYLEGESEN beírt/számított 0 (nem üres cella) csak az engedélyezett irányon
+    // érvényes ráta; engedély nélkül a sor változatlanul kiesik (FK10). A headless
+    // publishAllWorkgroups és a backend RateCreationService azonos szabállyal dolgozik.
+    const rateOk = (raw: string, field: WgField, code: string): boolean => {
+      const n = numOrNull(raw)
+      if (n == null) return false
+      return n > 0 || (n === 0 && isZeroAllowed(code, field))
+    }
+    const hasAllowedZero = (r: EditableRate): boolean =>
+      (numOrNull(r.buyRate) === 0 && isZeroAllowed(r.currencyCode, 'buyRate')) ||
+      (numOrNull(r.sellRate) === 0 && isZeroAllowed(r.currencyCode, 'sellRate'))
+    const validRates = rates.filter(
+      (r) =>
+        rateOk(r.buyRate, 'buyRate', r.currencyCode) &&
+        rateOk(r.sellRate, 'sellRate', r.currencyCode),
+    )
 
     if (validRates.length === 0) {
       toast.warning('Nincs árfolyam', 'Nincs érvényes árfolyam a publikáláshoz!')
@@ -1182,6 +1219,8 @@ export default function RateCreationPage() {
     for (const r of validRates) {
       const buy = parseNum(r.buyRate)
       const sell = parseNum(r.sellRate)
+      // Engedélyezett 0 (egyoldalú valuta) mellett a vétel ≥ eladás irány nem értelmezhető.
+      if (hasAllowedZero(r)) continue
       if (buy >= sell) {
         toast.error(
           'Hibás árfolyam',

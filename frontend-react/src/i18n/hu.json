@@ -2827,6 +2827,16 @@
     "installFailedElevation": "A v{{version}} frissítés telepítéséhez rendszergazdai jogosultság szükséges, de a jogosultság-kérés el lett utasítva. A telepítő: {{path}}. Kérjük, próbálja újra a Telepítés most gombbal, és erősítse meg a rendszergazdai jogosultság kérését."
   },
   "literals": {
+    "fk13-nulla-arfolyam-engedelyezese": "0 árfolyam engedélyezése —",
+    "fk13-uj-beallitas": "Új beállítás: vétel-0 {{buy}}, eladás-0 {{sell}}. Engedélyezett irányon a 0 szándékos érték (egyoldalú valuta), és így megy ki a szétküldésben; tiltott irányon a 0 továbbra is „nincs érték” hiba (elgépelés-védelem). A módosítás a currency_audit_log-ba kerül (ZERO_RATE_POLICY).",
+    "fk13-engedelyezett": "ENGEDÉLYEZETT",
+    "fk13-tiltott": "tiltott",
+    "fk13-nulla-engedely-fejlec": "0-engedély (V / E)",
+    "fk13-nulla-engedely-fejlec-sugo": "FK13: szándékos 0 árfolyam engedélyezése irányonként (V = vétel, E = eladás). Nélküle a 0 = „nincs érték” hiba.",
+    "fk13-vetel-rovid": "V",
+    "fk13-eladas-rovid": "E",
+    "fk13-beallitas-mentese": "Beállítás mentése",
+    "fk13-indoklas-placeholder": "pl. UAH-t csak eladjuk",
     "0": "0 - ",
     "1": "1.≥",
     "2": "2.≥",

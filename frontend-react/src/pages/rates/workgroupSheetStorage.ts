@@ -233,6 +233,46 @@ interface RawSheet0Row {
 }
 
 /**
+ * FK13 (FR-1): valutánkénti, irányonkénti "0 árfolyam engedélyezett" jelölő (a currency tábla
+ * `buy_zero_allowed` / `sell_zero_allowed` oszlopai, a RateOverviewItem / Currency DTO-n át).
+ * Hiányzó mező = nem beállított = tiltott (a mai FK10 viselkedés).
+ */
+export interface ZeroRatePolicy {
+  buyZeroAllowed?: boolean | null
+  sellZeroAllowed?: boolean | null
+}
+
+/** Valutakód (nagybetűs ISO) → policy. */
+export type ZeroRatePolicyByCurrency = Map<string, ZeroRatePolicy>
+
+/**
+ * FK13: valutakód → policy térkép az overview / katalógus elemeiből (a rate-maker egyetlen
+ * policy-forrása a `RateOverviewItem.buyZeroAllowed/sellZeroAllowed`). Strukturális típus, hogy a
+ * `Currency` és a `RateOverviewItem` is átadható legyen.
+ */
+export function buildZeroRatePolicyMap(
+  items: ReadonlyArray<{
+    currencyCode?: string
+    code?: string
+    buyZeroAllowed?: boolean | null
+    sellZeroAllowed?: boolean | null
+  }>,
+): ZeroRatePolicyByCurrency {
+  const map: ZeroRatePolicyByCurrency = new Map()
+  for (const item of items) {
+    const code = (item.currencyCode ?? item.code ?? '').toUpperCase()
+    if (!code) continue
+    if (item.buyZeroAllowed || item.sellZeroAllowed) {
+      map.set(code, {
+        buyZeroAllowed: item.buyZeroAllowed === true,
+        sellZeroAllowed: item.sellZeroAllowed === true,
+      })
+    }
+  }
+  return map
+}
+
+/**
  * FK10: 0 / nem-pozitív / nem-véges forrás = „nincs érték”. A kulcs kihagyásával a
  * képletmotor meglévő `Nincs érték…` hibaága fut le, a MainRateSheetPage baseline-mintájával
  * konzisztensen.
@@ -240,22 +280,45 @@ interface RawSheet0Row {
 const pos = (n: number | undefined): n is number =>
   typeof n === 'number' && Number.isFinite(n) && n > 0
 
-/** Egy 0-s lap sor → A–I oszlop-értékek (a `D` ISO-címke kizárva, mint a motorban). */
-export function sheet0RowToValues(row: RawSheet0Row): Sheet0Values {
+/**
+ * FK13 (FR-1): a TÉNYLEGES 0 (nem negatív, nem NaN) csak akkor „van érték”, ha az adott irányra
+ * a currency policy engedélyezi. Minden más eset a FK10 `pos()` szabálya szerint dől el.
+ */
+const posOrAllowedZero = (
+  n: number | undefined,
+  allowZero: boolean | null | undefined,
+): n is number => pos(n) || (allowZero === true && typeof n === 'number' && n === 0)
+
+/**
+ * Egy 0-s lap sor → A–I oszlop-értékek (a `D` ISO-címke kizárva, mint a motorban).
+ *
+ * FK13 (FR-1): az E (vétel) 0-ja csak `policy.buyZeroAllowed`, az F (eladás) 0-ja csak
+ * `policy.sellZeroAllowed` mellett marad meg (`E: 0` / `F: 0`); a többi oszlop (A/B/C/G/H/I)
+ * 0-ja és minden negatív/nem-véges érték továbbra is kimarad (FK10).
+ */
+export function sheet0RowToValues(row: RawSheet0Row, policy?: ZeroRatePolicy): Sheet0Values {
   const v: Sheet0Values = {}
   if (pos(row.settlement)) v.A = row.settlement
   if (pos(row.otp)) v.B = row.otp
   if (pos(row.helper)) v.C = row.helper
-  if (pos(row.weakMultiBuy)) v.E = row.weakMultiBuy
-  if (pos(row.weakMultiSell)) v.F = row.weakMultiSell
+  if (posOrAllowedZero(row.weakMultiBuy, policy?.buyZeroAllowed)) v.E = row.weakMultiBuy
+  if (posOrAllowedZero(row.weakMultiSell, policy?.sellZeroAllowed)) v.F = row.weakMultiSell
   if (pos(row.crossSettlement)) v.G = row.crossSettlement
   if (pos(row.crossRate)) v.H = row.crossRate
   if (pos(row.wholesale)) v.I = row.wholesale
   return v
 }
 
-/** A 0-s lap A–I oszlop-értékei valutakód szerint (a `A`–`I` és `!<oszlop><KÓD>` hivatkozásokhoz). */
-export function loadSheet0ByCurrency(storage: Storage = localStorage): Map<string, Sheet0Values> {
+/**
+ * A 0-s lap A–I oszlop-értékei valutakód szerint (a `A`–`I` és `!<oszlop><KÓD>` hivatkozásokhoz).
+ *
+ * FK13 (FR-1): a `policies` (valutakód → ZeroRatePolicy) térképet soronként alkalmazza —
+ * hiányzó bejegyzés = nem beállított = a FK10 szigorú viselkedés.
+ */
+export function loadSheet0ByCurrency(
+  storage: Storage = localStorage,
+  policies?: ZeroRatePolicyByCurrency,
+): Map<string, Sheet0Values> {
   const map = new Map<string, Sheet0Values>()
   try {
     const raw = storage.getItem(SHEET0_STORAGE_KEY)
@@ -263,8 +326,10 @@ export function loadSheet0ByCurrency(storage: Storage = localStorage): Map<strin
     const rows = JSON.parse(raw) as RawSheet0Row[]
     if (!Array.isArray(rows)) return map
     for (const r of rows) {
-      if (r && typeof r.currency === 'string')
-        map.set(r.currency.toUpperCase(), sheet0RowToValues(r))
+      if (r && typeof r.currency === 'string') {
+        const code = r.currency.toUpperCase()
+        map.set(code, sheet0RowToValues(r, policies?.get(code)))
+      }
     }
   } catch {
     /* defenzív: hibás JSON → üres map */

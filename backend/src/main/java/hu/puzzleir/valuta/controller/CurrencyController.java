@@ -115,6 +115,8 @@ public class CurrencyController {
                 .decimals(entity.getDecimalPlaces())
                 .displayOrder(entity.getDisplayOrder())
                 .active(entity.getActive())
+                .buyZeroAllowed(entity.getBuyZeroAllowed())
+                .sellZeroAllowed(entity.getSellZeroAllowed())
                 .build();
     }
 
@@ -157,6 +159,24 @@ public class CurrencyController {
         return ResponseEntity.ok(toDto(saved));
     }
 
+    /**
+     * FK13 (FR-9): valutánkénti, IRÁNYONKÉNTI "0 árfolyam engedélyezett" jelölő beállítása.
+     * A 0 alapesetben tiltott (FK10 elgépelés-védelem); ez az explicit, auditált kivétel
+     * (currency_audit_log action = ZERO_RATE_POLICY, JSON-diff). Globális, flotta-szintű flag.
+     *
+     * <p>PATCH /api/v1/currencies/{id}/zero-rate-policy — jogosultsági kör azonos a currency-write-tal
+     * (ADMIN/MANAGER/FOERTEKTAR/UGYVEZETO); ERTEKTAR/SUPERVISOR 403 marad (Scope OUT: helyettes-bővítés).</p>
+     */
+    @PatchMapping("/{id}/zero-rate-policy")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'FOERTEKTAR', 'UGYVEZETO')")
+    public ResponseEntity<CurrencyDto> setZeroRatePolicy(
+            @PathVariable Long id,
+            @Valid @RequestBody SetZeroRatePolicyRequest req) {
+        Currency saved = adminCurrencyService.setZeroRatePolicy(
+                id, req.getBuyZeroAllowed(), req.getSellZeroAllowed(), req.getNote());
+        return ResponseEntity.ok(toDto(saved));
+    }
+
     // ============ Request DTO-k ============
 
     @Data
@@ -186,6 +206,20 @@ public class CurrencyController {
     @AllArgsConstructor
     public static class SetActiveRequest {
         private boolean active;
+        @Size(max = 500)
+        private String note;
+    }
+
+    /** FK13 (FR-9): mindkét irány-jelölő kötelező (hiányzó mező → 400), az indoklás opcionális. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SetZeroRatePolicyRequest {
+        @NotNull(message = "buyZeroAllowed kötelező")
+        private Boolean buyZeroAllowed;
+        @NotNull(message = "sellZeroAllowed kötelező")
+        private Boolean sellZeroAllowed;
         @Size(max = 500)
         private String note;
     }

@@ -66,5 +66,13 @@ public class RateOverviewDTO {
 
         // Van-e aktív exchange_rate
         private boolean hasRate;
+
+        /**
+         * FK13 (FR-1..FR-4): a currency tábla irányonkénti "0 engedélyezett" jelölői, hogy a
+         * rate-maker kliens (0-s lap kontextus, headless publish, munkacsoport-lap) egy
+         * forrásból, valutánként tudja, hol legitim a 0. NULL = nem beállított = tiltott.
+         */
+        private Boolean buyZeroAllowed;
+        private Boolean sellZeroAllowed;
     }
 }

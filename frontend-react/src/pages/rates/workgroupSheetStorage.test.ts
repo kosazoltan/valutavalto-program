@@ -662,3 +662,92 @@ describe('tartós offline SQLite réteg (FK02-B / FR-11, FR-12)', () => {
     localStorage.clear()
   })
 })
+
+/**
+ * FK13 (FR-1) — explicit, valutánkénti ÉS irányonkénti "0 engedélyezett" jelölő a 0-s lap
+ * kontextusában. A FK10 szigorú viselkedése (0 = nincs érték) csak akkor enged, ha a currency
+ * policy az ADOTT irányra true; minden más eset változatlan (FR-12).
+ */
+describe('FK13 — engedélyezett 0 a 0-s lap kontextusában (sheet0RowToValues / loadSheet0ByCurrency)', () => {
+  const uahRow = { currency: 'UAH', settlement: 7.5, weakMultiBuy: 0, weakMultiSell: 7.87 }
+
+  it('FR-1: buyZeroAllowed → az E=0 „van érték”-ként bekerül (E: 0), a többi oszlop változatlan', () => {
+    expect(sheet0RowToValues(uahRow, { buyZeroAllowed: true })).toEqual({ A: 7.5, E: 0, F: 7.87 })
+  })
+
+  it('FR-1: sellZeroAllowed → az F=0 bekerül (F: 0); az E pozitív marad', () => {
+    expect(
+      sheet0RowToValues(
+        { currency: 'CZK', weakMultiBuy: 15.2, weakMultiSell: 0 },
+        { sellZeroAllowed: true },
+      ),
+    ).toEqual({ E: 15.2, F: 0 })
+  })
+
+  it('FR-1: mindkét irány engedélyezve → E: 0 és F: 0 is bekerül', () => {
+    expect(
+      sheet0RowToValues(
+        { currency: 'XXX', weakMultiBuy: 0, weakMultiSell: 0 },
+        { buyZeroAllowed: true, sellZeroAllowed: true },
+      ),
+    ).toEqual({ E: 0, F: 0 })
+  })
+
+  it('FR-12 guard: policy nélkül / false-szal az FK10 viselkedés változatlan — a 0 kimarad', () => {
+    expect(sheet0RowToValues(uahRow)).toEqual({ A: 7.5, F: 7.87 })
+    expect(sheet0RowToValues(uahRow, {})).toEqual({ A: 7.5, F: 7.87 })
+    expect(sheet0RowToValues(uahRow, { buyZeroAllowed: false })).toEqual({ A: 7.5, F: 7.87 })
+    expect(sheet0RowToValues(uahRow, { buyZeroAllowed: null })).toEqual({ A: 7.5, F: 7.87 })
+  })
+
+  it('FR-1: az engedély IRÁNY-specifikus — csak sellZeroAllowed mellett az E=0 továbbra is kimarad', () => {
+    expect(sheet0RowToValues(uahRow, { sellZeroAllowed: true })).toEqual({ A: 7.5, F: 7.87 })
+  })
+
+  it('FR-1: az engedély csak a TÉNYLEGES 0-ra vonatkozik — negatív / nem-véges E továbbra is kimarad', () => {
+    expect(
+      sheet0RowToValues({ currency: 'UAH', weakMultiBuy: -1 }, { buyZeroAllowed: true }),
+    ).toEqual({})
+    expect(
+      sheet0RowToValues({ currency: 'UAH', weakMultiBuy: NaN }, { buyZeroAllowed: true }),
+    ).toEqual({})
+    expect(
+      sheet0RowToValues({ currency: 'UAH', weakMultiSell: Infinity }, { sellZeroAllowed: true }),
+    ).toEqual({})
+  })
+
+  it('FR-1: az engedély csak az E/F (vétel/eladás) oszlopokra hat — A/B/C/G/H/I 0-ja továbbra is kimarad', () => {
+    expect(
+      sheet0RowToValues(
+        {
+          currency: 'UAH',
+          settlement: 0,
+          otp: 0,
+          helper: 0,
+          crossSettlement: 0,
+          crossRate: 0,
+          wholesale: 0,
+        },
+        { buyZeroAllowed: true, sellZeroAllowed: true },
+      ),
+    ).toEqual({})
+  })
+
+  it('FR-1: loadSheet0ByCurrency a valutakód → policy térképet soronként alkalmazza', () => {
+    const s = memStorage()
+    s.setItem(
+      'arfolyamkeszito.mainSheet.v1',
+      JSON.stringify([
+        { currency: 'uah', weakMultiBuy: 0, weakMultiSell: 7.87 },
+        { currency: 'EUR', weakMultiBuy: 0, weakMultiSell: 405 },
+      ]),
+    )
+    const policies = new Map([['UAH', { buyZeroAllowed: true }]])
+
+    const map = loadSheet0ByCurrency(s, policies)
+
+    expect(map.get('UAH')).toEqual({ E: 0, F: 7.87 })
+    // EUR-ra nincs policy → FK10: az E=0 kimarad
+    expect(map.get('EUR')).toEqual({ F: 405 })
+  })
+})

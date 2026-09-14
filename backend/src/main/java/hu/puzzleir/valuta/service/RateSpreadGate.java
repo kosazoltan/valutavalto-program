@@ -23,7 +23,48 @@ public final class RateSpreadGate {
 
     private static final BigDecimal TWO = new BigDecimal("2");
 
+    /**
+     * A publikált (exchange_rate.base_buy_rate / base_sell_rate, numeric(12,4)) árfolyam tárolt
+     * skálája. Minden „nulla-e" döntés (FK13 policy, spread-kapu kihagyás) ERRE a kerekített
+     * értékre fut, nem a nyers bemenetre — különben egy 0,00001 nyers érték nem-nullaként
+     * csúszik át, majd 0,0000-ként tárolódik (Codex PR #1767 HIGH: kerekítési megkerülés).
+     */
+    public static final int STORED_SCALE = 4;
+
     private RateSpreadGate() {
+    }
+
+    /** A tárolt skálára kerekített érték (HALF_UP, a mergeRate-tel azonos); null → null. */
+    public static BigDecimal toStoredScale(BigDecimal value) {
+        return value == null ? null : value.setScale(STORED_SCALE, RoundingMode.HALF_UP);
+    }
+
+    /** Igaz, ha az érték a TÁROLT skálán nulla (nyers 0,00001 → 0,0000 → igaz). */
+    public static boolean isZeroWhenStored(BigDecimal value) {
+        return value != null && toStoredScale(value).signum() == 0;
+    }
+
+    /**
+     * FK13 (FR-7) — irány-tudatos spread-kapu: ha a valután az adott irányra a 0 engedélyezett
+     * ÉS az a ráta ténylegesen 0 (egyoldalú valuta), a relatív spread nem értelmezhető, ezért a
+     * spread-ellenőrzés arra a bejegyzésre kihagyandó (különben hamis "100%-os eltérés").
+     *
+     * <p>A kihagyás CSAK a ténylegesen 0 értékű, engedélyezett oldalra vonatkozik: pozitív, túl
+     * széles spread a flagek mellett is elutasítva marad (a flag nem lazítja a normál 5%-os sávot).</p>
+     */
+    public static void enforce(BigDecimal buyRate, BigDecimal sellRate, BigDecimal officialRate, Long currencyId,
+                               boolean buyZeroAllowed, boolean sellZeroAllowed) {
+        if (buyRate == null || sellRate == null) {
+            return;
+        }
+        // A „nulla" döntés a TÁROLT (4 tizedes) értéken — a nyers 0,00001 is nullaként tárolódik.
+        boolean allowedZeroBuy = buyZeroAllowed && isZeroWhenStored(buyRate);
+        boolean allowedZeroSell = sellZeroAllowed && isZeroWhenStored(sellRate);
+        if (allowedZeroBuy || allowedZeroSell) {
+            // Egyoldalú (sell-only / buy-only) valuta: nincs értelmezhető relatív spread.
+            return;
+        }
+        enforce(toStoredScale(buyRate), toStoredScale(sellRate), officialRate, currencyId);
     }
 
     /**
