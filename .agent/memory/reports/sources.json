@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T18:19:29.753Z",
+  "generated_at": "2026-09-14T18:40:20.345Z",
   "source_count": 1107,
   "sources": [
     {
@@ -12923,7 +12923,7 @@
     },
     {
       "path": "vault/sessions/handoff-2026-09-12-fkh067-arfolyam-ttl-nem-blokkolo.md",
-      "sha256": "6185d028badf504dcfaf6d964f27cd01b59a90dd6642bf4d1734adba543f6061",
+      "sha256": "0f3a6ef6cfd67416b9f7e8e2c1b2233612ce8298aa020cf9dd708fa4f7586c81",
       "type": "medium-term-episodic",
       "areas": [
         "arfolyam",
@@ -12942,7 +12942,7 @@
     },
     {
       "path": "vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md",
-      "sha256": "e646a35d23327758e55203aa68765e2895d302b792e45428d440a83526c5718c",
+      "sha256": "673d13bb6d6e93b70e320cfe0cbdb3317488ffb72549ea6fd857f5bc1a9ed88a",
       "type": "medium-term-episodic",
       "areas": [
         "database"

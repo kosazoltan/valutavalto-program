@@ -1,4 +1,4 @@
-generated_at: 2026-09-14T18:19:29.753Z
+generated_at: 2026-09-14T18:40:20.345Z
 schema_version: 1
 source_count: 1107
 short_term:
@@ -1665,7 +1665,7 @@ medium_term:
     title: "Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking"
     type: medium-term-episodic
     path: vault/sessions/handoff-2026-09-12-fkh067-arfolyam-ttl-nem-blokkolo.md
-    sha256: 6185d028badf504dcfaf6d964f27cd01b59a90dd6642bf4d1734adba543f6061
+    sha256: 0f3a6ef6cfd67416b9f7e8e2c1b2233612ce8298aa020cf9dd708fa4f7586c81
     summary: "# Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking Date: 2026-09-12 · PR #1753 merged → main `b29c752e` · prod deploy verified ## What shipped A stale exchange rate (720h TTL) no longer blocks the booking of transactions recorded on the client AFTER `TTL_NONBLOCKING_CUTOFF`; everything recorded before it keeps the blocking rule. - `penztar-client/electron/sync-engine.ts`: `clientCreatedAt` fr"
     areas: [arfolyam, database, deploy, penztar]
     keywords: [handoff, fkh, 067, spec, doc, 063, exchange, rate, ttl, made, non, blocking]
@@ -1681,7 +1681,7 @@ medium_term:
     title: "Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)"
     type: medium-term-episodic
     path: vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md
-    sha256: e646a35d23327758e55203aa68765e2895d302b792e45428d440a83526c5718c
+    sha256: 673d13bb6d6e93b70e320cfe0cbdb3317488ffb72549ea6fd857f5bc1a9ed88a
     summary: "# Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **MERGED** as PR #1756 → main `10a8122f` (2026-09-13). Pipeline PASS from HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, base `0df543d7` / v2.28.113. ## What landed HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `HungarianRounding."
     areas: [database]
     keywords: [handoff, fkh, 070, handling_fee, expected, source, 2026, status, merged, 1756, main, 10a8122f]
