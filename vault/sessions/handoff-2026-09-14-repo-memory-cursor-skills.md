@@ -23,13 +23,28 @@ Docs and generated artifacts only — no application code, no version bump, no i
 4. "The ticket governs" could have overridden business rules → scoped to stale repo facts only;
    a ticket may never override an EXCMD/felmérési rule (money, day close, AML, KKTG, rounding).
 
-## Follow-up (#1770)
+## Follow-up (#1770 → superseded by #1771)
 
-After merge, `memory:stale-check` reported `changed: 2`. Cause: `core.autocrlf=true` — the two new
-files were hashed from LF bytes pre-commit, every other source from the CRLF working tree.
-Rebuilt on merged main: 1107 sources, `ok=true`, semantic diff = exactly those 2 sha256 values.
+After merge, `memory:stale-check` reported `changed: 2`. The first attempt (#1770) only
+regenerated the two hashes. Both reviewers correctly rejected that: `readText()` returned the
+working tree verbatim and `sha()` hashed it, while `.gitattributes` leaves `*.md` as `text=auto`
+with no fixed `eol` — so the baseline was specific to the generating checkout and would have
+flipped the failure to LF checkouts (Linux/CI).
 
-**Rule:** `git add` new sources FIRST, then `memory:build`.
+Root-cause fix in #1771: `readText()` normalizes CRLF pairs to LF before any derived value
+(sha256, bytes, summary, keywords) is computed; a lone CR is left untouched. Whole bundle
+rebuilt: 1108 sources, `ok=true`.
+
+Proof — `scripts/__tests__/eol-proof.mjs` flips one tracked source between both checkout forms
+and re-runs `stale-check`:
+
+```
+RED  (fix stashed):     CRLF PASS / LF FAIL changed=1   exit 1
+GREEN (fix + rebuild):  CRLF PASS / LF PASS             exit 0
+```
+
+**Rule:** fix the hashing, not the hashes. Regenerating a baseline only moves the failure to the
+other platform.
 
 ## Verification
 
