@@ -12,8 +12,9 @@ Load on every change under `penztar-client/electron/**`,
 `kozponti-client/electron/**`, `packages/**`, any "extract to shared"
 request, or a failing `npm run check:platform-boundaries`.
 
-Hermes long form (read if this file is not enough):
-`C:\Users\Kósa Zoltán\AppData\Local\hermes\skills\software-development\valutavalto-platform-architecture\SKILL.md`
+Hermes long form (read if this file is not enough), when Hermes is
+installed — machine-local path, resolve from the env var:
+`$HERMES_HOME/skills/software-development/valutavalto-platform-architecture/SKILL.md`
 
 ## Binding rule (CI-blocking)
 

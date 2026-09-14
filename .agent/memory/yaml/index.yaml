@@ -1,4 +1,4 @@
-generated_at: 2026-09-14T17:51:04.629Z
+generated_at: 2026-09-14T18:19:29.753Z
 schema_version: 1
 source_count: 1107
 short_term:
@@ -1681,10 +1681,10 @@ medium_term:
     title: "Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)"
     type: medium-term-episodic
     path: vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md
-    sha256: 7954a5cb45044c7b41ebde8ace7504c65aef6e66638f20d326fdc7955b2fcc93
-    summary: "# Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **pipeline PASS**, merge **not** done (user). HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, worktree `D:/repo/wt-fkh070`. Base `0df543d7` / v2.28.113. ## What landed (unmerged) HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `Hunga"
-    areas: [database, deploy]
-    keywords: [handoff, fkh, 070, handling_fee, expected, source, 2026, status, pipeline, pass, merge, not]
+    sha256: e646a35d23327758e55203aa68765e2895d302b792e45428d440a83526c5718c
+    summary: "# Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **MERGED** as PR #1756 → main `10a8122f` (2026-09-13). Pipeline PASS from HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, base `0df543d7` / v2.28.113. ## What landed HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `HungarianRounding."
+    areas: [database]
+    keywords: [handoff, fkh, 070, handling_fee, expected, source, 2026, status, merged, 1756, main, 10a8122f]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

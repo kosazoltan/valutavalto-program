@@ -11,8 +11,9 @@ description: >-
 # Valutaváltó — FK/FKH spec-driven delivery
 
 Specs arrive as `FK-0NN_*.md` / `FKH-0NN_*.md` (often under Downloads).
-Hermes long form:
-`C:\Users\Kósa Zoltán\AppData\Local\hermes\skills\software-development\valutavalto-spec-driven-feature-delivery\SKILL.md`
+The Hermes long form of this skill, when Hermes is installed, is at
+`$HERMES_HOME/skills/software-development/valutavalto-spec-driven-feature-delivery/SKILL.md`
+(machine-local path — resolve from the env var, do not hard-code it).
 
 Gold-standard intake (copy this shape):
 `.hermes/tickets/2026-09-13-fkh070-kezelesi-dij-cimletezes-elvart-forras.md`
@@ -33,7 +34,14 @@ In one batch: `git pull --ff-only` (clean tree) · `git log -1` ·
 | `kozponti-client/src/pages/...` | **false** — screens live in `frontend-react/src/pages/` |
 | `com.puzzleir...` | dual package; live code is `hu.puzzleir` |
 
-Where ticket and spec disagree, **the ticket governs**. Keep a
+Where ticket and spec **documents** disagree on repo facts (file paths,
+version numbers, migration slots), the ticket governs. This is a
+tie-break on stale documentation, **not** authority over business rules:
+a ticket never overrides a business or legal requirement fixed in the
+EXCMD / felmérési specification (money handling, day close, AML, KKTG
+separation, rounding). If a ticket contradicts one of those, stop and
+either get the change recorded as an explicit specification amendment or
+ask the user — do not implement the ticket silently. Keep a
 claim-correction ledger (C1, C2…).
 
 ## Mandatory memory lookup (after spec, before code)

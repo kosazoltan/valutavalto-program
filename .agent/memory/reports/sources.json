@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T17:51:04.629Z",
+  "generated_at": "2026-09-14T18:19:29.753Z",
   "source_count": 1107,
   "sources": [
     {
@@ -12942,11 +12942,10 @@
     },
     {
       "path": "vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md",
-      "sha256": "7954a5cb45044c7b41ebde8ace7504c65aef6e66638f20d326fdc7955b2fcc93",
+      "sha256": "e646a35d23327758e55203aa68765e2895d302b792e45428d440a83526c5718c",
       "type": "medium-term-episodic",
       "areas": [
-        "database",
-        "deploy"
+        "database"
       ]
     },
     {

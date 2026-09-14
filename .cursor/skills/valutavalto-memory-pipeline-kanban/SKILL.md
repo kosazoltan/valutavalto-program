@@ -15,11 +15,19 @@ vector + obsidian). **Do not** create a parallel `memory/` tree.
 
 ## 1. Kanban — ticket first
 
-```
-node --no-warnings "C:\Users\Kósa Zoltán\AppData\Local\hermes\skills\software-development\hermes-kanban-workflow\scripts\kanban.mjs"
+The board tool ships with Hermes, not with this repo, so its path is
+**machine-local and configurable**. Resolve it from the environment
+rather than copying one developer's path:
+
+```bash
+# HERMES_HOME defaults to the per-user Hermes install
+KANBAN="${HERMES_HOME:?set HERMES_HOME to your Hermes install}/skills/software-development/hermes-kanban-workflow/scripts/kanban.mjs"
+node --no-warnings "$KANBAN" list
 ```
 
-Run from `D:\repo\valutavalto-program` (worktrees have no `.hermes/`).
+Run it from the repository root (`git rev-parse --show-toplevel`);
+worktrees have no `.hermes/`. If Hermes is not installed, this section
+does not apply — use GitHub issues directly and say so in the report.
 
 `add` → `start` → work → `review` + evidence note → `done`.
 Illegal transitions exit 1. Opening the row after the work is a

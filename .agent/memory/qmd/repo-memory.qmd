@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-14T17:51:04.629Z
+generated: 2026-09-14T18:19:29.753Z
 format: gfm
 ---
 
@@ -242,7 +242,7 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
 
 - **Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md`
-  - summary: # Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **pipeline PASS**, merge **not** done (user). HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, worktree `D:/repo/wt-fkh070`. Base `0df543d7` / v2.28.113. ## What landed (unmerged) HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `Hunga
+  - summary: # Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **MERGED** as PR #1756 → main `10a8122f` (2026-09-13). Pipeline PASS from HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, base `0df543d7` / v2.28.113. ## What landed HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `HungarianRounding.
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
