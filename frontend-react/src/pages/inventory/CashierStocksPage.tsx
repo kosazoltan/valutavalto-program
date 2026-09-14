@@ -21,9 +21,12 @@ import {
 import { vaultTurnoverApi, type VaultTurnoverCurrencyRow } from '../../services/api/vault-turnover'
 // FKH-066 NFR-3: the page used to declare a LOCAL roundHuf doing plain Math.round, silently
 // shadowing the repo-wide 5 Ft HUF rounding invariant (utils/rounding.ts, equivalent to the
-// backend HungarianRounding.roundToFive). The turnover and fee columns are HUF money, so they
-// must follow that rule - importing the shared helper fixes the buy/sell columns as well.
+// backend HungarianRounding.roundToFive). The handling fee column is HUF money, so it must
+// follow that rule.
+// FKH-068: the buy/sell turnover columns are shown in CURRENCY UNITS (buyVolume/sellVolume),
+// consistent with the stock and rate columns, so they use the per-currency formatter instead.
 import { roundHuf } from '../../utils/rounding'
+import { formatCurrencyAmount } from '../../utils/currencyAmountFormat'
 import { logger } from '../../utils/logger'
 import { getErrorMessage } from '../../utils/errorHandling'
 import { safeArray } from '../../utils/safeArray'
@@ -57,8 +60,10 @@ interface VaultStockRow {
 }
 
 interface TurnoverSummary {
-  buyHuf: number
-  sellHuf: number
+  /** FKH-068: customer-facing BUY turnover in the row's OWN currency (not HUF). */
+  buyVolume: number
+  /** FKH-068: customer-facing SELL turnover in the row's OWN currency (not HUF). */
+  sellVolume: number
   /** FKH-066: handling fee collected from the customer, HUF. */
   fee: number
 }
@@ -189,6 +194,11 @@ export default function CashierStocksPage() {
       // BANK_WITHDRAW/BANK_DEPOSIT) described bank cash handling, which a cashier never performs
       // - they deal with the customer and the vault only, so that figure was simply the wrong
       // thing under the label "Forgalom".
+      // FKH-068: the buy/sell figures are taken in CURRENCY UNITS (buyVolume/sellVolume), a
+      // deliberate reversal of the FKH-066 HUF-equivalent choice - the stock and rate columns
+      // of this table (and the former Excel view) all work in currency units. The handling fee
+      // stays HUF (it is always charged in HUF). Only the field read changes; the aggregation is
+      // per currency already, so EUR is only ever added to EUR.
       // FK-040 kept: in full (head-vault) mode the upper table is hidden, so we skip the calls.
       if (isFull) {
         setTurnoverByBranch(new Map())
@@ -233,9 +243,13 @@ export default function CashierStocksPage() {
           const byCurrency = new Map<string, TurnoverSummary>()
           for (const row of rows) {
             if (!row.currencyCode) continue
-            const summary = byCurrency.get(row.currencyCode) ?? { buyHuf: 0, sellHuf: 0, fee: 0 }
-            summary.buyHuf += Number(row.buyHuf ?? 0)
-            summary.sellHuf += Number(row.sellHuf ?? 0)
+            const summary = byCurrency.get(row.currencyCode) ?? {
+              buyVolume: 0,
+              sellVolume: 0,
+              fee: 0,
+            }
+            summary.buyVolume += Number(row.buyVolume ?? 0)
+            summary.sellVolume += Number(row.sellVolume ?? 0)
             summary.fee += Number(row.fee ?? 0)
             byCurrency.set(row.currencyCode, summary)
           }
@@ -461,9 +475,13 @@ export default function CashierStocksPage() {
           for (const [currencyCode, summary] of branchTurnover.entries()) {
             // FKH-066 FR-5: the territory total sums every cash desk of the selection,
             // including the handling fee column.
-            const total = turnoverByCurrency.get(currencyCode) ?? { buyHuf: 0, sellHuf: 0, fee: 0 }
-            total.buyHuf += summary.buyHuf
-            total.sellHuf += summary.sellHuf
+            const total = turnoverByCurrency.get(currencyCode) ?? {
+              buyVolume: 0,
+              sellVolume: 0,
+              fee: 0,
+            }
+            total.buyVolume += summary.buyVolume
+            total.sellVolume += summary.sellVolume
             total.fee += summary.fee
             turnoverByCurrency.set(currencyCode, total)
           }
@@ -484,7 +502,7 @@ export default function CashierStocksPage() {
       .map((currencyCode) => ({
         currencyCode,
         stock: stockByCurrency.get(currencyCode) ?? 0,
-        turnover: turnoverByCurrency.get(currencyCode) ?? { buyHuf: 0, sellHuf: 0, fee: 0 },
+        turnover: turnoverByCurrency.get(currencyCode) ?? { buyVolume: 0, sellVolume: 0, fee: 0 },
         turnoverUnavailable,
         rate: ratesByCurrency.get(currencyCode),
       }))
@@ -736,7 +754,7 @@ export default function CashierStocksPage() {
                       >
                         {row.turnoverUnavailable
                           ? i18n.t('literals.forgalom-nem-elerheto')
-                          : roundHuf(row.turnover.buyHuf).toLocaleString('hu-HU')}
+                          : formatCurrencyAmount(row.turnover.buyVolume, row.currencyCode)}
                       </td>
                       <td
                         className={`px-2 py-1.5 text-right font-mono ${
@@ -746,7 +764,7 @@ export default function CashierStocksPage() {
                       >
                         {row.turnoverUnavailable
                           ? i18n.t('literals.forgalom-nem-elerheto')
-                          : roundHuf(row.turnover.sellHuf).toLocaleString('hu-HU')}
+                          : formatCurrencyAmount(row.turnover.sellVolume, row.currencyCode)}
                       </td>
                       <td
                         className={`px-2 py-1.5 text-right font-mono ${
