@@ -138,8 +138,12 @@ async function mockApis(page: Page, options: MockApiOptions = {}) {
     if (path.endsWith('/local-rate-maker/bootstrap') && method === 'GET') {
       return fulfillJson(route, { overview: bootstrapOverview, workgroups: [workgroup] })
     }
-    if (path.endsWith('/rate-creation/publish-group-rate') && method === 'POST') {
-      return fulfillJson(route, { acceptedRates: 1 })
+    // FK13 (2026-09-14, jóváhagyott tesztjavítás): rate-maker flavorban a publishGroupRate kliens a
+    // helyi árfolyamkészítő csomag-végpontjára POST-ol (exchange-rates.ts buildLocalRatePackage),
+    // NEM a /rate-creation/publish-group-rate-re — a RED-fázis rossz végpont-feltevését a valós
+    // végponton igazolt viselkedésre cseréltük; az üzleti asszertek változatlanok.
+    if (path.endsWith('/local-rate-maker/packages/publish') && method === 'POST') {
+      return fulfillJson(route, { accepted: true, acceptedRates: 1, serverPackageHash: 'fk13-e2e' })
     }
     if (path.endsWith('/local-rate-maker/sheet') && method === 'GET') {
       return route.fulfill({ status: 204 })
@@ -273,7 +277,7 @@ test('FK13: engedélyezett 0 eladás — nincs „Nincs érték” hiba, a szét
   // FR-3/FR-4: a szétküldés lefut, és a payload a 0 eladást explicit értékként viszi
   const publishRequest = page.waitForRequest(
     (request) =>
-      request.url().endsWith('/api/v1/rate-creation/publish-group-rate') &&
+      request.url().endsWith('/api/v1/local-rate-maker/packages/publish') &&
       request.method() === 'POST',
   )
   await page.getByRole('button', { name: 'ÁRFOLYAMOK SZÉTKÜLDÉSE' }).click()
