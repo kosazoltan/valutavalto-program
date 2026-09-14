@@ -291,18 +291,114 @@ describe('CashierStocksPage (FK-007/008)', () => {
     )
   })
 
-  it('FKH-066 FR-3: a Forgalom oszlopok a válasz buyHuf/sellHuf mezőjét mutatják', async () => {
-    // Reviewer finding: a swap or a zeroed render used to pass, because only the
-    // endpoint call and the fee cell were asserted.
+  // --- FKH-068: the turnover columns switch from HUF-equivalent to CURRENCY UNITS ---
+  // Deliberate spec reversal of FKH-066 FR-3 (which prescribed buyHuf/sellHuf): the stock and
+  // rate columns of the same table work in currency units, so the turnover must too.
+
+  it('FKH-068 FR-1: a Forgalom oszlopok a válasz buyVolume/sellVolume (valuta-egység) mezőjét mutatják, nem a HUF-egyenértéket', async () => {
+    // 100 EUR bought (34 205 HUF), 250.5 EUR sold (86 500 HUF). Distinct values so that a
+    // buy/sell swap or a fallback to the HUF field cannot pass.
     mocks.vaultTurnoverDaily.mockResolvedValue({
-      byCurrency: [{ currencyCode: 'EUR', buyHuf: 123000, sellHuf: 456000, fee: 0 }],
+      byCurrency: [
+        {
+          currencyCode: 'EUR',
+          buyVolume: 100,
+          sellVolume: 250.5,
+          buyHuf: 34205,
+          sellHuf: 86500,
+          fee: 0,
+        },
+      ],
     })
     render(<CashierStocksPage />)
 
     await waitFor(() =>
-      expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent('123 000'),
+      expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent('100,00'),
     )
-    expect(screen.getByTestId('cashier-stock-sell-EUR')).toHaveTextContent('456 000')
+    expect(screen.getByTestId('cashier-stock-sell-EUR')).toHaveTextContent('250,50')
+    expect(screen.getByTestId('cashier-stock-buy-EUR')).not.toHaveTextContent(/34[\s ]?205/)
+    expect(screen.getByTestId('cashier-stock-sell-EUR')).not.toHaveTextContent(/86[\s ]?500/)
+  })
+
+  it('FKH-068 FR-2: JPY forgalom 0 tizedesjeggyel jelenik meg (pénznemenkénti formázás, a Készlet oszloppal konzisztensen)', async () => {
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      byCurrency: [{ currencyCode: 'JPY', buyVolume: 12345.4, sellVolume: 6789.6, fee: 0 }],
+    })
+    render(<CashierStocksPage />)
+
+    // hu-HU grouping: "12 345" (no decimals, NOT "12 345,40"); JPY is not 5-rounded (HUF-only rule).
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-buy-JPY')).toHaveTextContent(/^12[\s ]?345$/),
+    )
+    expect(screen.getByTestId('cashier-stock-sell-JPY')).toHaveTextContent(/^6[\s ]?790$/)
+  })
+
+  it('FKH-068 FR-3: a Kezelési díj oszlop változatlanul HUF-ban, 5 Ft-ra kerekítve marad a valuta-egységes Forgalom mellett', async () => {
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      byCurrency: [{ currencyCode: 'EUR', buyVolume: 100, sellVolume: 50, fee: 4503 }],
+    })
+    render(<CashierStocksPage />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent('100,00'),
+    )
+    // The fee is HUF regardless of the row currency: roundHuf (4503 -> 4505), no decimals.
+    expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent(/^4[\s ]?505$/)
+  })
+
+  it('FKH-068 FR-4: "Körzet összesen" a pénztárak valuta-egységes forgalmát devizánként adja össze (EUR az EUR-hoz)', async () => {
+    const SECOND = {
+      id: 'branch-szekszard',
+      name: 'Szekszard Tesco',
+      region: 'SZEKSZARD',
+      isVault: false,
+    }
+    mocks.branchListActive.mockResolvedValue([...BRANCHES, SECOND])
+    mocks.branchListMyTerritory.mockResolvedValue([...BRANCHES, SECOND])
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/inventory/stock')
+        return Promise.resolve({
+          data: [
+            ...STOCK,
+            {
+              id: 's5',
+              branchId: 'branch-szekszard',
+              branchName: 'Szekszard Tesco',
+              currencyCode: 'EUR',
+              currentBalance: 500,
+            },
+          ],
+        })
+      return Promise.resolve({ data: [] })
+    })
+    // Two desks: EUR 100 + 250.25 = 350.25; USD only at the second desk. HUF fields are
+    // deliberately non-additive in currency terms so a HUF-based sum would not match.
+    mocks.vaultTurnoverDaily.mockImplementation((branchId: string) => {
+      if (branchId === 'branch-baja')
+        return Promise.resolve({
+          byCurrency: [
+            { currencyCode: 'EUR', buyVolume: 100, sellVolume: 10, buyHuf: 34205, fee: 100 },
+          ],
+        })
+      if (branchId === 'branch-szekszard')
+        return Promise.resolve({
+          byCurrency: [
+            { currencyCode: 'EUR', buyVolume: 250.25, sellVolume: 20, buyHuf: 85610, fee: 200 },
+            { currencyCode: 'USD', buyVolume: 40, sellVolume: 0, buyHuf: 15000, fee: 0 },
+          ],
+        })
+      return Promise.resolve({ byCurrency: [] })
+    })
+    render(<CashierStocksPage />) // default selection: 'ALL' = Körzet összesen
+
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent(/^350,25$/),
+    )
+    expect(screen.getByTestId('cashier-stock-sell-EUR')).toHaveTextContent(/^30,00$/)
+    // USD is not folded into EUR: it keeps its own row with its own figure.
+    expect(screen.getByTestId('cashier-stock-buy-USD')).toHaveTextContent(/^40,00$/)
+    // FKH-066 FR-5 kept: the fee column still sums across the desks, in HUF.
+    expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent(/^300$/)
   })
 
   it('FKH-066 NFR-1: bukó forgalom-lekérdezés NEM jelenhet meg nullaként, a cella ismeretlent jelöl', async () => {
