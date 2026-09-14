@@ -176,9 +176,13 @@ public class AdminCurrencyService {
         currency.setSellZeroAllowed(sellZeroAllowed);
         Currency saved = currencyRepository.save(currency);
         writeAudit(saved, "ZERO_RATE_POLICY", oldSnapshot, saved, note);
-        log.info("AdminCurrency: ZERO_RATE_POLICY code={} buy0={}->{} sell0={}->{} workerId={} note={}",
+        // CodeQL log-injection (PR #1767): a felhasználói `note` tartalma NEM kerül logba (a
+        // sanitize-helpert a CodeQL nem ismeri el barrierként) — az indoklás az audit-sorban
+        // (currency_audit_log.note) olvasható; itt csak a jelenlétét/hosszát naplózzuk. A valutakód
+        // a DB-ből jön (nem request-input), és a szerver-oldali uppercase+trim szabály alá esik.
+        log.info("AdminCurrency: ZERO_RATE_POLICY code={} buy0={}->{} sell0={}->{} workerId={} noteLength={}",
             sanitizeForLog(currency.getCode()), currentBuy, buyZeroAllowed, currentSell, sellZeroAllowed,
-            safeWorkerId(), sanitizeForLog(note));
+            safeWorkerId(), note == null ? 0 : note.length());
         return saved;
     }
 
