@@ -1,4 +1,4 @@
-generated_at: 2026-09-14T19:17:24.253Z
+generated_at: 2026-09-14T19:47:10.187Z
 schema_version: 1
 source_count: 1108
 short_term:
@@ -1677,13 +1677,13 @@ medium_term:
     areas: [database]
     keywords: [handoff, fkh, 070, handling_fee, expected, source, 2026, status, merged, 1756, main, 10a8122f]
   - id: e32ea38c731870e2
-    title: "Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1770)"
+    title: "Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1771)"
     type: medium-term-episodic
     path: vault/sessions/handoff-2026-09-14-repo-memory-cursor-skills.md
-    sha256: 7ebf8f1c93fdd40f2577e775f091ca700d81b5cb5e206f7b30da0fc79e39852e
-    summary: "# Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1770) Base `a75601a4` (FK13). Merged: **#1768 → main `4593db3f`**. Follow-up **#1770** open at write time. ## What shipped (#1768) Docs and generated artifacts only — no application code, no version bump, no installer. - `.agent/memory/*` regenerated on current main: **1107 sources**, `memory:stale-check ok=true`. - Three `vault/sessions` handoffs"
+    sha256: 789a5e3c9b7f4f830d36096a11ad08a652e97c2aaadf27de40efb5bb1af20320
+    summary: "# Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1771) Base `a75601a4` (FK13). Merged: **#1768 → main `4593db3f`**. Follow-up **#1771** (this PR); #1770 closed as superseded. ## What shipped (#1768) Docs and generated artifacts only — no application code, no version bump, no installer. - `.agent/memory/*` regenerated on current main: **1107 sources**, `memory:stale-check ok=true` *on this working"
     areas: [penztar, specifikacio]
-    keywords: [handoff, 2026, repo, memory, rebuild, cursor, skills, 1768, 1770, base, a75601a4, fk13]
+    keywords: [handoff, 2026, repo, memory, rebuild, cursor, skills, 1768, 1771, base, a75601a4, fk13]
   - id: 8e689c47bb831e58
     title: "Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult"
     type: medium-term-episodic

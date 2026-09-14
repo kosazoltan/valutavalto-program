@@ -1,6 +1,6 @@
 ---
 title: Repo Memory Mirror
-generated: 2026-09-14T19:17:24.253Z
+generated: 2026-09-14T19:47:10.187Z
 ---
 
 # Repo Memory Mirror
@@ -9,7 +9,7 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 
 ## Layer Counts
 - sources: 1108
-- generated: 2026-09-14T19:17:24.253Z
+- generated: 2026-09-14T19:47:10.187Z
 
 ## Sources
 - [[Legacy Delphi modul-terkep (szimbolum-index)]] — `.agent/memory/legacy/legacy-module-map.md` (long-term-legacy)
@@ -1117,6 +1117,6 @@ Ez a fajl a repo-lokalis memoria Obsidian-kompatibilis tukre.
 - [[Handoff — FKH-067 (spec doc FKH-063): exchange-rate TTL made non-blocking]] — `vault/sessions/handoff-2026-09-12-fkh067-arfolyam-ttl-nem-blokkolo.md` (medium-term-episodic)
 - [[Handoff — 2026-09-13 — Cursor onboarding + pipeline bookkeeping]] — `vault/sessions/handoff-2026-09-13-cursor-onboarding-pipeline-audit.md` (medium-term-episodic)
 - [[Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13)]] — `vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md` (medium-term-episodic)
-- [[Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1770)]] — `vault/sessions/handoff-2026-09-14-repo-memory-cursor-skills.md` (medium-term-episodic)
+- [[Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1771)]] — `vault/sessions/handoff-2026-09-14-repo-memory-cursor-skills.md` (medium-term-episodic)
 - [[Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult]] — `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md` (medium-term-episodic)
 - [[Release-állapot archívum — CLAUDE.md-ből kiemelve (2026-05-27 karcsúsításkor)]] — `vault/sessions/release-history-archive-through-2.27.25.md` (medium-term-episodic)

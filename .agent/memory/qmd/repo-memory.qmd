@@ -1,6 +1,6 @@
 ---
 title: Repo multi-layer memory index
-generated: 2026-09-14T19:17:24.253Z
+generated: 2026-09-14T19:47:10.187Z
 format: gfm
 ---
 
@@ -240,9 +240,9 @@ Ez a fajl automatikusan generalodik a repo es az Obsidian vault ellenorzott forr
   - source: `vault/sessions/handoff-2026-09-13-fkh070-kezelesi-dij-elvart.md`
   - summary: # Handoff — FKH-070 HANDLING_FEE Expected source (2026-09-13) Status: **MERGED** as PR #1756 → main `10a8122f` (2026-09-13). Pipeline PASS from HEAD `6756fe69` on `pipeline/20260913-fkh070-handling-fee-expected`, base `0df543d7` / v2.28.113. ## What landed HANDLING_FEE self-check Expected = live `SUM(Transaction.handlingFee)` for company+branch+date, COMPLETED + financialEffective + buy∪sell, then `HungarianRounding.
 
-- **Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1770)** (medium-term-episodic)
+- **Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1771)** (medium-term-episodic)
   - source: `vault/sessions/handoff-2026-09-14-repo-memory-cursor-skills.md`
-  - summary: # Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1770) Base `a75601a4` (FK13). Merged: **#1768 → main `4593db3f`**. Follow-up **#1770** open at write time. ## What shipped (#1768) Docs and generated artifacts only — no application code, no version bump, no installer. - `.agent/memory/*` regenerated on current main: **1107 sources**, `memory:stale-check ok=true`. - Three `vault/sessions` handoffs
+  - summary: # Handoff — 2026-09-14 — repo memory rebuild + Cursor skills (#1768, #1771) Base `a75601a4` (FK13). Merged: **#1768 → main `4593db3f`**. Follow-up **#1771** (this PR); #1770 closed as superseded. ## What shipped (#1768) Docs and generated artifacts only — no application code, no version bump, no installer. - `.agent/memory/*` regenerated on current main: **1107 sources**, `memory:stale-check ok=true` *on this working
 
 - **Incidens-jegyzet — 2026-06-15 — Prod DB-topológia: a backend a Neont szolgálja, a lokális Hetzner 'valuta' elavult** (medium-term-episodic)
   - source: `vault/sessions/incident-2026-06-15-prod-db-topology-neon-primary-local-stale.md`
