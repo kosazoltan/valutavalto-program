@@ -105,6 +105,11 @@ export default function CashierStocksPage() {
   const [turnoverByBranch, setTurnoverByBranch] = useState<
     Map<string, Map<string, TurnoverSummary>>
   >(new Map())
+  // FKH-072: HUF-row turnover is the branch's forint total (totalBuy/totalSell),
+  // not turnoverByCurrency.get('HUF') which is always empty after FKH-068.
+  const [hufTurnoverByBranch, setHufTurnoverByBranch] = useState<
+    Map<string, { totalBuy: number; totalSell: number }>
+  >(new Map())
   // FKH-066: cash desks whose turnover lookup failed — their rows and the territory
   // total must show "unavailable", never a zero that looks like real money.
   const [turnoverFailedBranchIds, setTurnoverFailedBranchIds] = useState<Set<string>>(
@@ -202,6 +207,7 @@ export default function CashierStocksPage() {
       // FK-040 kept: in full (head-vault) mode the upper table is hidden, so we skip the calls.
       if (isFull) {
         setTurnoverByBranch(new Map())
+        setHufTurnoverByBranch(new Map())
       } else {
         const branchIds = Array.from(
           new Set(
@@ -212,9 +218,20 @@ export default function CashierStocksPage() {
           branchIds.map(async (branchId) => {
             try {
               const report = await vaultTurnoverApi.daily(branchId, today)
+              const rows = safeArray<VaultTurnoverCurrencyRow>(report.byCurrency)
+              const totalBuy =
+                report.totalBuy != null
+                  ? Number(report.totalBuy)
+                  : rows.reduce((sum, row) => sum + Number(row.buyHuf ?? 0), 0)
+              const totalSell =
+                report.totalSell != null
+                  ? Number(report.totalSell)
+                  : rows.reduce((sum, row) => sum + Number(row.sellHuf ?? 0), 0)
               return {
                 branchId,
-                rows: safeArray<VaultTurnoverCurrencyRow>(report.byCurrency),
+                rows,
+                totalBuy,
+                totalSell,
               }
             } catch (err) {
               // Rethrow with the branch attached: the caller must know WHICH desk is
@@ -228,6 +245,7 @@ export default function CashierStocksPage() {
         )
         const failedBranchIds = new Set<string>()
         const nextTurnover = new Map<string, Map<string, TurnoverSummary>>()
+        const nextHufTurnover = new Map<string, { totalBuy: number; totalSell: number }>()
         for (const result of turnoverResults) {
           if (result.status === 'rejected') {
             // NFR-1: a failing branch must not break the view; the others still render.
@@ -239,7 +257,7 @@ export default function CashierStocksPage() {
             if (failedId) failedBranchIds.add(failedId)
             continue
           }
-          const { branchId, rows } = result.value
+          const { branchId, rows, totalBuy, totalSell } = result.value
           const byCurrency = new Map<string, TurnoverSummary>()
           for (const row of rows) {
             if (!row.currencyCode) continue
@@ -254,8 +272,10 @@ export default function CashierStocksPage() {
             byCurrency.set(row.currencyCode, summary)
           }
           nextTurnover.set(branchId, byCurrency)
+          nextHufTurnover.set(branchId, { totalBuy, totalSell })
         }
         setTurnoverByBranch(nextTurnover)
+        setHufTurnoverByBranch(nextHufTurnover)
         setTurnoverFailedBranchIds(failedBranchIds)
       }
       setLastRefreshAt(new Date())
@@ -456,6 +476,8 @@ export default function CashierStocksPage() {
 
     const stockByCurrency = new Map<string, number>()
     const turnoverByCurrency = new Map<string, TurnoverSummary>()
+    let hufBuy = 0
+    let hufSell = 0
     // A single failing cash desk makes the WHOLE selection's turnover incomplete:
     // reporting a partial sum as if it were the territory total would be a money lie.
     let turnoverUnavailable = false
@@ -470,6 +492,11 @@ export default function CashierStocksPage() {
       }
       if (branchId) {
         if (turnoverFailedBranchIds.has(branchId)) turnoverUnavailable = true
+        const huf = hufTurnoverByBranch.get(branchId)
+        if (huf) {
+          hufBuy += huf.totalBuy
+          hufSell += huf.totalSell
+        }
         const branchTurnover = turnoverByBranch.get(branchId)
         if (branchTurnover) {
           for (const [currencyCode, summary] of branchTurnover.entries()) {
@@ -499,13 +526,23 @@ export default function CashierStocksPage() {
     currencies.forEach((currency, index) => order.set(currency.code, index))
     return Array.from(codes)
       .sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999) || a.localeCompare(b))
-      .map((currencyCode) => ({
-        currencyCode,
-        stock: stockByCurrency.get(currencyCode) ?? 0,
-        turnover: turnoverByCurrency.get(currencyCode) ?? { buyVolume: 0, sellVolume: 0, fee: 0 },
-        turnoverUnavailable,
-        rate: ratesByCurrency.get(currencyCode),
-      }))
+      .map((currencyCode) => {
+        const currencyTurnover = turnoverByCurrency.get(currencyCode) ?? {
+          buyVolume: 0,
+          sellVolume: 0,
+          fee: 0,
+        }
+        return {
+          currencyCode,
+          stock: stockByCurrency.get(currencyCode) ?? 0,
+          turnover:
+            currencyCode === 'HUF'
+              ? { buyVolume: hufBuy, sellVolume: hufSell, fee: currencyTurnover.fee }
+              : currencyTurnover,
+          turnoverUnavailable,
+          rate: ratesByCurrency.get(currencyCode),
+        }
+      })
   }, [
     branchGroups,
     branchMeta,
@@ -513,6 +550,7 @@ export default function CashierStocksPage() {
     ratesByCurrency,
     selectedBranchId,
     turnoverByBranch,
+    hufTurnoverByBranch,
     turnoverFailedBranchIds,
   ])
 
@@ -735,11 +773,18 @@ export default function CashierStocksPage() {
                 </tr>
               </thead>
               <tbody>
-                {detailedRows.map((row) => {
+                {detailedRows.map((row, idx) => {
                   const expired = row.rate?.validDate ? row.rate.validDate < todayLocalIso() : false
                   const rateClass = expired ? 'text-amber-700 font-semibold' : 'text-secondary-900'
+                  const formatTurnover = (volume: number) =>
+                    row.currencyCode === 'HUF'
+                      ? roundHuf(volume).toLocaleString('hu-HU')
+                      : formatCurrencyAmount(volume, row.currencyCode)
                   return (
-                    <tr key={row.currencyCode} className="border-b border-gray-100">
+                    <tr
+                      key={row.currencyCode}
+                      className={`${idx % 2 === 1 ? 'bg-gray-50' : ''} border-b border-gray-100`}
+                    >
                       <td className="px-2 py-1.5 font-mono font-semibold">{row.currencyCode}</td>
                       <td className="px-2 py-1.5 text-right font-mono">
                         {formatBalance(row.stock, row.currencyCode)}
@@ -754,7 +799,7 @@ export default function CashierStocksPage() {
                       >
                         {row.turnoverUnavailable
                           ? i18n.t('literals.forgalom-nem-elerheto')
-                          : formatCurrencyAmount(row.turnover.buyVolume, row.currencyCode)}
+                          : formatTurnover(row.turnover.buyVolume)}
                       </td>
                       <td
                         className={`px-2 py-1.5 text-right font-mono ${
@@ -764,7 +809,7 @@ export default function CashierStocksPage() {
                       >
                         {row.turnoverUnavailable
                           ? i18n.t('literals.forgalom-nem-elerheto')
-                          : formatCurrencyAmount(row.turnover.sellVolume, row.currencyCode)}
+                          : formatTurnover(row.turnover.sellVolume)}
                       </td>
                       <td
                         className={`px-2 py-1.5 text-right font-mono ${

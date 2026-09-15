@@ -106,6 +106,22 @@ async function mockApis(page: Page) {
     if (path.endsWith('/branches/my-territory')) return json(BRANCHES)
     if (path.endsWith('/branches')) return json(BRANCHES)
     if (path.endsWith('/exchange-rates')) return json([])
+    if (path.endsWith('/turnover/vault-daily')) {
+      return json({
+        totalBuy: 45003,
+        totalSell: 12002,
+        byCurrency: [
+          {
+            currencyCode: 'EUR',
+            buyVolume: 100,
+            sellVolume: 250.5,
+            buyHuf: 34205,
+            sellHuf: 86500,
+            fee: 0,
+          },
+        ],
+      })
+    }
     return json([])
   })
 }
@@ -162,6 +178,41 @@ test('FK-040: ertektar módban a felső táblázat is LÁTSZIK (regresszió, Chr
 
   await page.screenshot({
     path: 'test-results/fk040-orszagos-keszlet-ertektar.png',
+    fullPage: false,
+  })
+})
+
+test('FKH-072: HUF row shows rounded Ft turnover, currency rows stay units, zebra visible', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await mockApis(page)
+  page.on('dialog', (dialog) => void dialog.accept())
+  await login(page)
+  await page.evaluate(() => sessionStorage.setItem('vv_session_app_mode', 'ertektar'))
+  await page.goto('/cashier-stocks', { waitUntil: 'domcontentloaded' })
+
+  const hufBuy = page.getByTestId('cashier-stock-buy-HUF')
+  await expect(hufBuy).toBeVisible()
+  await expect(hufBuy).toHaveText(/45[\s\u00a0]?005/)
+  await expect(page.getByTestId('cashier-stock-sell-HUF')).toHaveText(/12[\s\u00a0]?000/)
+  await expect(page.getByTestId('cashier-stock-buy-EUR')).toHaveText('100,00')
+  await expect(page.getByTestId('cashier-stock-sell-EUR')).toHaveText('250,50')
+
+  const hufBox = await hufBuy.boundingBox()
+  expect(hufBox).toBeTruthy()
+  expect(hufBox!.width).toBeGreaterThan(0)
+  expect(hufBox!.height).toBeGreaterThan(0)
+  await expect(hufBuy).toBeInViewport()
+
+  const bodyRows = page.locator('table tbody tr')
+  await expect(bodyRows.nth(0)).not.toHaveClass(/bg-gray-50/)
+  await expect(bodyRows.nth(0)).toHaveClass(/border-b/)
+  await expect(bodyRows.nth(1)).toHaveClass(/bg-gray-50/)
+  await expect(bodyRows.nth(1)).toHaveClass(/border-b/)
+
+  await page.screenshot({
+    path: 'test-results/fkh072-penztari-keszletek-huf-zebra.png',
     fullPage: false,
   })
 })
