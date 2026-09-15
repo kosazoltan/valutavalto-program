@@ -68,6 +68,8 @@ public class ShipmentService {
     public static final String ACTION_DIRECT_DELIVER = "SHIPMENT_DIRECT_DELIVER";
     public static final String ACTION_DELIVERED = "SHIPMENT_DELIVERED";
     public static final String ACTION_SUBMITTED = "SHIPMENT_SUBMITTED";
+    /** FK-116 FR-1: vault → VAULT_COUNTERPARTY submit closes as DELIVERED (no partner worker). */
+    public static final String ACTION_AUTO_DELIVERED = "SHIPMENT_AUTO_DELIVERED";
     public static final String ACTION_CANCELLED_BY_SENDER = "SHIPMENT_CANCELLED_BY_SENDER";
     public static final String ACTION_APPROVE_DEPRECATED = "SHIPMENT_APPROVE_DEPRECATED";
     public static final String ACTION_REJECT_DEPRECATED = "SHIPMENT_REJECT_DEPRECATED";
@@ -439,17 +441,33 @@ public class ShipmentService {
     public ShipmentRequest submit(UUID id) {
         ShipmentRequest request = findByIdLocked(id);
         validateStatusTransition(request, ShipmentRequestStatus.DRAFT, ShipmentRequestStatus.SUBMITTED);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Branch fromBranch = loadCompanyBranch(request.getFromBranchId(), companyId);
+        Branch toBranch = loadCompanyBranch(request.getToBranchId(), companyId);
+        boolean fromCounterparty = isVaultCounterparty(fromBranch);
+        boolean toCounterparty = isVaultCounterparty(toBranch);
         // FK (TBD-1 döntés): az ÁTADÓ oldal készlete a beküldéskor AZONNAL csökken (OUT-könyvelés),
         // pesszimista lockkal + elégség-ellenőrzéssel (FR-2/5/7/8). Ha elégtelen → 422 VV-VALID-003,
         // a teljes @Transactional rollbackel (a státusz nem vált), az audit REQUIRES_NEW-ban megmarad.
         // FKH-040: AS (ÁFA ellátmány) NEM currency_stock-ot mozgat — a vat_supply_stock a sync-ben él.
-        if (!skipsCurrencyStockBooking(request)) {
-            stockBookingService.bookStockOut(request, SecurityUtils.getCurrentCompanyId());
+        // FK-116 FR-2: VAULT_COUNTERPARTY sender has no cash_balance — skip partner-side OUT.
+        if (!skipsCurrencyStockBooking(request) && !fromCounterparty) {
+            stockBookingService.bookStockOut(request, companyId);
         }
-        writeStatusAudit(ACTION_SUBMITTED, request, ShipmentRequestStatus.DRAFT,
-                ShipmentRequestStatus.SUBMITTED);
-        request.setStatus(ShipmentRequestStatus.SUBMITTED);
-        log.info("Szállítmánykérés beküldve: {}", request.getRequestNumber());
+        // FK-116 FR-1: vault → counterparty has no receiving worker; close as DELIVERED without
+        // partner-side IN. Incoming counterparty → vault stays SUBMITTED for human deliver().
+        if (toCounterparty && !fromCounterparty) {
+            writeStatusAudit(ACTION_AUTO_DELIVERED, request, ShipmentRequestStatus.DRAFT,
+                    ShipmentRequestStatus.DELIVERED);
+            request.setStatus(ShipmentRequestStatus.DELIVERED);
+            log.info("Szállítmánykérés automatikusan lezárva (VAULT_COUNTERPARTY cél): {}",
+                    request.getRequestNumber());
+        } else {
+            writeStatusAudit(ACTION_SUBMITTED, request, ShipmentRequestStatus.DRAFT,
+                    ShipmentRequestStatus.SUBMITTED);
+            request.setStatus(ShipmentRequestStatus.SUBMITTED);
+            log.info("Szállítmánykérés beküldve: {}", request.getRequestNumber());
+        }
         ShipmentRequest saved = shipmentRequestRepository.save(request);
         syncSpecialShipmentItems(saved);
         initLazyForSerialization(saved);
@@ -544,14 +562,37 @@ public class ShipmentService {
 
     public ShipmentRequest cancel(UUID id) {
         ShipmentRequest request = findByIdLocked(id);
-        stockBookingService.assertSender(request);
+        UUID companyId = SecurityUtils.getCurrentCompanyId();
+        Branch fromBranch = loadCompanyBranch(request.getFromBranchId(), companyId);
+        Branch toBranch = loadCompanyBranch(request.getToBranchId(), companyId);
+        boolean fromCounterparty = isVaultCounterparty(fromBranch);
+        boolean toCounterparty = isVaultCounterparty(toBranch);
+        // FK-116 FR-3b: incoming counterparty → vault is cancelled by the vault (to) token,
+        // because the partner branch has no worker. Outgoing stays sender-gated.
+        if (fromCounterparty) {
+            stockBookingService.assertReceiver(request);
+        } else {
+            stockBookingService.assertSender(request);
+        }
         ShipmentRequestStatus previousStatus = request.getStatus();
-        validateStatusTransition(request, CANCELLABLE_STATUSES, ShipmentRequestStatus.CANCELLED);
+        Set<ShipmentRequestStatus> cancellable = new java.util.HashSet<>(CANCELLABLE_STATUSES);
+        if ((fromCounterparty || toCounterparty) && previousStatus == ShipmentRequestStatus.DELIVERED) {
+            cancellable.add(ShipmentRequestStatus.DELIVERED);
+        }
+        validateStatusTransition(request, cancellable, ShipmentRequestStatus.CANCELLED);
         // TBD-1: a készlet az átadó oldalon a beküldéskor (SUBMITTED) csökkent. Ha egy már OUT-könyvelt
         // (SUBMITTED/APPROVED/IN_TRANSIT) kérést visszavonnak, a készletet vissza kell pótolni, különben
         // elveszne. DRAFT-ból visszavonáskor nem volt OUT-könyvelés → nincs reverzió (dupla-jóváírás elkerülés).
-        if (wasStockBookedOut(previousStatus) && !skipsCurrencyStockBooking(request)) {
-            stockBookingService.reverseStockOut(request, SecurityUtils.getCurrentCompanyId());
+        // FK-116: counterparty sender never booked OUT; auto-DELIVERED vault→partner did.
+        if (!skipsCurrencyStockBooking(request)) {
+            boolean senderOutBooked = !fromCounterparty && (wasStockBookedOut(previousStatus)
+                    || (toCounterparty && previousStatus == ShipmentRequestStatus.DELIVERED));
+            if (senderOutBooked) {
+                stockBookingService.reverseStockOut(request, companyId);
+            }
+            if (fromCounterparty && previousStatus == ShipmentRequestStatus.DELIVERED) {
+                stockBookingService.reverseStockIn(request, companyId);
+            }
         }
         Long workerId = SecurityUtils.getCurrentWorkerId();
         LocalDateTime cancelledAt = LocalDateTime.now();
@@ -914,6 +955,22 @@ public class ShipmentService {
 
     private static boolean isHufDaybookPrefix(String prefix) {
         return "FF".equalsIgnoreCase(prefix) || "UF".equalsIgnoreCase(prefix);
+    }
+
+    private Branch loadCompanyBranch(UUID branchId, UUID companyId) {
+        return branchRepository.findByIdAndCompanyId(branchId, companyId)
+                .orElseThrow(() -> new ValidationException("Fiók nem található a jelenlegi cégben: " + branchId));
+    }
+
+    /**
+     * FK-116: null-safe VAULT_COUNTERPARTY discriminator. Peer vaults stay on the human
+     * deliver path; counterparties have no worker and no cash_balance (FK-032).
+     */
+    static boolean isVaultCounterparty(Branch branch) {
+        if (branch == null || branch.getBranchType() == null) {
+            return false;
+        }
+        return "VAULT_COUNTERPARTY".equals(branch.getBranchType().getCode());
     }
 
     /**

@@ -498,6 +498,10 @@ class ShipmentServiceTest {
                 hu.puzzleir.valuta.entity.Branch.builder().id(toBranch).company(company).build();
         when(branchRepository.findById(fromBranch)).thenReturn(java.util.Optional.of(from));
         when(branchRepository.findById(toBranch)).thenReturn(java.util.Optional.of(to));
+        lenient().when(branchRepository.findByIdAndCompanyId(fromBranch, companyId))
+                .thenReturn(java.util.Optional.of(from));
+        lenient().when(branchRepository.findByIdAndCompanyId(toBranch, companyId))
+                .thenReturn(java.util.Optional.of(to));
         return ShipmentRequest.builder()
                 .id(shipmentId)
                 .fromBranchId(fromBranch)
@@ -1509,6 +1513,10 @@ class ShipmentServiceTest {
         Branch to = Branch.builder().id(toBranch).company(company).build();
         when(branchRepository.findById(fromBranch)).thenReturn(java.util.Optional.of(from));
         when(branchRepository.findById(toBranch)).thenReturn(java.util.Optional.of(to));
+        lenient().when(branchRepository.findByIdAndCompanyId(fromBranch, companyId))
+                .thenReturn(java.util.Optional.of(from));
+        lenient().when(branchRepository.findByIdAndCompanyId(toBranch, companyId))
+                .thenReturn(java.util.Optional.of(to));
         return ShipmentRequest.builder()
                 .id(shipmentId)
                 .requestNumber("AT-000123")

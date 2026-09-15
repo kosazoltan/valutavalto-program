@@ -384,6 +384,31 @@ class ShipmentStockBookingServiceTest {
                 any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
+    @Test
+    void reverseStockIn_vaultSide_decreasesReceiverStock() {
+        UUID companyId = UUID.randomUUID();
+        UUID toId = UUID.randomUUID();
+        Branch to = vaultBranch(toId, companyId, 7);
+        ShipmentRequest req = shipment(UUID.randomUUID(), toId, item(4L, "300", null));
+        CurrencyStock stock = vaultStock(companyId, "7", "EUR", "1000", "380");
+
+        when(branchRepository.findByIdAndCompanyId(toId, companyId)).thenReturn(Optional.of(to));
+        when(currencyRepository.findById(4L)).thenReturn(Optional.of(currency("EUR")));
+        when(currencyStockRepository.findForUpdate(companyId, "VAULT", "7", "EUR"))
+                .thenReturn(Optional.of(stock));
+        when(currencyStockRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        try (MockedStatic<SecurityUtils> sec = mockStatic(SecurityUtils.class)) {
+            sec.when(SecurityUtils::getCurrentWorkerId).thenReturn(42L);
+            service.reverseStockIn(req, companyId);
+        }
+
+        assertThat(stock.getQuantity()).isEqualByComparingTo("700");
+        verify(auditLogService).log(
+                eq(ShipmentStockBookingService.ACTION_STOCK_REVERSAL),
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
     // ===================== AML-flag (NFR-6) =====================
 
     @Test
