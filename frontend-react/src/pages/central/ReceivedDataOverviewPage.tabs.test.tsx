@@ -20,6 +20,10 @@ vi.mock('./ReceivedBankTurnoverView', () => ({
   default: () => <div data-testid="bank-turnover-view-stub" />,
 }))
 
+vi.mock('./ReceivedStornoView', () => ({
+  default: () => <div data-testid="storno-view-stub" />,
+}))
+
 /**
  * FK-111 FR-2: the page gains a second tab; the FK-003 reconciliation view stays the
  * default and is not modified.
@@ -118,6 +122,17 @@ describe('ReceivedDataOverviewPage — fülek (FK-111)', () => {
     await userEvent.click(screen.getByTestId('received-data-tab-bank-turnover'))
 
     expect(screen.getByTestId('bank-turnover-view-stub')).toBeInTheDocument()
+    expect(screen.queryByTestId('denominations-view-stub')).not.toBeInTheDocument()
+    expect(mockRun).not.toHaveBeenCalled()
+  })
+
+  it('FK-115: a negyedik fül lekérdezés nélkül jelenik meg, a többi fül nem fut', async () => {
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByTestId('received-data-tab-storno'))
+
+    expect(screen.getByTestId('storno-view-stub')).toBeInTheDocument()
+    expect(screen.queryByTestId('bank-turnover-view-stub')).not.toBeInTheDocument()
     expect(screen.queryByTestId('denominations-view-stub')).not.toBeInTheDocument()
     expect(mockRun).not.toHaveBeenCalled()
   })

@@ -85,7 +85,10 @@ export default function ReceivedBankTurnoverView() {
 
   const rows = Array.isArray(data?.rows) ? data.rows : []
   const missing = Array.isArray(data?.missingClosingDays) ? data.missingClosingDays : []
-  const branches = Array.isArray(data?.branches) ? data.branches : []
+  const branches = useMemo(
+    () => (Array.isArray(data?.branches) ? data.branches : []),
+    [data?.branches],
+  )
   const territories = useMemo(() => {
     if (Array.isArray(data?.territories) && data.territories.length > 0) {
       return data.territories

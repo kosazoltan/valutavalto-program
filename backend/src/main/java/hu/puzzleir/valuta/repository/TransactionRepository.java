@@ -2110,4 +2110,26 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             UUID companyId, UUID branchId, LocalDate from, LocalDate to) {
         return findTransactionLevySourceRows(companyId, branchId, from, to, null);
     }
+
+    /**
+     * FK-115 FR-1: REVERSAL rows in a date range, optional branch subset.
+     * {@code allBranches=true} with a dummy {@code branchIds} sentinel avoids an empty IN list.
+     */
+    @Query("SELECT DISTINCT t FROM Transaction t "
+            + "JOIN FETCH t.originalTransaction ot "
+            + "LEFT JOIN FETCH ot.lines ol "
+            + "LEFT JOIN FETCH ol.currency "
+            + "LEFT JOIN FETCH t.worker "
+            + "LEFT JOIN FETCH t.branch "
+            + "WHERE t.company.id = :companyId "
+            + "AND t.transactionType = :type "
+            + "AND t.transactionDate BETWEEN :fromDate AND :toDate "
+            + "AND (:allBranches = true OR t.branch.id IN :branchIds)")
+    List<Transaction> findReversalsForReceivedData(
+            @Param("companyId") UUID companyId,
+            @Param("type") TransactionType type,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate,
+            @Param("allBranches") boolean allBranches,
+            @Param("branchIds") List<UUID> branchIds);
 }

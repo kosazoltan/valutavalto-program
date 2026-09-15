@@ -127,6 +127,66 @@ async function mockApis(page: Page) {
       })
     }
 
+    if (path.endsWith('/central/received-data/bank-turnover') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          fromDate: url.searchParams.get('fromDate'),
+          toDate: url.searchParams.get('toDate'),
+          branches: [
+            {
+              id: 'vault-1',
+              code: 'ET1',
+              name: 'Szeged Értéktár',
+              isVault: true,
+              vaultTerritoryId: 2,
+              region: 'Szeged',
+            },
+          ],
+          territories: [{ id: 2, name: 'Szeged' }],
+          rows: [{ currencyCode: 'EUR', bankIn: 1000, bankOut: 250 }],
+          missingClosingDays: [],
+        }),
+      })
+    }
+
+    if (path.endsWith('/central/received-data/storno') && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          fromDate: url.searchParams.get('fromDate'),
+          toDate: url.searchParams.get('toDate'),
+          branches: [
+            {
+              id: 'vault-1',
+              code: 'ET1',
+              name: 'Szeged Értéktár',
+              isVault: true,
+              vaultTerritoryId: 2,
+              region: 'Szeged',
+            },
+          ],
+          territories: [{ id: 2, name: 'Szeged' }],
+          rows: [
+            {
+              type: 'TRANSFER',
+              officeCode: 'ET1',
+              officeName: 'Szeged Értéktár',
+              date: '2026-09-12',
+              time: '15:00:00',
+              originalDocumentNumber: 'AT-9',
+              stornoDocumentNumber: 'AT-9-SZ',
+              workerName: 'Nagy Péter',
+              reason: 'hibás összeg',
+              lines: [{ currencyCode: 'HUF', amount: 5000, hufValue: 5000, rateMissing: false }],
+            },
+          ],
+        }),
+      })
+    }
+
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -179,4 +239,43 @@ test('beérkezett adatok oldal valós renderben hívja a reconciliation backend 
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   )
   expect(horizontalOverflow).toBe(false)
+})
+
+test('FK-114 banki forgalom fül asztali képernyőn csak gombra kérdez le', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockApis(page)
+  await login(page)
+  await page.goto('/central/received-data', { waitUntil: 'domcontentloaded' })
+
+  await page.getByTestId('received-data-tab-bank-turnover').click()
+  await expect(page.getByTestId('received-bank-turnover-view')).toBeVisible()
+  await expect(page.getByText('Válasszon időszakot és egységet')).toBeVisible()
+
+  const loadRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/central/received-data/bank-turnover'),
+  )
+  await page.getByTestId('bank-turnover-load-button').click()
+  await loadRequest
+  await expect(page.getByTestId('bank-turnover-row-EUR')).toBeVisible()
+  await expect(page.getByTestId('bank-turnover-row-EUR')).toContainText('EUR')
+})
+
+test('FK-115 sztornó fül asztali képernyőn csak gombra kérdez le', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockApis(page)
+  await login(page)
+  await page.goto('/central/received-data', { waitUntil: 'domcontentloaded' })
+
+  await page.getByTestId('received-data-tab-storno').click()
+  await expect(page.getByTestId('received-storno-view')).toBeVisible()
+
+  const loadRequest = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' && request.url().includes('/central/received-data/storno'),
+  )
+  await page.getByTestId('storno-load-button').click()
+  await loadRequest
+  await expect(page.getByTestId('storno-row-AT-9-SZ')).toBeVisible()
+  await expect(page.getByText('AT-9 → AT-9-SZ')).toBeVisible()
 })
