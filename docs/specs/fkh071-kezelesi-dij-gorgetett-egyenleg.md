@@ -1,5 +1,7 @@
 # Modul: Pénztári felület – FKH-071: "Kezelési díj címletezése" Elvárt-egyenleg görgetése (napi reset megszüntetése)
 
+> **Claim correction (Phase 0):** Flyway slot V393 is occupied by FK-13; this feature uses `V394__handling_fee_balance.sql`.
+>
 > **Feltérképező analízis alapja:** Feltérképezés #132 (FKH-070 megvalósulás), #133 (görgetési hipotézis megerősítése), #134 (Claude Code, kizárólag olvasott kódelemzés — technikai beillesztési pontok).
 > **Előzmény:** élő megfigyelés (2026-09-14) — az FKH-070 (élesben, PR #1756) helyesen mutatja az aznapi kezelési díjat Elvárt-ként (100 EUR vétel → 290 Ft Elvárt, 0 Ft eltérés). A felhasználó (Értéktáros szerepkör) ugyanakkor megerősítette: a beszedett kezelési díj **fizikailag a pénztárfiókban halmozódik**, amíg az Értéktár ténylegesen el nem kéri/át nem veszi — ez **nem feltétlenül napi** esemény. A Feltérképezés #133 kódszinten megerősítette: a jelenlegi HANDLING_FEE self-check **naponta nullázódik** (`transactionDate = :date`), szemben a HUF/valuta készlettel és a VAT-egyenleggel, amelyek már ma is **görgetett, perzisztens futóegyenlegek**. Ez architekturális aszimmetria és funkcionális hiba: ha egy korábbi napról marad be nem fizetett kezelési díj a fiókban, a következő nap Elvárt-ja alulbecsüli a valós, fizikailag ott lévő összeget.
 
@@ -24,7 +26,7 @@ A "Kezelési díj címletezése" oldal Elvárt készlete a pénztárban tényleg
 - **Visszafordítás (szállítmány-visszavonás):** ha a KK-szállítmányt `CANCELLED`-re állítják (`ShipmentService.cancel` → `ShipmentHandlingFeeSyncService.syncFromShipment`), az egyenleg visszanő ugyanazzal az összeggel.
 - **Visszafordítás (sztornó):** ha egy kezelési díjat tartalmazó tranzakciót sztornóznak (`StornoService`), az egyenleg csökken a sztornózott tranzakció kezelési díjával (mert az soha nem volt valós, fiókban lévő pénz).
 - A `DenominationBalanceService` HANDLING_FEE self-check ága ezt az új görgetett egyenleget olvassa Elvárt-ként, a jelenlegi napi `transactionRepository.sumHandlingFeeForBranchAndDate(...)` hívás helyett.
-- Új Flyway migráció (V393) az új tábla létrehozására, `current_balance NUMERIC(18,2) NOT NULL DEFAULT 0`-val — **nincs történeti backfill**, a számláló a bevezetés napjától indul 0-ról (üzleti döntés, ld. 10. szekció).
+- Új Flyway migráció (V394) az új tábla létrehozására, `current_balance NUMERIC(18,2) NOT NULL DEFAULT 0`-val — **nincs történeti backfill**, a számláló a bevezetés napjától indul 0-ról (üzleti döntés, ld. 10. szekció).
 - Nem-negatív adatbázis-szintű CHECK constraint (`current_balance >= 0`), és alkalmazásszintű validációs hiba, ha egy KK-szállítmány létrehozása negatívba vinné az egyenleget (nem lehet többet elvinni, mint amennyi ténylegesen fel van halmozva).
 
 ### OUT
@@ -73,7 +75,7 @@ Nem alkalmazandó — a self-check megjelenítés és a KK-szállítmány létre
   - `CONSTRAINT chk_hfb_balance_nonnegative CHECK (current_balance >= 0)`
   - `CONSTRAINT ux_hfb_company_branch UNIQUE (company_id, branch_id)`
   - Index: `ix_hfb_company_branch ON handling_fee_balance (company_id, branch_id)`
-- **Flyway migráció:** `backend/src/main/resources/db/migration/V393__handling_fee_balance.sql` (a jelenlegi legmagasabb verzió V392, ld. Feltérképezés #134).
+- **Flyway migráció:** `backend/src/main/resources/db/migration/V394__handling_fee_balance.sql` (V393 occupied by FK-13; Phase 0 claim correction).
 - **Kezdőérték:** `DEFAULT 0`, get-or-create az első könyveléskor (nincs backfill-lel számolt kezdőérték — üzleti döntés, 10. szekció).
 - **SQLite mirror:** nem szükséges — ez egy szerver-oldali, önellenőrző (self-check) számítási forrás, nem jelenik meg önálló offline entitásként (a self-check válasz maga már ma is szinkronizált mintát követ).
 
@@ -113,7 +115,7 @@ Nem alkalmazandó — a self-check megjelenítés és a KK-szállítmány létre
 ### 9.2. Fázisok
 
 **Fázis 1 – Adatmodell**
-- Flyway: `backend/src/main/resources/db/migration/V393__handling_fee_balance.sql` — a 6. szekcióban megadott séma szerint (mintaként ld. `V382__shipment_vat_supply.sql`).
+- Flyway: `backend/src/main/resources/db/migration/V394__handling_fee_balance.sql` — a 6. szekcióban megadott séma szerint (mintaként ld. `V382__shipment_vat_supply.sql`).
 - Új entitás: `HandlingFeeBalance.java` — mezők a `CashBalance.java` mintájára (`id`, `company`, `branch`, `currentBalance`, `version`, `updatedAt`).
 - Új repository: `HandlingFeeBalanceRepository.java` — `findByBranchIdAndCompanyId(...)` (olvasáshoz) és `findByBranchIdAndCompanyIdForUpdate(...)` `@Lock(LockModeType.PESSIMISTIC_WRITE)`-dal (íráshoz), a `CashBalanceRepository.java:66-69` mintájára.
 - Új service: `HandlingFeeBalanceService.java` — `increase(branchId, companyId, amount)` és `decrease(branchId, companyId, amount)` metódusok, get-or-create logikával (ha még nincs sor, 0-ról indul), pesszimista zár + `roundToFive`. A `decrease` dobjon `ValidationException`-t (megfelelő `VV-VALID-*` error_code-dal), ha az eredmény negatív lenne (FR-7).
@@ -170,7 +172,7 @@ Nincs nyitott TBD — minden tervezési döntés lezárva a Feltérképezés #13
 - [x] Nincs hallucináció — minden állítás a feltérképezések tényeire és a felhasználói döntésekre épül
 - [x] TBD-ek külön jelölve (0 db — mind lezárva)
 - [x] Adatmodell konkrét (`handling_fee_balance` tábla, mezők, `company_id` + `branch_id`)
-- [x] Flyway migráció száma helyes (V393, jelenlegi max V392)
+- [x] Flyway migráció száma helyes (V394, jelenlegi max V393 / FK-13)
 - [x] Pipeline + Definition of Done teljes
 - [x] Cross-tenant teszt megírva (§1, NFR-3)
 - [x] Audit-érintettség vizsgálva és indokolva (§3 — nem igényel új eseményt)

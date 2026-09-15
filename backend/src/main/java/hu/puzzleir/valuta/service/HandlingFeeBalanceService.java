@@ -55,6 +55,10 @@ public class HandlingFeeBalanceService {
                 branchId, companyId, rounded, row.getCurrentBalance());
     }
 
+    public boolean exists(UUID branchId, UUID companyId) {
+        return handlingFeeBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId).isPresent();
+    }
+
     private HandlingFeeBalance lockOrCreate(UUID branchId, UUID companyId) {
         handlingFeeBalanceRepository.insertIfAbsent(companyId, branchId);
         return handlingFeeBalanceRepository
