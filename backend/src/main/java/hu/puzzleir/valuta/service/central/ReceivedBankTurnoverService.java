@@ -9,6 +9,7 @@ import hu.puzzleir.valuta.repository.ClosingControlRepository;
 import hu.puzzleir.valuta.repository.DailyBalanceRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.AmlEddService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +43,7 @@ public class ReceivedBankTurnoverService {
     private final BranchRepository branchRepository;
     private final Clock clock;
 
+    @Autowired
     public ReceivedBankTurnoverService(
             DailyBalanceRepository dailyBalanceRepository,
             ClosingControlRepository closingControlRepository,
