@@ -292,6 +292,19 @@ public class ShipmentStockBookingService {
         }
     }
 
+    /**
+     * FK-116 FR-3: reverse a completed IN booking on the receiver (to) side — used when
+     * cancelling a VAULT_COUNTERPARTY → vault shipment that the vault already delivered.
+     */
+    @Transactional
+    public void reverseStockIn(ShipmentRequest req, UUID companyId) {
+        Branch to = loadBranch(req.getToBranchId(), companyId);
+        for (ShipmentRequestItem item : sortedItems(req)) {
+            String currencyCode = resolveCurrencyCode(item.getCurrencyId());
+            applySide(to, companyId, item, currencyCode, req, false, ACTION_STOCK_REVERSAL);
+        }
+    }
+
     // ======================================================================
     // Készlet-mutáció egy oldalon (vault VAGY pénztár, irány a flag alapján)
     // ======================================================================
