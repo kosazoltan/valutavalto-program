@@ -14,13 +14,14 @@ import {
 import { transferReconciliationApi, type TransferReconciliationResult } from '../../services/api'
 import ReceivedDenominationsView from './ReceivedDenominationsView'
 import ReceivedBankTurnoverView from './ReceivedBankTurnoverView'
+import ReceivedStornoView from './ReceivedStornoView'
 import { logger } from '../../utils/logger'
 import { localIsoDate } from '../../utils/dateFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
 import i18n from '../../i18n'
 
-/** FK-111/FK-114: the page hosts tabs; the FK-003 reconciliation stays the default. */
-type View = 'reconciliation' | 'denominations' | 'bankTurnover'
+/** FK-111/FK-114/FK-115: the page hosts tabs; the FK-003 reconciliation stays the default. */
+type View = 'reconciliation' | 'denominations' | 'bankTurnover' | 'storno'
 
 const RECON_FILTERS = ['all', 'match', 'mismatch', 'pending'] as const
 type ReconFilter = (typeof RECON_FILTERS)[number]
@@ -207,6 +208,12 @@ export default function ReceivedDataOverviewPage() {
             label={t('centralReceivedData.tabBankTurnover')}
             onClick={() => setView('bankTurnover')}
           />
+          <TabButton
+            active={view === 'storno'}
+            testId="received-data-tab-storno"
+            label={t('centralReceivedData.tabStorno')}
+            onClick={() => setView('storno')}
+          />
         </div>
       </div>
 
@@ -217,6 +224,10 @@ export default function ReceivedDataOverviewPage() {
       ) : view === 'bankTurnover' ? (
         <div className="space-y-4 p-4">
           <ReceivedBankTurnoverView />
+        </div>
+      ) : view === 'storno' ? (
+        <div className="space-y-4 p-4">
+          <ReceivedStornoView />
         </div>
       ) : (
         <div className="space-y-4 p-4">

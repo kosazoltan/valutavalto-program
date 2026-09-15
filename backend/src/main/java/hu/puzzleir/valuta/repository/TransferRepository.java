@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -505,4 +506,28 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
            "AND t.toBranch.id = :branchId ORDER BY t.createdAt DESC")
     List<Transfer> findByToBranchIdOrderByCreatedAtDesc(@Param("companyId") UUID companyId,
                                                         @Param("branchId") UUID branchId);
+
+    /**
+     * FK-115 FR-2: cancelled transfers in a datetime window. Tenant via from/to branch
+     * company (not the nullable transfer.company_id). REJECTED is not a storno.
+     * {@code allBranches=true} with a dummy {@code branchIds} sentinel avoids an empty IN list.
+     */
+    @Query("SELECT DISTINCT t FROM Transfer t "
+            + "JOIN FETCH t.fromBranch fb "
+            + "JOIN FETCH t.toBranch tb "
+            + "LEFT JOIN FETCH t.lines tl "
+            + "LEFT JOIN FETCH tl.currency "
+            + "LEFT JOIN FETCH t.currency "
+            + "WHERE (fb.company.id = :companyId OR tb.company.id = :companyId) "
+            + "AND t.isCancelled = true "
+            + "AND t.status <> :rejected "
+            + "AND t.cancelledAt >= :fromTs AND t.cancelledAt < :toTsExclusive "
+            + "AND (:allBranches = true OR fb.id IN :branchIds OR tb.id IN :branchIds)")
+    List<Transfer> findCancelledForReceivedData(
+            @Param("companyId") UUID companyId,
+            @Param("fromTs") LocalDateTime fromTs,
+            @Param("toTsExclusive") LocalDateTime toTsExclusive,
+            @Param("allBranches") boolean allBranches,
+            @Param("branchIds") List<UUID> branchIds,
+            @Param("rejected") Transfer.TransferStatus rejected);
 }

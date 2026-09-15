@@ -63,6 +63,9 @@ describe('ReceivedBankTurnoverView — FK-114', () => {
     expect(await screen.findByTestId('bank-turnover-row-EUR')).toBeInTheDocument()
     expect(screen.getByText(hu.centralReceivedData.bankTurnoverBankIn)).toBeInTheDocument()
     expect(screen.getByText(hu.centralReceivedData.bankTurnoverBankOut)).toBeInTheDocument()
+    const eurRow = screen.getByTestId('bank-turnover-row-EUR')
+    expect(eurRow).toHaveTextContent('1000')
+    expect(eurRow).toHaveTextContent('250')
     expect(screen.getByTestId('bank-turnover-missing-days')).toBeInTheDocument()
     await waitFor(() => {
       expect(mockLoad).toHaveBeenCalledTimes(1)
