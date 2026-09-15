@@ -1,5 +1,7 @@
 # Modul: Értéktári felület – FKH-072: "Pénztári készletek" HUF-sor forgalom-összesítés + zebra-csíkozás
 
+> **Claim correction (Phase 0):** live screen is `frontend-react/src/pages/inventory/CashierStocksPage.tsx` (`/cashier-stocks`), not `penztar-client`. A `frontend-react` UI change ships in both signed Electron installers.
+>
 > **Feltérképező analízis alapja:** Feltérképezés #136 (Claude Code, kizárólag olvasott kódelemzés).
 > **Előzmény:** élő teszt (2026-09-15) az FKH-068 (valuta-egységre váltás) után. A #136 tényszerűen tisztázta: a felhasználó által mutatott "Pénztári készletek" (Értéktár/Főértéktár menüből elérve) és a "Kassza / készlet" (Pénztár menüből elérve) **ugyanaz a komponens és route** (`CashierStocksPage.tsx`, `/cashier-stocks`), csak két különböző menücsoportból (Értéktár: "Pénztári készletek", Főértéktár: "Országos készlet") érhető el, más-más címkével. **Nincs külön oldal** — a korábbi feltevés, hogy ez egy másik fájl lenne, tévesnek bizonyult, ezt a #136 kifejezetten jelezte.
 

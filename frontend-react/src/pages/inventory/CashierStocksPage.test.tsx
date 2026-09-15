@@ -403,8 +403,8 @@ describe('CashierStocksPage (FK-007/008)', () => {
 
   it('FKH-072 FR-1/FR-2: a HUF sor Forgalom vétel/eladás a vault-daily totalBuy/totalSell forint-összeg', async () => {
     mocks.vaultTurnoverDaily.mockResolvedValue({
-      totalBuy: 45000,
-      totalSell: 12000,
+      totalBuy: 45003,
+      totalSell: 12002,
       byCurrency: [
         {
           currencyCode: 'EUR',
@@ -419,7 +419,7 @@ describe('CashierStocksPage (FK-007/008)', () => {
     render(<CashierStocksPage />)
 
     await waitFor(() =>
-      expect(screen.getByTestId('cashier-stock-buy-HUF')).toHaveTextContent(/45[\s\u00a0]?000/),
+      expect(screen.getByTestId('cashier-stock-buy-HUF')).toHaveTextContent(/45[\s\u00a0]?005/),
     )
     expect(screen.getByTestId('cashier-stock-sell-HUF')).toHaveTextContent(/12[\s\u00a0]?000/)
     expect(screen.getByTestId('cashier-stock-buy-HUF')).not.toHaveTextContent(/100,00/)
@@ -495,10 +495,14 @@ describe('CashierStocksPage (FK-007/008)', () => {
     expect(table).toBeTruthy()
     const bodyRows = table!.querySelectorAll('tbody tr')
     expect(bodyRows.length).toBeGreaterThan(1)
-    expect(bodyRows[0].className).toMatch(/border-b/)
-    expect(bodyRows[0].className).not.toMatch(/bg-gray-50/)
-    expect(bodyRows[1].className).toMatch(/bg-gray-50/)
-    expect(bodyRows[1].className).toMatch(/border-b/)
+    const evenRow = bodyRows.item(0)
+    const oddRow = bodyRows.item(1)
+    expect(evenRow).toBeTruthy()
+    expect(oddRow).toBeTruthy()
+    expect(evenRow!.className).toMatch(/border-b/)
+    expect(evenRow!.className).not.toMatch(/bg-gray-50/)
+    expect(oddRow!.className).toMatch(/bg-gray-50/)
+    expect(oddRow!.className).toMatch(/border-b/)
   })
 
   it('FKH-066 NFR-1: bukó forgalom-lekérdezés NEM jelenhet meg nullaként, a cella ismeretlent jelöl', async () => {
