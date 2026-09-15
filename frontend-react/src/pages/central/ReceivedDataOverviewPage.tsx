@@ -13,13 +13,15 @@ import {
 } from 'lucide-react'
 import { transferReconciliationApi, type TransferReconciliationResult } from '../../services/api'
 import ReceivedDenominationsView from './ReceivedDenominationsView'
+import ReceivedBankTurnoverView from './ReceivedBankTurnoverView'
+import ReceivedStornoView from './ReceivedStornoView'
 import { logger } from '../../utils/logger'
 import { localIsoDate } from '../../utils/dateFormat'
 import { downloadBlob } from '../../utils/downloadBlob'
 import i18n from '../../i18n'
 
-/** FK-111: the page hosts two views; the FK-003 reconciliation stays the default. */
-type View = 'reconciliation' | 'denominations'
+/** FK-111/FK-114/FK-115: the page hosts tabs; the FK-003 reconciliation stays the default. */
+type View = 'reconciliation' | 'denominations' | 'bankTurnover' | 'storno'
 
 const RECON_FILTERS = ['all', 'match', 'mismatch', 'pending'] as const
 type ReconFilter = (typeof RECON_FILTERS)[number]
@@ -200,12 +202,32 @@ export default function ReceivedDataOverviewPage() {
             label={t('centralReceivedData.tabDenominations')}
             onClick={() => setView('denominations')}
           />
+          <TabButton
+            active={view === 'bankTurnover'}
+            testId="received-data-tab-bank-turnover"
+            label={t('centralReceivedData.tabBankTurnover')}
+            onClick={() => setView('bankTurnover')}
+          />
+          <TabButton
+            active={view === 'storno'}
+            testId="received-data-tab-storno"
+            label={t('centralReceivedData.tabStorno')}
+            onClick={() => setView('storno')}
+          />
         </div>
       </div>
 
       {view === 'denominations' ? (
         <div className="space-y-4 p-4">
           <ReceivedDenominationsView />
+        </div>
+      ) : view === 'bankTurnover' ? (
+        <div className="space-y-4 p-4">
+          <ReceivedBankTurnoverView />
+        </div>
+      ) : view === 'storno' ? (
+        <div className="space-y-4 p-4">
+          <ReceivedStornoView />
         </div>
       ) : (
         <div className="space-y-4 p-4">
