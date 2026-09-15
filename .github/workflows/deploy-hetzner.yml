@@ -165,9 +165,11 @@ jobs:
             set -euo pipefail
             DEPLOY=${{ env.VPS_DEPLOY_PATH }}
             SYMLINK=$DEPLOY/target/${{ env.JAR_SYMLINK }}
-            # Pin the symlink to the JAR this job uploaded. sort -V|tail -1 would keep a
-            # newer leftover on disk (2026-09-15: restore of 2.28.115 kept running 2.28.116).
-            JAR=$DEPLOY/target/${{ env.jar_name }}
+            # Pin the symlink to the JAR this job built+uploaded. sort -V|tail -1 would
+            # keep a newer leftover on disk (2026-09-15: restore of 2.28.115 kept 2.28.116).
+            # Use needs.build.outputs (not GITHUB_ENV via env.jar_name) so the expression
+            # is never empty at template expansion.
+            JAR=$DEPLOY/target/${{ needs.build.outputs.jar_name }}
             if [ ! -f "$JAR" ]; then
               echo "::error::Uploaded JAR missing on VPS: $JAR"
               exit 1
@@ -834,8 +836,9 @@ jobs:
         run: |
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
               "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
-              bash -s << 'ENDSSH'
+              bash -s -- "${{ needs.build.outputs.jar_name }}" << 'ENDSSH'
             set -euo pipefail
+            JAR_NAME="$1"
             TARGET=${{ env.VPS_DEPLOY_PATH }}/target
             # 1) BIZTONSAG: a standby DB recovery-ben (warm) kell legyen. Ha promote-olt
             #    (failover utan), NE nyuljunk hozza ezzel a jobbal -> split-brain veszely.
@@ -848,8 +851,12 @@ jobs:
             #    a backend crash-loopol ("Failed to create parent directories").
             mkdir -p ${{ env.VPS_DEPLOY_PATH }}/logs
             chown -R ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} ${{ env.VPS_DEPLOY_PATH }}/logs
-            # 3) current.jar -> legujabb verziozott jar (a regi marad rollbackhez)
-            JAR=$(ls $TARGET/valuta-backend-*.jar | grep -v SNAPSHOT | grep -v current | sort -V | tail -1)
+            # 3) current.jar -> the JAR this job uploaded (not sort -V newest leftover)
+            JAR="$TARGET/$JAR_NAME"
+            if [ ! -f "$JAR" ]; then
+              echo "::error::Standby uploaded JAR missing: $JAR"
+              exit 1
+            fi
             echo "=== Standby symlink: $JAR -> current ==="
             ln -sfn "$JAR" "$TARGET/${{ env.JAR_SYMLINK }}"
             chown -h ${{ env.VPS_USER_OWNER }}:${{ env.VPS_USER_OWNER }} "$TARGET/${{ env.JAR_SYMLINK }}"
@@ -887,6 +894,15 @@ jobs:
               echo "standby health attempt ${ATTEMPT} (${ELAPSED}s/${HEALTH_TIMEOUT}s): HTTP $CODE"
               if [ "$CODE" = "200" ]; then
                 journalctl -u valuta-backend.service -n 200 --no-pager | grep -oE '"service_version":"[^"]*"' | tail -1
+                EXPECTED="${JAR_NAME#valuta-backend-}"
+                EXPECTED="${EXPECTED%.jar}"
+                GOT=$(curl -s --max-time 8 http://localhost:8080/api/v1/version \
+                  | grep -oE '"version":"[^"]+"' | head -1 | cut -d'"' -f4 || true)
+                echo "standby /version: '${GOT:-?}' (elvárt: $EXPECTED)"
+                if [ "$GOT" != "$EXPECTED" ]; then
+                  echo "::error::Standby /version '$GOT' != uploaded '$EXPECTED'"
+                  exit 1
+                fi
                 # vegso assert: meg mindig recovery-ben (a restart nem promote-olt)
                 STILL=$(sudo -u postgres psql -tAc "SELECT pg_is_in_recovery();")
                 echo "standby pg_is_in_recovery (t=jo): $STILL"
