@@ -7,6 +7,8 @@ export type DenominationDataQualityFlag =
   | 'NON_POSITIVE_FACE_VALUE'
   | 'VALUE_MISMATCH'
 
+export type DenominationRateSource = 'MNB' | 'MANUAL_SETTLEMENT' | string
+
 export interface ReceivedDenominationBranchOption {
   id: string
   code?: string | null
@@ -21,12 +23,28 @@ export interface ReceivedDenominationCell {
   dataQualityFlag: DenominationDataQualityFlag | string
 }
 
+export interface ReceivedDenominationFixedColumn {
+  faceValue: number
+  /** Null means the catalog has no such face value and there is no snapshot stock ("–"). */
+  quantity: number | null
+  inCatalog: boolean
+  dataQualityFlag?: DenominationDataQualityFlag | string | null
+}
+
 export interface ReceivedDenominationCurrencyRow {
   currencyCode: string
   totalValue: number
   totalQuantity: number
   cells: ReceivedDenominationCell[]
+  fixedColumns?: ReceivedDenominationFixedColumn[]
+  otherCells?: ReceivedDenominationCell[]
+  allowedFaceValues?: number[]
   hasDataQualityIssue: boolean
+  rate?: number | null
+  rateDate?: string | null
+  rateSource?: DenominationRateSource | null
+  hufEquivalent?: number | null
+  rateMissing?: boolean
 }
 
 export interface ReceivedDenominations {
@@ -34,8 +52,11 @@ export interface ReceivedDenominations {
   branchId?: string | null
   branches: ReceivedDenominationBranchOption[]
   rows: ReceivedDenominationCurrencyRow[]
-  /** Own total of the HUF row; foreign currencies are NOT converted to HUF. */
   hufTotalValue: number
+  /** FK-112: HUF equivalent of foreign rows that had a resolvable rate. */
+  currencyValueHuf?: number | null
+  grandTotalHuf?: number | null
+  fixedFaceValues?: number[]
   currencyCount: number
   totalQuantity: number
   dataQualityIssueCount: number

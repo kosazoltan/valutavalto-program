@@ -3,12 +3,18 @@ import { useTranslation } from 'react-i18next'
 import { AlertTriangle, ArrowRight, Calendar, Layers } from 'lucide-react'
 import {
   receivedDenominationsApi,
+  type ReceivedDenominationCurrencyRow,
   type ReceivedDenominations,
 } from '../../services/api/received-denominations'
 import { logger } from '../../utils/logger'
 import { localIsoDate } from '../../utils/dateFormat'
 
 const ALL_BRANCHES = '__ALL__'
+
+/** Canonical face-value columns (FK-112). Backend also echoes this list. */
+export const FIXED_FACE_VALUES = [
+  20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1,
+] as const
 
 /** Previous day as a LOCAL ISO date — the closing snapshot of the last closed business day. */
 function previousDayIso() {
@@ -34,12 +40,28 @@ function formatFaceValue(value: number | null | undefined) {
   return value.toLocaleString('hu-HU', { maximumFractionDigits: 20 })
 }
 
+function faceValuesOf(data: ReceivedDenominations | null): number[] {
+  if (Array.isArray(data?.fixedFaceValues) && data.fixedFaceValues.length > 0) {
+    return data.fixedFaceValues
+  }
+  return [...FIXED_FACE_VALUES]
+}
+
+function rateSourceLabel(
+  t: ReturnType<typeof useTranslation>['t'],
+  source: string | null | undefined,
+) {
+  if (source === 'MNB') return t('centralReceivedData.denominationsRateSourceMnb')
+  if (source === 'MANUAL_SETTLEMENT') return t('centralReceivedData.denominationsRateSourceManual')
+  return source ?? ''
+}
+
 /**
- * FK-111 FR-2: closing-time denomination matrix ("Keszletek, cimletek" tab).
+ * FK-111 / FK-112: closing-time denomination matrix ("Keszletek, cimletek" tab).
  *
  * The data is fetched on button press only — the hosting page never auto-queries.
- * No HUF conversion is displayed for foreign currencies: the snapshot carries no rate,
- * so a converted figure would be invented.
+ * Columns are the 14 catalog face values plus Egyeb; HUF conversion uses live rates
+ * from the response (never stored on the snapshot).
  */
 export default function ReceivedDenominationsView() {
   const { t } = useTranslation()
@@ -74,9 +96,9 @@ export default function ReceivedDenominationsView() {
     setLoading(false)
   }
 
-  const rows = data?.rows ?? []
-  // Widest currency row drives the column count; every row is padded to it.
-  const columnCount = rows.reduce((max, row) => Math.max(max, row.cells.length), 0)
+  const rows = Array.isArray(data?.rows) ? data.rows : []
+  const columns = faceValuesOf(data)
+  const colCount = columns.length + 3
 
   return (
     <div className="space-y-4" data-testid="received-denominations-view">
@@ -152,7 +174,7 @@ export default function ReceivedDenominationsView() {
 
       <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="data-grid min-w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-3 py-2 text-left">
@@ -161,55 +183,27 @@ export default function ReceivedDenominationsView() {
                 <th className="px-3 py-2 text-right">
                   {t('centralReceivedData.denominationsStockTotal')}
                 </th>
-                {Array.from({ length: columnCount }, (_, index) => (
-                  <th key={index} className="px-3 py-2 text-right">
-                    {index + 1}.
+                {columns.map((faceValue) => (
+                  <th
+                    key={faceValue}
+                    data-testid={`denom-header-${faceValue}`}
+                    className="px-3 py-2 text-right"
+                  >
+                    {formatNumber(faceValue)}
                   </th>
                 ))}
+                <th data-testid="denom-header-other" className="px-3 py-2 text-right">
+                  {t('centralReceivedData.denominationsOther')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((row) => (
-                <tr key={row.currencyCode} data-testid={`denom-row-${row.currencyCode}`}>
-                  <td className="px-3 py-2 font-mono font-semibold text-slate-900">
-                    {row.currencyCode}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-slate-700">
-                    {formatNumber(row.totalValue, 2)}
-                  </td>
-                  {Array.from({ length: columnCount }, (_, index) => {
-                    const cell = row.cells[index]
-                    if (!cell) {
-                      return <td key={index} className="px-3 py-2 text-right text-slate-300" />
-                    }
-                    const flagged = cell.dataQualityFlag !== 'OK'
-                    return (
-                      <td
-                        key={index}
-                        data-testid={`denom-cell-${row.currencyCode}-${cell.faceValue}`}
-                        title={flagged ? cell.dataQualityFlag : undefined}
-                        className={`px-3 py-2 text-right font-mono ${
-                          flagged ? 'bg-red-50 text-red-700' : 'text-slate-700'
-                        }`}
-                      >
-                        <div className="text-[11px] text-slate-500">
-                          {formatFaceValue(cell.faceValue)}
-                        </div>
-                        <div className="flex items-center justify-end gap-1">
-                          {flagged && <AlertTriangle size={12} />}
-                          {formatNumber(cell.quantity)}
-                        </div>
-                      </td>
-                    )
-                  })}
-                </tr>
+                <CurrencyRow key={row.currencyCode} row={row} columns={columns} t={t} />
               ))}
               {!loading && hasRun && rows.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={columnCount + 2}
-                    className="px-3 py-8 text-center text-sm text-slate-500"
-                  >
+                  <td colSpan={colCount} className="px-3 py-8 text-center text-sm text-slate-500">
                     {t('centralReceivedData.denominationsEmpty')}
                   </td>
                 </tr>
@@ -241,20 +235,20 @@ export default function ReceivedDenominationsView() {
         >
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <SummaryItem
+              testId="denominations-summary-currency-value"
+              label={t('centralReceivedData.denominationsCurrencyValue')}
+              value={formatNumber(data.currencyValueHuf, 2)}
+            />
+            <SummaryItem
+              testId="denominations-summary-huf-value"
               label={t('centralReceivedData.denominationsHufValue')}
               value={formatNumber(data.hufTotalValue, 2)}
             />
             <SummaryItem
-              label={t('centralReceivedData.denominationsCurrencyCount')}
-              value={formatNumber(data.currencyCount)}
+              testId="denominations-summary-grand-total"
+              label={t('centralReceivedData.denominationsGrandTotal')}
+              value={formatNumber(data.grandTotalHuf, 2)}
             />
-            <SummaryItem
-              label={t('centralReceivedData.denominationsQuantity')}
-              value={formatNumber(data.totalQuantity)}
-            />
-          </div>
-          <div className="mt-2 text-xs text-slate-500">
-            {t('centralReceivedData.denominationsNoConversionNote')}
           </div>
           {data.dataQualityIssueCount > 0 && (
             <div data-testid="denominations-issue-hint" className="mt-2 text-xs text-red-600">
@@ -268,9 +262,95 @@ export default function ReceivedDenominationsView() {
   )
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function CurrencyRow({
+  row,
+  columns,
+  t,
+}: {
+  row: ReceivedDenominationCurrencyRow
+  columns: number[]
+  t: ReturnType<typeof useTranslation>['t']
+}) {
+  const otherCells = Array.isArray(row.otherCells)
+    ? row.otherCells
+    : (row.cells ?? []).filter(
+        (cell) => !FIXED_FACE_VALUES.includes(cell.faceValue as (typeof FIXED_FACE_VALUES)[number]),
+      )
+  const otherFlagged = otherCells.some((cell) => cell.dataQualityFlag !== 'OK')
+
   return (
-    <div className="rounded border border-slate-200 p-3">
+    <tr key={row.currencyCode} data-testid={`denom-row-${row.currencyCode}`}>
+      <td className="px-3 py-2 font-mono font-semibold text-slate-900">
+        <div>{row.currencyCode}</div>
+        {row.currencyCode !== 'HUF' && (
+          <div
+            data-testid={`denom-rate-${row.currencyCode}`}
+            className={`text-[11px] font-normal ${row.rateMissing ? 'text-amber-700' : 'text-slate-500'}`}
+          >
+            {row.rateMissing
+              ? t('centralReceivedData.denominationsRateMissing')
+              : `${rateSourceLabel(t, row.rateSource)}${row.rateDate ? ` · ${row.rateDate}` : ''}`}
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-2 text-right font-mono text-slate-700">
+        {formatNumber(row.totalValue, 2)}
+      </td>
+      {columns.map((faceValue) => {
+        const column = row.fixedColumns?.find((item) => Number(item.faceValue) === faceValue)
+        const quantity = column?.quantity
+        const flagged = Boolean(column?.dataQualityFlag && column.dataQualityFlag !== 'OK')
+        return (
+          <td
+            key={faceValue}
+            data-testid={`denom-cell-${row.currencyCode}-${faceValue}`}
+            title={flagged ? (column?.dataQualityFlag ?? undefined) : undefined}
+            className={`px-3 py-2 text-right font-mono ${
+              flagged ? 'bg-red-50 text-red-700' : 'text-slate-700'
+            }`}
+          >
+            {quantity == null ? (
+              <span className="text-slate-300">–</span>
+            ) : (
+              <div className="flex items-center justify-end gap-1">
+                {flagged && <AlertTriangle size={12} />}
+                {formatNumber(quantity)}
+              </div>
+            )}
+          </td>
+        )
+      })}
+      <td
+        data-testid={`denom-cell-${row.currencyCode}-other`}
+        className={`px-3 py-2 text-right font-mono ${
+          otherFlagged ? 'bg-red-50 text-red-700' : 'text-slate-700'
+        }`}
+      >
+        {otherCells.length === 0 ? (
+          <span className="text-slate-300">–</span>
+        ) : (
+          otherCells.map((cell) => (
+            <div
+              key={`${cell.faceValue}-${cell.denominationType}`}
+              data-testid={`denom-cell-${row.currencyCode}-${cell.faceValue}`}
+              title={cell.dataQualityFlag !== 'OK' ? cell.dataQualityFlag : undefined}
+            >
+              <div className="text-[11px] text-slate-500">{formatFaceValue(cell.faceValue)}</div>
+              <div className="flex items-center justify-end gap-1">
+                {cell.dataQualityFlag !== 'OK' && <AlertTriangle size={12} />}
+                {formatNumber(cell.quantity)}
+              </div>
+            </div>
+          ))
+        )}
+      </td>
+    </tr>
+  )
+}
+
+function SummaryItem({ label, value, testId }: { label: string; value: string; testId?: string }) {
+  return (
+    <div className="rounded border border-slate-200 p-3" data-testid={testId}>
       <div className="text-xs text-slate-500">{label}</div>
       <div className="text-lg font-semibold text-slate-900">{value}</div>
     </div>
