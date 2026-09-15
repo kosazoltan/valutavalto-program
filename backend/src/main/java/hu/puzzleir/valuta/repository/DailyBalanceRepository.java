@@ -122,4 +122,22 @@ public interface DailyBalanceRepository extends JpaRepository<DailyBalance, Long
         @Param("branchIds") List<UUID> branchIds,
         @Param("from") LocalDate from,
         @Param("to") LocalDate to);
+
+    /**
+     * FK-114 FR-1: DB-side per-currency SUM of vault bank fields over a date range.
+     * Callers must pass only {@code is_vault=true} branch ids; the query does not
+     * join Branch so it stays a projection, not a full entity load.
+     *
+     * <p>Tuple: [0]=currencyCode (String), [1]=SUM(bankIn), [2]=SUM(bankOut).</p>
+     */
+    @Query("SELECT db.currencyCode, COALESCE(SUM(db.bankIn), 0), COALESCE(SUM(db.bankOut), 0) "
+            + "FROM DailyBalance db WHERE db.company.id = :companyId "
+            + "AND db.branchId IN :branchIds "
+            + "AND db.balanceDate BETWEEN :from AND :to "
+            + "GROUP BY db.currencyCode ORDER BY db.currencyCode")
+    List<Object[]> sumBankInOutByCurrency(
+            @Param("companyId") UUID companyId,
+            @Param("branchIds") List<UUID> branchIds,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
 }

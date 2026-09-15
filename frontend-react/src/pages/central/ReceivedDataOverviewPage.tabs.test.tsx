@@ -16,6 +16,10 @@ vi.mock('./ReceivedDenominationsView', () => ({
   default: () => <div data-testid="denominations-view-stub" />,
 }))
 
+vi.mock('./ReceivedBankTurnoverView', () => ({
+  default: () => <div data-testid="bank-turnover-view-stub" />,
+}))
+
 /**
  * FK-111 FR-2: the page gains a second tab; the FK-003 reconciliation view stays the
  * default and is not modified.
@@ -106,5 +110,15 @@ describe('ReceivedDataOverviewPage — fülek (FK-111)', () => {
 
     expect(screen.getByTestId('recon-row-AT0001')).toBeInTheDocument()
     expect(mockRun).toHaveBeenCalledTimes(1)
+  })
+
+  it('FK-114: a harmadik fül lekérdezés nélkül jelenik meg, az egyeztetés nem fut', async () => {
+    render(<ReceivedDataOverviewPage />)
+
+    await userEvent.click(screen.getByTestId('received-data-tab-bank-turnover'))
+
+    expect(screen.getByTestId('bank-turnover-view-stub')).toBeInTheDocument()
+    expect(screen.queryByTestId('denominations-view-stub')).not.toBeInTheDocument()
+    expect(mockRun).not.toHaveBeenCalled()
   })
 })
