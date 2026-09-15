@@ -372,10 +372,15 @@
     "denominationsStockTotal": "Készlet-összeg",
     "denominationsQuantity": "Összes darab",
     "denominationsHufValue": "Forint érték",
+    "denominationsCurrencyValue": "Valuta érték",
+    "denominationsGrandTotal": "Összesen",
+    "denominationsOther": "Egyéb",
+    "denominationsRateMissing": "nincs adat",
+    "denominationsRateSourceMnb": "MNB",
+    "denominationsRateSourceManual": "kézi elszámolási",
     "denominationsCurrencyCount": "Valutanemek száma",
     "denominationsIssueCount": "Jelölt (ellenőrzendő) cellák",
-    "denominationsIssueHint": "A pirossal jelölt cellák adatminőségi hibát jeleznek: törtrészes névérték, nem pozitív névérték, vagy a darabszámmal nem egyező összeg.",
-    "denominationsNoConversionNote": "A záráskori snapshot nem tartalmaz árfolyamot, ezért a valuta-készlet nincs forintra átszámítva."
+    "denominationsIssueHint": "A pirossal jelölt cellák adatminőségi hibát jeleznek: törtrészes névérték, nem pozitív névérték, vagy a darabszámmal nem egyező összeg."
   },
   "closing": {
     "cashierheader": "CashierHeader: () =>",

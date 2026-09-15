@@ -2,11 +2,18 @@ package hu.puzzleir.valuta.service.central;
 
 import hu.puzzleir.valuta.dto.central.ReceivedDenominationsDto;
 import hu.puzzleir.valuta.entity.Branch;
+import hu.puzzleir.valuta.entity.Currency;
 import hu.puzzleir.valuta.entity.DailyDenominationSnapshot;
+import hu.puzzleir.valuta.entity.DenominationAllowed;
+import hu.puzzleir.valuta.entity.MnbExchangeRateCache;
 import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.repository.BranchRepository;
 import hu.puzzleir.valuta.repository.DailyDenominationSnapshotRepository;
+import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.service.MnbExchangeRateService;
+import hu.puzzleir.valuta.service.MnbSettlementRateService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -14,12 +21,15 @@ import org.mockito.MockedStatic;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -42,8 +52,25 @@ class ReceivedDenominationsServiceTest {
     private final BranchRepository branchRepository = mock(BranchRepository.class);
     private final DailyDenominationSnapshotRepository snapshotRepository =
             mock(DailyDenominationSnapshotRepository.class);
-    private final ReceivedDenominationsService service =
-            new ReceivedDenominationsService(branchRepository, snapshotRepository);
+    private final DenominationAllowedRepository denominationAllowedRepository =
+            mock(DenominationAllowedRepository.class);
+    private final MnbExchangeRateService mnbExchangeRateService = mock(MnbExchangeRateService.class);
+    private final MnbSettlementRateService mnbSettlementRateService = mock(MnbSettlementRateService.class);
+    private final ReceivedDenominationsService service = new ReceivedDenominationsService(
+            branchRepository,
+            snapshotRepository,
+            denominationAllowedRepository,
+            mnbExchangeRateService,
+            mnbSettlementRateService);
+
+    @BeforeEach
+    void stubRateLookups() {
+        when(denominationAllowedRepository.findActiveByCompanyId(COMPANY_ID)).thenReturn(List.of());
+        when(mnbExchangeRateService.getRatesForDate(any())).thenReturn(Map.of());
+        when(mnbExchangeRateService.isQuotedByMnb(anyString())).thenReturn(true);
+        when(mnbSettlementRateService.findSettlementRateAsOf(any(), anyString(), any()))
+                .thenReturn(Optional.empty());
+    }
 
     private static Branch branch(UUID id, String code, String name) {
         Branch branch = new Branch();
@@ -244,5 +271,183 @@ class ReceivedDenominationsServiceTest {
     void nullDateRejected() {
         withCompany(() -> assertThatThrownBy(() -> service.load(null, null))
                 .isInstanceOf(ValidationException.class));
+    }
+
+    @Test
+    @DisplayName("FK-112 FR-1: 14 fix oszlop, katalogus szerinti 0, hianyzonal null (–), Egyeb a tortrészre")
+    void fixedColumnsUseCatalogAndCollectFractionalsInOther() {
+        withCompany(() -> {
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                    .thenReturn(List.of(branch(BRANCH_A, "BR001", "Deak ter")));
+            when(denominationAllowedRepository.findActiveByCompanyId(COMPANY_ID))
+                    .thenReturn(List.of(allowed("EUR", "100"), allowed("EUR", "50")));
+            when(snapshotRepository.findByBranchIdInAndSnapshotDateAndClosingType(anyList(), any(), any()))
+                    .thenReturn(List.of(
+                            snapshot(BRANCH_A, "EUR", "100", 2, "200"),
+                            snapshot(BRANCH_A, "EUR", "0.50", 4, "2")));
+
+            ReceivedDenominationsDto dto = service.load(DATE, BRANCH_A);
+
+            ReceivedDenominationsDto.CurrencyRowDto eur = dto.getRows().get(0);
+            assertThat(dto.getFixedFaceValues()).isEqualTo(ReceivedDenominationsDto.FIXED_FACE_VALUES);
+            assertThat(eur.getFixedColumns()).hasSize(14);
+            assertThat(column(eur, "100").getQuantity()).isEqualTo(2L);
+            assertThat(column(eur, "100").isInCatalog()).isTrue();
+            assertThat(column(eur, "50").getQuantity()).isZero();
+            assertThat(column(eur, "50").isInCatalog()).isTrue();
+            assertThat(column(eur, "20").getQuantity()).isNull();
+            assertThat(column(eur, "20").isInCatalog()).isFalse();
+            assertThat(eur.getOtherCells()).extracting("faceValue")
+                    .containsExactly(new BigDecimal("0.50"));
+        });
+    }
+
+    @Test
+    @DisplayName("FK-112 TBD-3: inaktiv katalogus-nevertek a snapshotban megis darabszamot kap, nem –-t")
+    void snapshotFaceValueSurvivesInactiveCatalog() {
+        withCompany(() -> {
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                    .thenReturn(List.of(branch(BRANCH_A, "BR001", "Deak ter")));
+            when(denominationAllowedRepository.findActiveByCompanyId(COMPANY_ID))
+                    .thenReturn(List.of(allowed("EUR", "50")));
+            when(snapshotRepository.findByBranchIdInAndSnapshotDateAndClosingType(anyList(), any(), any()))
+                    .thenReturn(List.of(snapshot(BRANCH_A, "EUR", "100", 3, "300")));
+
+            ReceivedDenominationsDto dto = service.load(DATE, BRANCH_A);
+
+            assertThat(column(dto.getRows().get(0), "100").getQuantity()).isEqualTo(3L);
+            assertThat(column(dto.getRows().get(0), "100").isInCatalog()).isFalse();
+        });
+    }
+
+    @Test
+    @DisplayName("FK-112 FR-2: MNB arfolyam atszamitja a nem-HUF sort, HUF sajat osszeg marad")
+    void mnbRateConvertsForeignRowAndKeepsHufOwnTotal() {
+        withCompany(() -> {
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                    .thenReturn(List.of(branch(BRANCH_A, "BR001", "Deak ter")));
+            when(snapshotRepository.findByBranchIdInAndSnapshotDateAndClosingType(anyList(), any(), any()))
+                    .thenReturn(List.of(
+                            snapshot(BRANCH_A, "HUF", "20000", 5, "100000"),
+                            snapshot(BRANCH_A, "EUR", "100", 2, "200")));
+            when(mnbExchangeRateService.getRatesForDate(DATE))
+                    .thenReturn(Map.of("EUR", mnbRate("EUR", DATE, "400.00")));
+
+            ReceivedDenominationsDto dto = service.load(DATE, BRANCH_A);
+
+            ReceivedDenominationsDto.CurrencyRowDto eur = dto.getRows().stream()
+                    .filter(row -> "EUR".equals(row.getCurrencyCode()))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(eur.getRate()).isEqualByComparingTo("400.00");
+            assertThat(eur.getRateDate()).isEqualTo(DATE);
+            assertThat(eur.getRateSource()).isEqualTo(ReceivedDenominationsDto.RATE_SOURCE_MNB);
+            assertThat(eur.isRateMissing()).isFalse();
+            assertThat(eur.getHufEquivalent()).isEqualByComparingTo("80000");
+            assertThat(dto.getHufTotalValue()).isEqualByComparingTo("100000");
+            assertThat(dto.getCurrencyValueHuf()).isEqualByComparingTo("80000");
+            assertThat(dto.getGrandTotalHuf()).isEqualByComparingTo("180000");
+        });
+    }
+
+    @Test
+    @DisplayName("FK-112 FR-2: hetvege/unnep — 7 napos MNB walk-back")
+    void mnbWalkBackUsesPreviousBusinessDay() {
+        withCompany(() -> {
+            LocalDate sunday = LocalDate.of(2026, 9, 13);
+            LocalDate friday = LocalDate.of(2026, 9, 11);
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                    .thenReturn(List.of(branch(BRANCH_A, "BR001", "Deak ter")));
+            when(snapshotRepository.findByBranchIdInAndSnapshotDateAndClosingType(anyList(), any(), any()))
+                    .thenReturn(List.of(snapshot(BRANCH_A, "EUR", "100", 1, "100")));
+            when(mnbExchangeRateService.getRatesForDate(sunday)).thenReturn(Map.of());
+            when(mnbExchangeRateService.getRatesForDate(sunday.minusDays(1))).thenReturn(Map.of());
+            when(mnbExchangeRateService.getRatesForDate(friday))
+                    .thenReturn(Map.of("EUR", mnbRate("EUR", friday, "395.10")));
+
+            ReceivedDenominationsDto dto = service.load(sunday, BRANCH_A);
+
+            ReceivedDenominationsDto.CurrencyRowDto eur = dto.getRows().get(0);
+            assertThat(eur.getRateDate()).isEqualTo(friday);
+            assertThat(eur.getRateSource()).isEqualTo(ReceivedDenominationsDto.RATE_SOURCE_MNB);
+            assertThat(eur.getHufEquivalent()).isEqualByComparingTo("39510");
+        });
+    }
+
+    @Test
+    @DisplayName("FK-112 FR-2: MNB altal nem jegyzett deviza a kezi elszamolasi history-t hasznalja")
+    void unquotedCurrencyUsesManualSettlementRate() {
+        withCompany(() -> {
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                    .thenReturn(List.of(branch(BRANCH_A, "BR001", "Deak ter")));
+            when(snapshotRepository.findByBranchIdInAndSnapshotDateAndClosingType(anyList(), any(), any()))
+                    .thenReturn(List.of(snapshot(BRANCH_A, "BAM", "100", 2, "200")));
+            when(mnbExchangeRateService.isQuotedByMnb("BAM")).thenReturn(false);
+            when(mnbSettlementRateService.findSettlementRateAsOf(COMPANY_ID, "BAM", DATE))
+                    .thenReturn(Optional.of(new BigDecimal("210.50")));
+
+            ReceivedDenominationsDto dto = service.load(DATE, BRANCH_A);
+
+            ReceivedDenominationsDto.CurrencyRowDto bam = dto.getRows().get(0);
+            assertThat(bam.getRateSource()).isEqualTo(ReceivedDenominationsDto.RATE_SOURCE_MANUAL);
+            assertThat(bam.getRate()).isEqualByComparingTo("210.50");
+            assertThat(bam.getHufEquivalent()).isEqualByComparingTo("42100");
+            assertThat(bam.isRateMissing()).isFalse();
+        });
+    }
+
+    @Test
+    @DisplayName("FK-112 FR-2: hianyzo arfolyam a sort nincs adat-ra jeloli, a valaszt nem dobja el")
+    void missingRateFlagsRowAndLeavesTheRest() {
+        withCompany(() -> {
+            when(branchRepository.findByCompanyIdAndIsActiveTrueExcludingCounterparties(COMPANY_ID))
+                    .thenReturn(List.of(branch(BRANCH_A, "BR001", "Deak ter")));
+            when(snapshotRepository.findByBranchIdInAndSnapshotDateAndClosingType(anyList(), any(), any()))
+                    .thenReturn(List.of(
+                            snapshot(BRANCH_A, "HUF", "20000", 1, "20000"),
+                            snapshot(BRANCH_A, "EUR", "100", 1, "100")));
+            when(mnbExchangeRateService.getRatesForDate(any())).thenThrow(new RuntimeException("SOAP down"));
+
+            ReceivedDenominationsDto dto = service.load(DATE, BRANCH_A);
+
+            assertThat(dto.getRows()).hasSize(2);
+            ReceivedDenominationsDto.CurrencyRowDto eur = dto.getRows().stream()
+                    .filter(row -> "EUR".equals(row.getCurrencyCode()))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(eur.isRateMissing()).isTrue();
+            assertThat(eur.getHufEquivalent()).isNull();
+            assertThat(dto.getHufTotalValue()).isEqualByComparingTo("20000");
+            assertThat(dto.getCurrencyValueHuf()).isEqualByComparingTo("0");
+            assertThat(dto.getGrandTotalHuf()).isEqualByComparingTo("20000");
+        });
+    }
+
+    private static ReceivedDenominationsDto.FixedColumnDto column(
+            ReceivedDenominationsDto.CurrencyRowDto row, String faceValue) {
+        return row.getFixedColumns().stream()
+                .filter(col -> col.getFaceValue().compareTo(new BigDecimal(faceValue)) == 0)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static DenominationAllowed allowed(String currencyCode, String faceValue) {
+        Currency currency = new Currency();
+        currency.setCode(currencyCode);
+        return DenominationAllowed.builder()
+                .currency(currency)
+                .faceValue(new BigDecimal(faceValue))
+                .active(true)
+                .build();
+    }
+
+    private static MnbExchangeRateCache mnbRate(String currency, LocalDate date, String officialRate) {
+        return MnbExchangeRateCache.builder()
+                .currencyCode(currency)
+                .rateDate(date)
+                .officialRate(new BigDecimal(officialRate))
+                .unit(1)
+                .source("MNB")
+                .build();
     }
 }
