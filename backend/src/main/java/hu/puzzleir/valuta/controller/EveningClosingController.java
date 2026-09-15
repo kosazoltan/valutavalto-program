@@ -5,6 +5,7 @@ import hu.puzzleir.valuta.dto.ClosingMarkType;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import hu.puzzleir.valuta.service.ClosingWizardService;
 import hu.puzzleir.valuta.service.ClosingControlService;
+import hu.puzzleir.valuta.service.DailyBalanceService;
 import hu.puzzleir.valuta.service.EveningClosingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class EveningClosingController {
     private final EveningClosingService eveningClosingService;
     private final ClosingControlService closingControlService;
     private final ClosingWizardService closingWizardService;
+    private final DailyBalanceService dailyBalanceService;
 
     /**
      * Napi adatcsomag előkészítése (preview — nem küld).
@@ -62,6 +64,14 @@ public class EveningClosingController {
 
         if (result.isSuccess()) {
             closingControlService.markClosingDone(SecurityUtils.getCurrentCompanyId(), branchId, date, ClosingMarkType.EVENING);
+            try {
+                dailyBalanceService.recordVaultBankAdjustments(branchId, date);
+            } catch (RuntimeException ex) {
+                // HQ send and evening mark already succeeded; bank_in/bank_out is REQUIRES_NEW.
+                // Mirror DailyClosingService: do not turn a successful send into HTTP 500.
+                log.error("FK-113: vault bank adjustments failed after evening send, branch={}, date={}: {}",
+                        branchId, date, ex.getMessage(), ex);
+            }
             return ResponseEntity.ok(result);
         } else {
             return ResponseEntity.internalServerError().body(result);

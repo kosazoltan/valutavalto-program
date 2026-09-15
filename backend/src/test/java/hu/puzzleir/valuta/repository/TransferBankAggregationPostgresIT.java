@@ -234,6 +234,67 @@ class TransferBankAggregationPostgresIT {
         });
     }
 
+    @Test
+    @DisplayName("FK-113 FR-3: VAULT_COUNTERPARTY célú F tétel kimarad a transfers_out összegből")
+    void sumTransfersOutExcludesEveryVaultCounterpartyNotOnlyTh() {
+        transactionTemplate.executeWithoutResult(status -> {
+            Seed seed = seed("XTH");
+            Dictionary counterpartyType = dictionaryRepository.findByCategoryAndCode(
+                            "BRANCH_TYPE", "VAULT_COUNTERPARTY")
+                    .orElseGet(() -> dictionaryRepository.save(Dictionary.builder()
+                            .category("BRANCH_TYPE")
+                            .code("VAULT_COUNTERPARTY")
+                            .name("Vault counterparty")
+                            .createdAt(LocalDateTime.now())
+                            .build()));
+            Branch cashier = saveBranch(seed.company(), seed.dictionaries(), "CASH", false, null);
+            Branch bankPartner = branchRepository.save(Branch.builder()
+                    .code(shortCode("B", uniqueSuffix("BNK"), 20))
+                    .company(seed.company())
+                    .bankCode("FK113")
+                    .branchType(counterpartyType)
+                    .name("FK-113 bank")
+                    .address("Test street 1")
+                    .city("Budapest")
+                    .zipCode("1000")
+                    .country(seed.dictionaries().country())
+                    .branchStatus(seed.dictionaries().status())
+                    .openingDate(BUSINESS_DATE.minusYears(1))
+                    .isVault(false)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+            Branch thPartner = branchRepository.save(Branch.builder()
+                    .code(shortCode("B", uniqueSuffix("THP"), 20))
+                    .company(seed.company())
+                    .bankCode("FK113")
+                    .branchType(counterpartyType)
+                    .name("FK-113 TH")
+                    .address("Test street 1")
+                    .city("Budapest")
+                    .zipCode("1000")
+                    .country(seed.dictionaries().country())
+                    .branchStatus(seed.dictionaries().status())
+                    .openingDate(BUSINESS_DATE.minusYears(1))
+                    .isVault(false)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+
+            saveTransfer(seed, seed.vault(), cashier, "XTH-CASH", Transfer.TransferType.CURRENCY,
+                    Transfer.TransferDirection.F, Transfer.TransferStatus.COMPLETED, false,
+                    BUSINESS_DATE, seed.eur(), "100.00");
+            saveTransfer(seed, seed.vault(), bankPartner, "XTH-BNK", Transfer.TransferType.ERB,
+                    Transfer.TransferDirection.F, Transfer.TransferStatus.COMPLETED, false,
+                    BUSINESS_DATE, seed.eur(), "50.00");
+            saveTransfer(seed, seed.vault(), thPartner, "XTH-TH", Transfer.TransferType.CURRENCY,
+                    Transfer.TransferDirection.F, Transfer.TransferStatus.COMPLETED, false,
+                    BUSINESS_DATE, seed.eur(), "25.00");
+
+            assertThat(transferRepository.sumTransfersOutExcludingTh(
+                    seed.vault().getId(), seed.company().getId(), BUSINESS_DATE, "EUR"))
+                    .isEqualByComparingTo("100.00");
+        });
+    }
+
     private Seed seed(String prefix) {
         String suffix = uniqueSuffix(prefix);
         LocalDateTime now = LocalDateTime.now();
