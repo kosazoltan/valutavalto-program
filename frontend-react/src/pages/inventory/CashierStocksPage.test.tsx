@@ -401,6 +401,106 @@ describe('CashierStocksPage (FK-007/008)', () => {
     expect(screen.getByTestId('cashier-stock-fee-EUR')).toHaveTextContent(/^300$/)
   })
 
+  it('FKH-072 FR-1/FR-2: a HUF sor Forgalom vétel/eladás a vault-daily totalBuy/totalSell forint-összeg', async () => {
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      totalBuy: 45000,
+      totalSell: 12000,
+      byCurrency: [
+        {
+          currencyCode: 'EUR',
+          buyVolume: 100,
+          sellVolume: 10,
+          buyHuf: 34205,
+          sellHuf: 8000,
+          fee: 0,
+        },
+      ],
+    })
+    render(<CashierStocksPage />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-buy-HUF')).toHaveTextContent(/45[\s\u00a0]?000/),
+    )
+    expect(screen.getByTestId('cashier-stock-sell-HUF')).toHaveTextContent(/12[\s\u00a0]?000/)
+    expect(screen.getByTestId('cashier-stock-buy-HUF')).not.toHaveTextContent(/100,00/)
+  })
+
+  it('FKH-072 FR-3: Körzet összesen a HUF sorban a fiókok forint-forgalmát összegzi', async () => {
+    const SECOND = {
+      id: 'branch-szekszard',
+      name: 'Szekszard Tesco',
+      region: 'SZEKSZARD',
+      isVault: false,
+    }
+    mocks.branchListActive.mockResolvedValue([...BRANCHES, SECOND])
+    mocks.branchListMyTerritory.mockResolvedValue([...BRANCHES, SECOND])
+    mocks.apiGet.mockImplementation((path: string) => {
+      if (path === '/inventory/stock')
+        return Promise.resolve({
+          data: [
+            ...STOCK,
+            {
+              id: 's5',
+              branchId: 'branch-szekszard',
+              branchName: 'Szekszard Tesco',
+              currencyCode: 'EUR',
+              currentBalance: 500,
+            },
+          ],
+        })
+      return Promise.resolve({ data: [] })
+    })
+    mocks.vaultTurnoverDaily.mockImplementation((branchId: string) => {
+      if (branchId === 'branch-baja')
+        return Promise.resolve({ totalBuy: 45000, totalSell: 10000, byCurrency: [] })
+      if (branchId === 'branch-szekszard')
+        return Promise.resolve({ totalBuy: 15000, totalSell: 5000, byCurrency: [] })
+      return Promise.resolve({ byCurrency: [] })
+    })
+    render(<CashierStocksPage />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-buy-HUF')).toHaveTextContent(/60[\s\u00a0]?000/),
+    )
+    expect(screen.getByTestId('cashier-stock-sell-HUF')).toHaveTextContent(/15[\s\u00a0]?000/)
+  })
+
+  it('FKH-072 FR-5: a devizás sorok Forgalom oszlopai valuta-egységben maradnak', async () => {
+    mocks.vaultTurnoverDaily.mockResolvedValue({
+      totalBuy: 34205,
+      totalSell: 86500,
+      byCurrency: [
+        {
+          currencyCode: 'EUR',
+          buyVolume: 100,
+          sellVolume: 250.5,
+          buyHuf: 34205,
+          sellHuf: 86500,
+          fee: 0,
+        },
+      ],
+    })
+    render(<CashierStocksPage />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('cashier-stock-buy-EUR')).toHaveTextContent('100,00'),
+    )
+    expect(screen.getByTestId('cashier-stock-sell-EUR')).toHaveTextContent('250,50')
+  })
+
+  it('FKH-072 FR-6/FR-7: páratlan indexű sor bg-gray-50, a border-b megmarad', async () => {
+    render(<CashierStocksPage />)
+    await waitFor(() => expect(screen.getByTestId('cashier-stock-buy-HUF')).toBeInTheDocument())
+    const table = screen.getByTestId('cashier-stock-buy-HUF').closest('table')
+    expect(table).toBeTruthy()
+    const bodyRows = table!.querySelectorAll('tbody tr')
+    expect(bodyRows.length).toBeGreaterThan(1)
+    expect(bodyRows[0].className).toMatch(/border-b/)
+    expect(bodyRows[0].className).not.toMatch(/bg-gray-50/)
+    expect(bodyRows[1].className).toMatch(/bg-gray-50/)
+    expect(bodyRows[1].className).toMatch(/border-b/)
+  })
+
   it('FKH-066 NFR-1: bukó forgalom-lekérdezés NEM jelenhet meg nullaként, a cella ismeretlent jelöl', async () => {
     // Reviewer finding (money data): an unavailable lookup rendered as a legitimate
     // zero, which also corrupted the territory total.
