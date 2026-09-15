@@ -55,6 +55,7 @@ class PepSourceOfFundsTest {
 
         @Mock private WacService wacService;
         @Mock private VaultStockFlowService vaultStockFlowService;
+        @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
         @InjectMocks private TransactionService transactionService;
 
         @Mock private TransactionValidationService transactionValidationService;

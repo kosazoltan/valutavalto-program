@@ -39,6 +39,7 @@ class ShipmentHandlingFeeSyncServiceTest {
 
     @Mock private ShipmentHandlingFeeRepository feeRepository;
     @Mock private AuditLogService auditLogService;
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
 
     @InjectMocks private ShipmentHandlingFeeSyncService service;
 
@@ -109,6 +110,7 @@ class ShipmentHandlingFeeSyncServiceTest {
         assertThat(fee.getStatus()).isEqualTo(ShipmentRequestStatus.CANCELLED);
         assertThat(fee.getApprovedAt()).isNull();
         verify(feeRepository).save(fee);
+        verify(handlingFeeBalanceService).increase(FROM_BRANCH_ID, COMPANY_ID, new BigDecimal("125000"));
         verifyNoInteractions(auditLogService);
     }
 

@@ -52,6 +52,7 @@ public class TransactionMultiLineService {
     private final TransactionLineRepository transactionLineRepository;
     private final TransactionValidationService transactionValidationService;
     private final WacService wacService;
+    private final HandlingFeeBalanceService handlingFeeBalanceService;
 
     /**
      * FK-KEZDÍJ (2026-06-02): a kezelési díj override jogosultság-ellenőrzéséhez a bejelentkezett
@@ -275,6 +276,7 @@ public class TransactionMultiLineService {
             helper.updateCashBalance(branchId, line.getCurrency().getId(), line.getBanknoteCount(), true);
         }
         helper.updateCashBalance(branchId, helper.getHufCurrencyId(), payableAmount.negate(), false);
+        handlingFeeBalanceService.increase(branchId, companyId, serverHandlingFee);
 
         // Napi statisztika
         dailySessionService.updateSessionStats(TransactionType.BUY, payableAmount, serverHandlingFee);
@@ -490,6 +492,7 @@ public class TransactionMultiLineService {
             helper.updateCashBalance(branchId, line.getCurrency().getId(), line.getBanknoteCount().negate(), false);
         }
         helper.updateCashBalance(branchId, helper.getHufCurrencyId(), payableAmount, true);
+        handlingFeeBalanceService.increase(branchId, companyId, serverHandlingFee);
 
         // A6 / b8 FR-8: soronkenti realizalt profit best-effort rogzitese a tranzakcio COMMITJA
         // UTAN (flag-gated, cold-start-safe, read-only a keszleten). Egysoros executeSell-lel egyezo

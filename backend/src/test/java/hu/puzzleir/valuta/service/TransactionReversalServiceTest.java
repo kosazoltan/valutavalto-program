@@ -30,6 +30,9 @@ import static org.mockito.Mockito.*;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class TransactionReversalServiceTest {
 
+    @Mock
+    private HandlingFeeBalanceService handlingFeeBalanceService;
+
     @InjectMocks
     private TransactionReversalService reversalService;
 

@@ -45,6 +45,7 @@ class TransactionServiceMultiLineTest {
     private static final Long USD_ID = 3L;
     @Mock private TransactionValidationService transactionValidationService;
     @Mock private WacService wacService;
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
 
     @InjectMocks
     private TransactionMultiLineService multiLineServiceImpl;

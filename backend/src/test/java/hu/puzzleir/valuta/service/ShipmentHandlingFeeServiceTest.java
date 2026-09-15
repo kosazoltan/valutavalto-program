@@ -47,6 +47,7 @@ class ShipmentHandlingFeeServiceTest {
     @Mock private ShipmentHandlingFeeRepository feeRepository;
     @Mock private CurrencyRepository currencyRepository;
     @Mock private AuditLogService auditLogService;
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
 
     @InjectMocks private ShipmentHandlingFeeService service;
 
@@ -90,6 +91,7 @@ class ShipmentHandlingFeeServiceTest {
         assertThat(fee.getCalculatedFee()).isEqualByComparingTo("625");
         assertThat(fee.getStatus()).isEqualTo(ShipmentRequestStatus.DRAFT);
         verify(handlingFeeService).calculateHandlingFee(new BigDecimal("125000"), FROM_BRANCH_ID);
+        verify(handlingFeeBalanceService).decrease(FROM_BRANCH_ID, COMPANY_ID, new BigDecimal("125000"));
         verify(auditLogService).log(
                 eq(ShipmentHandlingFeeService.ACTION_FEE_RECEIVED),
                 eq("ShipmentHandlingFee"),

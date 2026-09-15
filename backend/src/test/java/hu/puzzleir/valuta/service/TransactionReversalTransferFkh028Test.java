@@ -58,6 +58,8 @@ import static org.mockito.Mockito.when;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class TransactionReversalTransferFkh028Test {
 
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
+
     @InjectMocks
     private TransactionReversalService reversalService;
 

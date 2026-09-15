@@ -85,6 +85,7 @@ public class TransactionService {
     private final PmtComplianceValidator pmtComplianceValidator;
     private final LicenseService licenseService;
     private final SystemParameterService systemParameterService;
+    private final HandlingFeeBalanceService handlingFeeBalanceService;
     private final WacService wacService;
     /** A4: kötelező körlevél-nyugtázás gate (flag-gated, default OFF → @InjectMocks tesztekben nem hívódik). */
     private final hu.puzzleir.valuta.repository.CircularRepository circularRepository;
@@ -461,6 +462,7 @@ public class TransactionService {
         // Kassza frissítése - HUF csökken, valuta nő
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount(), true, companyId);  // valuta +
         updateCashBalance(branchId, getHufCurrencyId(), payableAmount.negate(), false, companyId);    // HUF -
+        handlingFeeBalanceService.increase(branchId, companyId, serverHandlingFee);
 
         // Napi statisztika frissítése
         dailySessionService.updateSessionStats(
@@ -692,6 +694,7 @@ public class TransactionService {
         // Kassza frissítése - HUF nő, valuta csökken
         updateCashBalance(branchId, currency.getId(), request.getCurrencyAmount().negate(), false, companyId); // valuta -
         updateCashBalance(branchId, getHufCurrencyId(), payableAmount, true, companyId);                       // HUF +
+        handlingFeeBalanceService.increase(branchId, companyId, serverHandlingFee);
 
         // A6 / b8 FR-8: realizált profit best-effort rögzítése a tranzakció COMMITJA UTÁN
         // (flag-gated, cold-start-safe, read-only a készleten → nincs havi-zárás/cash_balance

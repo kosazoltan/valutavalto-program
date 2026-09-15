@@ -10,6 +10,7 @@ import hu.puzzleir.valuta.entity.DenominationAllowed;
 import hu.puzzleir.valuta.entity.DenominationBalance;
 import hu.puzzleir.valuta.entity.DenominationCategory;
 import hu.puzzleir.valuta.entity.DenominationType;
+import hu.puzzleir.valuta.entity.HandlingFeeBalance;
 import hu.puzzleir.valuta.entity.VatSupplyStock;
 import hu.puzzleir.valuta.exception.ResourceNotFoundException;
 import hu.puzzleir.valuta.exception.ValidationException;
@@ -23,7 +24,7 @@ import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
-import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.repository.HandlingFeeBalanceRepository;
 import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class DenominationBalanceServiceTest {
     @Mock private CashBalanceRepository cashBalanceRepository;
     // FK-080 (FR-5): a mentes-ut allowlist-gatjanak katalogus-repoja.
     @Mock private DenominationAllowedRepository denominationAllowedRepository;
-    @Mock private TransactionRepository transactionRepository;
+    @Mock private HandlingFeeBalanceRepository handlingFeeBalanceRepository;
     @Mock private CurrencyRepository currencyRepository;
     @Mock private VatSupplyStockRepository vatSupplyStockRepository;
     @Mock private CurrencyStockRepository currencyStockRepository;
@@ -62,7 +63,7 @@ class DenominationBalanceServiceTest {
         return new DenominationBalanceService(
                 balanceRepository, denominationRepository, cashRegisterDeviceRepository, branchRepository,
                 cashBalanceRepository, denominationAllowedRepository,
-                transactionRepository, currencyRepository, vatSupplyStockRepository,
+                handlingFeeBalanceRepository, currencyRepository, vatSupplyStockRepository,
                 currencyStockRepository);
     }
 
@@ -442,21 +443,20 @@ class DenominationBalanceServiceTest {
     }
 
     /**
-     * FKH-039 FR-6/FR-7 + FKH-070: HANDLING_FEE self-check Expected comes from
-     * the live Transaction.handlingFee sum (not cash_balance, and not the never-
-     * populated KK ShipmentHandlingFee); empty day → expected 0, one HUF row.
+     * FKH-071: HANDLING_FEE self-check Expected comes from HandlingFeeBalance
+     * (rolled), not a per-day SUM and not cash_balance / KK.
      */
     @Test
-    void selfCheckHandlingFeeUsesDailyFeeSumNotCashBalance() {
+    void selfCheckHandlingFeeUsesRolledBalanceNotCashBalance() {
         UUID companyId = UUID.randomUUID();
         UUID branchId = UUID.randomUUID();
         when(branchRepository.existsByIdAndCompanyId(branchId, companyId)).thenReturn(true);
         when(balanceRepository.sumActualStockByCurrency(
                 branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE))
                 .thenReturn(List.<Object[]>of(new Object[]{"HUF", new BigDecimal("5000.00")}));
-        when(transactionRepository.sumHandlingFeeForBranchAndDate(
-                eq(companyId), eq(branchId), eq(LocalDate.now()), anyCollection()))
-                .thenReturn(new BigDecimal("5000"));
+        when(handlingFeeBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId))
+                .thenReturn(Optional.of(HandlingFeeBalance.builder()
+                        .currentBalance(new BigDecimal("5000")).build()));
         when(currencyRepository.findByCode("HUF"))
                 .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));
 
@@ -471,8 +471,7 @@ class DenominationBalanceServiceTest {
             assertThat(result.get(0).isMatches()).isTrue();
         }
 
-        verify(transactionRepository).sumHandlingFeeForBranchAndDate(
-                eq(companyId), eq(branchId), eq(LocalDate.now()), anyCollection());
+        verify(handlingFeeBalanceRepository).findByBranchIdAndCompanyId(branchId, companyId);
         verify(cashBalanceRepository, never()).findByBranchIdAndCompanyId(any(), any());
     }
 
@@ -484,9 +483,8 @@ class DenominationBalanceServiceTest {
         when(balanceRepository.sumActualStockByCurrency(
                 branchId, LocalDate.now(), DenominationCategory.HANDLING_FEE))
                 .thenReturn(List.of());
-        when(transactionRepository.sumHandlingFeeForBranchAndDate(
-                eq(companyId), eq(branchId), eq(LocalDate.now()), anyCollection()))
-                .thenReturn(BigDecimal.ZERO);
+        when(handlingFeeBalanceRepository.findByBranchIdAndCompanyId(branchId, companyId))
+                .thenReturn(Optional.empty());
         when(currencyRepository.findByCode("HUF"))
                 .thenReturn(Optional.of(Currency.builder().id(1L).code("HUF").build()));
 

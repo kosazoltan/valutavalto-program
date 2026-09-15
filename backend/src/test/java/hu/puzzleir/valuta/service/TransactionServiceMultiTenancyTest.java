@@ -39,6 +39,7 @@ class TransactionServiceMultiTenancyTest {
     @Mock private TransactionValidationService transactionValidationService;
     @Mock private PmtComplianceValidator pmtComplianceValidator;
     @Mock private WacService wacService;
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
 
     @InjectMocks
     private TransactionService transactionService;

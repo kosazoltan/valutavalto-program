@@ -16,7 +16,7 @@ import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
-import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.repository.HandlingFeeBalanceRepository;
 import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.security.WorkerAuthenticationDetails;
 import org.junit.jupiter.api.AfterEach;
@@ -66,7 +66,7 @@ class DenominationBalanceRetroactiveDateFkh050Test {
     @Mock
     private DenominationAllowedRepository denominationAllowedRepository;
     @Mock
-    private TransactionRepository transactionRepository;
+    private HandlingFeeBalanceRepository handlingFeeBalanceRepository;
     @Mock
     private CurrencyRepository currencyRepository;
     @Mock

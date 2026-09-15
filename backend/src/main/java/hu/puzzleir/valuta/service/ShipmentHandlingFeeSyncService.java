@@ -23,6 +23,7 @@ public class ShipmentHandlingFeeSyncService {
 
     private final ShipmentHandlingFeeRepository feeRepository;
     private final AuditLogService auditLogService;
+    private final HandlingFeeBalanceService handlingFeeBalanceService;
 
     @Transactional(propagation = Propagation.REQUIRED)
     public void syncFromShipment(ShipmentRequest shipment) {
@@ -31,8 +32,11 @@ public class ShipmentHandlingFeeSyncService {
     }
 
     private void syncExistingFee(ShipmentRequest shipment, ShipmentHandlingFee fee) {
+        ShipmentRequestStatus previousStatus = fee.getStatus();
         boolean newlyApproved = shipment.getStatus() == ShipmentRequestStatus.APPROVED
                 && fee.getApprovedAt() == null;
+        boolean newlyCancelled = shipment.getStatus() == ShipmentRequestStatus.CANCELLED
+                && previousStatus != ShipmentRequestStatus.CANCELLED;
         fee.setStatus(shipment.getStatus());
         if (newlyApproved) {
             fee.setApprovedAt(LocalDateTime.now());
@@ -50,6 +54,10 @@ public class ShipmentHandlingFeeSyncService {
                     null,
                     null);
             log.info("Shipment kezelési költség jóváhagyva: shipment={}", shipment.getId());
+        }
+        if (newlyCancelled) {
+            handlingFeeBalanceService.increase(
+                    fee.getSourceBranchId(), fee.getCompanyId(), fee.getHufAmount());
         }
         feeRepository.save(fee);
     }
