@@ -4,10 +4,13 @@ import hu.puzzleir.valuta.exception.ValidationException;
 import hu.puzzleir.valuta.dto.supervisor.SystemParamDto;
 import hu.puzzleir.valuta.entity.ExchangeRate;
 import hu.puzzleir.valuta.entity.Transaction;
+import hu.puzzleir.valuta.entity.TransactionStatus;
+import hu.puzzleir.valuta.entity.TransactionType;
 import hu.puzzleir.valuta.repository.ExchangeRateRepository;
 import hu.puzzleir.valuta.repository.SystemParameterRepository;
 import hu.puzzleir.valuta.repository.TransactionRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
+import hu.puzzleir.valuta.util.HungarianRounding;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +40,7 @@ public class SupervisorService {
     private final AuditLogService auditLogService;
     private final PasswordEncoder passwordEncoder;
     private final Environment environment;
+    private final HandlingFeeBalanceService handlingFeeBalanceService;
 
     @Value("${app.supervisor.password-hash}")
     private String supervisorPasswordHash;
@@ -140,6 +144,7 @@ public class SupervisorService {
                 .orElseThrow(() -> new ValidationException("Tranzakció nem található: " + transactionId));
 
         BigDecimal oldFee = tx.getHandlingFee();
+        applyHandlingFeeOverrideDelta(tx, oldFee, newFee);
         tx.setHandlingFee(newFee);
         transactionRepository.save(tx);
 
@@ -161,5 +166,34 @@ public class SupervisorService {
 
         log.info("[Supervisor] Díj felülbírálat: tx={} oldFee={} newFee={} reason={}",
                 transactionId, oldFee, newFee, reason);
+    }
+
+    /**
+     * FKH-071: a booked BUY/SELL fee is already in HandlingFeeBalance. An override must
+     * move the rounded difference so Expected stays equal to the drawer, and a later
+     * storno decreases the fee actually stored on the transaction.
+     */
+    private void applyHandlingFeeOverrideDelta(Transaction tx, BigDecimal oldFee, BigDecimal newFee) {
+        if (tx.getTransactionType() != TransactionType.BUY
+                && tx.getTransactionType() != TransactionType.SELL) {
+            return;
+        }
+        if (tx.getStatus() == TransactionStatus.REVERSED
+                || tx.getStatus() == TransactionStatus.FAILED
+                || tx.getStatus() == TransactionStatus.CANCELLED) {
+            return;
+        }
+        BigDecimal oldRounded = HungarianRounding.roundToFive(
+                oldFee != null ? oldFee : BigDecimal.ZERO);
+        BigDecimal newRounded = HungarianRounding.roundToFive(
+                newFee != null ? newFee : BigDecimal.ZERO);
+        BigDecimal delta = newRounded.subtract(oldRounded);
+        UUID branchId = tx.getBranch().getId();
+        UUID companyId = tx.getCompany().getId();
+        if (delta.signum() > 0) {
+            handlingFeeBalanceService.increase(branchId, companyId, delta);
+        } else if (delta.signum() < 0) {
+            handlingFeeBalanceService.decrease(branchId, companyId, delta.abs());
+        }
     }
 }

@@ -35,6 +35,7 @@ public class ShipmentHandlingFeeService {
     private final ShipmentHandlingFeeRepository feeRepository;
     private final CurrencyRepository currencyRepository;
     private final AuditLogService auditLogService;
+    private final HandlingFeeBalanceService handlingFeeBalanceService;
 
     public ShipmentHandlingFeeCreateResponseDto create(ShipmentHandlingFeeCreateRequest dto) {
         BigDecimal hufAmount = HungarianRounding.roundToFive(dto.getHufAmount());
@@ -59,6 +60,7 @@ public class ShipmentHandlingFeeService {
                 .build());
 
         ShipmentRequest saved = shipmentService.create(request, SERIAL_PREFIX_HANDLING_FEE);
+        handlingFeeBalanceService.decrease(saved.getFromBranchId(), saved.getCompanyId(), hufAmount);
         // FK-096/D3: a feladó iroda viseli a KK díjat — fail-closed, iroda-tudatos feloldás.
         BigDecimal calculatedFee = handlingFeeService.calculateHandlingFee(hufAmount, saved.getFromBranchId());
 

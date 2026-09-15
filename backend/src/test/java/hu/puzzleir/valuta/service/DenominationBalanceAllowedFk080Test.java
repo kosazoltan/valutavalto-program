@@ -17,7 +17,7 @@ import hu.puzzleir.valuta.repository.CurrencyStockRepository;
 import hu.puzzleir.valuta.repository.DenominationAllowedRepository;
 import hu.puzzleir.valuta.repository.DenominationBalanceRepository;
 import hu.puzzleir.valuta.repository.DenominationRepository;
-import hu.puzzleir.valuta.repository.TransactionRepository;
+import hu.puzzleir.valuta.repository.HandlingFeeBalanceRepository;
 import hu.puzzleir.valuta.repository.VatSupplyStockRepository;
 import hu.puzzleir.valuta.security.SecurityUtils;
 import org.junit.jupiter.api.DisplayName;
@@ -67,7 +67,7 @@ class DenominationBalanceAllowedFk080Test {
     @Mock private BranchRepository branchRepository;
     @Mock private CashBalanceRepository cashBalanceRepository;
     @Mock private DenominationAllowedRepository denominationAllowedRepository;
-    @Mock private TransactionRepository transactionRepository;
+    @Mock private HandlingFeeBalanceRepository handlingFeeBalanceRepository;
     @Mock private CurrencyRepository currencyRepository;
     @Mock private VatSupplyStockRepository vatSupplyStockRepository;
     @Mock private CurrencyStockRepository currencyStockRepository;
@@ -80,7 +80,7 @@ class DenominationBalanceAllowedFk080Test {
         return new DenominationBalanceService(
                 balanceRepository, denominationRepository, cashRegisterDeviceRepository, branchRepository,
                 cashBalanceRepository, denominationAllowedRepository,
-                transactionRepository, currencyRepository, vatSupplyStockRepository,
+                handlingFeeBalanceRepository, currencyRepository, vatSupplyStockRepository,
                 currencyStockRepository);
     }
 

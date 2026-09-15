@@ -44,6 +44,7 @@ public class TransactionReversalService {
     private final AuditLogService auditLogService;
     private final WacService wacService;
     private final CustomerRepository customerRepository;
+    private final HandlingFeeBalanceService handlingFeeBalanceService;
 
     /**
      * Sztorno vegrehajtasa.
@@ -276,6 +277,7 @@ public class TransactionReversalService {
             helper.validateCurrencyStock(branchId, currencyId, original.getCurrencyAmount());
             helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount().negate(), false);
         }
+        handlingFeeBalanceService.decrease(branchId, companyId, original.getHandlingFee());
         // FKH-028 follow-up (tudatosan scope-on kivul): a reszleges-visszavaltas utvonala
         // (executePartialRefund BUY/SELL aga lentebb) TRANSFER-tipusra ugyanigy nem mozgat
         // kasszat — kulon korben rendezendo.

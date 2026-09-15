@@ -41,6 +41,7 @@ class TransactionServiceTurnoverTest {
     private static final LocalDate REPORT_DATE = LocalDate.of(2026, 7, 14);
 
     @InjectMocks private TransactionService transactionService;
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
 
     @Mock private TransactionRepository transactionRepository;
     @Mock private TransactionLineRepository transactionLineRepository;

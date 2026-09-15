@@ -39,6 +39,7 @@ class ShipmentHandlingFeeSyncServiceTest {
 
     @Mock private ShipmentHandlingFeeRepository feeRepository;
     @Mock private AuditLogService auditLogService;
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
 
     @InjectMocks private ShipmentHandlingFeeSyncService service;
 
@@ -103,13 +104,39 @@ class ShipmentHandlingFeeSyncServiceTest {
         ShipmentHandlingFee fee = fee(ShipmentRequestStatus.SUBMITTED, null);
         when(feeRepository.findByShipmentRequestIdAndCompanyId(SHIPMENT_ID, COMPANY_ID))
                 .thenReturn(Optional.of(fee));
+        when(handlingFeeBalanceService.exists(FROM_BRANCH_ID, COMPANY_ID)).thenReturn(true);
 
         service.syncFromShipment(shipment(ShipmentRequestStatus.CANCELLED));
 
         assertThat(fee.getStatus()).isEqualTo(ShipmentRequestStatus.CANCELLED);
         assertThat(fee.getApprovedAt()).isNull();
         verify(feeRepository).save(fee);
+        verify(handlingFeeBalanceService).increase(FROM_BRANCH_ID, COMPANY_ID, new BigDecimal("125000"));
         verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void sync_rejected_restoresBalanceWhenRowExists() {
+        ShipmentHandlingFee fee = fee(ShipmentRequestStatus.SUBMITTED, null);
+        when(feeRepository.findByShipmentRequestIdAndCompanyId(SHIPMENT_ID, COMPANY_ID))
+                .thenReturn(Optional.of(fee));
+        when(handlingFeeBalanceService.exists(FROM_BRANCH_ID, COMPANY_ID)).thenReturn(true);
+
+        service.syncFromShipment(shipment(ShipmentRequestStatus.REJECTED));
+
+        verify(handlingFeeBalanceService).increase(FROM_BRANCH_ID, COMPANY_ID, new BigDecimal("125000"));
+    }
+
+    @Test
+    void sync_cancelled_skipsRestoreWhenNoBalanceRow() {
+        ShipmentHandlingFee fee = fee(ShipmentRequestStatus.SUBMITTED, null);
+        when(feeRepository.findByShipmentRequestIdAndCompanyId(SHIPMENT_ID, COMPANY_ID))
+                .thenReturn(Optional.of(fee));
+        when(handlingFeeBalanceService.exists(FROM_BRANCH_ID, COMPANY_ID)).thenReturn(false);
+
+        service.syncFromShipment(shipment(ShipmentRequestStatus.CANCELLED));
+
+        verify(handlingFeeBalanceService, never()).increase(any(), any(), any());
     }
 
     @Test

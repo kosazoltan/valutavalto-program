@@ -37,6 +37,7 @@ class TransactionServiceCameraLinkingTest {
     @Mock private PmtComplianceValidator pmtComplianceValidator;
     @Mock private WacService wacService;
     @Mock private VaultStockFlowService vaultStockFlowService;
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
 
     @InjectMocks
     private TransactionService transactionService;

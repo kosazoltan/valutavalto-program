@@ -106,7 +106,8 @@ class SupervisorServiceConfigTest {
                 mock(ExchangeRateRepository.class),
                 mock(AuditLogService.class),
                 passwordEncoder,
-                environment);
+                environment,
+                mock(HandlingFeeBalanceService.class));
         ReflectionTestUtils.setField(service, "supervisorPasswordHash", hash);
         return service;
     }

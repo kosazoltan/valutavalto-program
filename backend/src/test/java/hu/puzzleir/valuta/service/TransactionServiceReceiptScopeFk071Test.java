@@ -57,6 +57,7 @@ class TransactionServiceReceiptScopeFk071Test {
     private static final String RECEIPT = "V035000042";
 
     @InjectMocks private TransactionService transactionService;
+    @Mock private HandlingFeeBalanceService handlingFeeBalanceService;
 
     @Mock private TransactionRepository transactionRepository;
     @Mock private TransactionLineRepository transactionLineRepository;
