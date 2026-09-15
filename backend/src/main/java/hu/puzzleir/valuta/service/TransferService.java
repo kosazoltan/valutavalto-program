@@ -932,6 +932,7 @@ public class TransferService {
                     createTransferOutTransaction(transfer, fromWorker, ln.getCurrency(), ln.getAmount());
                     decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
                 }
+                autoCompleteVaultCounterpartyIfNeeded(transfer, fromWorker, direction);
                 log.info("F mód — {} sor TRANSFER_OUT: {}", bookLines.size(), transfer.getTransferNumber());
             }
             case U -> {
@@ -939,6 +940,7 @@ public class TransferService {
                     createTransferInTransaction(transfer, fromWorker, transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
                     increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), ln.getAmount());
                 }
+                autoCompleteVaultCounterpartyIfNeeded(transfer, fromWorker, direction);
                 log.info("U mód — {} sor TRANSFER_IN (fogadó: {}): {}",
                         bookLines.size(), transfer.getFromBranch().getCode(), transfer.getTransferNumber());
             }
@@ -1043,8 +1045,16 @@ public class TransferService {
      */
     private void reverseCounterTransactions(Transfer transfer, Worker actor, Transfer.TransferDirection direction) {
         final java.util.List<TransferLine> bookLines = effectiveLines(transfer);
-        // A toBranch-et minden irány érinti a visszafordításnál, KIVÉVE az U-t (ott csak a fromBranch mozdult).
-        final boolean touchesToBranch = direction != Transfer.TransferDirection.U;
+        final boolean counterpartyTarget = isVaultCounterpartyTarget(transfer);
+        if (counterpartyTarget) {
+            log.warn("FK-113: COMPLETED storno of VAULT_COUNTERPARTY transfer {} skips toBranch cash/tx "
+                            + "(igazoló dolgozó: NINCS). Pre-fix COMPLETED F/UF partner-side books, if any, "
+                            + "will not be reversed. transferNumber={}, direction={}",
+                    transfer.getTransferNumber(), transfer.getTransferNumber(), direction);
+        }
+        // A toBranch-et minden irány érinti a visszafordításnál, KIVÉVE az U-t (ott csak a fromBranch
+        // mozdult) és a VAULT_COUNTERPARTY célt (FK-113 FR-2: nincs partner-oldali kassza).
+        final boolean touchesToBranch = direction != Transfer.TransferDirection.U && !counterpartyTarget;
         // PRE-LOCK ugyanabban a globális (branchId, currencyId) sorrendben, mint a create — nincs deadlock.
         final java.util.List<hu.puzzleir.valuta.util.CashLockOrdering.BranchCurrencyKey> lockKeys =
                 new java.util.ArrayList<>();
@@ -1074,9 +1084,11 @@ public class TransferService {
             switch (direction) {
                 case F, UF -> {
                     increaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), sent);
-                    decreaseCashBalance(transfer.getToBranch(), ln.getCurrency(), received);
                     createReversalTransaction(transfer, actor, transfer.getFromBranch(), ln.getCurrency(), sent, TransactionType.TRANSFER_IN);
-                    createReversalTransaction(transfer, actor, transfer.getToBranch(), ln.getCurrency(), received, TransactionType.TRANSFER_OUT);
+                    if (!counterpartyTarget) {
+                        decreaseCashBalance(transfer.getToBranch(), ln.getCurrency(), received);
+                        createReversalTransaction(transfer, actor, transfer.getToBranch(), ln.getCurrency(), received, TransactionType.TRANSFER_OUT);
+                    }
                 }
                 case U -> {
                     decreaseCashBalance(transfer.getFromBranch(), ln.getCurrency(), sent);
@@ -1593,6 +1605,44 @@ public class TransferService {
     private static boolean isTechnicalRb(Transfer.TransferType type) {
         return type == Transfer.TransferType.ERB || type == Transfer.TransferType.FRB
                 || type == Transfer.TransferType.TRB || type == Transfer.TransferType.PRB;
+    }
+
+    /**
+     * FK-113 FR-1: null-safe discriminator for bank / technical-station targets.
+     * Peer vaults ({@code is_vault=true}) are a different branch type and must stay PENDING.
+     */
+    static boolean isVaultCounterpartyTarget(Transfer transfer) {
+        if (transfer == null || transfer.getToBranch() == null) {
+            return false;
+        }
+        Dictionary branchType = transfer.getToBranch().getBranchType();
+        return branchType != null && "VAULT_COUNTERPARTY".equals(branchType.getCode());
+    }
+
+    /**
+     * FK-113 FR-1: ERB/FRB/TRB/PRB to a VAULT_COUNTERPARTY closes on create (UF pattern),
+     * without partner-side cash or TRANSFER_IN/OUT. {@code toWorker} stays null.
+     */
+    private void autoCompleteVaultCounterpartyIfNeeded(
+            Transfer transfer, Worker fromWorker, Transfer.TransferDirection direction) {
+        if (!isTechnicalRb(transfer.getTransferType()) || !isVaultCounterpartyTarget(transfer)) {
+            return;
+        }
+        markLinesReceived(transfer);
+        transfer.setStatus(Transfer.TransferStatus.COMPLETED);
+        transfer.setReceivedAmount(transfer.getAmount());
+        transfer.setReceivedDate(LocalDate.now());
+        transfer.setReceivedTime(LocalTime.now());
+        transfer.setDifference(BigDecimal.ZERO);
+        String recorder = fromWorker != null && fromWorker.getName() != null
+                ? fromWorker.getName() : String.valueOf(fromWorker != null ? fromWorker.getId() : null);
+        auditLogService.log("TRANSFER_AUTO_COMPLETED",
+                String.format("Banki tétel automatikusan lezárva: %s, irány: %s, rögzítő dolgozó: %s, "
+                                + "igazoló dolgozó: NINCS",
+                        transfer.getTransferNumber(), direction, recorder),
+                transfer.getId());
+        log.info("FK-113 auto-completed VAULT_COUNTERPARTY transfer {} direction={} recorder={}",
+                transfer.getTransferNumber(), direction, recorder);
     }
 
     /**

@@ -202,13 +202,20 @@ public interface TransferRepository extends JpaRepository<Transfer, Long> {
     BigDecimal sumTransfersInExcludingTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
     /**
-     * FK-046 FR-3: NORMÁL pénztárközi ÁTADÁS napi összege, a TH felé irányuló tételek KIZÁRVA.
+     * FK-046 FR-3 / FK-113 FR-3: NORMÁL pénztárközi ÁTADÁS napi összege, a
+     * {@code VAULT_COUNTERPARTY} célú tételek KIZÁRVA (TH, bank, technikai állomás).
+     * Ezek a BANK+/BANK− / Többlet-Hiány aggregátumokban szerepelnek, ezért ha bent
+     * maradnának a transfers_out összegben, a záráskori számított egyenleg kétszer vonná le őket.
      * Kétoldali tenant-szűrés (GLM-review #7).
      */
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t WHERE t.fromBranch.id = :branchId " +
-           "AND t.fromBranch.company.id = :companyId " +
-           "AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED' " +
-           "AND (t.toBranch IS NULL OR (t.toBranch.company.id = :companyId AND t.toBranch.code <> 'TH'))")
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transfer t "
+           + "LEFT JOIN t.toBranch tb "
+           + "LEFT JOIN tb.branchType bt "
+           + "WHERE t.fromBranch.id = :branchId "
+           + "AND t.fromBranch.company.id = :companyId "
+           + "AND t.transferDate = :date AND t.currency.code = :currencyCode AND t.status = 'COMPLETED' "
+           + "AND (tb IS NULL OR (tb.company.id = :companyId "
+           + "AND (bt IS NULL OR bt.code <> 'VAULT_COUNTERPARTY')))")
     BigDecimal sumTransfersOutExcludingTh(@Param("branchId") UUID branchId, @Param("companyId") UUID companyId, @Param("date") LocalDate date, @Param("currencyCode") String currencyCode);
 
     /**

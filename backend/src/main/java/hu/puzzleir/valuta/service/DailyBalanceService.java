@@ -374,7 +374,8 @@ public class DailyBalanceService {
      * Átadás (transfer OUT) számítása
      */
     private BigDecimal getTransfersOut(UUID branchId, UUID companyId, LocalDate date, String currencyCode) {
-        // FK-046 FR-3: a TH elszámolási pénztár felé irányuló tételek KIZÁRVA.
+        // FK-046 FR-3 / FK-113 FR-3: VAULT_COUNTERPARTY targets (TH, bank, technical stations)
+        // are excluded so they are not deducted twice (transfers_out AND bank_out).
         return transferRepository.sumTransfersOutExcludingTh(branchId, companyId, date, currencyCode);
     }
 
