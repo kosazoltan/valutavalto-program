@@ -161,15 +161,23 @@ jobs:
               -o ServerAliveInterval=30 \
               -o ServerAliveCountMax=10 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
-              bash -s << 'ENDSSH'
+              bash -s -- "${{ needs.build.outputs.jar_name }}" << 'ENDSSH'
             set -euo pipefail
+            # The JAR name arrives as a positional argument, never interpolated into the
+            # remote script body (same pattern as the standby symlink step): a workflow
+            # expression expanded inside the heredoc would be remote shell code.
+            JAR_NAME="$1"
             DEPLOY=${{ env.VPS_DEPLOY_PATH }}
             SYMLINK=$DEPLOY/target/${{ env.JAR_SYMLINK }}
             # Pin the symlink to the JAR this job built+uploaded. sort -V|tail -1 would
             # keep a newer leftover on disk (2026-09-15: restore of 2.28.115 kept 2.28.116).
-            # Use needs.build.outputs (not GITHUB_ENV via env.jar_name) so the expression
+            # Use needs.build.outputs (not GITHUB_ENV via env.jar_name) so the value
             # is never empty at template expansion.
-            JAR=$DEPLOY/target/${{ needs.build.outputs.jar_name }}
+            if [ -z "$JAR_NAME" ]; then
+              echo "::error::build.outputs.jar_name is empty — refusing to repoint the symlink."
+              exit 1
+            fi
+            JAR="$DEPLOY/target/$JAR_NAME"
             if [ ! -f "$JAR" ]; then
               echo "::error::Uploaded JAR missing on VPS: $JAR"
               exit 1
