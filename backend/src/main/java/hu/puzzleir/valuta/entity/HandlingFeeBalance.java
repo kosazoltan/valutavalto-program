@@ -48,6 +48,15 @@ public class HandlingFeeBalance {
     @Builder.Default
     private BigDecimal currentBalance = BigDecimal.ZERO;
 
+    /**
+     * SEC-001 (V395): the part of a correction (reversal / downward fee override) that the drawer
+     * could not cover. Offset against the next increase before it reaches {@code currentBalance},
+     * so a later FR-5 shipment cancellation cannot leave a phantom balance. Always >= 0.
+     */
+    @Column(name = "deferred_deduction", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal deferredDeduction = BigDecimal.ZERO;
+
     @Version
     @Column(name = "version", nullable = false)
     @Builder.Default

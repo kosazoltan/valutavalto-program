@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -62,7 +63,11 @@ class SupervisorHandlingFeeOverrideTest {
             service().overrideFee(7L, new BigDecimal("100"), "desk correction");
         }
 
-        verify(handlingFeeBalanceService).decrease(BRANCH, COMPANY, new BigDecimal("190"));
+        // SEC-AUDIT 2026-09-16: a downward override is a CORRECTION of already-booked money,
+        // so it must use the clamping settle() and not the refusable decrease() — otherwise an
+        // emptied drawer makes the override throw and rolls the whole supervisor action back.
+        verify(handlingFeeBalanceService).settle(BRANCH, COMPANY, new BigDecimal("190"));
+        verify(handlingFeeBalanceService, never()).decrease(any(), any(), any());
     }
 
     @Test

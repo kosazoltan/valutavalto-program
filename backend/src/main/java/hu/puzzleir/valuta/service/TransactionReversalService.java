@@ -277,7 +277,9 @@ public class TransactionReversalService {
             helper.validateCurrencyStock(branchId, currencyId, original.getCurrencyAmount());
             helper.updateCashBalance(branchId, currencyId, original.getCurrencyAmount().negate(), false);
         }
-        handlingFeeBalanceService.decrease(branchId, companyId, original.getHandlingFee());
+        // SEC-AUDIT 2026-09-16: correction path — settle() clamps at zero so an emptied
+        // drawer can never block a reversal (decrease() would throw and roll the storno back).
+        handlingFeeBalanceService.settle(branchId, companyId, original.getHandlingFee());
         // FKH-028 follow-up (tudatosan scope-on kivul): a reszleges-visszavaltas utvonala
         // (executePartialRefund BUY/SELL aga lentebb) TRANSFER-tipusra ugyanigy nem mozgat
         // kasszat — kulon korben rendezendo.

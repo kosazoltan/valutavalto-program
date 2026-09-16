@@ -193,7 +193,9 @@ public class SupervisorService {
         if (delta.signum() > 0) {
             handlingFeeBalanceService.increase(branchId, companyId, delta);
         } else if (delta.signum() < 0) {
-            handlingFeeBalanceService.decrease(branchId, companyId, delta.abs());
+            // SEC-AUDIT 2026-09-16: a downward fee override corrects already-booked money;
+            // clamp instead of refusing the override (see HandlingFeeBalanceService#settle).
+            handlingFeeBalanceService.settle(branchId, companyId, delta.abs());
         }
     }
 }
