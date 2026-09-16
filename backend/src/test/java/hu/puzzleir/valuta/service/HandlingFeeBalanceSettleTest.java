@@ -53,14 +53,53 @@ class HandlingFeeBalanceSettleTest {
     }
 
     @Test
-    @DisplayName("SEC-001: storno of a fee-bearing tx is not blocked when the drawer was emptied by a KK shipment")
-    void settleClampsInsteadOfThrowing() {
+    @DisplayName("SEC-001: partial cover — settle takes what is there and defers the remainder")
+    void settlePartiallyCoveredDefersRemainder() {
         HandlingFeeBalance row = stubLocked(new BigDecimal("100"));
 
         assertThatCode(() -> service.settle(BRANCH, COMPANY, new BigDecimal("290")))
                 .doesNotThrowAnyException();
 
         assertThat(row.getCurrentBalance()).isEqualByComparingTo("0");
+        assertThat(row.getDeferredDeduction()).isEqualByComparingTo("190");
+    }
+
+    @Test
+    @DisplayName("SEC-001: fully emptied drawer (0) — the reversal still succeeds and defers the whole fee")
+    void settleOnEmptyDrawerDefersEverything() {
+        HandlingFeeBalance row = stubLocked(BigDecimal.ZERO);
+
+        assertThatCode(() -> service.settle(BRANCH, COMPANY, new BigDecimal("290")))
+                .doesNotThrowAnyException();
+
+        assertThat(row.getCurrentBalance()).isEqualByComparingTo("0");
+        assertThat(row.getDeferredDeduction()).isEqualByComparingTo("290");
+    }
+
+    @Test
+    @DisplayName("SEC-001: codex P1 — a later KK cancellation must not leave a phantom balance")
+    void deferredDeductionAbsorbsTheShipmentCancellation() {
+        // +290 fee booked, -290 handed to the vault (KK shipment), storno of the fee-bearing tx
+        // while the drawer is empty, then the shipment is cancelled and restores its full amount.
+        HandlingFeeBalance row = stubLocked(BigDecimal.ZERO);
+
+        service.settle(BRANCH, COMPANY, new BigDecimal("290"));   // reversal, nothing to take
+        service.increase(BRANCH, COMPANY, new BigDecimal("290")); // FR-5 shipment cancellation
+
+        assertThat(row.getCurrentBalance()).isEqualByComparingTo("0");
+        assertThat(row.getDeferredDeduction()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("SEC-001: a deferred remainder is offset before an increase reaches the balance")
+    void increaseOffsetsDeferredRemainderFirst() {
+        HandlingFeeBalance row = stubLocked(BigDecimal.ZERO);
+        row.setDeferredDeduction(new BigDecimal("190"));
+
+        service.increase(BRANCH, COMPANY, new BigDecimal("300"));
+
+        assertThat(row.getDeferredDeduction()).isEqualByComparingTo("0");
+        assertThat(row.getCurrentBalance()).isEqualByComparingTo("110");
     }
 
     @Test

@@ -155,13 +155,18 @@ jobs:
           ENDSSH
 
       - name: Symlink + chown + restart service
+        env:
+          # Never interpolate the expression into the `run` script itself: GitHub expands it
+          # before bash parses the line, so a name containing $(...), a backtick or a quote
+          # would execute on the RUNNER. Through env it reaches bash as plain data.
+          JAR_NAME: ${{ needs.build.outputs.jar_name }}
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=accept-new \
               -o ServerAliveInterval=30 \
               -o ServerAliveCountMax=10 \
               "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SERVER_IP }}" \
-              bash -s -- "${{ needs.build.outputs.jar_name }}" << 'ENDSSH'
+              bash -s -- "$JAR_NAME" << 'ENDSSH'
             set -euo pipefail
             # The JAR name arrives as a positional argument, never interpolated into the
             # remote script body (same pattern as the standby symlink step): a workflow
@@ -236,10 +241,11 @@ jobs:
 
       - name: Health check (ORIGIN-pinned — a deployolt Hetzner hostot méri, nem az edge-et)
         id: origin_health
+        env:
+          JAR_NAME: ${{ needs.build.outputs.jar_name }}
         run: |
           set -euo pipefail
           ORIGIN_RESOLVE="excvaluta.com:443:${{ secrets.VPS_SERVER_IP }}"
-          JAR_NAME="${{ needs.build.outputs.jar_name }}"
           DEPLOY_VERSION="${JAR_NAME#valuta-backend-}"; DEPLOY_VERSION="${DEPLOY_VERSION%.jar}"
           echo "Deployolt verzió: $DEPLOY_VERSION | origin: ${{ secrets.VPS_SERVER_IP }}"
           echo "Waiting for service startup..."
@@ -283,9 +289,10 @@ jobs:
 
       - name: Edge version drift check (publikus edge vs deployolt — NEM blokkoló)
         if: always()
+        env:
+          JAR_NAME: ${{ needs.build.outputs.jar_name }}
         run: |
           # Szándékosan NEM 'set -e': ez a step SOHA nem buktathatja a deployt (korai riasztás a célja).
-          JAR_NAME="${{ needs.build.outputs.jar_name }}"
           DEPLOY_VERSION="${JAR_NAME#valuta-backend-}"; DEPLOY_VERSION="${DEPLOY_VERSION%.jar}"
           EDGE_VERSION=$(curl -s --max-time 15 "${{ env.VERSION_URL }}" | jq -r '.version // empty' 2>/dev/null || echo "")
           echo "Edge /version: '${EDGE_VERSION:-UNREACHABLE}' | deployolt: $DEPLOY_VERSION"
@@ -841,10 +848,14 @@ jobs:
           ENDSSH
 
       - name: Swap symlink + restart (warm, read-only) + health
+        env:
+          # Same runner-side hardening as the primary symlink step: the expression is passed
+          # through env, never expanded into the `run` script that bash then parses.
+          JAR_NAME: ${{ needs.build.outputs.jar_name }}
         run: |
           ssh -i ~/.ssh/scaleway_key -o StrictHostKeyChecking=accept-new \
               "root@${{ secrets.SCALEWAY_SERVER_IP }}" \
-              bash -s -- "${{ needs.build.outputs.jar_name }}" << 'ENDSSH'
+              bash -s -- "$JAR_NAME" << 'ENDSSH'
             set -euo pipefail
             JAR_NAME="$1"
             TARGET=${{ env.VPS_DEPLOY_PATH }}/target

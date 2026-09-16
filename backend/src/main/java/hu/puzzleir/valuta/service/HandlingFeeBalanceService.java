@@ -30,10 +30,24 @@ public class HandlingFeeBalanceService {
             return;
         }
         HandlingFeeBalance row = lockOrCreate(branchId, companyId);
-        row.setCurrentBalance(HungarianRounding.roundToFive(row.getCurrentBalance().add(rounded)));
+        // SEC-001: a correction that the drawer could not cover is parked in deferredDeduction
+        // and settled here FIRST, so a later FR-5 shipment cancellation cannot restore money the
+        // reversal already cancelled (the +290/-290/-0/+290 phantom balance).
+        BigDecimal remaining = rounded;
+        BigDecimal deferred = nonNull(row.getDeferredDeduction());
+        if (deferred.signum() > 0) {
+            BigDecimal offset = deferred.min(remaining);
+            row.setDeferredDeduction(deferred.subtract(offset));
+            remaining = remaining.subtract(offset);
+            log.info("HandlingFeeBalance deferred offset branch={} company={} offset={} deferredLeft={}",
+                    branchId, companyId, offset, row.getDeferredDeduction());
+        }
+        if (remaining.signum() > 0) {
+            row.setCurrentBalance(HungarianRounding.roundToFive(row.getCurrentBalance().add(remaining)));
+        }
         row.setUpdatedAt(LocalDateTime.now());
-        log.debug("HandlingFeeBalance increase branch={} company={} delta={} balance={}",
-                branchId, companyId, rounded, row.getCurrentBalance());
+        log.debug("HandlingFeeBalance increase branch={} company={} delta={} applied={} balance={}",
+                branchId, companyId, rounded, remaining, row.getCurrentBalance());
     }
 
     public void decrease(UUID branchId, UUID companyId, BigDecimal amount) {
@@ -60,8 +74,8 @@ public class HandlingFeeBalanceService {
     }
 
     /**
-     * Correction-path decrease: takes what the drawer holds and clamps at zero instead of
-     * throwing.
+     * Correction-path decrease: takes what the drawer holds, never throws, and PARKS the
+     * uncovered remainder in {@code deferredDeduction} (V395).
      *
      * <p>SEC-AUDIT 2026-09-16 (FKH-071 follow-up). {@link #decrease} is the USER-REFUSABLE
      * path (FR-7: a KK shipment may not take out more than is accumulated). A reversal or a
@@ -69,8 +83,12 @@ public class HandlingFeeBalanceService {
      * booked into the transaction row, the cash balance and the audit trail inside the SAME
      * database transaction, so a {@code ValidationException} there rolls the whole storno
      * back and an office whose drawer was emptied by a KK shipment could no longer reverse
-     * any fee-bearing transaction. The unapplied remainder is logged at WARN so the
-     * divergence between the rolled balance and the fee history stays auditable.</p>
+     * any fee-bearing transaction.</p>
+     *
+     * <p>Clamping alone would lose money truth: the FR-5 cancellation of that KK shipment later
+     * restores its full amount, producing +290 / -290 / -0 / +290 = a phantom 290 instead of 0.
+     * The uncovered part is therefore persisted and offset by {@link #increase} before any
+     * later credit reaches the balance.</p>
      */
     public void settle(UUID branchId, UUID companyId, BigDecimal amount) {
         BigDecimal rounded = HungarianRounding.roundToFive(amount);
@@ -78,22 +96,27 @@ public class HandlingFeeBalanceService {
             return;
         }
         HandlingFeeBalance row = lockOrCreate(branchId, companyId);
-        BigDecimal available = row.getCurrentBalance();
+        BigDecimal available = nonNull(row.getCurrentBalance());
         BigDecimal applied = rounded.min(available);
-        if (applied.signum() <= 0) {
-            log.warn("HandlingFeeBalance settle skipped (drawer empty) branch={} company={} requested={}",
-                    branchId, companyId, rounded);
-            return;
+        if (applied.signum() > 0) {
+            row.setCurrentBalance(HungarianRounding.roundToFive(available.subtract(applied)));
         }
-        row.setCurrentBalance(HungarianRounding.roundToFive(available.subtract(applied)));
-        row.setUpdatedAt(LocalDateTime.now());
-        if (applied.compareTo(rounded) < 0) {
-            log.warn("HandlingFeeBalance settle clamped branch={} company={} requested={} applied={} balance={}",
-                    branchId, companyId, rounded, applied, row.getCurrentBalance());
+        BigDecimal uncovered = rounded.subtract(applied);
+        if (uncovered.signum() > 0) {
+            row.setDeferredDeduction(nonNull(row.getDeferredDeduction()).add(uncovered));
+            log.warn("HandlingFeeBalance settle deferred branch={} company={} requested={} applied={}"
+                            + " deferred={} balance={}",
+                    branchId, companyId, rounded, applied, row.getDeferredDeduction(),
+                    row.getCurrentBalance());
         } else {
             log.debug("HandlingFeeBalance settle branch={} company={} delta={} balance={}",
                     branchId, companyId, applied, row.getCurrentBalance());
         }
+        row.setUpdatedAt(LocalDateTime.now());
+    }
+
+    private static BigDecimal nonNull(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     private HandlingFeeBalance lockOrCreate(UUID branchId, UUID companyId) {
